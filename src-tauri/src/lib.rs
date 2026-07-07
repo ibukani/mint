@@ -26,11 +26,13 @@ pub fn run() {
             match core::settings::load_settings_internal(&handle) {
                 Ok(settings) => {
                     use tauri_plugin_global_shortcut::GlobalShortcutExt;
-                    if let Err(e) = app
-                        .global_shortcut()
-                        .register(settings.clock.shortcut.as_str())
-                    {
-                        eprintln!("Failed to register clock shortcut: {}", e);
+                    if !settings.clock.shortcut.is_empty() {
+                        if let Err(e) = app
+                            .global_shortcut()
+                            .register(settings.clock.shortcut.as_str())
+                        {
+                            eprintln!("Failed to register clock shortcut: {}", e);
+                        }
                     }
                 }
                 Err(e) => {

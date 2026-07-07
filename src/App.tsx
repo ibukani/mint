@@ -9,7 +9,7 @@ import { VoiceToTextSettings } from "./features/v2t/components/VoiceToTextSettin
 const TAB_CONFIG = [
   { id: "general", label: "一般設定" },
   { id: "clock", label: "時計オーバーレイ" },
-  { id: "v2t", label: "音声入力" },
+  { id: "voiceToText", label: "音声入力" },
 ] as const;
 
 type TabId = (typeof TAB_CONFIG)[number]["id"];
@@ -44,7 +44,7 @@ const GeneralSettings: React.FC = () => {
 const TAB_COMPONENTS: Record<TabId, React.FC> = {
   general: GeneralSettings,
   clock: ClockSettings,
-  v2t: VoiceToTextSettings,
+  voiceToText: VoiceToTextSettings,
 };
 
 const AppContent: React.FC = () => {

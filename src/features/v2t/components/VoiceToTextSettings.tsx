@@ -36,6 +36,9 @@ export const VoiceToTextSettings: React.FC = () => {
   return (
     <div className="settings-section">
       <h2 className="section-title">音声入力 (Voice to Text) 設定</h2>
+      <div style={{ padding: "12px", backgroundColor: "rgba(255, 193, 7, 0.1)", border: "1px solid rgba(255, 193, 7, 0.3)", borderRadius: "6px", marginBottom: "16px", fontSize: "0.9rem", color: "#e0a800", lineHeight: "1.5" }}>
+        <strong>【未実装のお知らせ】</strong> 現在、この機能は設定画面 of API キーの OS セキュア保存のみが実装されています。実際のグローバルショートカットのフックや、音声の録音・Whisper API 経由での文字起こし処理自体はプレースホルダーであり、バックエンドの実装は未実装です。
+      </div>
       <p className="section-description">
         ショートカットキーを押して音声を録音し、自動で文字起こししてクリップボードにコピーする機能の設定です。
       </p>

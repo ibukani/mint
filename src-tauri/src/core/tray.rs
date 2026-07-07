@@ -9,8 +9,9 @@ pub fn init_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let quit_i = MenuItem::with_id(app, "quit", "終了 (Exit)", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
-    let icon = app.default_window_icon()
-        .ok_or_else(|| "Failed to get default window icon")?
+    let icon = app
+        .default_window_icon()
+        .ok_or("Failed to get default window icon")?
         .clone();
 
     let _tray = TrayIconBuilder::new()

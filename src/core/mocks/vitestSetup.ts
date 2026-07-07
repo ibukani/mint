@@ -1,11 +1,12 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import "@testing-library/jest-dom";
+import { AppSettings } from "../context/AppSettings";
 
 // テスト環境でTauriのウィンドウ管理をモック
 mockWindows("main", "clock");
 
 // テスト用のデフォルト設定データ
-const defaultSettings = {
+const defaultSettings: AppSettings = {
   theme: "dark",
   clock: {
     shortcut: "Ctrl+Alt+C",
@@ -14,7 +15,6 @@ const defaultSettings = {
   },
   voiceToText: {
     shortcut: "Ctrl+Alt+V",
-    apiKey: "",
     baseUrl: "https://api.openai.com/v1",
     model: "whisper-1",
     language: "ja",
@@ -28,6 +28,10 @@ mockIPC(async (cmd, args) => {
       return defaultSettings;
     case "save_settings":
       console.log("[Vitest Mock] save_settings called with:", args);
+      return;
+    case "load_api_key":
+      return "mock-api-key";
+    case "save_api_key":
       return;
     default:
       return null;

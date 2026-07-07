@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct ClockSettings {
     pub shortcut: String,
     pub auto_hide_seconds: u32,
@@ -22,7 +22,7 @@ impl Default for ClockSettings {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct VoiceToTextSettings {
     pub shortcut: String,
     pub base_url: String,
@@ -42,7 +42,7 @@ impl Default for VoiceToTextSettings {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
     pub theme: String,
     pub clock: ClockSettings,
@@ -89,16 +89,42 @@ pub fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
 
 #[tauri::command]
 pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String> {
+    let old_settings = load_settings_internal(&app).ok();
+
     let path = get_config_path(&app)?;
     let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(&path, json).map_err(|e| e.to_string())?;
+
+    // ショートカットの動的再登録
+    if let Some(old) = old_settings {
+        use tauri_plugin_global_shortcut::GlobalShortcutExt;
+        let gs = app.global_shortcut();
+        if old.clock.shortcut != settings.clock.shortcut {
+            let _ = gs.unregister(old.clock.shortcut.as_str());
+            if !settings.clock.shortcut.is_empty() {
+                if let Err(e) = gs.register(settings.clock.shortcut.as_str()) {
+                    eprintln!("Failed to register clock shortcut: {}", e);
+                }
+            }
+        }
+    }
     Ok(())
 }
 
 const KEYRING_SERVICE: &str = "com.ibuibu.mint";
+const ALLOWED_SERVICES: &[&str] = &["voice_to_text"];
+
+fn validate_service(service: &str) -> Result<(), String> {
+    if ALLOWED_SERVICES.contains(&service) {
+        Ok(())
+    } else {
+        Err(format!("Unauthorized service: {}", service))
+    }
+}
 
 #[tauri::command]
 pub fn load_api_key(service: String) -> Result<String, String> {
+    validate_service(&service)?;
     let entry = keyring::Entry::new(
         &format!("{}.{}", KEYRING_SERVICE, service),
         "api_key",
@@ -114,6 +140,7 @@ pub fn load_api_key(service: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn save_api_key(service: String, key: String) -> Result<(), String> {
+    validate_service(&service)?;
     let entry = keyring::Entry::new(
         &format!("{}.{}", KEYRING_SERVICE, service),
         "api_key",
@@ -128,5 +155,31 @@ pub fn save_api_key(service: String, key: String) -> Result<(), String> {
         }
     } else {
         entry.set_password(&key).map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_settings_deserialization_with_missing_fields() {
+        // 全く空のJSONから復元
+        let empty_json = "{}";
+        let settings: AppSettings = serde_json::from_str(empty_json).unwrap();
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.clock.shortcut, "Ctrl+Alt+C");
+        assert_eq!(settings.clock.auto_hide_seconds, 3);
+        assert_eq!(settings.clock.font_size, "1.5rem");
+        assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
+        assert_eq!(settings.voice_to_text.language, "ja");
+
+        // 一部だけ存在するJSONから復元
+        let partial_json = r#"{"theme": "light", "clock": {"shortcut": "Ctrl+C"}}"#;
+        let settings: AppSettings = serde_json::from_str(partial_json).unwrap();
+        assert_eq!(settings.theme, "light");
+        assert_eq!(settings.clock.shortcut, "Ctrl+C");
+        assert_eq!(settings.clock.auto_hide_seconds, 3); // デフォルト補完
+        assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
     }
 }
