@@ -359,4 +359,52 @@ describe("VoiceToTextSettings", () => {
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+V");
   });
+
+  it("normalizes provider settings when leaving fields", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "https://api.openai.com/v1",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "save_settings") return undefined;
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const baseUrlInput = screen.getByLabelText("API エンドポイント (Base URL)");
+    const modelInput = screen.getByLabelText("モデル名");
+    const languageInput = screen.getByLabelText("言語コード (Language)");
+
+    fireEvent.change(baseUrlInput, {
+      target: { value: "  https://api.example.com/v1///  " },
+    });
+    fireEvent.blur(baseUrlInput);
+    fireEvent.change(modelInput, { target: { value: "  whisper-large-v3  " } });
+    fireEvent.blur(modelInput);
+    fireEvent.change(languageInput, { target: { value: "  EN  " } });
+    fireEvent.blur(languageInput);
+
+    expect(baseUrlInput).toHaveValue("https://api.example.com/v1");
+    expect(modelInput).toHaveValue("whisper-large-v3");
+    expect(languageInput).toHaveValue("en");
+  });
 });

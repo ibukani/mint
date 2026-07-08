@@ -15,6 +15,10 @@ import {
   CLOCK_AUTO_HIDE_MIN_SECONDS,
   normalizeAutoHideSeconds,
 } from "../../../features/clock/settings";
+import {
+  normalizeLanguageCode,
+  normalizeModelName,
+} from "../../../features/v2t/settings";
 import { useFeatureSettings } from "../../hooks/useFeatureSettings";
 import type { SettingsTabId } from "../../navigation/settingsTabs";
 import { normalizeShortcut } from "../../shortcuts";
@@ -193,6 +197,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="text"
               value={voiceToText.model}
               onChange={(e) => updateVoiceToText("model", e.target.value)}
+              onBlur={(e) =>
+                updateVoiceToText("model", normalizeModelName(e.target.value))
+              }
               placeholder="例: whisper-1"
             />
           </Field>
@@ -203,6 +210,12 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="text"
               value={voiceToText.language}
               onChange={(e) => updateVoiceToText("language", e.target.value)}
+              onBlur={(e) =>
+                updateVoiceToText(
+                  "language",
+                  normalizeLanguageCode(e.target.value),
+                )
+              }
               placeholder="例: ja"
             />
           </Field>

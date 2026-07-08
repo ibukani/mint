@@ -227,6 +227,55 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("normalizes dashboard voice-to-text model and language before saving", async () => {
+    vi.mocked(invoke).mockImplementation((cmd) => {
+      if (cmd === "load_settings") {
+        return Promise.resolve(createMockSettings());
+      }
+      if (cmd === "save_settings") {
+        return Promise.resolve();
+      }
+      return Promise.resolve(null);
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const voiceToTextCard = screen
+      .getByRole("heading", { name: "音声入力" })
+      .closest("section");
+    expect(voiceToTextCard).not.toBeNull();
+
+    const modelInput = within(voiceToTextCard as HTMLElement).getByLabelText(
+      "モデル名",
+    );
+    const languageInput = within(voiceToTextCard as HTMLElement).getByLabelText(
+      "言語コード",
+    );
+
+    fireEvent.change(modelInput, {
+      target: { value: "  whisper-large-v3  " },
+    });
+    fireEvent.blur(modelInput);
+    fireEvent.change(languageInput, {
+      target: { value: "  EN  " },
+    });
+    fireEvent.blur(languageInput);
+
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
+        settings: expect.objectContaining({
+          voiceToText: expect.objectContaining({
+            model: "whisper-large-v3",
+            language: "en",
+          }),
+        }),
+      });
+    });
+  });
+
   it("shows shortcut errors inside the matching dashboard card", async () => {
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "load_settings") {

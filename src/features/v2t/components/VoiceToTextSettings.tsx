@@ -13,6 +13,11 @@ import {
   TextArea,
   TextInput,
 } from "../../../design/components";
+import {
+  normalizeBaseUrl,
+  normalizeLanguageCode,
+  normalizeModelName,
+} from "../settings";
 import type { TranscriptionResult } from "../types";
 
 export const VoiceToTextSettings: React.FC = () => {
@@ -189,6 +194,9 @@ export const VoiceToTextSettings: React.FC = () => {
           type="text"
           value={voiceToText.baseUrl}
           onChange={(e) => handleChange("baseUrl", e.target.value)}
+          onBlur={(e) =>
+            handleChange("baseUrl", normalizeBaseUrl(e.target.value))
+          }
           placeholder="例: https://api.openai.com/v1"
         />
       </Field>
@@ -234,6 +242,9 @@ export const VoiceToTextSettings: React.FC = () => {
           type="text"
           value={voiceToText.model}
           onChange={(e) => handleChange("model", e.target.value)}
+          onBlur={(e) =>
+            handleChange("model", normalizeModelName(e.target.value))
+          }
           placeholder="例: whisper-1"
         />
       </Field>
@@ -253,6 +264,9 @@ export const VoiceToTextSettings: React.FC = () => {
           type="text"
           value={voiceToText.language}
           onChange={(e) => handleChange("language", e.target.value)}
+          onBlur={(e) =>
+            handleChange("language", normalizeLanguageCode(e.target.value))
+          }
           placeholder="例: ja"
         />
       </Field>
