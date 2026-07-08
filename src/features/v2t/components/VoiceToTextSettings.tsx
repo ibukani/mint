@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
+import type { TranscriptionResult } from "../types";
 
 export const VoiceToTextSettings: React.FC = () => {
   const {
@@ -11,6 +12,10 @@ export const VoiceToTextSettings: React.FC = () => {
   } = useFeatureSettings("voiceToText");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyLoaded, setApiKeyLoaded] = useState(false);
+  const [audioFilePath, setAudioFilePath] = useState("");
+  const [transcriptionText, setTranscriptionText] = useState("");
+  const [transcriptionError, setTranscriptionError] = useState("");
+  const [transcribing, setTranscribing] = useState(false);
 
   // Load API key from OS keychain
   useEffect(() => {
@@ -40,31 +45,33 @@ export const VoiceToTextSettings: React.FC = () => {
 
   if (!voiceToText) return null;
 
+  const transcribeAudioFile = async () => {
+    setTranscribing(true);
+    setTranscriptionText("");
+    setTranscriptionError("");
+
+    try {
+      const result = await invoke<TranscriptionResult>(
+        "transcribe_audio_file",
+        {
+          settings: voiceToText,
+          audio_file_path: audioFilePath,
+        },
+      );
+      setTranscriptionText(result.text);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setTranscriptionError(message);
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
   return (
     <div className="settings-section">
       <h2 className="section-title">音声入力 (Voice to Text) 設定</h2>
-      <div
-        style={{
-          padding: "12px",
-          backgroundColor: "rgba(255, 193, 7, 0.1)",
-          border: "1px solid rgba(255, 193, 7, 0.3)",
-          borderRadius: "6px",
-          marginBottom: "16px",
-          fontSize: "0.9rem",
-          color: "#e0a800",
-          lineHeight: "1.5",
-        }}
-      >
-        <strong>【未実装のお知らせ】</strong>{" "}
-        現在、この機能は設定画面の入力および API キーの OS
-        セキュア保存のみが実装されています。この機能は現在{" "}
-        <code>placeholder</code>{" "}
-        状態であるため、機能自体が未実装です。バックエンド機能が実装されるまでは、
-        機能を有効化（Enabled）しても文字起こし処理は動作しません。
-        （他アプリとの競合を防ぐため、デフォルトでは無効化されています）
-      </div>
       <p className="section-description">
-        ショートカットキーを押して音声を録音し、自動で文字起こししてクリップボードにコピーする機能の設定です。
+        OpenAI互換の音声認識APIを使って音声ファイルを文字起こしします。
       </p>
 
       <div
@@ -117,7 +124,7 @@ export const VoiceToTextSettings: React.FC = () => {
           </p>
         )}
         <span className="form-help">
-          録音の開始と終了をトグルするグローバルショートカットキーを指定します。
+          音声入力ワークフローを起動するグローバルショートカットキーを指定します。
         </span>
       </div>
 
@@ -195,6 +202,66 @@ export const VoiceToTextSettings: React.FC = () => {
           <code>ja</code>、英語の場合は <code>en</code> を指定します。
         </span>
       </div>
+
+      <div className="form-group">
+        <label className="form-label" htmlFor="v2t-audio-file-input">
+          音声ファイルパス
+        </label>
+        <input
+          id="v2t-audio-file-input"
+          type="text"
+          className="form-control"
+          value={audioFilePath}
+          onChange={(e) => setAudioFilePath(e.target.value)}
+          placeholder="例: /Users/me/audio.wav"
+        />
+        <span className="form-help">
+          wav、mp3、m4a
+          など、利用する音声認識APIが対応する音声ファイルを指定します。
+        </span>
+      </div>
+
+      <div className="form-group">
+        <button
+          type="button"
+          className="primary-button"
+          onClick={transcribeAudioFile}
+          disabled={
+            transcribing ||
+            !voiceToText.enabled ||
+            !apiKeyLoaded ||
+            !audioFilePath.trim()
+          }
+        >
+          {transcribing ? "文字起こし中..." : "文字起こしを実行"}
+        </button>
+        {!voiceToText.enabled && (
+          <span className="form-help">
+            実行するには、この機能を有効にしてください。
+          </span>
+        )}
+      </div>
+
+      {transcriptionError && (
+        <p className="error-message" role="alert">
+          {transcriptionError}
+        </p>
+      )}
+
+      {transcriptionText && (
+        <div className="form-group">
+          <label className="form-label" htmlFor="v2t-transcription-result">
+            文字起こし結果
+          </label>
+          <textarea
+            id="v2t-transcription-result"
+            className="form-control"
+            value={transcriptionText}
+            readOnly
+            rows={6}
+          />
+        </div>
+      )}
     </div>
   );
 };

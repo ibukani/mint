@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { createMockSettings } from "./core/mocks/mockSettings";
 
 // Mock invoke
 vi.mock("@tauri-apps/api/core", () => ({
@@ -30,16 +31,16 @@ describe("App Window Routing", () => {
       show: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof getCurrentWindow>);
 
-    const mockSettings = {
-      theme: "dark",
-      clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
+    const mockSettings = createMockSettings({
       voiceToText: {
+        enabled: false,
         shortcut: "Ctrl+Alt+V",
         baseUrl: "http://api",
         model: "w",
         language: "ja",
+        status: "available",
       },
-    };
+    });
     vi.mocked(invoke).mockResolvedValue(
       mockSettings as unknown as ReturnType<typeof invoke>,
     );
@@ -62,16 +63,16 @@ describe("App Window Routing", () => {
       show: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof getCurrentWindow>);
 
-    const mockSettings = {
-      theme: "dark",
-      clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
+    const mockSettings = createMockSettings({
       voiceToText: {
+        enabled: false,
         shortcut: "Ctrl+Alt+V",
         baseUrl: "http://api",
         model: "w",
         language: "ja",
+        status: "available",
       },
-    };
+    });
     vi.mocked(invoke).mockResolvedValue(
       mockSettings as unknown as ReturnType<typeof invoke>,
     );

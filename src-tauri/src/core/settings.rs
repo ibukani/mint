@@ -40,7 +40,7 @@ impl Default for VoiceToTextSettings {
             base_url: "https://api.openai.com/v1".to_string(),
             model: "whisper-1".to_string(),
             language: "ja".to_string(),
-            status: "placeholder".to_string(),
+            status: "available".to_string(),
         }
     }
 }
@@ -85,7 +85,7 @@ impl ShortcutProvider for ClockSettings {
 impl ShortcutProvider for VoiceToTextSettings {
     fn shortcut(&self) -> Option<&str> {
         let s = self.shortcut.trim();
-        if self.status == "placeholder" || !self.enabled || s.is_empty() {
+        if self.status != "available" || !self.enabled || s.is_empty() {
             None
         } else {
             Some(s)

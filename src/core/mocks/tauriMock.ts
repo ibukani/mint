@@ -83,6 +83,21 @@ if (!isTauri && typeof window !== "undefined") {
         }
         return;
       }
+      case "transcribe_audio_file": {
+        const audioFilePath = typedArgs?.audio_file_path as string | undefined;
+        const settings = typedArgs?.settings as
+          | { enabled?: boolean; model?: string }
+          | undefined;
+        if (!settings?.enabled) {
+          throw new Error("Voice to Text is disabled.");
+        }
+        if (!audioFilePath?.trim()) {
+          throw new Error("Audio file path is required.");
+        }
+        return {
+          text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,
+        };
+      }
       default:
         console.warn(
           `[Tauri Mock] 未定義のIPCコマンド呼び出しを受信しました: ${cmd}`,

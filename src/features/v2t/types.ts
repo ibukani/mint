@@ -6,3 +6,7 @@ export interface VoiceToTextSettings {
   language: string;
   status: string;
 }
+
+export interface TranscriptionResult {
+  text: string;
+}

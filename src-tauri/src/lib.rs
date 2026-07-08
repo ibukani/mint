@@ -18,9 +18,7 @@ pub fn run() {
                                 if shortcut_str == keys {
                                     match feature {
                                         "clock" => features::clock::toggle_clock_overlay(app),
-                                        "voiceToText" => {
-                                            println!("Voice to text triggered via global shortcut!")
-                                        }
+                                        "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                         _ => {}
                                     }
                                 }
@@ -85,6 +83,7 @@ pub fn run() {
             core::settings::save_settings,
             core::settings::load_api_key,
             core::settings::save_api_key,
+            features::v2t::transcribe_audio_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
