@@ -55,4 +55,24 @@ describe("ClockSettings component", () => {
     expect(secondsInput.value).toBe("3");
     expect(fontSizeSelect.value).toBe("1.5rem");
   });
+
+  it("keeps auto-hide seconds within the supported range", async () => {
+    render(
+      <AppSettingsProvider>
+        <ClockSettings />
+      </AppSettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
+    });
+
+    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+
+    fireEvent.change(secondsInput, { target: { value: "999" } });
+    expect(secondsInput.value).toBe("60");
+
+    fireEvent.change(secondsInput, { target: { value: "-5" } });
+    expect(secondsInput.value).toBe("0");
+  });
 });

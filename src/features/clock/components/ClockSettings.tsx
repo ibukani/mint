@@ -10,6 +10,11 @@ import {
   TextInput,
   UnitLabel,
 } from "../../../design/components";
+import {
+  CLOCK_AUTO_HIDE_MAX_SECONDS,
+  CLOCK_AUTO_HIDE_MIN_SECONDS,
+  normalizeAutoHideSeconds,
+} from "../settings";
 
 export const ClockSettings: React.FC = () => {
   const {
@@ -62,12 +67,15 @@ export const ClockSettings: React.FC = () => {
           <TextInput
             id="clock-hide-seconds-input"
             type="number"
-            min="0"
-            max="60"
+            min={String(CLOCK_AUTO_HIDE_MIN_SECONDS)}
+            max={String(CLOCK_AUTO_HIDE_MAX_SECONDS)}
             controlSize="number"
             value={clock.autoHideSeconds}
             onChange={(e) =>
-              handleChange("autoHideSeconds", parseInt(e.target.value, 10) || 0)
+              handleChange(
+                "autoHideSeconds",
+                normalizeAutoHideSeconds(e.target.value),
+              )
             }
           />
           <UnitLabel>秒</UnitLabel>

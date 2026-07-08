@@ -10,6 +10,11 @@ import {
   TextInput,
   UnitLabel,
 } from "../../../design/components";
+import {
+  CLOCK_AUTO_HIDE_MAX_SECONDS,
+  CLOCK_AUTO_HIDE_MIN_SECONDS,
+  normalizeAutoHideSeconds,
+} from "../../../features/clock/settings";
 import { useFeatureSettings } from "../../hooks/useFeatureSettings";
 import type { SettingsTabId } from "../../navigation/settingsTabs";
 
@@ -102,14 +107,14 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               <TextInput
                 id="dashboard-clock-hide-seconds-input"
                 type="number"
-                min="0"
-                max="60"
+                min={String(CLOCK_AUTO_HIDE_MIN_SECONDS)}
+                max={String(CLOCK_AUTO_HIDE_MAX_SECONDS)}
                 controlSize="number"
                 value={clock.autoHideSeconds}
                 onChange={(e) =>
                   updateClock(
                     "autoHideSeconds",
-                    parseInt(e.target.value, 10) || 0,
+                    normalizeAutoHideSeconds(e.target.value),
                   )
                 }
               />

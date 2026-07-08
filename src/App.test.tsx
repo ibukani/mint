@@ -152,6 +152,43 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("clamps clock auto-hide seconds from the dashboard", async () => {
+    vi.mocked(invoke).mockImplementation((cmd) => {
+      if (cmd === "load_settings") {
+        return Promise.resolve(createMockSettings());
+      }
+      if (cmd === "save_settings") {
+        return Promise.resolve();
+      }
+      return Promise.resolve(null);
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const clockCard = screen
+      .getByRole("heading", { name: "時計オーバーレイ" })
+      .closest("section");
+    expect(clockCard).not.toBeNull();
+
+    fireEvent.change(
+      within(clockCard as HTMLElement).getByLabelText("表示秒数"),
+      {
+        target: { value: "999" },
+      },
+    );
+
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
+        settings: expect.objectContaining({
+          clock: expect.objectContaining({ autoHideSeconds: 60 }),
+        }),
+      });
+    });
+  });
+
   it("shows shortcut errors inside the matching dashboard card", async () => {
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "load_settings") {
