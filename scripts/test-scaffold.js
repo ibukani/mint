@@ -13,7 +13,7 @@ const BACKUP_FILES = [
   "src/core/mocks/mockSettings.ts",
   "src/core/mocks/tauriMock.ts",
   "src/core/mocks/vitestSetup.ts",
-  "src/App.tsx",
+  "src/core/navigation/settingsTabs.ts",
 ];
 
 const backups = new Map();

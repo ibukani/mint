@@ -11,6 +11,10 @@ const FEATURES_DIR = path.join(ROOT_DIR, "src/features");
 const TAURI_MOCK_PATH = path.join(ROOT_DIR, "src/core/mocks/tauriMock.ts");
 const VITEST_SETUP_PATH = path.join(ROOT_DIR, "src/core/mocks/vitestSetup.ts");
 const APP_TSX_PATH = path.join(ROOT_DIR, "src/App.tsx");
+const SETTINGS_TABS_PATH = path.join(
+  ROOT_DIR,
+  "src/core/navigation/settingsTabs.ts",
+);
 const WINDOW_ROUTES_PATH = path.join(ROOT_DIR, "src/core/windowRoutes.ts");
 const TAURI_CONF_PATH = path.join(ROOT_DIR, "src-tauri/tauri.conf.json");
 const RS_LIB_PATH = path.join(ROOT_DIR, "src-tauri/src/lib.rs");
@@ -402,31 +406,37 @@ function checkMockFactoryUsage(mockPath) {
 checkMockFactoryUsage(TAURI_MOCK_PATH);
 checkMockFactoryUsage(VITEST_SETUP_PATH);
 
-// 5. Check App.tsx TAB_CONFIG / TAB_COMPONENTS
-if (fs.existsSync(APP_TSX_PATH)) {
-  const appContent = fs.readFileSync(APP_TSX_PATH, "utf-8");
+// 5. Check settings tab navigation sync
+if (fs.existsSync(SETTINGS_TABS_PATH)) {
+  const settingsTabsContent = fs.readFileSync(SETTINGS_TABS_PATH, "utf-8");
   for (const prop of featureProperties) {
     const tabConfigRegex = new RegExp(`id\\s*:\\s*["']${prop}["']`);
-    if (!tabConfigRegex.test(appContent)) {
+    if (!tabConfigRegex.test(settingsTabsContent)) {
       reportError(
-        `App.tsx Sync: TAB_CONFIG is missing tab configuration for "${prop}"`,
-      );
-    } else {
-      reportSuccess(`App.tsx Sync: TAB_CONFIG registers tab for "${prop}"`);
-    }
-
-    const tabCompRegex = new RegExp(`\\b${prop}\\s*:`);
-    if (!tabCompRegex.test(appContent)) {
-      reportError(
-        `App.tsx Sync: TAB_COMPONENTS is missing mapping for "${prop}"`,
+        `Settings Tabs Sync: SETTINGS_TABS is missing tab configuration for "${prop}"`,
       );
     } else {
       reportSuccess(
-        `App.tsx Sync: TAB_COMPONENTS maps component for "${prop}"`,
+        `Settings Tabs Sync: SETTINGS_TABS registers tab for "${prop}"`,
+      );
+    }
+
+    const tabCompRegex = new RegExp(`\\b${prop}\\s*:`);
+    if (!tabCompRegex.test(settingsTabsContent)) {
+      reportError(
+        `Settings Tabs Sync: SETTINGS_TAB_COMPONENTS is missing mapping for "${prop}"`,
+      );
+    } else {
+      reportSuccess(
+        `Settings Tabs Sync: SETTINGS_TAB_COMPONENTS maps component for "${prop}"`,
       );
     }
   }
 } else {
+  reportError(`Settings tabs file not found at: ${SETTINGS_TABS_PATH}`);
+}
+
+if (!fs.existsSync(APP_TSX_PATH)) {
   reportError(`App.tsx not found at: ${APP_TSX_PATH}`);
 }
 
@@ -623,6 +633,71 @@ if (fs.existsSync(LIB_RS_PATH)) {
     reportSuccess(
       `lib.rs uses settings.active_shortcuts() instead of direct shortcut access.`,
     );
+  }
+}
+
+// 12. Check design boundary in feature modules
+const disallowedGlobalClasses = [
+  "form-control",
+  "form-group",
+  "form-label",
+  "glass-panel",
+  "primary-button",
+  "settings-section",
+  "section-title",
+  "section-description",
+];
+
+const designBoundaryAllowlist = new Map([
+  // Clock overlay forwards user-configured font size through a CSS custom property.
+  ["src/features/clock/components/ClockOverlay.tsx", new Set(["inline-style"])],
+]);
+
+function isDesignBoundaryAllowed(relativeFile, rule) {
+  return designBoundaryAllowlist.get(relativeFile)?.has(rule) ?? false;
+}
+
+for (const sourceFile of listFilesRecursive(FEATURES_DIR, {
+  extensions: [".ts", ".tsx"],
+  ignoredDirs: new Set(["node_modules", "dist", "test"]),
+})) {
+  if (sourceFile.endsWith(".test.ts") || sourceFile.endsWith(".test.tsx")) {
+    continue;
+  }
+  const relativeFile = path.relative(ROOT_DIR, sourceFile);
+  const content = fs.readFileSync(sourceFile, "utf-8");
+
+  const colorLiteralRegex = /#[0-9a-fA-F]{3,8}\b/g;
+  if (colorLiteralRegex.test(content)) {
+    reportError(
+      `Design boundary: "${relativeFile}" contains hard-coded color literals. Use src/design tokens/components instead.`,
+    );
+  }
+
+  if (/\brgba\(/.test(content)) {
+    reportError(
+      `Design boundary: "${relativeFile}" contains hard-coded rgba(...). Use src/design tokens/components instead.`,
+    );
+  }
+
+  if (
+    /\bstyle\s*=/.test(content) &&
+    !isDesignBoundaryAllowed(relativeFile, "inline-style")
+  ) {
+    reportError(
+      `Design boundary: "${relativeFile}" contains inline style. Move visual styling into src/design or document an allowlist exception.`,
+    );
+  }
+
+  for (const className of disallowedGlobalClasses) {
+    const classRegex = new RegExp(
+      `["'\`]([^"'\`]*\\b${className}\\b[^"'\`]*)["'\`]`,
+    );
+    if (classRegex.test(content)) {
+      reportError(
+        `Design boundary: "${relativeFile}" directly uses legacy global class "${className}". Use src/design components instead.`,
+      );
+    }
   }
 }
 
