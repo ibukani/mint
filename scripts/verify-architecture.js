@@ -530,6 +530,8 @@ const allowedTodos = [
   'status: "placeholder".to_string()',
   'settings.voice_to_text.status != "placeholder"',
   "<code>placeholder</code>",
+  "状態であるため、機能自体が未実装です。バックエンド機能が実装されるまでは、",
+  'if self.status == "placeholder" || !self.enabled || s.is_empty() {',
 ];
 
 function scanTodos(dir) {
