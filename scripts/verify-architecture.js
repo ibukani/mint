@@ -128,7 +128,7 @@ if (!appSettingsInterfaceMatch) {
   reportError(`Could not find "interface AppSettings" in AppSettings.tsx`);
 } else {
   const interfaceBody = appSettingsInterfaceMatch[1];
-  for (const [_folder, typeName] of importedSettings.entries()) {
+  for (const [folder, typeName] of importedSettings.entries()) {
     const propertyRegex = new RegExp(`(\\w+)\\s*\\??:\\s*${typeName}\\b`);
     const propMatch = propertyRegex.exec(interfaceBody);
     if (!propMatch) {
@@ -142,13 +142,37 @@ if (!appSettingsInterfaceMatch) {
         `AppSettings interface has property "${propertyName}" of type "${typeName}"`,
       );
 
+      // Parse types.ts to get fields
+      const typesPath = path.join(FEATURES_DIR, folder, "types.ts");
+      const tsFields = [];
+      if (fs.existsSync(typesPath)) {
+        const typesContent = fs.readFileSync(typesPath, "utf-8");
+        const typeRegex = new RegExp(
+          `interface\\s+${typeName}\\s*\\{([^}]+)\\}`,
+          "s",
+        );
+        const match = typeRegex.exec(typesContent);
+        if (match) {
+          const body = match[1];
+          const fieldRegex = /([a-zA-Z0-9_]+)\s*\??\s*:/g;
+          let fMatch = fieldRegex.exec(body);
+          while (fMatch) {
+            tsFields.push(fMatch[1]);
+            fMatch = fieldRegex.exec(body);
+          }
+        }
+      }
+
       // Verify Rust counterpart
-      verifyRustSettings(propertyName, typeName);
+      verifyRustSettings(propertyName, typeName, tsFields);
+
+      if (!global.featureMetadata) global.featureMetadata = [];
+      global.featureMetadata.push({ folder, typeName, propertyName, tsFields });
     }
   }
 }
 
-function verifyRustSettings(tsPropertyName, tsTypeName) {
+function verifyRustSettings(tsPropertyName, tsTypeName, tsFields) {
   if (!fs.existsSync(RS_SETTINGS_PATH)) {
     reportError(`settings.rs not found at: ${RS_SETTINGS_PATH}`);
     return;
@@ -163,6 +187,36 @@ function verifyRustSettings(tsPropertyName, tsTypeName) {
     return;
   }
   reportSuccess(`Rust backend: Struct "pub struct ${tsTypeName}" exists`);
+
+  // Extract the body of the Rust struct
+  const structBodyRegex = new RegExp(
+    `pub\\s+struct\\s+${tsTypeName}\\s*\\{([^}]+)\\}`,
+    "s",
+  );
+  const structBodyMatch = structBodyRegex.exec(rsContent);
+  if (!structBodyMatch) {
+    reportError(
+      `Rust backend: Could not parse body of "pub struct ${tsTypeName}"`,
+    );
+  } else {
+    const structBody = structBodyMatch[1];
+    for (const tsField of tsFields) {
+      const snakeField = tsField.replace(
+        /[A-Z]/g,
+        (l) => `_${l.toLowerCase()}`,
+      );
+      const fieldRegex = new RegExp(`pub\\s+${snakeField}\\s*:`);
+      if (!fieldRegex.test(structBody)) {
+        reportError(
+          `Rust backend: "pub struct ${tsTypeName}" is missing field "pub ${snakeField}"`,
+        );
+      } else {
+        reportSuccess(
+          `Rust backend: "pub struct ${tsTypeName}" has field "pub ${snakeField}"`,
+        );
+      }
+    }
+  }
 
   const snakeCaseProp = tsPropertyName.replace(
     /[A-Z]/g,
@@ -250,16 +304,27 @@ function checkMockSync(mockPath) {
     return;
   }
   const mockContent = fs.readFileSync(mockPath, "utf-8");
-  for (const prop of featureProperties) {
-    const propRegex = new RegExp(`\\b${prop}\\s*:`);
+  for (const { propertyName, tsFields } of global.featureMetadata) {
+    const propRegex = new RegExp(`\\b${propertyName}\\s*:`);
     if (!propRegex.test(mockContent)) {
       reportError(
-        `Mock Sync: "${path.basename(mockPath)}" defaultSettings is missing key "${prop}"`,
+        `Mock Sync: "${path.basename(mockPath)}" defaultSettings is missing key "${propertyName}"`,
       );
     } else {
       reportSuccess(
-        `Mock Sync: "${path.basename(mockPath)}" registers defaultSettings for "${prop}"`,
+        `Mock Sync: "${path.basename(mockPath)}" registers defaultSettings for "${propertyName}"`,
       );
+
+      // We should check if the mock object contains the fields
+      // To keep it simple, we just check if the field name exists in the mock file
+      for (const field of tsFields) {
+        const fieldRegex = new RegExp(`\\b${field}\\s*:`);
+        if (!fieldRegex.test(mockContent)) {
+          reportError(
+            `Mock Sync: "${path.basename(mockPath)}" is missing field "${field}" for "${propertyName}"`,
+          );
+        }
+      }
     }
   }
 }

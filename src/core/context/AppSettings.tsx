@@ -68,13 +68,25 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const parseAndSetErrors = useCallback((errorMessage: string) => {
     const newErrors: Record<string, string> = {};
-    if (errorMessage.includes("重複")) {
-      newErrors.clock = "ショートカットキーが重複しています";
-      newErrors.voiceToText = "ショートカットキーが重複しています";
-    } else if (errorMessage.includes("時計")) {
-      newErrors.clock = errorMessage;
-    } else if (errorMessage.includes("音声入力")) {
-      newErrors.voiceToText = errorMessage;
+    try {
+      const parsed = JSON.parse(errorMessage);
+      if (parsed.type === "duplicateShortcut") {
+        for (const feature of parsed.features) {
+          newErrors[feature] = "ショートカットキーが重複しています";
+        }
+      } else if (parsed.type === "registrationFailed") {
+        newErrors[parsed.feature] = parsed.message;
+      }
+    } catch {
+      // Fallback for old hardcoded strings
+      if (errorMessage.includes("重複")) {
+        newErrors.clock = "ショートカットキーが重複しています";
+        newErrors.voiceToText = "ショートカットキーが重複しています";
+      } else if (errorMessage.includes("時計")) {
+        newErrors.clock = errorMessage;
+      } else if (errorMessage.includes("音声入力")) {
+        newErrors.voiceToText = errorMessage;
+      }
     }
     setShortcutErrors(newErrors);
   }, []);

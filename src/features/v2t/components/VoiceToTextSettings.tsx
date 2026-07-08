@@ -59,14 +59,37 @@ export const VoiceToTextSettings: React.FC = () => {
         現在、この機能は設定画面の入力および API キーの OS
         セキュア保存のみが実装されています。この機能は現在{" "}
         <code>placeholder</code>{" "}
-        状態であるため、ここで指定したショートカットキーは{" "}
-        <strong>OS のグローバルショートカットには登録されません</strong>
-        （他アプリとの競合を防ぐため）。 実際の音声録音・Whisper
-        API経由での文字起こし処理のバックエンド実装は未実装です。
+        状態であるため、機能自体が未実装です。バックエンド機能が実装されるまでは、
+        機能を有効化（Enabled）しても文字起こし処理は動作しません。
+        （他アプリとの競合を防ぐため、デフォルトでは無効化されています）
       </div>
       <p className="section-description">
         ショートカットキーを押して音声を録音し、自動で文字起こししてクリップボードにコピーする機能の設定です。
       </p>
+
+      <div
+        className="form-group"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "20px",
+        }}
+      >
+        <input
+          id="v2t-enabled-checkbox"
+          type="checkbox"
+          checked={voiceToText.enabled}
+          onChange={(e) => handleChange("enabled", e.target.checked)}
+          style={{ width: "20px", height: "20px", cursor: "pointer" }}
+        />
+        <label
+          htmlFor="v2t-enabled-checkbox"
+          style={{ fontWeight: "bold", cursor: "pointer" }}
+        >
+          この機能を有効にする (Enable Feature)
+        </label>
+      </div>
 
       <div className="form-group">
         <label className="form-label" htmlFor="v2t-shortcut-input">

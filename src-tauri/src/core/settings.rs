@@ -24,6 +24,7 @@ impl Default for ClockSettings {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct VoiceToTextSettings {
+    pub enabled: bool,
     pub shortcut: String,
     pub base_url: String,
     pub model: String,
@@ -34,6 +35,7 @@ pub struct VoiceToTextSettings {
 impl Default for VoiceToTextSettings {
     fn default() -> Self {
         Self {
+            enabled: false,
             shortcut: "Ctrl+Alt+V".to_string(),
             base_url: "https://api.openai.com/v1".to_string(),
             model: "whisper-1".to_string(),
@@ -58,6 +60,70 @@ impl Default for AppSettings {
             clock: ClockSettings::default(),
             voice_to_text: VoiceToTextSettings::default(),
         }
+    }
+}
+
+pub trait ShortcutProvider {
+    fn shortcut(&self) -> Option<&str>;
+    fn feature_id(&self) -> &str;
+}
+
+impl ShortcutProvider for ClockSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let s = self.shortcut.trim();
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    }
+    fn feature_id(&self) -> &str {
+        "clock"
+    }
+}
+
+impl ShortcutProvider for VoiceToTextSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let s = self.shortcut.trim();
+        if self.status == "placeholder" || !self.enabled || s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    }
+    fn feature_id(&self) -> &str {
+        "voiceToText"
+    }
+}
+
+impl AppSettings {
+    pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
+        let mut list = Vec::new();
+        if let Some(s) = self.clock.shortcut() {
+            list.push((self.clock.feature_id(), s));
+        }
+        if let Some(s) = self.voice_to_text.shortcut() {
+            list.push((self.voice_to_text.feature_id(), s));
+        }
+        list
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum SettingsError {
+    DuplicateShortcut { features: Vec<String> },
+    RegistrationFailed { feature: String, message: String },
+    IoError { message: String },
+}
+
+impl std::fmt::Display for SettingsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).unwrap_or_else(|_| "Unknown Error".to_string())
+        )
     }
 }
 
@@ -91,14 +157,26 @@ pub fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
 
 #[tauri::command]
 pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String> {
-    let clock_shortcut = settings.clock.shortcut.trim();
-    let v2t_shortcut = settings.voice_to_text.shortcut.trim();
+    let new_shortcuts = settings.active_shortcuts();
 
     // 1. ショートカットの重複チェック
-    if !clock_shortcut.is_empty() && clock_shortcut == v2t_shortcut {
-        return Err(
-            "ショートカットキーが重複しています。別々のキーを設定してください。".to_string(),
-        );
+    let mut seen: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+    let mut duplicates = Vec::new();
+    for (fid, sc) in &new_shortcuts {
+        if let Some(existing_fid) = seen.get(*sc) {
+            duplicates.push(existing_fid.to_string());
+            duplicates.push(fid.to_string());
+        } else {
+            seen.insert(*sc, *fid);
+        }
+    }
+    if !duplicates.is_empty() {
+        duplicates.sort();
+        duplicates.dedup();
+        return Err(SettingsError::DuplicateShortcut {
+            features: duplicates,
+        }
+        .to_string());
     }
 
     let old_settings = load_settings_internal(&app).ok();
@@ -108,54 +186,67 @@ pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String
         use tauri_plugin_global_shortcut::GlobalShortcutExt;
         let gs = app.global_shortcut();
 
-        let old_clock = old.clock.shortcut.trim();
-        let old_v2t = old.voice_to_text.shortcut.trim();
+        let old_shortcuts = old.active_shortcuts();
 
-        // 時計ショートカットの登録変更
-        if old_clock != clock_shortcut {
-            if !old_clock.is_empty() {
-                let _ = gs.unregister(old_clock);
-            }
-            if !clock_shortcut.is_empty() {
-                if let Err(e) = gs.register(clock_shortcut) {
-                    // ロールバック: 古い設定に戻す
-                    if !old_clock.is_empty() {
-                        let _ = gs.register(old_clock);
-                    }
-                    return Err(format!("時計ショートカット「{}」の登録に失敗しました (すでに他のアプリに登録されている可能性があります): {}", clock_shortcut, e));
-                }
+        // 変更を検出する
+        // まず、古くて新しくないもの（削除または変更）を解除
+        for (fid, old_sc) in &old_shortcuts {
+            let new_sc = new_shortcuts
+                .iter()
+                .find(|(new_fid, _)| new_fid == fid)
+                .map(|(_, s)| *s);
+            if new_sc != Some(old_sc) {
+                let _ = gs.unregister(*old_sc);
             }
         }
 
-        // 音声入力ショートカットの登録変更 (プレースホルダーの場合は登録しない)
-        if old_v2t != v2t_shortcut {
-            if !old_v2t.is_empty() {
-                let _ = gs.unregister(old_v2t);
-            }
-            if !v2t_shortcut.is_empty() && settings.voice_to_text.status != "placeholder" {
-                if let Err(e) = gs.register(v2t_shortcut) {
-                    // ロールバック: 音声入力の古い設定に戻す
-                    if !old_v2t.is_empty() {
-                        let _ = gs.register(old_v2t);
+        // 新しくて古いものと違うものを登録
+        let mut successfully_registered = Vec::new();
+        for (fid, new_sc) in &new_shortcuts {
+            let old_sc = old_shortcuts
+                .iter()
+                .find(|(old_fid, _)| old_fid == fid)
+                .map(|(_, s)| *s);
+            if Some(*new_sc) != old_sc {
+                if let Err(e) = gs.register(*new_sc) {
+                    // ロールバック: 成功した新規登録を解除
+                    for sc in successfully_registered {
+                        let _ = gs.unregister(sc);
                     }
-                    // 時計側も変更されていた場合は元に戻す
-                    if old_clock != clock_shortcut {
-                        if !clock_shortcut.is_empty() {
-                            let _ = gs.unregister(clock_shortcut);
-                        }
-                        if !old_clock.is_empty() {
-                            let _ = gs.register(old_clock);
+                    // 古い登録を復活させる
+                    for (old_fid, old_sc) in &old_shortcuts {
+                        let new_sc = new_shortcuts
+                            .iter()
+                            .find(|(new_fid, _)| new_fid == old_fid)
+                            .map(|(_, s)| *s);
+                        if new_sc != Some(old_sc) {
+                            let _ = gs.register(*old_sc);
                         }
                     }
-                    return Err(format!("音声入力ショートカット「{}」の登録に失敗しました (すでに他のアプリに登録されている可能性があります): {}", v2t_shortcut, e));
+                    return Err(SettingsError::RegistrationFailed {
+                        feature: fid.to_string(),
+                        message: e.to_string(),
+                    }
+                    .to_string());
                 }
+                successfully_registered.push(*new_sc);
             }
         }
     }
 
     let path = get_config_path(&app)?;
-    let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string_pretty(&settings).map_err(|e| {
+        SettingsError::IoError {
+            message: e.to_string(),
+        }
+        .to_string()
+    })?;
+    fs::write(&path, json).map_err(|e| {
+        SettingsError::IoError {
+            message: e.to_string(),
+        }
+        .to_string()
+    })?;
 
     Ok(())
 }

@@ -75,6 +75,9 @@ try {
   console.log("Running full frontend check...");
   execSync("npm run check", { stdio: "inherit" });
 
+  console.log("Running build...");
+  execSync("npm run build", { stdio: "inherit" });
+
   console.log("\\x1b[32m[PASS]\\x1b[0m Scaffold smoke test succeeded.");
 } catch (err) {
   console.error(

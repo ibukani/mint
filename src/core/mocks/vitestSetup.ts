@@ -14,6 +14,7 @@ const defaultSettings: AppSettings = {
     fontSize: "1.5rem",
   },
   voiceToText: {
+    enabled: false,
     shortcut: "Ctrl+Alt+V",
     baseUrl: "https://api.openai.com/v1",
     model: "whisper-1",
