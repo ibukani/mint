@@ -101,3 +101,14 @@ Modify the global configuration types to include the new tool's settings.
   ```bash
   npm run test
   ```
+
+### 5. 一括検証コマンド (Full Verification)
+- コミット前やPR作成前には、必ず以下の一括検証コマンドを実行してください：
+  - フロントエンド検証（TypeScript, Biome, Vitest, Validator, Vite Build）:
+    ```bash
+    npm run check
+    ```
+  - バックエンド検証（Cargo Format, Clippy, Cargo Test, Cargo Check）:
+    ```bash
+    npm run check:tauri
+    ```

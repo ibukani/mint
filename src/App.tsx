@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { AppSettingsProvider, useAppSettings } from "./core/context/AppSettings";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { ErrorToast } from "./core/components/ErrorToast";
+import {
+  AppSettingsProvider,
+  useAppSettings,
+} from "./core/context/AppSettings";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { ClockSettings } from "./features/clock/components/ClockSettings";
 import { VoiceToTextSettings } from "./features/v2t/components/VoiceToTextSettings";
@@ -27,11 +31,16 @@ const GeneralSettings: React.FC = () => {
       </p>
 
       <div className="form-group">
-        <label className="form-label">テーマ設定</label>
+        <label className="form-label" htmlFor="theme-select">
+          テーマ設定
+        </label>
         <select
+          id="theme-select"
           className="form-control"
           value={settings.theme}
-          onChange={(e) => updateSettings({ theme: e.target.value as "dark" | "light" })}
+          onChange={(e) =>
+            updateSettings({ theme: e.target.value as "dark" | "light" })
+          }
         >
           <option value="dark">ダークモード (Dark)</option>
           <option value="light">ライトモード (Light)</option>
@@ -58,7 +67,14 @@ const AppContent: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         設定を読み込み中...
       </div>
     );
@@ -81,6 +97,7 @@ const AppContent: React.FC = () => {
           <h1 className="app-title">mint</h1>
           {TAB_CONFIG.map((tab) => (
             <button
+              type="button"
               key={tab.id}
               className={`nav-button ${activeTab === tab.id ? "active" : ""}`}
               onClick={() => setActiveTab(tab.id)}

@@ -14,9 +14,9 @@ description: Step-by-step instructions for safely updating and expanding the App
 ---
 
 ## 触る可能性が高いファイル
-- **フロントエンド設定定義**: [AppSettings.tsx](file:///c:/Users/ibueb/Projects/mint/src/core/context/AppSettings.tsx)
-- **バックエンド設定定義**: [settings.rs](file:///c:/Users/ibueb/Projects/mint/src-tauri/src/core/settings.rs)
-- **自動モック初期値**: [tauriMock.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/tauriMock.ts) および [vitestSetup.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/vitestSetup.ts)
+- **フロントエンド設定定義**: [AppSettings.tsx](../../../src/core/context/AppSettings.tsx)
+- **バックエンド設定定義**: [settings.rs](../../../src-tauri/src/core/settings.rs)
+- **自動モック初期値**: [tauriMock.ts](../../../src/core/mocks/tauriMock.ts) および [vitestSetup.ts](../../../src/core/mocks/vitestSetup.ts)
 - **フィーチャー固有の型**: `src/features/<feature_name>/types.ts`
 
 ---
@@ -34,7 +34,7 @@ description: Step-by-step instructions for safely updating and expanding the App
 ## 作業手順
 
 ### ステップ 1: フロントエンドの型定義を更新
-対象フィーチャーの `types.ts` に設定項目を追加し、[AppSettings.tsx](file:///c:/Users/ibueb/Projects/mint/src/core/context/AppSettings.tsx) の `AppSettings` インターフェースを更新します。
+対象フィーチャーの `types.ts` に設定項目を追加し、[AppSettings.tsx](../../../src/core/context/AppSettings.tsx) の `AppSettings` インターフェースを更新します。
 
 ```typescript
 // AppSettings.tsx
@@ -47,7 +47,7 @@ export interface AppSettings {
 ```
 
 ### ステップ 2: バックエンド (Rust) の構造体を更新
-[settings.rs](file:///c:/Users/ibueb/Projects/mint/src-tauri/src/core/settings.rs) を開き、設定構造体にフィールドを追加し、`Default` 実装も更新します。
+[settings.rs](../../../src-tauri/src/core/settings.rs) を開き、設定構造体にフィールドを追加し、`Default` 実装も更新します。
 
 ```rust
 // settings.rs
@@ -63,7 +63,7 @@ pub struct AppSettings {
 ```
 
 ### ステップ 3: モックのデフォルト値を更新
-[tauriMock.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/tauriMock.ts) と [vitestSetup.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/vitestSetup.ts) の `defaultSettings` 定数に、追加した項目のデフォルト値を追記します。
+[tauriMock.ts](../../../src/core/mocks/tauriMock.ts) と [vitestSetup.ts](../../../src/core/mocks/vitestSetup.ts) の `defaultSettings` 定数に、追加した項目のデフォルト値を追記します。
 
 ```typescript
 export const defaultSettings: AppSettings = {

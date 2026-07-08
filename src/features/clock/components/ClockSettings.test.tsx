@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { ClockSettings } from "./ClockSettings";
 
@@ -8,7 +8,7 @@ describe("ClockSettings component", () => {
     render(
       <AppSettingsProvider>
         <ClockSettings />
-      </AppSettingsProvider>
+      </AppSettingsProvider>,
     );
 
     // モックから設定データがロードされるまで待機

@@ -1,12 +1,13 @@
-import { AppSettings, useAppSettings } from "../context/AppSettings";
+import { type AppSettings, useAppSettings } from "../context/AppSettings";
 
 export function useFeatureSettings<K extends keyof AppSettings>(featureKey: K) {
-  const { settings, updateSettings } = useAppSettings();
+  const { settings, updateSettings, shortcutErrors } = useAppSettings();
   const featureSettings = settings ? settings[featureKey] : null;
+  const shortcutError = shortcutErrors[featureKey] || "";
 
   const handleChange = <P extends keyof AppSettings[K]>(
     key: P,
-    value: AppSettings[K][P]
+    value: AppSettings[K][P],
   ) => {
     if (!settings) return;
     updateSettings((prev) => ({
@@ -18,5 +19,5 @@ export function useFeatureSettings<K extends keyof AppSettings>(featureKey: K) {
     }));
   };
 
-  return { featureSettings, handleChange };
+  return { featureSettings, handleChange, shortcutError };
 }

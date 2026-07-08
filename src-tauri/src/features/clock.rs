@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// Toggles the clock overlay window visibility.
 pub fn toggle_clock_overlay(app: &AppHandle) {
@@ -8,6 +8,7 @@ pub fn toggle_clock_overlay(app: &AppHandle) {
         } else {
             let _ = window.show();
             let _ = window.set_focus();
+            let _ = window.emit("clock-shown", ());
         }
     }
 }

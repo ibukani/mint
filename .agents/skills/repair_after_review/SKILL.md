@@ -16,7 +16,7 @@ description: Systematic process for addressing PR review comments, linting issue
 ## 触る可能性が高いファイル
 - **指摘対象となったすべてのファイル**
 - **テストスイート**: `src/**/*.test.ts`, `src/**/*.test.tsx`
-- **作業進捗管理**: [task.md](file:///c:/Users/ibueb/Projects/mint/task.md) (存在する場合)
+- **作業進捗管理**: [task.md](../../../task.md) (存在する場合)
 
 ---
 

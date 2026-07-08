@@ -14,9 +14,9 @@ description: Safe, type-safe guide to adding a new Tauri backend command and reg
 ---
 
 ## 触る可能性が高いファイル
-- **バックエンドの実装**: [src-tauri/src/features/<feature_name>.rs](file:///c:/Users/ibueb/Projects/mint/src-tauri/src/features/) (例)
-- **Tauri コマンド登録**: [src-tauri/src/lib.rs](file:///c:/Users/ibueb/Projects/mint/src-tauri/src/lib.rs)
-- **自動モック定義**: [src/core/mocks/tauriMock.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/tauriMock.ts)
+- **バックエンドの実装**: [src-tauri/src/features/<feature_name>.rs](../../../src-tauri/src/features/) (例)
+- **Tauri コマンド登録**: [src-tauri/src/lib.rs](../../../src-tauri/src/lib.rs)
+- **自動モック定義**: [src/core/mocks/tauriMock.ts](../../../src/core/mocks/tauriMock.ts)
 - **フロントエンドの呼び出し部**: `src/features/<feature_name>/hooks/` または `components/`
 
 ---
@@ -71,7 +71,7 @@ pub fn my_feature_command(payload: String) -> Result<MyCommandResponse, String> 
 ```
 
 ### ステップ 3: フロントエンドモック環境への配線
-[tauriMock.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/tauriMock.ts) を開き、`mockInvoke` の分岐に新コマンドを追加します。
+[tauriMock.ts](../../../src/core/mocks/tauriMock.ts) を開き、`mockInvoke` の分岐に新コマンドを追加します。
 ブラウザ上での検証が可能なように、ダミー値を返す、または `localStorage` などの状態を変更するシミュレーションロジックを記述します。
 
 ```typescript

@@ -15,9 +15,9 @@ description: Guide to auditing an existing or newly added feature for architectu
 
 ## 触る可能性が高いファイル
 - **すべてのフィーチャーモジュール**: `src/features/` 配下
-- **設定スキーマ**: [AppSettings.tsx](file:///c:/Users/ibueb/Projects/mint/src/core/context/AppSettings.tsx) および [settings.rs](file:///c:/Users/ibueb/Projects/mint/src-tauri/src/core/settings.rs)
+- **設定スキーマ**: [AppSettings.tsx](../../../src/core/context/AppSettings.tsx) および [settings.rs](../../../src-tauri/src/core/settings.rs)
 - **テストコード**: `src/**/*.test.ts` または `src/**/*.test.tsx`
-- **検証スクリプト**: [verify-architecture.js](file:///c:/Users/ibueb/Projects/mint/scripts/verify-architecture.js)
+- **検証スクリプト**: [verify-architecture.js](../../../scripts/verify-architecture.js)
 
 ---
 
@@ -44,13 +44,13 @@ npm run verify:architecture
 - `types.ts` で定義された型が `AppSettings.tsx` でインポートされているか？
 
 ### ステップ 3: 設定の同期チェック
-- [AppSettings.tsx](file:///c:/Users/ibueb/Projects/mint/src/core/context/AppSettings.tsx) のプロパティ名 (例: `myTool`)
-- [settings.rs](file:///c:/Users/ibueb/Projects/mint/src-tauri/src/core/settings.rs) のプロパティ名 (例: `my_tool`)
-- [tauriMock.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/tauriMock.ts) のデフォルト設定値オブジェクト
+- [AppSettings.tsx](../../../src/core/context/AppSettings.tsx) のプロパティ名 (例: `myTool`)
+- [settings.rs](../../../src-tauri/src/core/settings.rs) のプロパティ名 (例: `my_tool`)
+- [tauriMock.ts](../../../src/core/mocks/tauriMock.ts) のデフォルト設定値オブジェクト
 これらがスペルミスなく、すべて同じ意味・デフォルト値で揃っていることを確認します。
 
 ### ステップ 4: ブラウザモックの配線チェック
-- 追加されたすべての Tauri コマンドについて、[tauriMock.ts](file:///c:/Users/ibueb/Projects/mint/src/core/mocks/tauriMock.ts) にダミー挙動が実装されているか。
+- 追加されたすべての Tauri コマンドについて、[tauriMock.ts](../../../src/core/mocks/tauriMock.ts) にダミー挙動が実装されているか。
 - 単に `Promise.resolve()` を返すだけの「空モック」になっておらず、状態の変更やモックらしい挙動を再現しているか。
 
 ### ステップ 5: テストコードの監査

@@ -26,9 +26,10 @@ Frontend code uses TypeScript modules, React function components, 2-space indent
 Rust code follows standard `rustfmt` formatting with 4-space indentation. Use `snake_case` for functions, variables, and Tauri command names. Keep Tauri commands small and register them in `tauri::generate_handler!`.
 
 ## Testing Guidelines
-No test framework is configured yet. When adding frontend tests, place them near the implementation as `*.test.ts` or `*.test.tsx` and add a corresponding package script. For Rust logic, prefer unit tests in the relevant module under `src-tauri/src/` and run them with `cargo test`.
+Frontend component tests are managed by Vitest. To run tests, use `npm run test` or `npm run test:watch`. Place test files near the implementation as `*.test.ts` or `*.test.tsx`.
+For Rust logic, prefer unit tests in the relevant module under `src-tauri/src/` and run them with `cargo test`.
 
-Before opening a pull request, run `npm run build` and any relevant Rust checks.
+Before opening a pull request, run `npm run check` and `npm run check:tauri` to ensure typechecks, biome lint, unit tests, architecture validation, and builds all pass.
 
 ## Commit & Pull Request Guidelines
 Local Git history is not available in this workspace, so use clear, imperative commit subjects such as `Add greeting command` or `Refine Tauri window config`.

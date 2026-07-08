@@ -15,9 +15,9 @@ description: Complete checklist and procedure for creating and registering a cus
 
 ## 触る可能性が高いファイル
 - **オーバーレイ UI**: `src/features/<feature_name>/components/<PascalComponentName>Overlay.tsx`
-- **ウィンドウルーティング**: [src/core/windowRoutes.ts](file:///c:/Users/ibueb/Projects/mint/src/core/windowRoutes.ts)
-- **Tauri ウィンドウ構成**: [src-tauri/tauri.conf.json](file:///c:/Users/ibueb/Projects/mint/src-tauri/tauri.conf.json)
-- **App Shell エントリ**: [src/App.tsx](file:///c:/Users/ibueb/Projects/mint/src/App.tsx)
+- **ウィンドウルーティング**: [src/core/windowRoutes.ts](../../../src/core/windowRoutes.ts)
+- **Tauri ウィンドウ構成**: [src-tauri/tauri.conf.json](../../../src-tauri/tauri.conf.json)
+- **App Shell エントリ**: [src/App.tsx](../../../src/App.tsx)
 
 ---
 
@@ -45,7 +45,7 @@ export const MyOverlay: React.FC = () => {
 ```
 
 ### ステップ 2: React 側の静的ルーティングに登録
-[src/core/windowRoutes.ts](file:///c:/Users/ibueb/Projects/mint/src/core/windowRoutes.ts) を開き、ウィンドウラベルとコンポーネントのマッピングを追記します。
+[src/core/windowRoutes.ts](../../../src/core/windowRoutes.ts) を開き、ウィンドウラベルとコンポーネントのマッピングを追記します。
 
 ```typescript
 import { MyOverlay } from "../features/my_feature/components/MyOverlay";
@@ -57,7 +57,7 @@ export const WINDOW_ROUTES: Record<string, React.FC> = {
 ```
 
 ### ステップ 3: `tauri.conf.json` へウィンドウ定義を追加
-[src-tauri/tauri.conf.json](file:///c:/Users/ibueb/Projects/mint/src-tauri/tauri.conf.json) の `app -> windows` 配下に、新しいウィンドウの設定を追加します。
+[src-tauri/tauri.conf.json](../../../src-tauri/tauri.conf.json) の `app -> windows` 配下に、新しいウィンドウの設定を追加します。
 オーバーレイウィンドウは、通常ボーダーレス、背景透過、常に最前面表示などの設定が必要です。
 
 ```json
@@ -77,7 +77,7 @@ export const WINDOW_ROUTES: Record<string, React.FC> = {
 
 ### ステップ 4: ブラウザモック環境でのルーティング確認
 ブラウザ単体で表示を確認するため、URLに `?label=my_overlay_label` を指定してアクセスします。
-[App.tsx](file:///c:/Users/ibueb/Projects/mint/src/App.tsx) 内の以下のコードにより、クエリパラメータで指定されたラベルに一致するオーバーレイコンポーネントが表示されることを確認します。
+[App.tsx](../../../src/App.tsx) 内の以下のコードにより、クエリパラメータで指定されたラベルに一致するオーバーレイコンポーネントが表示されることを確認します。
 
 ```typescript
 // App.tsx の routing 処理部分

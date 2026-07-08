@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
-use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
@@ -89,25 +89,72 @@ pub fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
 
 #[tauri::command]
 pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String> {
+    let clock_shortcut = settings.clock.shortcut.trim();
+    let v2t_shortcut = settings.voice_to_text.shortcut.trim();
+
+    // 1. ショートカットの重複チェック
+    if !clock_shortcut.is_empty() && clock_shortcut == v2t_shortcut {
+        return Err(
+            "ショートカットキーが重複しています。別々のキーを設定してください。".to_string(),
+        );
+    }
+
     let old_settings = load_settings_internal(&app).ok();
+
+    // 2. ショートカット登録変更とエラーハンドリング（ロールバック付き）
+    if let Some(old) = &old_settings {
+        use tauri_plugin_global_shortcut::GlobalShortcutExt;
+        let gs = app.global_shortcut();
+
+        let old_clock = old.clock.shortcut.trim();
+        let old_v2t = old.voice_to_text.shortcut.trim();
+
+        // 時計ショートカットの登録変更
+        if old_clock != clock_shortcut {
+            if !old_clock.is_empty() {
+                let _ = gs.unregister(old_clock);
+            }
+            if !clock_shortcut.is_empty() {
+                if let Err(e) = gs.register(clock_shortcut) {
+                    // ロールバック: 古い設定に戻す
+                    if !old_clock.is_empty() {
+                        let _ = gs.register(old_clock);
+                    }
+                    return Err(format!("時計ショートカット「{}」の登録に失敗しました (すでに他のアプリに登録されている可能性があります): {}", clock_shortcut, e));
+                }
+            }
+        }
+
+        // 音声入力ショートカットの登録変更
+        if old_v2t != v2t_shortcut {
+            if !old_v2t.is_empty() {
+                let _ = gs.unregister(old_v2t);
+            }
+            if !v2t_shortcut.is_empty() {
+                if let Err(e) = gs.register(v2t_shortcut) {
+                    // ロールバック: 音声入力の古い設定に戻す
+                    if !old_v2t.is_empty() {
+                        let _ = gs.register(old_v2t);
+                    }
+                    // 時計側も変更されていた場合は元に戻す
+                    if old_clock != clock_shortcut {
+                        if !clock_shortcut.is_empty() {
+                            let _ = gs.unregister(clock_shortcut);
+                        }
+                        if !old_clock.is_empty() {
+                            let _ = gs.register(old_clock);
+                        }
+                    }
+                    return Err(format!("音声入力ショートカット「{}」の登録に失敗しました (すでに他のアプリに登録されている可能性があります): {}", v2t_shortcut, e));
+                }
+            }
+        }
+    }
 
     let path = get_config_path(&app)?;
     let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(&path, json).map_err(|e| e.to_string())?;
 
-    // ショートカットの動的再登録
-    if let Some(old) = old_settings {
-        use tauri_plugin_global_shortcut::GlobalShortcutExt;
-        let gs = app.global_shortcut();
-        if old.clock.shortcut != settings.clock.shortcut {
-            let _ = gs.unregister(old.clock.shortcut.as_str());
-            if !settings.clock.shortcut.is_empty() {
-                if let Err(e) = gs.register(settings.clock.shortcut.as_str()) {
-                    eprintln!("Failed to register clock shortcut: {}", e);
-                }
-            }
-        }
-    }
     Ok(())
 }
 
@@ -125,11 +172,8 @@ fn validate_service(service: &str) -> Result<(), String> {
 #[tauri::command]
 pub fn load_api_key(service: String) -> Result<String, String> {
     validate_service(&service)?;
-    let entry = keyring::Entry::new(
-        &format!("{}.{}", KEYRING_SERVICE, service),
-        "api_key",
-    )
-    .map_err(|e| e.to_string())?;
+    let entry = keyring::Entry::new(&format!("{}.{}", KEYRING_SERVICE, service), "api_key")
+        .map_err(|e| e.to_string())?;
 
     match entry.get_password() {
         Ok(key) => Ok(key),
@@ -141,11 +185,8 @@ pub fn load_api_key(service: String) -> Result<String, String> {
 #[tauri::command]
 pub fn save_api_key(service: String, key: String) -> Result<(), String> {
     validate_service(&service)?;
-    let entry = keyring::Entry::new(
-        &format!("{}.{}", KEYRING_SERVICE, service),
-        "api_key",
-    )
-    .map_err(|e| e.to_string())?;
+    let entry = keyring::Entry::new(&format!("{}.{}", KEYRING_SERVICE, service), "api_key")
+        .map_err(|e| e.to_string())?;
 
     if key.is_empty() {
         // Delete credential if key is empty

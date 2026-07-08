@@ -1,6 +1,6 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import "@testing-library/jest-dom";
-import { AppSettings } from "../context/AppSettings";
+import type { AppSettings } from "../context/AppSettings";
 
 // テスト環境でTauriのウィンドウ管理をモック
 mockWindows("main", "clock");
