@@ -5,36 +5,36 @@ description: Step-by-step instructions for safely updating and expanding the App
 
 # `update-settings-schema` Skill
 
-このスキルは、アプリケーション全体で共有されるユーザー設定スキーマ（`AppSettings`）を、フロントエンドとバックエンドで矛盾なく安全に更新・拡張するための手順を案内します。
+This skill explains how to safely update and extend the user settings schema (`AppSettings`) shared across the application without introducing frontend/backend inconsistencies.
 
-## 目的
-- アプリケーション全体の設定項目を追加、更新、削除する。
-- TypeScript の型定義、Rust のシリアライズ/デシリアライズ用構造体、およびブラウザ/テスト用モックの3者を完全に同期させる。
-
----
-
-## 触る可能性が高いファイル
-- **フロントエンド設定定義**: [AppSettings.tsx](../../../src/core/context/AppSettings.tsx)
-- **バックエンド設定定義**: [settings.rs](../../../src-tauri/src/core/settings.rs)
-- **自動モック初期値**: [tauriMock.ts](../../../src/core/mocks/tauriMock.ts) および [vitestSetup.ts](../../../src/core/mocks/vitestSetup.ts)
-- **フィーチャー固有の型**: `src/features/<feature_name>/types.ts`
+## Purpose
+- Add, update, or remove application-wide settings fields.
+- Keep TypeScript types, Rust serialization/deserialization structs, and browser/test mocks fully synchronized.
 
 ---
 
-## 守るべきアーキテクチャルール
-1. **3点同期の維持**: 設定を追加する場合、必ず **TypeScriptのインターフェース**、**Rustの構造体**、および**Mockの初期値オブジェクト** の3箇所すべてを同時に変更してください。
-2. **命名規則の遵守**: 
-   - フロントエンド（TypeScript）: `camelCase` (例: `voiceToText`)
-   - バックエンド（Rust）: `snake_case` (例: `voice_to_text`)
-   - Rust 側の構造体アトリビュートには `#[serde(rename_all = "camelCase")]` が指定されており、JSON シリアライズ時に `camelCase` に変換されることを確認してください。
-3. **`as any` 型キャストの禁止**: 型定義の追記が面倒という理由で `updateSettings` の呼び出し時に `as any` を用いて型チェックをすり抜けることは禁止です。
+## Likely Files to Touch
+- **Frontend settings definitions**: [AppSettings.tsx](../../../src/core/context/AppSettings.tsx)
+- **Backend settings definitions**: [settings.rs](../../../src-tauri/src/core/settings.rs)
+- **Automatic mock defaults**: [tauriMock.ts](../../../src/core/mocks/tauriMock.ts) and [vitestSetup.ts](../../../src/core/mocks/vitestSetup.ts)
+- **Feature-specific types**: `src/features/<feature_name>/types.ts`
 
 ---
 
-## 作業手順
+## Required Architecture Rules
+1. **Maintain three-way synchronization**: When adding a setting, update all three places at the same time: the **TypeScript interface**, the **Rust struct**, and the **mock default object**.
+2. **Follow naming conventions**:
+   - Frontend (TypeScript): `camelCase`, for example `voiceToText`
+   - Backend (Rust): `snake_case`, for example `voice_to_text`
+   - Confirm Rust-side struct attributes include `#[serde(rename_all = "camelCase")]` or equivalent serde renames so JSON serialization uses `camelCase`.
+3. **Do not use `as any` casts**: Do not bypass type checks with `as any` in `updateSettings` calls just because updating types feels tedious.
 
-### ステップ 1: フロントエンドの型定義を更新
-対象フィーチャーの `types.ts` に設定項目を追加し、[AppSettings.tsx](../../../src/core/context/AppSettings.tsx) の `AppSettings` インターフェースを更新します。
+---
+
+## Procedure
+
+### Step 1: Update Frontend Type Definitions
+Add the setting field to the target feature's `types.ts` and update the `AppSettings` interface in [AppSettings.tsx](../../../src/core/context/AppSettings.tsx).
 
 ```typescript
 // AppSettings.tsx
@@ -42,12 +42,12 @@ export interface AppSettings {
   theme: "dark" | "light";
   clock: ClockSettings;
   voiceToText: VoiceToTextSettings;
-  myNewFeature: MyNewFeatureSettings; // 新規追加 (camelCase)
+  myNewFeature: MyNewFeatureSettings; // Newly added field (camelCase)
 }
 ```
 
-### ステップ 2: バックエンド (Rust) の構造体を更新
-[settings.rs](../../../src-tauri/src/core/settings.rs) を開き、設定構造体にフィールドを追加し、`Default` 実装も更新します。
+### Step 2: Update Backend (Rust) Structs
+Open [settings.rs](../../../src-tauri/src/core/settings.rs), add the field to the settings struct, and update the `Default` implementation.
 
 ```rust
 // settings.rs
@@ -58,46 +58,46 @@ pub struct AppSettings {
     #[serde(rename = "voiceToText")]
     pub voice_to_text: VoiceToTextSettings,
     #[serde(rename = "myNewFeature")]
-    pub my_new_feature: MyNewFeatureSettings, // 新規追加 (snake_case + serdeリネーム指定)
+    pub my_new_feature: MyNewFeatureSettings, // Newly added field (snake_case + serde rename)
 }
 ```
 
-### ステップ 3: モックのデフォルト値を更新
-[tauriMock.ts](../../../src/core/mocks/tauriMock.ts) と [vitestSetup.ts](../../../src/core/mocks/vitestSetup.ts) の `defaultSettings` 定数に、追加した項目のデフォルト値を追記します。
+### Step 3: Update Mock Defaults
+Add the new field's default value to the `defaultSettings` constant in [tauriMock.ts](../../../src/core/mocks/tauriMock.ts) and [vitestSetup.ts](../../../src/core/mocks/vitestSetup.ts).
 
 ```typescript
 export const defaultSettings: AppSettings = {
   theme: "dark",
   clock: { enabled: false, shortcut: "Ctrl+Alt+C" },
   voiceToText: { enabled: false, shortcut: "Ctrl+Alt+V" },
-  myNewFeature: { enabled: false, shortcut: "Ctrl+Alt+N" }, // 新規追加 (デフォルト値)
+  myNewFeature: { enabled: false, shortcut: "Ctrl+Alt+N" }, // Newly added default value
 };
 ```
 
-### ステップ 4: アーキテクチャ検証の実行
-変更が正しく認識され、不整合がないことを検証します。
+### Step 4: Run Architecture Verification
+Verify that the change is recognized correctly and has no inconsistencies.
 ```bash
 npm run verify:architecture
 ```
 
 ---
 
-## 完了条件 (DoD)
-- [ ] TypeScript, Rust, Mock 全ての設定定義に不整合がない。
-- [ ] `npm run verify:architecture` がパスする。
-- [ ] `npm run test` および `npm run build` がパスする。
-- [ ] 新規項目を利用するコードから `as any` キャストが排除されている。
+## Definition of Done
+- [ ] TypeScript, Rust, and mock settings definitions are consistent.
+- [ ] `npm run verify:architecture` passes.
+- [ ] `npm run test` and `npm run build` pass.
+- [ ] Code using the new field contains no `as any` casts.
 
 ---
 
-## 実行すべき検証
+## Required Verification
 - `npm run verify:architecture`
 - `npm run test`
 - `npm run build`
 
 ---
 
-## よくある失敗
-- **Rust 側の `Default` 実装漏れ**: `settings.rs` の `AppSettings` にフィールドを追加したものの、`Default` 実装（あるいは各設定の初期値）に追記し忘れ、コンパイルエラーが発生する。
-- **Mock の同期漏れ**: フロントエンドと Rust は合わせたが、`tauriMock.ts` に追加し忘れたため、ブラウザ起動時に設定オブジェクトが不完全になり、UI がクラッシュする。
-- **`camelCase` と `snake_case` のスペルミス**: フロントエンドとバックエンドでスペルや大文字小文字が微妙にズレてしまい、自動検証スクリプトでエラーになる。
+## Common Failures
+- **Missing Rust `Default` implementation update**: A field is added to `AppSettings` in `settings.rs`, but the `Default` implementation or individual setting default is not updated, causing compilation errors.
+- **Mock synchronization gap**: Frontend and Rust are aligned, but `tauriMock.ts` is not updated, so the settings object is incomplete at browser startup and the UI crashes.
+- **`camelCase` and `snake_case` spelling mismatch**: Frontend and backend spelling or casing differs slightly, causing automatic verification errors.

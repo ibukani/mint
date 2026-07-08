@@ -5,33 +5,33 @@ description: Safe, type-safe guide to adding a new Tauri backend command and reg
 
 # `add-tauri-command` Skill
 
-このスキルは、Mint アプリケーションに新しい Tauri コマンド (IPCコマンド) を追加し、フロントエンドとバックエンド間で安全かつ型安全に通信できるようにする手順を案内します。
+This skill explains how to add a new Tauri command (IPC command) to the Mint application and wire safe, type-safe communication between the frontend and backend.
 
-## 目的
-- バックエンド (Rust) で実行する処理を定義し、フロントエンドから呼べるようにする。
-- 動的なディスパッチや汎用ペイロード (e.g. `serde_json::Value`) を排除し、厳密な静的型付けによる通信を実現する。
-
----
-
-## 触る可能性が高いファイル
-- **バックエンドの実装**: [src-tauri/src/features/<feature_name>.rs](../../../src-tauri/src/features/) (例)
-- **Tauri コマンド登録**: [src-tauri/src/lib.rs](../../../src-tauri/src/lib.rs)
-- **自動モック定義**: [src/core/mocks/tauriMock.ts](../../../src/core/mocks/tauriMock.ts)
-- **フロントエンドの呼び出し部**: `src/features/<feature_name>/hooks/` または `components/`
+## Purpose
+- Define behavior executed in the Rust backend and make it callable from the frontend.
+- Avoid dynamic dispatch and generic payloads such as `serde_json::Value`; use strict static typing for communication.
 
 ---
 
-## 守るべきアーキテクチャルール
-1. **静的コマンド定義の徹底**: すべての Tauri コマンドは、Rust 側で個別の `#[tauri::command]` アノテーションを持つ関数として静的に定義してください。
-2. **`serde_json::Value` の禁止**: 引数や戻り値に `serde_json::Value` のような汎用型を使用することは禁止です。必ず具体的な Rust 構造体（`Serialize`/`Deserialize`を実装したもの）または基本データ型を使用してください。
-3. **Mockの必須実装**: フロントエンドがブラウザでテストできるよう、必ず `tauriMock.ts` 内に同名のコマンド用モック関数を実装してください。単に `Promise.resolve()` を返すだけの空実装は禁止です。
+## Likely Files to Touch
+- **Backend implementation**: [src-tauri/src/features/<feature_name>.rs](../../../src-tauri/src/features/) (example)
+- **Tauri command registration**: [src-tauri/src/lib.rs](../../../src-tauri/src/lib.rs)
+- **Automatic mock definitions**: [src/core/mocks/tauriMock.ts](../../../src/core/mocks/tauriMock.ts)
+- **Frontend call sites**: `src/features/<feature_name>/hooks/` or `components/`
 
 ---
 
-## 作業手順
+## Required Architecture Rules
+1. **Use static command definitions**: Every Tauri command must be statically defined on the Rust side as an individual function with its own `#[tauri::command]` annotation.
+2. **Do not use `serde_json::Value`**: Arguments and return values must not use generic types such as `serde_json::Value`. Use concrete Rust structs that implement `Serialize`/`Deserialize`, or primitive data types.
+3. **Mocks are required**: Add a same-named mock command in `tauriMock.ts` so the frontend can be tested in the browser. Empty implementations that only return `Promise.resolve()` are forbidden.
 
-### ステップ 1: Rust バックエンドでコマンド関数を定義
-対象の機能モジュールファイル（例: `src-tauri/src/features/clock.rs`）に、コマンドハンドラ関数を追加します。
+---
+
+## Procedure
+
+### Step 1: Define the Command Function in the Rust Backend
+Add the command handler function to the target feature module file, for example `src-tauri/src/features/clock.rs`.
 
 ```rust
 use serde::{Serialize, Deserialize};
@@ -44,7 +44,7 @@ pub struct MyCommandResponse {
 
 #[tauri::command]
 pub fn my_feature_command(payload: String) -> Result<MyCommandResponse, String> {
-    // 実際のビジネスロジックを実装
+    // Implement the real business logic.
     if payload.is_empty() {
         return Err("Payload cannot be empty".to_string());
     }
@@ -56,8 +56,8 @@ pub fn my_feature_command(payload: String) -> Result<MyCommandResponse, String> 
 }
 ```
 
-### ステップ 2: `src-tauri/src/lib.rs` へコマンドを登録
-`tauri::generate_handler!` 内に、定義したコマンドを追加します。
+### Step 2: Register the Command in `src-tauri/src/lib.rs`
+Add the defined command to `tauri::generate_handler!`.
 
 ```rust
         .invoke_handler(tauri::generate_handler![
@@ -65,17 +65,17 @@ pub fn my_feature_command(payload: String) -> Result<MyCommandResponse, String> 
             core::settings::save_settings,
             core::settings::load_api_key,
             core::settings::save_api_key,
-            features::clock::clock_command, // 既存
-            features::my_feature::my_feature_command, // 新規追加
+            features::clock::clock_command, // Existing command
+            features::my_feature::my_feature_command, // Newly added command
         ])
 ```
 
-### ステップ 3: フロントエンドモック環境への配線
-[tauriMock.ts](../../../src/core/mocks/tauriMock.ts) を開き、`mockInvoke` の分岐に新コマンドを追加します。
-ブラウザ上での検証が可能なように、ダミー値を返す、または `localStorage` などの状態を変更するシミュレーションロジックを記述します。
+### Step 3: Wire the Frontend Mock Environment
+Open [tauriMock.ts](../../../src/core/mocks/tauriMock.ts) and add the new command to the `mockInvoke` branch.
+Implement simulation logic that returns dummy values or changes state such as `localStorage` so the behavior can be verified in the browser.
 
 ```typescript
-// tauriMock.ts 内の invoke マップ
+// Invoke map inside tauriMock.ts
 const mockInvokes: Record<string, (args: unknown) => unknown> = {
   // ...
   "my_feature_command": (args: { payload: string }) => {
@@ -90,8 +90,8 @@ const mockInvokes: Record<string, (args: unknown) => unknown> = {
 };
 ```
 
-### ステップ 4: フロントエンドからコマンドの呼び出し
-`@tauri-apps/api/core` の `invoke` を使ってコマンドを呼び出します（本プロジェクトでのインポート元やラップ関数がある場合はそれに従います）。
+### Step 4: Call the Command from the Frontend
+Call the command with `invoke` from `@tauri-apps/api/core`, or follow the repository's existing wrapper/import pattern if one exists.
 
 ```typescript
 import { invoke } from "@tauri-apps/api/core";
@@ -110,23 +110,23 @@ const callMyCommand = async (text: string) => {
 
 ---
 
-## 完了条件 (DoD)
-- [ ] Rust コマンドが `lib.rs` に登録され、コンパイルが通る。
-- [ ] フロントエンドモックに同名コマンドが登録され、ブラウザ起動時にもクラッシュせずモックの動作が確認できる。
-- [ ] コマンドの引数・戻り値の型定義が TypeScript と Rust で不整合なく同期している。
-- [ ] `npm run verify:architecture` でエラーが出ない。
-- [ ] `npm run test` がパスする。
+## Definition of Done
+- [ ] The Rust command is registered in `lib.rs` and compiles.
+- [ ] The same-named command is registered in the frontend mock, the browser does not crash on startup, and mock behavior can be verified.
+- [ ] Command argument and return-value types are synchronized between TypeScript and Rust.
+- [ ] `npm run verify:architecture` reports no errors.
+- [ ] `npm run test` passes.
 
 ---
 
-## 実行すべき検証
-1. **Rustコンパイル検証**: `cargo check` または `cargo test` を実行。
-2. **アーキテクチャ検証**: `npm run verify:architecture`
-3. **動作確認**: フロントエンドの単体テスト、またはブラウザモック上で期待通りのダミーデータが返却されることの確認。
+## Required Verification
+1. **Rust compilation verification**: Run `cargo check` or `cargo test`.
+2. **Architecture verification**: `npm run verify:architecture`
+3. **Behavior verification**: Confirm with frontend unit tests or browser mocks that the expected dummy data is returned.
 
 ---
 
-## よくある失敗
-- **引数の名前の不一致**: Rust側では `snake_case` (例: `user_id`) で引数を定義しているが、TypeScript 側で `camelCase` (例: `userId`) で渡している場合、シリアライズエラーで呼び出しに失敗します。
-- **Mockの登録漏れ**: 新しいコマンドを Rust にだけ追加し、`tauriMock.ts` に追加し忘れたため、ブラウザ開発環境や Vitest テストで "Unsupported mock command" エラーが発生する。
-- **`serde_json::Value` の乱用**: 「引数の型定義が面倒」という理由で `payload: serde_json::Value` とし、コンパイル時のチェックを放棄する。
+## Common Failures
+- **Argument name mismatch**: Rust defines an argument in `snake_case` (for example `user_id`) while TypeScript passes it in `camelCase` (for example `userId`), causing a serialization error.
+- **Missing mock registration**: A new command is added only in Rust and omitted from `tauriMock.ts`, causing "Unsupported mock command" errors in browser development or Vitest.
+- **Misuse of `serde_json::Value`**: Using `payload: serde_json::Value` because defining argument types feels tedious, which bypasses compile-time checks.

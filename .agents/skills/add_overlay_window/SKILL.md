@@ -5,32 +5,32 @@ description: Complete checklist and procedure for creating and registering a cus
 
 # `add-overlay-window` Skill
 
-このスキルは、Mint アプリケーションでショートカットキー等から呼び出される「オーバーレイウィンドウ」（サブウィンドウ）を新しく追加し、Tauri 設定および React のルーティングに正しく配線するための手順を案内します。
+This skill explains how to add a new overlay window (subwindow) invoked by shortcuts or similar triggers in the Mint application, then wire it correctly into Tauri configuration and React routing.
 
-## 目的
-- メインウィンドウとは別に表示される、半透明やボーダーレスな補助画面（例：時計、音声入力状態表示など）を作成する。
-- Tauri のウィンドウ管理機能と React の静的ルーティングを安全に統合する。
-
----
-
-## 触る可能性が高いファイル
-- **オーバーレイ UI**: `src/features/<feature_name>/components/<PascalComponentName>Overlay.tsx`
-- **ウィンドウルーティング**: [src/core/windowRoutes.ts](../../../src/core/windowRoutes.ts)
-- **Tauri ウィンドウ構成**: [src-tauri/tauri.conf.json](../../../src-tauri/tauri.conf.json)
-- **App Shell エントリ**: [src/App.tsx](../../../src/App.tsx)
+## Purpose
+- Create an auxiliary screen displayed separately from the main window, such as a translucent or borderless clock or voice-input status display.
+- Safely integrate Tauri window management with React static routing.
 
 ---
 
-## 守るべきアーキテクチャルール
-1. **静的ルーティングマップ (`WINDOW_ROUTES`) の利用**: ウィンドウの表示切り替え（ルーティング）は、`WINDOW_ROUTES` オブジェクトで静的にマッピングされていなければなりません。動的インポートやランタイム探索は禁止です。
-2. **モッククエリパラメータの対応**: ブラウザ単体での表示確認を可能にするため、`getCurrentWindow().label` を読み取る箇所は自動モック (`tauriMock.ts`) を介し、`?label=<label>` クエリパラメータでウィンドウの表示がシミュレートできなければなりません。
+## Likely Files to Touch
+- **Overlay UI**: `src/features/<feature_name>/components/<PascalComponentName>Overlay.tsx`
+- **Window routing**: [src/core/windowRoutes.ts](../../../src/core/windowRoutes.ts)
+- **Tauri window configuration**: [src-tauri/tauri.conf.json](../../../src-tauri/tauri.conf.json)
+- **App shell entry**: [src/App.tsx](../../../src/App.tsx)
 
 ---
 
-## 作業手順
+## Required Architecture Rules
+1. **Use the static routing map (`WINDOW_ROUTES`)**: Window display routing must be statically mapped through the `WINDOW_ROUTES` object. Dynamic imports and runtime discovery are forbidden.
+2. **Support mock query parameters**: Code that reads `getCurrentWindow().label` must go through the automatic mock (`tauriMock.ts`) so standalone browser verification can simulate window display with the `?label=<label>` query parameter.
 
-### ステップ 1: オーバーレイコンポーネントを作成
-機能フォルダ配下（例: `src/features/clock/components/ClockOverlay.tsx`）に、ウィンドウに表示するコンポーネントを作成します。
+---
+
+## Procedure
+
+### Step 1: Create the Overlay Component
+Create the component displayed in the window under the feature folder, for example `src/features/clock/components/ClockOverlay.tsx`.
 
 ```tsx
 import React from "react";
@@ -44,21 +44,21 @@ export const MyOverlay: React.FC = () => {
 };
 ```
 
-### ステップ 2: React 側の静的ルーティングに登録
-[src/core/windowRoutes.ts](../../../src/core/windowRoutes.ts) を開き、ウィンドウラベルとコンポーネントのマッピングを追記します。
+### Step 2: Register It in React Static Routing
+Open [src/core/windowRoutes.ts](../../../src/core/windowRoutes.ts) and add the mapping between the window label and component.
 
 ```typescript
 import { MyOverlay } from "../features/my_feature/components/MyOverlay";
 
 export const WINDOW_ROUTES: Record<string, React.FC> = {
   clock: ClockOverlay,
-  my_overlay_label: MyOverlay, // 新規ウィンドウラベルとコンポーネントの紐付け
+  my_overlay_label: MyOverlay, // Newly added window label and component mapping
 };
 ```
 
-### ステップ 3: `tauri.conf.json` へウィンドウ定義を追加
-[src-tauri/tauri.conf.json](../../../src-tauri/tauri.conf.json) の `app -> windows` 配下に、新しいウィンドウの設定を追加します。
-オーバーレイウィンドウは、通常ボーダーレス、背景透過、常に最前面表示などの設定が必要です。
+### Step 3: Add the Window Definition to `tauri.conf.json`
+Add the new window configuration under `app -> windows` in [src-tauri/tauri.conf.json](../../../src-tauri/tauri.conf.json).
+Overlay windows usually need settings such as borderless display, transparent background, and always-on-top behavior.
 
 ```json
 {
@@ -75,12 +75,12 @@ export const WINDOW_ROUTES: Record<string, React.FC> = {
 }
 ```
 
-### ステップ 4: ブラウザモック環境でのルーティング確認
-ブラウザ単体で表示を確認するため、URLに `?label=my_overlay_label` を指定してアクセスします。
-[App.tsx](../../../src/App.tsx) 内の以下のコードにより、クエリパラメータで指定されたラベルに一致するオーバーレイコンポーネントが表示されることを確認します。
+### Step 4: Verify Routing in the Browser Mock Environment
+To verify display in a standalone browser, open the app with `?label=my_overlay_label` in the URL.
+Confirm that the code below in [App.tsx](../../../src/App.tsx) displays the overlay component matching the query-parameter label.
 
 ```typescript
-// App.tsx の routing 処理部分
+// Routing section in App.tsx
 if (label && label in WINDOW_ROUTES) {
   const OverlayComponent = WINDOW_ROUTES[label];
   return <OverlayComponent />;
@@ -89,22 +89,22 @@ if (label && label in WINDOW_ROUTES) {
 
 ---
 
-## 完了条件 (DoD)
-- [ ] `tauri.conf.json` にウィンドウが定義されている。
-- [ ] `windowRoutes.ts` にウィンドウラベルとコンポーネントが静的登録されている。
-- [ ] ブラウザの URL に `?label=<label>` を付与した際、対象のオーバーレイコンポーネントが正しく描画される。
-- [ ] `npm run build` がエラーなく通る。
-- [ ] `npm run verify:architecture` がパスする。
+## Definition of Done
+- [ ] The window is defined in `tauri.conf.json`.
+- [ ] The window label and component are statically registered in `windowRoutes.ts`.
+- [ ] The target overlay component renders correctly when the browser URL includes `?label=<label>`.
+- [ ] `npm run build` passes without errors.
+- [ ] `npm run verify:architecture` passes.
 
 ---
 
-## 実行すべき検証
-1. **静的検証**: `npm run verify:architecture`
-2. **ブラウザ確認**: `npm run dev` 起動後、ブラウザで `http://localhost:5173/?label=my_overlay_label` を開き、意図したデザイン・UIが表示されることを確認。
-3. **ビルド検証**: `npm run build`
+## Required Verification
+1. **Static verification**: `npm run verify:architecture`
+2. **Browser verification**: After starting `npm run dev`, open `http://localhost:5173/?label=my_overlay_label` in the browser and confirm that the intended design and UI appear.
+3. **Build verification**: `npm run build`
 
 ---
 
-## よくある失敗
-- **透過設定 (`transparent`) の競合**: `tauri.conf.json` で `"transparent": true` に設定しているにもかかわらず、CSS側で `body` やルート要素に不透明な背景色 (`background: white` 等) を指定してしまい、背景が透過しない。
-- **インポートの不整合**: `windowRoutes.ts` への追加の際にインポートエラーが発生し、ビルドエラーを起こす。
+## Common Failures
+- **Conflicting transparency settings (`transparent`)**: `tauri.conf.json` sets `"transparent": true`, but CSS assigns an opaque background such as `background: white` to `body` or the root element, preventing transparency.
+- **Import mismatch**: Adding the route to `windowRoutes.ts` introduces an import error and breaks the build.

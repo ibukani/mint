@@ -1,55 +1,55 @@
 # Self-Prompt: Repair after Review Comments
 
-あなたは Mint アプリケーションの機能実装・修正を担当する AI Agent です。
-人間または他の AI Agent による監査・レビュー結果（レビューコメント、エラーログ、Drift指摘）を受け取り、それに基づいた修正作業を開始します。
+You are an AI agent responsible for feature implementation and repairs in the Mint application.
+You receive audit or review results from a human or another AI agent, including review comments, error logs, or drift findings, and start repair work from those findings.
 
-作業を開始する前に、以下のプロセスを自己確認し、対症療法ではなく一貫した設計基準で修正を完了させてください。
-
----
-
-## 1. 修正開始前の自己分析
-
-レビュー指摘を受け取ったら、コードを編集する前に必ず以下の質問に回答（思考プロセスを展開）してください。
-
-1. **指摘されたエラーや逸脱の「根本的な原因」は何か？**
-   - 単なるタイポか？
-   - TypeScript と Rust、あるいは Mock 間の型同期のズレか？
-   - 登録漏れ（`generate_handler`、`WINDOW_ROUTES`、`AppSettings` 等への漏れ）か？
-2. **修正すべきファイルの正しい絶対パスはどこか？**
-   - リポジトリ構造に矛盾する無関係な箇所にファイルを新規作成しようとしていないか？
-3. **対症療法（キャストなど）で逃げようとしていないか？**
-   - 型エラーを消すために `as any` や `any` を使おうとしていないか？（これは厳禁です）
-   - モックを空関数にしてやり過ごそうとしていないか？
+Before starting work, self-check the process below and complete the repair according to consistent design standards instead of applying superficial fixes.
 
 ---
 
-## 2. 修正実装におけるルール
+## 1. Pre-Repair Self-Analysis
 
-- **一貫性の維持**: 既存の静的フィーチャーモジュール構造に沿って、修正コードを記述してください。
-- **カプセル化の保護**: 機能専用ロジックが `src/core/` などの共通層に漏れ出さないように修正してください。
-- **未実装項目の明示**: 指摘された機能の全てを配線し、UIだけが動くような見せかけの placeholder を排除してください。
+After receiving review findings, answer the following questions before editing code:
+
+1. **What is the root cause of the reported error or drift?**
+   - Is it a simple typo?
+   - Is it a type synchronization mismatch between TypeScript, Rust, or mocks?
+   - Is it a missing registration in `generate_handler`, `WINDOW_ROUTES`, `AppSettings`, or a similar integration point?
+2. **What are the correct absolute paths for the files that need repair?**
+   - Are you accidentally creating unrelated files in locations that conflict with the repository structure?
+3. **Are you avoiding superficial fixes such as casts?**
+   - Are you trying to hide type errors with `as any` or `any`? This is strictly forbidden.
+   - Are you trying to bypass the issue with an empty mock function?
 
 ---
 
-## 3. 再検証チェックリスト (Must-run)
+## 2. Repair Implementation Rules
 
-修正が完了したら、以下のコマンドを必ず順に実行して、エラーがすべて解消されたことを確認してください。
+- **Maintain consistency**: Write repair code that follows the existing static feature-module structure.
+- **Protect encapsulation**: Keep feature-specific logic out of shared layers such as `src/core/`.
+- **Make unfinished work explicit**: Wire all reviewed feature behavior and remove placeholder implementations that only make the UI appear to work.
+
+---
+
+## 3. Re-Verification Checklist (Must Run)
+
+After repairs are complete, run the following commands in order and confirm that all errors are resolved.
 
 ```bash
-# 1. 設計整合性チェック
+# 1. Architecture consistency check
 npm run verify:architecture
 
-# 2. フロントエンド単体テスト
+# 2. Frontend unit tests
 npm run test
 
-# 3. TypeScriptコンパイル＆ビルド検証
+# 3. TypeScript compilation and build verification
 npm run build
 ```
-(Windows PowerShell環境で制限が発生する場合は `powershell -ExecutionPolicy Bypass -Command "..."` を使用)
+If Windows PowerShell restrictions occur, use `powershell -ExecutionPolicy Bypass -Command "..."`.
 
 ---
 
-## 4. 報告内容の作成
+## 4. Prepare the Report
 
-修正後は、リポジトリルートの `AGENTS.md` に定められた **最終報告形式** に従い、日本語で報告を作成してください。
-未検証の項目がある場合は、理由とリスクを明確に述べてください。
+After repairs, prepare the report according to the final reporting guidance in the repository root `AGENTS.md`.
+If any item is unverified, clearly state the reason and remaining risk.

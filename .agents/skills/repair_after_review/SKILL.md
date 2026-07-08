@@ -5,73 +5,73 @@ description: Systematic process for addressing PR review comments, linting issue
 
 # `repair-after-review` Skill
 
-このスキルは、コードレビュー（人間または他の AI Agent によるレビュー）で指摘された修正要求、または検証コマンド実行時に発生したエラーやビルド失敗を、手戻りなく体系的に修正・再検証するための手順を案内します。
+This skill explains how to systematically fix and re-verify review requests from code review, whether from humans or other AI agents, as well as errors and build failures from verification commands.
 
-## 目的
-- 指摘された項目を網羅的に解決し、対症療法的なその場しのぎの修正を排除する。
-- 修正によるデグレード（先祖返りや新規バグの混入）を防ぐ。
-
----
-
-## 触る可能性が高いファイル
-- **指摘対象となったすべてのファイル**
-- **テストスイート**: `src/**/*.test.ts`, `src/**/*.test.tsx`
-- **作業進捗管理**: [task.md](../../../task.md) (存在する場合)
+## Purpose
+- Resolve all reported items comprehensively and avoid superficial, temporary fixes.
+- Prevent regressions, reintroductions of old behavior, and new bugs caused by repairs.
 
 ---
 
-## 守るべきアーキテクチャルール
-1. **根本原因の修正**: コンパイルエラーやテスト失敗に対して、型キャスト (`as any`) やモックの削除などによる「エラー隠し」は絶対禁止です。エラーの根本原因を特定して解決してください。
-2. **すべての指摘項目の網羅**: レビューコメントや警告は一つも漏らさずに消化してください。
-3. **回帰テストの実施**: 修正完了後、影響範囲に含まれるすべての自動検証・テストを再実行しなければなりません。
+## Likely Files to Touch
+- **All files mentioned by the review or failure**
+- **Test suites**: `src/**/*.test.ts`, `src/**/*.test.tsx`
+- **Work tracking**: [task.md](../../../task.md), if it exists
 
 ---
 
-## 作業手順
+## Required Architecture Rules
+1. **Fix the root cause**: Do not hide compile errors or test failures with casts such as `as any`, by deleting mocks, or through similar tactics. Identify and resolve the root cause.
+2. **Cover every reported item**: Address every review comment and warning without skipping any.
+3. **Run regression tests**: After repairs, rerun all automatic verification and tests in the affected scope.
 
-### ステップ 1: 指摘内容と失敗箇所のリストアップ
-エラーログまたはレビューコメントから、修正が必要な項目を整理します。
-可能であれば、タスクリスト（`task.md`）にサブタスクとして追記してトラッキングします。
+---
 
-### ステップ 2: 根本原因の分析と修正計画
-エラーメッセージや指摘箇所をただ書き換えるのではなく、「なぜエラーになったのか（例：型の不一致、モックの未配線、関数の引数不足）」を解析します。
-影響範囲（呼び出し元や Rust 側の型定義）を特定し、一貫性を持たせた修正を行います。
+## Procedure
 
-### ステップ 3: コードの修正
-アーキテクチャルールを遵守してコードを修正します。
-- キャストによる型エラーの握りつぶしをしていないか再確認。
-- 未実装部分（placeholder）を完成扱いにしない。
+### Step 1: List Findings and Failure Points
+Organize the items that need repair from error logs or review comments.
+When useful, add subtasks to the task list (`task.md`) for tracking.
 
-### ステップ 4: 再検証の実行
-修正後、必ず以下の検証コマンドを実行して、他の部分が壊れていないか確認します。
+### Step 2: Analyze Root Causes and Plan Repairs
+Do not merely rewrite the error message or reported location. Analyze why the error occurred, such as a type mismatch, unwired mock, or missing function argument.
+Identify the affected scope, including call sites and Rust-side type definitions, and make a consistent repair.
+
+### Step 3: Repair the Code
+Repair the code while following the architecture rules.
+- Recheck that type errors are not being suppressed by casts.
+- Do not treat placeholders or unfinished behavior as complete.
+
+### Step 4: Run Re-Verification
+After repairs, always run the following verification commands to confirm that other areas were not broken.
 ```bash
 npm run verify:architecture
 npm run test
 npm run build
 ```
-(Windows PowerShell環境でエラーが出る場合は `powershell -ExecutionPolicy Bypass -Command "..."` を実行してください)
+If Windows PowerShell errors occur, run `powershell -ExecutionPolicy Bypass -Command "..."`.
 
-### ステップ 5: 修正結果の報告
-最終報告形式に則り、何をどう修正したか、および検証結果と残存リスクを報告します。
-
----
-
-## 完了条件 (DoD)
-- [ ] 指摘されたすべてのエラーやコメントが修正されている。
-- [ ] すべての検証コマンド (`verify:architecture`, `test`, `build`) が警告・エラーなしでパスする。
-- [ ] 修正による新たな architecture 違反や `as any` が混入していない。
+### Step 5: Report the Repair Result
+Follow the final reporting format and report what changed, how it was repaired, verification results, and any remaining risks.
 
 ---
 
-## 実行すべき検証
+## Definition of Done
+- [ ] Every reported error and comment is fixed.
+- [ ] All verification commands (`verify:architecture`, `test`, `build`) pass without warnings or errors.
+- [ ] The repair introduces no new architecture violations or `as any` casts.
+
+---
+
+## Required Verification
 - `npm run verify:architecture`
 - `npm run test`
 - `npm run build`
-- 変更箇所に Rust バックエンドが含まれる場合は `cargo check` / `cargo test`
+- If the changed area includes the Rust backend, run `cargo check` / `cargo test`.
 
 ---
 
-## よくある失敗
-- **対症療法的な修正**: 型エラーを解消するために、型定義を正しく修正するのではなく、問題のある変数を `as any` でキャストして終わらせてしまう。
-- **一部の指摘の無視**: 複数の指摘があった際、対応しやすい一部のみを修正し、残りを放置したまま「修正完了」と報告する。
-- **再テストの怠り**: 指摘箇所を直した直後にテストを実行せず報告し、実は別のファイルでインポートエラーが発生していたというケース。
+## Common Failures
+- **Superficial fixes**: Casting a problematic variable with `as any` to clear a type error instead of correcting the type definitions.
+- **Ignoring some findings**: Fixing only the easiest subset of multiple findings and reporting the work as complete while leaving the rest unresolved.
+- **Skipping retests**: Reporting immediately after editing the reported location without running tests, leaving import errors or similar failures in other files.

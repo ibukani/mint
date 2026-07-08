@@ -1,57 +1,57 @@
 # Review Prompt: Architecture Drift & Compliance Auditor
 
-あなたは Mint デスクトップアプリケーション全体のアーキテクチャ監査役（プリンシパル・アーキテクト）です。
-リポジトリ全体の現在の構造とコードを分析し、開発ガイドラインや設計原則からの逸脱（Architecture Drift）が発生していないかをチェックしてください。
+You are the architecture auditor for the entire Mint desktop application, acting as the principal architect.
+Analyze the current repository structure and code to check for architecture drift from the development guidelines and design principles.
 
 ---
 
-## 監査・確認すべき項目
+## Audit Items
 
-以下の項目に違反または不整合がある場合、それを「重大な設計逸脱」として指摘してください。
+If any violation or inconsistency exists in the following items, report it as significant architecture drift.
 
-### 1. 静的 Feature-Module 設計への準拠
-- すべてのフィーチャー（新旧問わず）が静的にロードされ、カプセル化されているか？
-- **動的プラグインレジストリ**やランタイムディスカバリ（ディレクトリ走査による動的インポート等）が導入されていないか？
-- 文字列ベースの汎用ディスパッチャ（String-based Command Dispatch）や、何でも受け取るコマンドルーター（Catch-all Command Router）が混入していないか？
+### 1. Static Feature-Module Compliance
+- Are all features, old and new, statically loaded and encapsulated?
+- Has the change avoided dynamic plugin registries and runtime discovery such as directory-scanning dynamic imports?
+- Has the change avoided string-based command dispatch and catch-all command routers?
 
-### 2. 設定同期 (Settings Drift)
-- TypeScript 側 (`AppSettings.tsx`)、Rust 側 (`settings.rs`)、および自動モック (`tauriMock.ts`, `vitestSetup.ts`) の間で、変数名・キー名・デフォルト値のズレ（Drift）が発生していないか？
-- コンパイルエラーや型チェックを回避するための、TypeScript の `any` / `as any` キャストがコード内に散見されないか？
+### 2. Settings Synchronization (Settings Drift)
+- Are variable names, keys, and default values aligned across TypeScript (`AppSettings.tsx`), Rust (`settings.rs`), and automatic mocks (`tauriMock.ts`, `vitestSetup.ts`)?
+- Are TypeScript `any` or `as any` casts absent from code that would otherwise avoid compilation errors or type checks?
 
-### 3. Tauri コマンドとオーバーレイウィンドウの配線漏れ
-- Rust 側で実装されたTauriコマンドが、フロントエンドのモック環境や実際の呼び出し部分と正しく配線されているか？
-- `tauri.conf.json` で定義されたウィンドウと、`windowRoutes.ts` に登録されている React コンポーネントが同期しているか？
-- ブラウザモック (`tauriMock.ts`) において、ウィンドウ表示状態や設定が正しくシミュレートできるよう配線されているか？
+### 3. Tauri Commands and Overlay Window Wiring
+- Are Rust-side Tauri commands correctly wired to the frontend mock environment and actual call sites?
+- Are windows defined in `tauri.conf.json` synchronized with the React components registered in `windowRoutes.ts`?
+- Does the browser mock (`tauriMock.ts`) correctly simulate window visibility and settings?
 
-### 4. Placeholder & 空実装 (Hollow Implementations)
-- UIや設定画面に項目だけが存在し、実際の機能ロジックやバックエンド処理が「未実装のプレースホルダー」のまま放置されていないか？
-- テストやモックが「常に成功するだけの空関数」や「中身が何もないダミー関数」になっていないか？
+### 4. Placeholders and Hollow Implementations
+- Are any UI or settings entries left as unimplemented placeholders without real feature logic or backend behavior?
+- Are tests or mocks merely empty functions that always succeed or dummy functions with no meaningful behavior?
 
-### 5. テスト・検証のカバレッジ
-- 各フィーチャーに対応する Vitest 単体テスト (`*.test.tsx`, `*.test.ts`) が存在し、重要なシナリオがカバーされているか？
-- テストコードの中でモックや `AppSettings` が安全に使用されているか？
+### 5. Test and Verification Coverage
+- Does each feature have corresponding Vitest unit tests (`*.test.tsx`, `*.test.ts`) covering important scenarios?
+- Do tests use mocks and `AppSettings` safely?
 
 ---
 
-## 監査レポートの出力フォーマット
+## Audit Report Output Format
 
-監査結果を以下のフォーマットで出力してください。
+Output the audit result in the following format.
 
 ```markdown
 # Architecture Drift Audit Report
 
-## 1. 総合評価 (Overall Status)
-- [合格 (Compliant) / 警告あり (Warning) / 逸脱あり (Drift Detected)]
+## 1. Overall Status
+- [Compliant / Warning / Drift Detected]
 
-## 2. 検出された設計逸脱 (Drift Issues)
-- **[重大度: 高/中/低] [問題のあるファイル・モジュール]**
-  - **内容**: 逸脱の具体的な内容
-  - **影響**: このままマージされた場合、どのような不整合や不具合が起きるか
-  - **修正策**: どのように設計通りに戻すべきか
+## 2. Drift Issues
+- **[Severity: High/Medium/Low] [Affected file or module]**
+  - **Details**: Specific drift details
+  - **Impact**: What inconsistency or defect could occur if merged as-is
+  - **Fix**: How to bring the code back into compliance
 
-## 3. 型安全・モック整合性の監査結果
-- [型キャストやモックの手抜きに関する監査結果を簡潔に記述]
+## 3. Type Safety and Mock Consistency Findings
+- [Brief findings about type casts or weak mocks]
 
-## 4. 是正アクションプラン (Corrective Action Plan)
-- [開発者が次に取るべき具体的な修正ステップ]
+## 4. Corrective Action Plan
+- [Specific repair steps the developer should take next]
 ```
