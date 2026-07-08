@@ -104,7 +104,7 @@ export const ${pascalName}Settings: React.FC = () => {
         <input
           id="${featureName}-shortcut-input"
           type="text"
-          className={`form-control \\\${shortcutError ? "is-invalid" : ""}`}
+          className={\`form-control \\\${shortcutError ? "is-invalid" : ""}\`}
           value={settings.shortcut}
           onChange={(e) => handleChange("shortcut", e.target.value)}
           placeholder="例: Ctrl+Alt+${pascalName.charAt(0)}"
@@ -193,7 +193,7 @@ impl Default for ${pascalName}Settings {
 
 `;
     const appSettingsRegex =
-      /(#\[derive\(Serialize,\s*Deserialize,\s*Clone,\s*Debug\)\]\s*#\[serde\(rename_all\s*=\s*"camelCase"\)\]\s*pub\s+struct\s+AppSettings)/;
+      /(#\[derive\(Serialize,\s*Deserialize,\s*Clone,\s*Debug\)\]\s*#\[serde\(default,\s*rename_all\s*=\s*"camelCase"\)\]\s*pub\s+struct\s+AppSettings)/;
     content = content.replace(appSettingsRegex, `${structDef}$1`);
 
     // 7.2 Add field to AppSettings struct

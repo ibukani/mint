@@ -1,6 +1,8 @@
 import { type AppSettings, useAppSettings } from "../context/AppSettings";
 
-export function useFeatureSettings<K extends keyof AppSettings>(featureKey: K) {
+export function useFeatureSettings<
+  K extends Exclude<keyof AppSettings, "theme">,
+>(featureKey: K) {
   const { settings, updateSettings, shortcutErrors } = useAppSettings();
   const featureSettings = settings ? settings[featureKey] : null;
   const shortcutError = shortcutErrors[featureKey] || "";
@@ -13,7 +15,7 @@ export function useFeatureSettings<K extends keyof AppSettings>(featureKey: K) {
     updateSettings((prev) => ({
       ...prev,
       [featureKey]: {
-        ...(prev[featureKey] as unknown as Record<string, unknown>),
+        ...prev[featureKey],
         [key]: value,
       },
     }));

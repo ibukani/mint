@@ -14,7 +14,10 @@
     "scaffold:feature": "node scripts/scaffold-feature.js",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "check": "tsc && biome check --write . && vitest run && node scripts/verify-architecture.js && npm run build",
+    "lint:fix": "biome check --write .",
+    "check": "tsc && biome check . && vitest run --passWithNoTests && node scripts/check-scripts.js && node scripts/verify-architecture.js && npm run build",
+    "check:scripts": "node scripts/check-scripts.js",
+    "test:scaffold": "node scripts/test-scaffold.js",
     "check:tauri": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml && cargo check --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {

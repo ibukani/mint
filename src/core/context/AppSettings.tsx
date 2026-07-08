@@ -148,6 +148,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
               console.error("Failed to save settings immediately:", err);
               setError("設定の保存に失敗しました");
               parseAndSetErrors(msg);
+              setSettings(prev);
             });
         } else {
           // Debounce 保存
@@ -163,6 +164,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
               console.error("Failed to save settings:", err);
               setError("設定の保存に失敗しました");
               parseAndSetErrors(msg);
+              setSettings(prev);
             }
           }, SAVE_DEBOUNCE_MS);
         }

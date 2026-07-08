@@ -34,14 +34,16 @@ To add a new tool (e.g. `new_tool`), follow these steps:
 ### Step 1: Update AppSettings Types
 Modify the global configuration types to include the new tool's settings.
 
-1. **TypeScript (`src/features/types.ts`)**:
+1. **TypeScript (`src/features/new_tool/types.ts` & `src/core/context/AppSettings.tsx`)**:
    ```typescript
+   // src/features/new_tool/types.ts
    export interface NewToolSettings {
      enabled: boolean;
      shortcut: string;
      // other fields...
    }
    
+   // src/core/context/AppSettings.tsx
    export interface AppSettings {
      // ... existing features
      newTool: NewToolSettings;

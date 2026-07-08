@@ -76,7 +76,7 @@ pub fn my_feature_command(payload: String) -> Result<MyCommandResponse, String> 
 
 ```typescript
 // tauriMock.ts 内の invoke マップ
-const mockInvokes: Record<string, (args: any) => any> = {
+const mockInvokes: Record<string, (args: unknown) => unknown> = {
   // ...
   "my_feature_command": (args: { payload: string }) => {
     if (!args.payload) {

@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 const ROOT_DIR = process.cwd();
 const TS_SETTINGS_PATH = path.join(
@@ -53,10 +53,11 @@ const tsSettingsContent = fs.readFileSync(TS_SETTINGS_PATH, "utf-8");
 const importRegex =
   /import\s+(?:type\s+)?\{\s*(\w+)\s*\}\s+from\s+["']\.\.\/\.\.\/features\/([^/]+)\/types["']/g;
 const importedSettings = new Map(); // folder => typeName
-let match;
-while ((match = importRegex.exec(tsSettingsContent)) !== null) {
-  const [_, typeName, folderName] = match;
+let match = importRegex.exec(tsSettingsContent);
+while (match !== null) {
+  const [_full, typeName, folderName] = match;
   importedSettings.set(folderName, typeName);
+  match = importRegex.exec(tsSettingsContent);
 }
 
 // Verify every folder in src/features is registered
@@ -107,7 +108,7 @@ if (!appSettingsInterfaceMatch) {
   reportError(`Could not find "interface AppSettings" in AppSettings.tsx`);
 } else {
   const interfaceBody = appSettingsInterfaceMatch[1];
-  for (const [folder, typeName] of importedSettings.entries()) {
+  for (const [_folder, typeName] of importedSettings.entries()) {
     const propertyRegex = new RegExp(`(\\w+)\\s*\\??:\\s*${typeName}\\b`);
     const propMatch = propertyRegex.exec(interfaceBody);
     if (!propMatch) {
@@ -169,6 +170,27 @@ function verifyRustSettings(tsPropertyName, tsTypeName) {
     reportSuccess(
       `Rust backend: "pub struct AppSettings" has field "pub ${snakeCaseProp}: ${tsTypeName}"`,
     );
+
+    // Check Default implementation
+    const defaultImplMatch =
+      /impl\s+Default\s+for\s+AppSettings\s*\{([^}]+)\}/s.exec(rsContent);
+    if (!defaultImplMatch) {
+      reportError(
+        `Rust backend: Could not find "impl Default for AppSettings" in settings.rs`,
+      );
+    } else {
+      const defaultBody = defaultImplMatch[1];
+      const defaultFieldRegex = new RegExp(`${snakeCaseProp}\\s*:`);
+      if (!defaultFieldRegex.test(defaultBody)) {
+        reportError(
+          `Rust backend: "impl Default for AppSettings" is missing default value for "${snakeCaseProp}"`,
+        );
+      } else {
+        reportSuccess(
+          `Rust backend: "impl Default for AppSettings" sets default for "${snakeCaseProp}"`,
+        );
+      }
+    }
   }
 }
 
@@ -265,12 +287,13 @@ if (fs.existsSync(RS_LIB_PATH)) {
       } else if (file.endsWith(".rs")) {
         const content = fs.readFileSync(fullPath, "utf-8");
         const cmdRegex = /#\[tauri::command\]\s*(?:pub\s+)?fn\s+(\w+)/g;
-        let cmdMatch;
-        while ((cmdMatch = cmdRegex.exec(content)) !== null) {
+        let cmdMatch = cmdRegex.exec(content);
+        while (cmdMatch !== null) {
           rustCommands.push({
             name: cmdMatch[1],
             file: path.relative(ROOT_DIR, fullPath),
           });
+          cmdMatch = cmdRegex.exec(content);
         }
       }
     }
@@ -312,16 +335,17 @@ function scanInvokes(dir) {
     } else if (file.endsWith(".ts") || file.endsWith(".tsx")) {
       const content = fs.readFileSync(fullPath, "utf-8");
       const invokeRegex = /invoke(?:<\w+>)?\(\s*["'](\w+)["']/g;
-      let invokeMatch;
-      while ((invokeMatch = invokeRegex.exec(content)) !== null) {
+      let invokeMatch = invokeRegex.exec(content);
+      while (invokeMatch !== null) {
         frontendInvokes.add(invokeMatch[1]);
+        invokeMatch = invokeRegex.exec(content);
       }
     }
   }
 }
 scanInvokes(path.join(ROOT_DIR, "src"));
 
-function checkMockIPCCase(mockPath, isVitest = false) {
+function checkMockIPCCase(mockPath, _isVitest = false) {
   if (fs.existsSync(mockPath)) {
     const mockContent = fs.readFileSync(mockPath, "utf-8");
     for (const cmd of frontendInvokes) {
