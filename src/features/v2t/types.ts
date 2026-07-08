@@ -3,4 +3,5 @@ export interface VoiceToTextSettings {
   baseUrl: string;
   model: string;
   language: string;
+  status: string;
 }

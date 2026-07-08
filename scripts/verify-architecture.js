@@ -61,6 +61,14 @@ while (match !== null) {
 }
 
 // Verify every folder in src/features is registered
+const RUST_FEATURES_MOD = path.join(ROOT_DIR, "src-tauri/src/features/mod.rs");
+let rustModContent = "";
+if (fs.existsSync(RUST_FEATURES_MOD)) {
+  rustModContent = fs.readFileSync(RUST_FEATURES_MOD, "utf-8");
+} else {
+  reportError(`mod.rs not found at: ${RUST_FEATURES_MOD}`);
+}
+
 for (const folder of featureFolders) {
   const typesPath = path.join(FEATURES_DIR, folder, "types.ts");
   if (!fs.existsSync(typesPath)) {
@@ -93,6 +101,18 @@ for (const folder of featureFolders) {
   } else {
     reportSuccess(
       `Feature "${folder}" types are registered in AppSettings.tsx`,
+    );
+  }
+
+  // Check Rust module registration
+  const rustModRegex = new RegExp(`pub\\s+mod\\s+${folder}\\s*;`);
+  if (!rustModRegex.test(rustModContent)) {
+    reportError(
+      `Feature "${folder}" is not registered in src-tauri/src/features/mod.rs`,
+    );
+  } else {
+    reportSuccess(
+      `Feature "${folder}" is registered in src-tauri/src/features/mod.rs`,
     );
   }
 }
@@ -159,6 +179,11 @@ function verifyRustSettings(tsPropertyName, tsTypeName) {
   }
 
   const structBody = appSettingsStructMatch[1];
+
+  // Track checked fields for 1:1 matching
+  if (!global.rustSettingsFields) global.rustSettingsFields = new Set();
+  global.rustSettingsFields.add(snakeCaseProp);
+
   const fieldRegex = new RegExp(
     `pub\\s+${snakeCaseProp}\\s*:\\s*${tsTypeName}\\b`,
   );
@@ -190,6 +215,30 @@ function verifyRustSettings(tsPropertyName, tsTypeName) {
           `Rust backend: "impl Default for AppSettings" sets default for "${snakeCaseProp}"`,
         );
       }
+    }
+  }
+}
+
+// 3.5 Check for unmapped Rust settings
+if (fs.existsSync(RS_SETTINGS_PATH)) {
+  const rsContent = fs.readFileSync(RS_SETTINGS_PATH, "utf-8");
+  const appSettingsStructMatch =
+    /pub\s+struct\s+AppSettings\s*\{([^}]+)\}/s.exec(rsContent);
+  if (appSettingsStructMatch) {
+    const structBody = appSettingsStructMatch[1];
+    const fieldRegex = /pub\s+([a-z0-9_]+)\s*:/g;
+    let match = fieldRegex.exec(structBody);
+    while (match !== null) {
+      const fieldName = match[1];
+      if (
+        fieldName !== "theme" && // Base property
+        !global.rustSettingsFields?.has(fieldName)
+      ) {
+        reportError(
+          `Rust backend: Field "${fieldName}" in AppSettings does not have a corresponding TS feature setting. TS and Rust settings must be 1:1.`,
+        );
+      }
+      match = fieldRegex.exec(structBody);
     }
   }
 }
@@ -410,6 +459,12 @@ const allowedTodos = [
   "文字起こし処理自体はプレースホルダーであり",
   "実際に音声の録音・Whisper",
   "Voice-to-Text feature commands placeholder",
+  "placeholder 状態であるため",
+  "未実装のお知らせ",
+  "API経由での文字起こし処理のバックエンド実装は未実装です",
+  'status: "placeholder".to_string()',
+  'settings.voice_to_text.status != "placeholder"',
+  "<code>placeholder</code>",
 ];
 
 function scanTodos(dir) {

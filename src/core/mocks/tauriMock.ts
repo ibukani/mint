@@ -35,6 +35,7 @@ if (!isTauri && typeof window !== "undefined") {
       baseUrl: "https://api.openai.com/v1",
       model: "whisper-1",
       language: "ja",
+      status: "placeholder",
     },
   };
 

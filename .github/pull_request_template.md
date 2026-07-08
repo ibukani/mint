@@ -11,6 +11,13 @@
 - [ ] AppSettingsの変更
 - [ ] Tauriコマンドの追加・変更
 - [ ] Window Routeの追加・変更
+- [ ] Placeholderの副作用制御 (OS登録回避)
+
+## AI アシスタントへの指示・活用歴
+<!-- AIエージェントに指示して開発を進めた場合、以下を埋めてください -->
+- 使用した `.agents/skills` やプロンプト: 
+- `npm run check` 等でエラーが出た場合の修正内容: 
+- Feature state の変更理由 (implemented / partial / placeholder): 
 
 ## 実行した検証コマンド
 <!-- 以下のコマンドを実行し、パスしたことを確認してください -->

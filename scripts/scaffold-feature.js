@@ -1,5 +1,6 @@
-import fs from "fs";
-import path from "path";
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 const args = process.argv.slice(2);
 if (args.length < 1) {
@@ -143,7 +144,7 @@ if (fs.existsSync(rustModPath)) {
   let modContent = fs.readFileSync(rustModPath, "utf-8");
   const modLine = `pub mod ${featureName};`;
   if (!modContent.includes(modLine)) {
-    modContent = modContent.trim() + `\n${modLine}\n`;
+    modContent = `${modContent.trim()}\n${modLine}\n`;
     fs.writeFileSync(rustModPath, modContent);
     console.log(`[UPDATED] ${rustModPath} に "${modLine}" を追記しました。`);
   }
@@ -156,7 +157,7 @@ if (fs.existsSync(appSettingsPath)) {
   if (!content.includes(`features/${featureName}/types`)) {
     // 6.1 Add Import (find first import statement)
     const importRegex = /(import\s+.*from\s+["'].*["'];)/;
-    const importLine = `import { ${pascalName}Settings } from "../../features/${featureName}/types";\n`;
+    const importLine = `import type { ${pascalName}Settings } from "../../features/${featureName}/types";\n`;
     content = content.replace(importRegex, `${importLine}$1`);
 
     // 6.2 Add Property to AppSettings
@@ -267,6 +268,18 @@ console.log(
   "\n\x1b[32m%s\x1b[0m",
   "=== Scaffolding & Auto-registration 完了 ===",
 );
+console.log(
+  "\nフォーマッタとリンター (Biome) を実行して生成コードを整形しています...\n",
+);
+try {
+  execSync("npx @biomejs/biome check --write --unsafe .", { stdio: "inherit" });
+  console.log("\n\x1b[32m%s\x1b[0m", "=== Biome formatting 完了 ===");
+} catch (_e) {
+  console.warn(
+    "\x1b[33m[WARN]\x1b[0m Biome の自動修正に失敗しました。`npm run check` 等で手動確認してください。",
+  );
+}
+
 console.log(
   "\n`npm run check` を実行して設計整合性が保たれているか確認してください。\n",
 );

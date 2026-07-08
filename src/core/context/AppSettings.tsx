@@ -43,14 +43,19 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [shortcutErrors, setShortcutErrors] = useState<Record<string, string>>(
     {},
   );
-  const pendingRef = useRef<AppSettings | null>(null);
+
+  // Reference to the latest requested settings state
+  const settingsRef = useRef<AppSettings | null>(null);
+  const pendingSaveRef = useRef<AppSettings | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sequenceRef = useRef<number>(0);
 
   useEffect(() => {
     async function load() {
       try {
         const loaded = await invoke<AppSettings>("load_settings");
         setSettings(loaded);
+        settingsRef.current = loaded;
       } catch (err) {
         console.error("Failed to load settings:", err);
         setError("設定の読み込みに失敗しました");
@@ -74,25 +79,38 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     setShortcutErrors(newErrors);
   }, []);
 
+  const commitSettings = useCallback(
+    async (toSave: AppSettings, seq: number) => {
+      try {
+        await invoke("save_settings", { settings: toSave });
+        // Only clear errors if this is still the latest save request
+        if (sequenceRef.current === seq) {
+          setShortcutErrors({});
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("Failed to save settings:", err);
+        // Only apply error states if this request is still the latest
+        if (sequenceRef.current === seq) {
+          setError("設定の保存に失敗しました");
+          parseAndSetErrors(msg);
+        }
+      }
+    },
+    [parseAndSetErrors],
+  );
+
   const flushPendingSettings = useCallback(async () => {
-    if (pendingRef.current) {
+    if (pendingSaveRef.current) {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      const toSave = pendingRef.current;
-      pendingRef.current = null;
-      try {
-        await invoke("save_settings", { settings: toSave });
-        setShortcutErrors({});
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("Failed to flush settings:", err);
-        setError("設定の保存に失敗しました");
-        parseAndSetErrors(msg);
-      }
+      const toSave = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      await commitSettings(toSave, sequenceRef.current);
     }
-  }, [parseAndSetErrors]);
+  }, [commitSettings]);
 
   // Handle unload and unmount flushes
   useEffect(() => {
@@ -116,63 +134,52 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     (
       newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
     ) => {
-      setSettings((prev) => {
-        if (!prev) return prev;
-        const updated =
-          typeof newSettings === "function"
-            ? newSettings(prev)
-            : { ...prev, ...newSettings };
+      // 1. Calculate next state outside of the React state updater
+      const prev = settingsRef.current;
+      if (!prev) return;
 
-        // 重要設定（ショートカットやテーマ変更など）が実際に変更されたか判定
-        const isImportant =
-          prev.theme !== updated.theme ||
-          prev.clock.shortcut !== updated.clock.shortcut ||
-          prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
+      const updated =
+        typeof newSettings === "function"
+          ? newSettings(prev)
+          : { ...prev, ...newSettings };
 
-        pendingRef.current = updated;
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-          timerRef.current = null;
-        }
+      // 2. Determine if we need an immediate save
+      const isImportant =
+        prev.theme !== updated.theme ||
+        prev.clock.shortcut !== updated.clock.shortcut ||
+        prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
 
-        if (isImportant) {
-          // 即時保存
-          const toSave = pendingRef.current;
-          pendingRef.current = null;
-          invoke("save_settings", { settings: toSave })
-            .then(() => {
-              setShortcutErrors({});
-            })
-            .catch((err) => {
-              const msg = err instanceof Error ? err.message : String(err);
-              console.error("Failed to save settings immediately:", err);
-              setError("設定の保存に失敗しました");
-              parseAndSetErrors(msg);
-              setSettings(prev);
-            });
-        } else {
-          // Debounce 保存
-          timerRef.current = setTimeout(async () => {
-            if (!pendingRef.current) return;
-            const toSave = pendingRef.current;
-            pendingRef.current = null;
-            try {
-              await invoke("save_settings", { settings: toSave });
-              setShortcutErrors({});
-            } catch (err) {
-              const msg = err instanceof Error ? err.message : String(err);
-              console.error("Failed to save settings:", err);
-              setError("設定の保存に失敗しました");
-              parseAndSetErrors(msg);
-              setSettings(prev);
-            }
-          }, SAVE_DEBOUNCE_MS);
-        }
+      // 3. Update local state and refs synchronously
+      settingsRef.current = updated;
+      setSettings(updated);
 
-        return updated;
-      });
+      // 4. Increment sequence ID for race condition protection
+      sequenceRef.current += 1;
+      const currentSeq = sequenceRef.current;
+
+      // 5. Handle Side-Effects
+      pendingSaveRef.current = updated;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      if (isImportant) {
+        // Immediate save
+        const toSave = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        commitSettings(toSave, currentSeq);
+      } else {
+        // Debounce save
+        timerRef.current = setTimeout(() => {
+          if (!pendingSaveRef.current) return;
+          const toSave = pendingSaveRef.current;
+          pendingSaveRef.current = null;
+          commitSettings(toSave, currentSeq);
+        }, SAVE_DEBOUNCE_MS);
+      }
     },
-    [parseAndSetErrors],
+    [commitSettings],
   );
 
   return (

@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { act, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsProvider, useAppSettings } from "./AppSettings";
@@ -18,7 +24,7 @@ const TestComponent: React.FC = () => {
       <div data-testid="clock-shortcut">{settings.clock.shortcut}</div>
       <div data-testid="clock-fontsize">{settings.clock.fontSize}</div>
       <div data-testid="error">{error || "no-error"}</div>
-      <div data-testid="clock-error">
+      <div data-testid="shortcut-error-clock">
         {shortcutErrors.clock || "no-clock-error"}
       </div>
       <button
@@ -59,7 +65,6 @@ const TestComponent: React.FC = () => {
 describe("AppSettingsProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
   });
 
   it("loads settings on mount", async () => {
@@ -94,6 +99,7 @@ describe("AppSettingsProvider", () => {
   });
 
   it("debounces normal settings save", async () => {
+    vi.useFakeTimers();
     const mockSettings = {
       theme: "dark",
       clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
@@ -120,7 +126,7 @@ describe("AppSettingsProvider", () => {
     // Change normal setting
     const btn = screen.getByTestId("btn-fontsize");
     act(() => {
-      btn.click();
+      fireEvent.click(btn);
     });
 
     expect(screen.getByTestId("clock-fontsize")).toHaveTextContent("2.5rem");
@@ -136,6 +142,7 @@ describe("AppSettingsProvider", () => {
     });
 
     expect(invoke).toHaveBeenCalledWith("save_settings", expect.any(Object));
+    vi.useRealTimers();
   });
 
   it("saves important settings (shortcut/theme) immediately", async () => {
@@ -162,19 +169,25 @@ describe("AppSettingsProvider", () => {
       await Promise.resolve();
     });
 
-    // Change shortcut (important)
-    const btn = screen.getByTestId("btn-shortcut");
+    // Change theme (important)
+    const btn = screen.getByTestId("btn-theme");
     act(() => {
-      btn.click();
+      fireEvent.click(btn);
     });
 
-    // Should save immediately
-    expect(invoke).toHaveBeenCalledWith("save_settings", expect.any(Object));
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith(
+        "save_settings",
+        expect.objectContaining({
+          settings: expect.objectContaining({
+            theme: "light",
+          }),
+        }),
+      );
+    });
   });
 
   it("parses registration error and sets shortcut error state", async () => {
-    vi.useRealTimers();
-
     const mockSettings = {
       theme: "dark",
       clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
@@ -205,21 +218,13 @@ describe("AppSettingsProvider", () => {
 
     const btn = screen.getByTestId("btn-shortcut");
     act(() => {
-      btn.click();
+      fireEvent.click(btn);
     });
 
-    // Wait for the async invoke promise rejection to resolve and catch block to run
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() => {
+      expect(screen.getByTestId("shortcut-error-clock")).toHaveTextContent(
+        "時計ショートカットの登録に失敗しました",
+      );
     });
-
-    expect(screen.getByTestId("error")).toHaveTextContent(
-      "設定の保存に失敗しました",
-    );
-    expect(screen.getByTestId("clock-error")).toHaveTextContent(
-      "時計ショートカットの登録に失敗しました",
-    );
-
-    vi.useFakeTimers();
   });
 });

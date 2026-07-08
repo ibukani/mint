@@ -28,6 +28,7 @@ pub struct VoiceToTextSettings {
     pub base_url: String,
     pub model: String,
     pub language: String,
+    pub status: String,
 }
 
 impl Default for VoiceToTextSettings {
@@ -37,6 +38,7 @@ impl Default for VoiceToTextSettings {
             base_url: "https://api.openai.com/v1".to_string(),
             model: "whisper-1".to_string(),
             language: "ja".to_string(),
+            status: "placeholder".to_string(),
         }
     }
 }
@@ -125,12 +127,12 @@ pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String
             }
         }
 
-        // 音声入力ショートカットの登録変更
+        // 音声入力ショートカットの登録変更 (プレースホルダーの場合は登録しない)
         if old_v2t != v2t_shortcut {
             if !old_v2t.is_empty() {
                 let _ = gs.unregister(old_v2t);
             }
-            if !v2t_shortcut.is_empty() {
+            if !v2t_shortcut.is_empty() && settings.voice_to_text.status != "placeholder" {
                 if let Err(e) = gs.register(v2t_shortcut) {
                     // ロールバック: 音声入力の古い設定に戻す
                     if !old_v2t.is_empty() {

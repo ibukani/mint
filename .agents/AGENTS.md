@@ -95,6 +95,7 @@ Modify the global configuration types to include the new tool's settings.
   npm run verify:architecture
   ```
 - コミットやPR作成前、または実装完了宣言の前に、この整合性チェックがパスすることを確認してください。
+- Scaffold 機能でモジュールを追加した直後は、追加されたコードが正常にビルド・フォーマットされていることを確認するため、必ず `npm run check` （フロントエンド検証）を通すこと。
 
 ### 4. フロントエンド単体テストの記述
 - フロントエンドコンポーネントのテストは、Vitest を使用します。
@@ -114,3 +115,12 @@ Modify the global configuration types to include the new tool's settings.
     ```bash
     npm run check:tauri
     ```
+
+### 6. React State Updater と非同期/副作用の分離
+- `useState` や `useReducer` の setState（関数型アップデート `prev => ...` 内）の中で、Tauri の `invoke` のような非同期処理や副作用（Side Effect）を絶対に呼ばないでください。
+- 代わりに React の `useEffect`、あるいはイベントハンドラ（例: `useCallback` でラップした関数）の中で次の状態を計算した後に副作用を実行し、同期的に state を更新する設計にしてください。
+- レースコンディション（Debounce中の遅延保存による古いStateへの巻き戻り）を防ぐため、Sequence ID / Revision 番号でのガード処理を実装してください。
+
+### 7. Placeholder 機能の OS 副作用禁止
+- `placeholder` 状態の機能に対して、OS のグローバルショートカット登録やシステム状態の変更（例: レジストリ書き換え、バックグラウンドデーモン起動）を行わないでください。
+- バックエンド（Rust側）の設定構造体に `status` フィールドを設け、`status == "placeholder"` の場合は副作用をスキップするガードを必ず実装してください。
