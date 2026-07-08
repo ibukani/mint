@@ -189,6 +189,44 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("trims dashboard shortcut whitespace before saving", async () => {
+    vi.mocked(invoke).mockImplementation((cmd) => {
+      if (cmd === "load_settings") {
+        return Promise.resolve(createMockSettings());
+      }
+      if (cmd === "save_settings") {
+        return Promise.resolve();
+      }
+      return Promise.resolve(null);
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const clockCard = screen
+      .getByRole("heading", { name: "時計オーバーレイ" })
+      .closest("section");
+    expect(clockCard).not.toBeNull();
+
+    const shortcutInput = within(clockCard as HTMLElement).getByLabelText(
+      "ショートカットキー",
+    );
+    fireEvent.change(shortcutInput, {
+      target: { value: "  Ctrl+Shift+C  " },
+    });
+    fireEvent.blur(shortcutInput);
+
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
+        settings: expect.objectContaining({
+          clock: expect.objectContaining({ shortcut: "Ctrl+Shift+C" }),
+        }),
+      });
+    });
+  });
+
   it("shows shortcut errors inside the matching dashboard card", async () => {
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "load_settings") {

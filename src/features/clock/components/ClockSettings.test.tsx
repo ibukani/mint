@@ -75,4 +75,25 @@ describe("ClockSettings component", () => {
     fireEvent.change(secondsInput, { target: { value: "-5" } });
     expect(secondsInput.value).toBe("0");
   });
+
+  it("trims shortcut whitespace when leaving the field", async () => {
+    render(
+      <AppSettingsProvider>
+        <ClockSettings />
+      </AppSettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
+    });
+
+    const shortcutInput = screen.getByLabelText(
+      "起動ショートカットキー",
+    ) as HTMLInputElement;
+
+    fireEvent.change(shortcutInput, { target: { value: "  Ctrl+Shift+T  " } });
+    fireEvent.blur(shortcutInput);
+
+    expect(shortcutInput.value).toBe("Ctrl+Shift+T");
+  });
 });

@@ -319,4 +319,44 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByLabelText("言語コード (Language)")).toHaveValue("ja");
     expect(screen.getByLabelText("API キー")).toHaveValue("mocked-api-key");
   });
+
+  it("trims shortcut whitespace when leaving the field", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "save_settings") return undefined;
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const shortcutInput = screen.getByLabelText(
+      "起動/録音ショートカットキー",
+    ) as HTMLInputElement;
+
+    fireEvent.change(shortcutInput, { target: { value: "  Ctrl+Shift+V  " } });
+    fireEvent.blur(shortcutInput);
+
+    expect(shortcutInput.value).toBe("Ctrl+Shift+V");
+  });
 });

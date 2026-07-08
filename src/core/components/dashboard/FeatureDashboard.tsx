@@ -17,6 +17,7 @@ import {
 } from "../../../features/clock/settings";
 import { useFeatureSettings } from "../../hooks/useFeatureSettings";
 import type { SettingsTabId } from "../../navigation/settingsTabs";
+import { normalizeShortcut } from "../../shortcuts";
 
 interface FeatureDashboardProps {
   onOpenSettings?: (
@@ -98,6 +99,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               invalid={Boolean(clockShortcutError)}
               value={clock.shortcut}
               onChange={(e) => updateClock("shortcut", e.target.value)}
+              onBlur={(e) =>
+                updateClock("shortcut", normalizeShortcut(e.target.value))
+              }
               placeholder="例: Ctrl+Alt+C"
             />
           </Field>
@@ -176,6 +180,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               invalid={Boolean(voiceToTextShortcutError)}
               value={voiceToText.shortcut}
               onChange={(e) => updateVoiceToText("shortcut", e.target.value)}
+              onBlur={(e) =>
+                updateVoiceToText("shortcut", normalizeShortcut(e.target.value))
+              }
               placeholder="例: Ctrl+Alt+V"
             />
           </Field>

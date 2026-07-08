@@ -1,6 +1,7 @@
 import type React from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
+import { normalizeShortcut } from "../../../core/shortcuts";
 import {
   Button,
   Field,
@@ -54,6 +55,9 @@ export const ClockSettings: React.FC = () => {
           invalid={Boolean(shortcutError)}
           value={clock.shortcut}
           onChange={(e) => handleChange("shortcut", e.target.value)}
+          onBlur={(e) =>
+            handleChange("shortcut", normalizeShortcut(e.target.value))
+          }
           placeholder="例: Ctrl+Alt+C"
         />
       </Field>
