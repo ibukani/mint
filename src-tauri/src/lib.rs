@@ -12,10 +12,17 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     if event.state == ShortcutState::Pressed {
-                        let shortcut_str = shortcut.to_string();
                         if let Ok(settings) = core::settings::load_settings_internal(app) {
                             for (feature, keys) in settings.active_shortcuts() {
-                                if shortcut_str == keys {
+                                if let Ok(parsed_keys) = keys.parse::<tauri_plugin_global_shortcut::Shortcut>() {
+                                    if shortcut == &parsed_keys {
+                                        match feature {
+                                            "clock" => features::clock::toggle_clock_overlay(app),
+                                            "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
+                                            _ => {}
+                                        }
+                                    }
+                                } else if shortcut.to_string() == keys {
                                     match feature {
                                         "clock" => features::clock::toggle_clock_overlay(app),
                                         "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
