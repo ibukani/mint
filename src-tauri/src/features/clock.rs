@@ -8,11 +8,17 @@ pub fn toggle_clock_overlay(app: &AppHandle) {
         } else {
             if let Ok(Some(monitor)) = window.current_monitor() {
                 let monitor_size = monitor.size();
-                let window_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(250, 80));
+                let window_size = window
+                    .outer_size()
+                    .unwrap_or(tauri::PhysicalSize::new(250, 80));
                 let margin = 20;
-                let x = monitor_size.width.saturating_sub(window_size.width + margin);
+                let x = monitor_size
+                    .width
+                    .saturating_sub(window_size.width + margin);
                 let y = margin;
-                let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(x as i32, y as i32)));
+                let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(
+                    x as i32, y as i32,
+                )));
             }
             let _ = window.show();
             let _ = window.set_always_on_top(true);

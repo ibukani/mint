@@ -1,0 +1,49 @@
+:root {
+  --font-family-sans:
+    "Outfit", "Inter", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell,
+    "Open Sans", "Helvetica Neue", sans-serif;
+  --font-size-xs: 0.8rem;
+  --font-size-sm: 0.85rem;
+  --font-size-md: 0.9rem;
+  --font-size-base: 0.95rem;
+  --font-size-lg: 1.4rem;
+  --font-size-xl: 1.8rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --size-app-max-width: 1200px;
+  --size-sidebar-width: 240px;
+  --size-button-min-height: 42px;
+  --size-number-input-width: 100px;
+  --size-checkbox: 20px;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --blur-md: 12px;
+  --blur-lg: 15px;
+  --blur-xl: 20px;
+
+  --transition-fast: 0.2s ease;
+  --transition-base: 0.25s ease;
+  --transition-slow: 0.3s ease;
+
+  --shadow-panel: 0 8px 32px 0 rgb(0 0 0 / 37%);
+  --shadow-active: 0 0 15px rgb(99 102 241 / 10%);
+  --shadow-focus: 0 0 0 2px rgb(99 102 241 / 15%);
+  --shadow-overlay: 0 4px 20px rgb(0 0 0 / 50%);
+  --shadow-overlay-text: 0 0 10px rgb(129 140 248 / 30%);
+}

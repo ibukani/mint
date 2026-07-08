@@ -1,6 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { act, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { createMockSettings } from "./core/mocks/mockSettings";
@@ -22,6 +29,11 @@ vi.mock("@tauri-apps/api/window", () => ({
 describe("App Window Routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getCurrentWindow).mockReturnValue({
+      label: "main",
+      hide: vi.fn().mockResolvedValue(undefined),
+      show: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof getCurrentWindow>);
   });
 
   it("renders settings screen when no query parameter is provided (label is main)", async () => {
@@ -54,6 +66,10 @@ describe("App Window Routing", () => {
     // Check settings screen structure
     expect(screen.getByText("mint")).toBeInTheDocument();
     expect(screen.getAllByText("一般設定").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("heading", { name: "一般設定" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "機能管理" })).toBeNull();
   });
 
   it("renders ClockOverlay when label=clock", async () => {
@@ -87,5 +103,134 @@ describe("App Window Routing", () => {
     const clockCard = screen.getByText(/:/);
     expect(clockCard).toBeInTheDocument();
     expect(screen.queryByText("mint")).not.toBeInTheDocument();
+  });
+
+  it("shows feature cards when the dashboard tab is selected", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    expect(
+      screen.getByRole("heading", { name: "機能管理" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "時計オーバーレイ" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "音声入力" }),
+    ).toBeInTheDocument();
+  });
+
+  it("saves voice-to-text enabled changes from the dashboard", async () => {
+    vi.mocked(invoke).mockImplementation((cmd) => {
+      if (cmd === "load_settings") {
+        return Promise.resolve(createMockSettings());
+      }
+      if (cmd === "save_settings") {
+        return Promise.resolve();
+      }
+      return Promise.resolve(null);
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+    fireEvent.click(screen.getByLabelText("この機能を有効にする"));
+
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
+        settings: expect.objectContaining({
+          voiceToText: expect.objectContaining({ enabled: true }),
+        }),
+      });
+    });
+  });
+
+  it("shows shortcut errors inside the matching dashboard card", async () => {
+    vi.mocked(invoke).mockImplementation((cmd) => {
+      if (cmd === "load_settings") {
+        return Promise.resolve(createMockSettings());
+      }
+      if (cmd === "save_settings") {
+        return Promise.reject(
+          JSON.stringify({
+            type: "duplicateShortcut",
+            features: ["clock"],
+          }),
+        );
+      }
+      return Promise.resolve(null);
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const clockCard = screen
+      .getByRole("heading", { name: "時計オーバーレイ" })
+      .closest("section");
+    expect(clockCard).not.toBeNull();
+
+    fireEvent.change(
+      within(clockCard as HTMLElement).getByLabelText("ショートカットキー"),
+      {
+        target: { value: "Ctrl+Alt+V" },
+      },
+    );
+
+    await waitFor(() => {
+      expect(
+        within(clockCard as HTMLElement).getByText(
+          "ショートカットキーが重複しています",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("opens feature detail settings from dashboard cards", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const clockCard = screen
+      .getByRole("heading", { name: "時計オーバーレイ" })
+      .closest("section");
+    expect(clockCard).not.toBeNull();
+    fireEvent.click(
+      within(clockCard as HTMLElement).getByRole("button", {
+        name: "詳細設定",
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "時計オーバーレイ設定" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+    const voiceToTextCard = screen
+      .getByRole("heading", { name: "音声入力" })
+      .closest("section");
+    expect(voiceToTextCard).not.toBeNull();
+    fireEvent.click(
+      within(voiceToTextCard as HTMLElement).getByRole("button", {
+        name: "詳細設定",
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "音声入力 (Voice to Text) 設定" }),
+    ).toBeInTheDocument();
   });
 });

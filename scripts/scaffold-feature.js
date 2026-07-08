@@ -109,6 +109,7 @@ recordAction("[CREATED] types.ts を作成しました");
 // 3. Generate Component Settings file (Type-Safe, no any/as any)
 const componentContent = `import type React from "react";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
+import { Field, SettingsSection, TextInput } from "../../../design/components";
 
 export const ${pascalName}Settings: React.FC = () => {
   const { featureSettings: settings, handleChange, shortcutError } = useFeatureSettings("${camelName}");
@@ -116,43 +117,38 @@ export const ${pascalName}Settings: React.FC = () => {
   if (!settings) return null;
 
   return (
-    <div className="settings-section">
-      <h2 className="section-title">${pascalName} 設定</h2>
-      <p className="section-description">
-        ${pascalName} 機能の設定を行います。
-      </p>
+    <SettingsSection
+      title="${pascalName} 設定"
+      description="${pascalName} 機能の設定を行います。"
+    >
+      <Field
+        id="${featureName}-enabled-checkbox"
+        label="機能を有効化する"
+        orientation="inline"
+      >
+        <TextInput
+          id="${featureName}-enabled-checkbox"
+          type="checkbox"
+          checked={settings.enabled}
+          onChange={() => handleChange("enabled", !settings.enabled)}
+        />
+      </Field>
 
-      <div className="form-group checkbox-group">
-        <label className="form-label" style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={settings.enabled}
-            onChange={() => handleChange("enabled", !settings.enabled)}
-          />
-          機能を有効化する
-        </label>
-      </div>
-
-      <div className="form-group">
-        <label className="form-label" htmlFor="${featureName}-shortcut-input">ショートカットキー</label>
-        <input
+      <Field
+        id="${featureName}-shortcut-input"
+        label="ショートカットキー"
+        error={shortcutError}
+      >
+        <TextInput
           id="${featureName}-shortcut-input"
           type="text"
-          className={\`form-control \\\${shortcutError ? "is-invalid" : ""}\`}
+          invalid={Boolean(shortcutError)}
           value={settings.shortcut}
           onChange={(e) => handleChange("shortcut", e.target.value)}
           placeholder="例: Ctrl+Alt+${pascalName.charAt(0)}"
         />
-        {shortcutError && (
-          <p
-            className="error-message"
-            style={{ color: "var(--color-error, #ff4d4f)", marginTop: "4px", fontSize: "0.85rem", fontWeight: "bold" }}
-          >
-            {shortcutError}
-          </p>
-        )}
-      </div>
-    </div>
+      </Field>
+    </SettingsSection>
   );
 };
 `;
@@ -267,30 +263,35 @@ for (const mockPath of mockPaths) {
   }
 }
 
-// 9. Auto-Register in App.tsx
-const appTsxPath = path.join(ROOT_DIR, "src/App.tsx");
-if (fs.existsSync(appTsxPath)) {
-  let content = fs.readFileSync(appTsxPath, "utf-8");
-  if (!content.includes(`./features/${featureName}/components/`)) {
+// 9. Auto-Register in settingsTabs.ts
+const settingsTabsPath = path.join(
+  ROOT_DIR,
+  "src/core/navigation/settingsTabs.ts",
+);
+if (fs.existsSync(settingsTabsPath)) {
+  let content = fs.readFileSync(settingsTabsPath, "utf-8");
+  if (!content.includes(`features/${featureName}/components/`)) {
     // 9.1 Add Import
     const importRegex = /(import\s+.*from\s+["'].*["'];)/;
-    const importLine = `import { ${pascalName}Settings } from "./features/${featureName}/components/${pascalName}Settings";\n`;
+    const importLine = `import { ${pascalName}Settings } from "../../features/${featureName}/components/${pascalName}Settings";\n`;
     content = content.replace(importRegex, `${importLine}$1`);
 
-    // 9.2 Add tab to TAB_CONFIG
+    // 9.2 Add tab to SETTINGS_TABS
     content = content.replace(
-      /(const\s+TAB_CONFIG\s*=\s*\[)/,
+      /(export\s+const\s+SETTINGS_TABS\s*=\s*\[)/,
       `$1\n  { id: "${camelName}", label: "${pascalName} 設定" },`,
     );
 
-    // 9.3 Add component to TAB_COMPONENTS
+    // 9.3 Add component to SETTINGS_TAB_COMPONENTS
     content = content.replace(
-      /(const\s+TAB_COMPONENTS:\s*Record<TabId,\s*React\.FC>\s*=\s*\{)/,
+      /(export\s+const\s+SETTINGS_TAB_COMPONENTS:\s*Record<SettingsTabId,\s*React\.FC>\s*=\s*\{)/,
       `$1\n  ${camelName}: ${pascalName}Settings,`,
     );
 
-    fs.writeFileSync(appTsxPath, content, "utf-8");
-    recordAction("[AUTO-REGISTERED] App.tsx に設定タブを登録しました。");
+    fs.writeFileSync(settingsTabsPath, content, "utf-8");
+    recordAction(
+      "[AUTO-REGISTERED] settingsTabs.ts に設定タブを登録しました。",
+    );
   }
 }
 

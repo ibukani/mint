@@ -33,6 +33,8 @@ For Rust-only checks, run commands from `src-tauri/`, for example `cargo check` 
 
 This project uses a **Static Feature-Module Architecture** to prevent codebase bloat, maintain strong compile-time type safety, and ensure high maintainability. **Do NOT use dynamic runtime plugin registries or generic JSON (e.g. `serde_json::Value`) dispatchers.** All new tools must be statically typed and modularized.
 
+UI design responsibilities are separated into `src/design/`. Feature modules decide which settings and workflows they expose, while shared colors, spacing, form controls, settings sections, app shell layout, and overlay framing live in the design layer. See [`docs/design-architecture.md`](design-architecture.md) before adding or changing user-facing UI.
+
 ### Module Structure
 All new features (tools) must be organized as follows:
 
@@ -40,6 +42,7 @@ All new features (tools) must be organized as follows:
    - `components/`: Contains settings, main widget, or overlay UI.
    - `hooks/`: Local state management and side effects.
    - `types.ts`: Strongly typed configurations for this feature.
+   - Feature settings UI should compose `src/design/components` such as `SettingsSection`, `Field`, `TextInput`, `Select`, and `Button` instead of defining colors, spacing, shadows, rounded corners, or low-level form classes locally.
    - Example:
      ```text
      src/features/my_tool/

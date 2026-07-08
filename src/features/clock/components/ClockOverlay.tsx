@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
+import { OverlayCard, OverlayFrame } from "../../../design/layout";
 
 const TickingClock: React.FC = () => {
   const [time, setTime] = useState(new Date());
@@ -53,13 +54,16 @@ export const ClockOverlay: React.FC = () => {
   }, [settings, trigger]);
 
   return (
-    <div className="clock-overlay-container">
-      <div
-        className="clock-card"
-        style={{ fontSize: settings?.clock.fontSize }}
+    <OverlayFrame>
+      <OverlayCard
+        style={
+          {
+            "--overlay-font-size": settings?.clock.fontSize,
+          } as React.CSSProperties
+        }
       >
         <TickingClock />
-      </div>
-    </div>
+      </OverlayCard>
+    </OverlayFrame>
   );
 };
