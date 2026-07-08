@@ -8,7 +8,7 @@ pub fn init_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show_i = MenuItem::with_id(
         app,
         "show",
-        "設定を開く (Open Settings)",
+        "ダッシュボードを開く (Open Dashboard)",
         true,
         None::<&str>,
     )?;
