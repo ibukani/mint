@@ -16,12 +16,14 @@ This repository is a Tauri 2 desktop app with a React 19 + TypeScript frontend.
 
 Use the package scripts in `package.json`:
 
+- `npm run ai:context` prints a compact, live summary of feature modules, settings, windows, IPC commands, and verification scripts. Run this before broad exploration to reduce token usage.
 - `npm run dev` starts the Vite frontend development server.
 - `npm run build` runs `tsc` and then builds the Vite frontend.
 - `npm run preview` serves the built frontend locally.
 - `npm run tauri -- dev` runs the full Tauri desktop app in development.
 - `npm run tauri -- build` builds the distributable desktop app.
 - `npm run test` runs frontend Vitest tests.
+- `npm run check:quick` runs TypeScript, Biome, script syntax checks, and architecture validation without tests or bundling. Use it for fast feedback while iterating, then run the full checks before completion.
 
 For Rust-only checks, run commands from `src-tauri/`, for example `cargo check` or `cargo test`.
 
@@ -99,6 +101,11 @@ Modify the global configuration types to include the new tool's settings.
 
 ## 5. AI Development Harness & Testing
 
+### 0. Token-Efficient Orientation
+- 最初に `npm run ai:context` を実行して、現時点の機能一覧、設定スキーマ、Tauri ウィンドウ、IPC コマンド、主要検証コマンドを確認してください。
+- 広い調査が必要な場合でも、まず `AGENTS.md`、本ファイル、該当 Skill、`npm run ai:context` の出力に絞り、必要になったファイルだけ追加で読んでください。
+- 検証ログは通常 `rtk npm run check:quick`、`rtk npm run check:ai-context`、`rtk npm run check` のように `rtk` 経由で取得し、失敗箇所中心の短い出力にしてください。アーキテクチャ検証の成功詳細が必要な場合だけ `npm run verify:architecture:verbose` を使ってください。
+
 ### 1. Browser-Only Development & Mocking
 - 本アプリはブラウザ単体での動作確認用のTauri API自動モック環境 (`src/core/mocks/tauriMock.ts`) を備えています。
 - 通常のWebブラウザで動作している場合は、設定の読み込みや保存などのIPC呼び出しが自動的に `localStorage` を使うモックに切り替わります。
@@ -109,6 +116,7 @@ Modify the global configuration types to include the new tool's settings.
   ```bash
   node scripts/scaffold-feature.js <feature_name> [PascalComponentName]
   ```
+- 生成されたファイルの詳細ログが必要な場合だけ `--verbose` を付けてください。通常は短いサマリ出力で十分です。
 - 詳しい作成手順や手動登録の詳細は、カスタムSkillの指示書 `.agents/skills/create_static_feature/SKILL.md` を参照してください。
 
 ### 3. 設計整合性の検証 (Verification)

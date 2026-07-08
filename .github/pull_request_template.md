@@ -21,7 +21,9 @@
 
 ## 実行した検証コマンド
 <!-- 以下のコマンドを実行し、パスしたことを確認してください -->
-- [ ] `npm run check` (TypeScript, Biome, Vitest, Architecture Verify)
+- [ ] `npm run check:quick` (fast TypeScript, Biome, script, AI context, Architecture Verify)
+- [ ] `npm run check` (TypeScript, Biome, Vitest, AI context, Architecture Verify, Vite build)
+- [ ] `npm run test:scaffold` (Feature scaffolder smoke test) ※Scaffold変更がある場合
 - [ ] `npm run check:tauri` (Rust/Cargo Verify) ※Rust環境がある場合
 
 ## スクリーンショット / UI影響

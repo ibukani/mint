@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -14,7 +14,7 @@ console.log(`Checking syntax for ${files.length} script files...`);
 for (const file of files) {
   const filePath = path.join(SCRIPTS_DIR, file);
   try {
-    execSync(`node --check "${filePath}"`, { stdio: "inherit" });
+    execFileSync("node", ["--check", filePath], { stdio: "inherit" });
   } catch (_err) {
     console.error(`Syntax error in ${file}`);
     hasError = true;

@@ -98,6 +98,9 @@ src/features/my_tool/
 パッケージのルートディレクトリで実行してください：
 
 ```bash
+# AI向けの低トークン概要を表示
+npm run ai:context
+
 # 依存関係のインストール
 npm install
 

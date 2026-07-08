@@ -1,17 +1,31 @@
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 const args = process.argv.slice(2);
-if (args.length < 1) {
+const options = new Set(args.filter((arg) => arg.startsWith("--")));
+const positionalArgs = args.filter((arg) => !arg.startsWith("--"));
+const verbose = options.has("--verbose");
+
+if (positionalArgs.length < 1) {
   console.error(
-    "\x1b[31m[ERROR]\x1b[0m 使用法: node scripts/scaffold-feature.js <feature_name> [PascalComponentName]",
+    "\x1b[31m[ERROR]\x1b[0m 使用法: node scripts/scaffold-feature.js <feature_name> [PascalComponentName] [--verbose]",
   );
   console.error("例: node scripts/scaffold-feature.js my_tool MyTool");
   process.exit(1);
 }
 
-const featureName = args[0];
+const featureName = positionalArgs[0];
+const FEATURE_NAME_REGEX = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
+const PASCAL_NAME_REGEX = /^[A-Z][A-Za-z0-9]*$/;
+
+if (!FEATURE_NAME_REGEX.test(featureName)) {
+  console.error(
+    "\x1b[31m[ERROR]\x1b[0m feature_name は Rust モジュール名として有効な snake_case で指定してください。",
+  );
+  console.error("例: my_tool, voice_note2");
+  process.exit(1);
+}
 
 // Convert snake_case / kebab-case feature_name to PascalCase component prefix
 const defaultPascal = featureName
@@ -19,7 +33,15 @@ const defaultPascal = featureName
   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
   .join("");
 
-const pascalName = args[1] || defaultPascal;
+const pascalName = positionalArgs[1] || defaultPascal;
+
+if (!PASCAL_NAME_REGEX.test(pascalName)) {
+  console.error(
+    "\x1b[31m[ERROR]\x1b[0m PascalComponentName は PascalCase の TypeScript/Rust 識別子で指定してください。",
+  );
+  console.error("例: MyTool, VoiceNote2");
+  process.exit(1);
+}
 
 // Convert snake_case / kebab-case feature_name to camelCase settings key
 const camelName = featureName
@@ -43,10 +65,21 @@ const RUST_FEATURE_PATH = path.join(
   `${featureName}.rs`,
 );
 
-console.log(
-  "\x1b[36m%s\x1b[0m",
-  `=== Static Feature Module Scaffolder: ${featureName} ===\n`,
-);
+const actions = [];
+
+function recordAction(message) {
+  actions.push(message);
+  if (verbose) {
+    console.log(message);
+  }
+}
+
+if (verbose) {
+  console.log(
+    "\x1b[36m%s\x1b[0m",
+    `=== Static Feature Module Scaffolder: ${featureName} ===\n`,
+  );
+}
 
 // 1. Create directories
 const componentsDir = path.join(FEATURE_DIR, "components");
@@ -61,8 +94,8 @@ if (fs.existsSync(FEATURE_DIR)) {
 
 fs.mkdirSync(componentsDir, { recursive: true });
 fs.mkdirSync(hooksDir, { recursive: true });
-console.log(`[CREATED] ディレクトリを作成しました: ${componentsDir}`);
-console.log(`[CREATED] ディレクトリを作成しました: ${hooksDir}`);
+recordAction(`[CREATED] ディレクトリを作成しました: ${componentsDir}`);
+recordAction(`[CREATED] ディレクトリを作成しました: ${hooksDir}`);
 
 // 2. Generate types.ts
 const typesContent = `export interface ${pascalName}Settings {
@@ -71,7 +104,7 @@ const typesContent = `export interface ${pascalName}Settings {
 }
 `;
 fs.writeFileSync(path.join(FEATURE_DIR, "types.ts"), typesContent);
-console.log(`[CREATED] types.ts を作成しました`);
+recordAction("[CREATED] types.ts を作成しました");
 
 // 3. Generate Component Settings file (Type-Safe, no any/as any)
 const componentContent = `import type React from "react";
@@ -127,7 +160,7 @@ fs.writeFileSync(
   path.join(componentsDir, `${pascalName}Settings.tsx`),
   componentContent,
 );
-console.log(`[CREATED] ${pascalName}Settings.tsx を作成しました`);
+recordAction(`[CREATED] ${pascalName}Settings.tsx を作成しました`);
 
 // 4. Generate Rust backend file
 const rustContent = `use serde::{Serialize, Deserialize};
@@ -136,7 +169,7 @@ const rustContent = `use serde::{Serialize, Deserialize};
 // 必要に応じてコマンドを定義し、src-tauri/src/lib.rs の tauri::generate_handler! に登録します。
 `;
 fs.writeFileSync(RUST_FEATURE_PATH, rustContent);
-console.log(`[CREATED] Rustモジュールを作成しました: ${RUST_FEATURE_PATH}`);
+recordAction(`[CREATED] Rustモジュールを作成しました: ${RUST_FEATURE_PATH}`);
 
 // 5. Update src-tauri/src/features/mod.rs if exists
 const rustModPath = path.join(ROOT_DIR, "src-tauri/src/features/mod.rs");
@@ -146,7 +179,7 @@ if (fs.existsSync(rustModPath)) {
   if (!modContent.includes(modLine)) {
     modContent = `${modContent.trim()}\n${modLine}\n`;
     fs.writeFileSync(rustModPath, modContent);
-    console.log(`[UPDATED] ${rustModPath} に "${modLine}" を追記しました。`);
+    recordAction(`[UPDATED] ${rustModPath} に "${modLine}" を追記しました。`);
   }
 }
 
@@ -166,7 +199,7 @@ if (fs.existsSync(appSettingsPath)) {
       `$1\n  ${camelName}: ${pascalName}Settings;`,
     );
     fs.writeFileSync(appSettingsPath, content, "utf-8");
-    console.log(`[AUTO-REGISTERED] AppSettings.tsx に型定義を登録しました。`);
+    recordAction("[AUTO-REGISTERED] AppSettings.tsx に型定義を登録しました。");
   }
 }
 
@@ -210,7 +243,7 @@ impl Default for ${pascalName}Settings {
     );
 
     fs.writeFileSync(settingsRsPath, content, "utf-8");
-    console.log(
+    recordAction(
       `[AUTO-REGISTERED] settings.rs に構造体定義と初期値を登録しました。`,
     );
   }
@@ -227,7 +260,7 @@ for (const mockPath of mockPaths) {
       const mockField = `\n  ${camelName}: {\n    enabled: false,\n    shortcut: "Ctrl+Alt+${pascalName.charAt(0)}",\n  },`;
       content = content.replace(defaultSettingsRegex, `$1${mockField}`);
       fs.writeFileSync(mockPath, content, "utf-8");
-      console.log(
+      recordAction(
         `[AUTO-REGISTERED] ${path.basename(mockPath)} にモックデータを登録しました。`,
       );
     }
@@ -257,26 +290,49 @@ if (fs.existsSync(appTsxPath)) {
     );
 
     fs.writeFileSync(appTsxPath, content, "utf-8");
-    console.log(`[AUTO-REGISTERED] App.tsx に設定タブを登録しました。`);
+    recordAction("[AUTO-REGISTERED] App.tsx に設定タブを登録しました。");
+  }
+}
+
+if (verbose) {
+  console.log(
+    "\n\x1b[32m%s\x1b[0m",
+    "=== Scaffolding & Auto-registration 完了 ===",
+  );
+  console.log(
+    "\nフォーマッタとリンター (Biome) を実行して生成コードを整形しています...\n",
+  );
+}
+try {
+  const biomeBin =
+    process.platform === "win32"
+      ? path.join(ROOT_DIR, "node_modules/.bin/biome.cmd")
+      : path.join(ROOT_DIR, "node_modules/.bin/biome");
+  const biomeResult = spawnSync(
+    biomeBin,
+    ["check", "--write", "--unsafe", "."],
+    {
+      stdio: verbose ? "inherit" : "pipe",
+    },
+  );
+  if (biomeResult.error) {
+    throw biomeResult.error;
+  }
+  if (verbose) {
+    console.log("\n\x1b[32m%s\x1b[0m", "=== Biome formatting 完了 ===");
+  }
+} catch (_e) {
+  if (verbose) {
+    console.warn(
+      "\x1b[33m[WARN]\x1b[0m Biome の自動修正に失敗しました。`npm run check` 等で手動確認してください。",
+    );
   }
 }
 
 console.log(
-  "\n\x1b[32m%s\x1b[0m",
-  "=== Scaffolding & Auto-registration 完了 ===",
+  `\x1b[32m[PASS]\x1b[0m Scaffolded feature "${featureName}" (${actions.length} actions).`,
 );
-console.log(
-  "\nフォーマッタとリンター (Biome) を実行して生成コードを整形しています...\n",
-);
-try {
-  execSync("npx @biomejs/biome check --write --unsafe .", { stdio: "inherit" });
-  console.log("\n\x1b[32m%s\x1b[0m", "=== Biome formatting 完了 ===");
-} catch (_e) {
-  console.warn(
-    "\x1b[33m[WARN]\x1b[0m Biome の自動修正に失敗しました。`npm run check` 等で手動確認してください。",
-  );
+console.log("Run `npm run check` to verify the generated feature.");
+if (!verbose) {
+  console.log("Use `--verbose` to show created and updated files.");
 }
-
-console.log(
-  "\n`npm run check` を実行して設計整合性が保たれているか確認してください。\n",
-);

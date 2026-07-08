@@ -16,9 +16,11 @@ pub fn run() {
                         if let Ok(settings) = core::settings::load_settings_internal(app) {
                             for (feature, keys) in settings.active_shortcuts() {
                                 if shortcut_str == keys {
-                                    match feature.as_str() {
+                                    match feature {
                                         "clock" => features::clock::toggle_clock_overlay(app),
-                                        "voiceToText" => println!("Voice to text triggered via global shortcut!"),
+                                        "voiceToText" => {
+                                            println!("Voice to text triggered via global shortcut!")
+                                        }
                                         _ => {}
                                     }
                                 }
@@ -38,23 +40,25 @@ pub fn run() {
                 Ok(settings) => {
                     use tauri_plugin_global_shortcut::GlobalShortcutExt;
                     let shortcuts = settings.active_shortcuts();
-                    
+
                     // Check for duplicates
                     let mut unique_keys = std::collections::HashSet::new();
                     let mut has_duplicates = false;
                     for (_, key) in &shortcuts {
-                        if !unique_keys.insert(key) {
+                        if !unique_keys.insert(*key) {
                             has_duplicates = true;
                             break;
                         }
                     }
 
                     if has_duplicates {
-                        eprintln!("Warning: Global shortcuts are duplicated in settings. Not registering to prevent conflict.");
+                        eprintln!(
+                            "Warning: Global shortcuts are duplicated in settings. Not registering to prevent conflict."
+                        );
                     } else {
                         for (feature, key) in shortcuts {
                             if !key.is_empty() {
-                                if let Err(e) = app.global_shortcut().register(&key) {
+                                if let Err(e) = app.global_shortcut().register(key) {
                                     eprintln!("Failed to register {} shortcut: {}", feature, e);
                                 }
                             }

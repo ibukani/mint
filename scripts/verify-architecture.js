@@ -15,12 +15,16 @@ const WINDOW_ROUTES_PATH = path.join(ROOT_DIR, "src/core/windowRoutes.ts");
 const TAURI_CONF_PATH = path.join(ROOT_DIR, "src-tauri/tauri.conf.json");
 const RS_LIB_PATH = path.join(ROOT_DIR, "src-tauri/src/lib.rs");
 
-console.log(
-  "\x1b[36m%s\x1b[0m",
-  "=== Static Feature-Module Architecture Validator ===\n",
-);
+const verbose =
+  process.argv.includes("--verbose") ||
+  process.env.VERBOSE_ARCHITECTURE === "1";
 
 let errorsCount = 0;
+let successCount = 0;
+const validationState = {
+  featureMetadata: [],
+  rustSettingsFields: new Set(),
+};
 
 function reportError(message) {
   console.error(`\x1b[31m[ERROR]\x1b[0m ${message}`);
@@ -28,7 +32,42 @@ function reportError(message) {
 }
 
 function reportSuccess(message) {
-  console.log(`\x1b[32m[PASS]\x1b[0m ${message}`);
+  successCount++;
+  if (verbose) {
+    console.log(`\x1b[32m[PASS]\x1b[0m ${message}`);
+  }
+}
+
+function listFilesRecursive(rootDir, options = {}) {
+  const {
+    extensions,
+    ignoredDirs = new Set(["node_modules", "dist"]),
+    ignoredFiles = new Set(),
+  } = options;
+  const results = [];
+
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir)) {
+      const fullPath = path.join(dir, entry);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        if (!ignoredDirs.has(entry)) {
+          walk(fullPath);
+        }
+        continue;
+      }
+      if (ignoredFiles.has(entry)) continue;
+      if (extensions && !extensions.some((ext) => entry.endsWith(ext))) {
+        continue;
+      }
+      results.push(fullPath);
+    }
+  }
+
+  if (fs.existsSync(rootDir)) {
+    walk(rootDir);
+  }
+  return results;
 }
 
 // 1. Scan features directory
@@ -41,7 +80,15 @@ const featureFolders = fs.readdirSync(FEATURES_DIR).filter((file) => {
   return fs.statSync(path.join(FEATURES_DIR, file)).isDirectory();
 });
 
-console.log(`Scanning features in src/features/: ${featureFolders.join(", ")}`);
+if (verbose) {
+  console.log(
+    "\x1b[36m%s\x1b[0m",
+    "=== Static Feature-Module Architecture Validator ===\n",
+  );
+  console.log(
+    `Scanning features in src/features/: ${featureFolders.join(", ")}`,
+  );
+}
 
 // 2. Load AppSettings.tsx
 if (!fs.existsSync(TS_SETTINGS_PATH)) {
@@ -166,8 +213,12 @@ if (!appSettingsInterfaceMatch) {
       // Verify Rust counterpart
       verifyRustSettings(propertyName, typeName, tsFields);
 
-      if (!global.featureMetadata) global.featureMetadata = [];
-      global.featureMetadata.push({ folder, typeName, propertyName, tsFields });
+      validationState.featureMetadata.push({
+        folder,
+        typeName,
+        propertyName,
+        tsFields,
+      });
     }
   }
 }
@@ -235,8 +286,7 @@ function verifyRustSettings(tsPropertyName, tsTypeName, tsFields) {
   const structBody = appSettingsStructMatch[1];
 
   // Track checked fields for 1:1 matching
-  if (!global.rustSettingsFields) global.rustSettingsFields = new Set();
-  global.rustSettingsFields.add(snakeCaseProp);
+  validationState.rustSettingsFields.add(snakeCaseProp);
 
   const fieldRegex = new RegExp(
     `pub\\s+${snakeCaseProp}\\s*:\\s*${tsTypeName}\\b`,
@@ -286,7 +336,7 @@ if (fs.existsSync(RS_SETTINGS_PATH)) {
       const fieldName = match[1];
       if (
         fieldName !== "theme" && // Base property
-        !global.rustSettingsFields?.has(fieldName)
+        !validationState.rustSettingsFields.has(fieldName)
       ) {
         reportError(
           `Rust backend: Field "${fieldName}" in AppSettings does not have a corresponding TS feature setting. TS and Rust settings must be 1:1.`,
@@ -309,7 +359,7 @@ function checkMockSync(mockPath) {
     return;
   }
   const mockContent = fs.readFileSync(mockPath, "utf-8");
-  for (const { propertyName, tsFields } of global.featureMetadata) {
+  for (const { propertyName, tsFields } of validationState.featureMetadata) {
     const propRegex = new RegExp(`\\b${propertyName}\\s*:`);
     if (!propRegex.test(mockContent)) {
       reportError(
@@ -410,30 +460,25 @@ if (fs.existsSync(TAURI_CONF_PATH) && fs.existsSync(WINDOW_ROUTES_PATH)) {
 // 7. Check Rust commands & generate_handler! sync
 if (fs.existsSync(RS_LIB_PATH)) {
   const libContent = fs.readFileSync(RS_LIB_PATH, "utf-8");
-
-  // Recursively find commands in src-tauri/src
   const rustCommands = [];
-  function scanRustFiles(dir) {
-    const list = fs.readdirSync(dir);
-    for (const file of list) {
-      const fullPath = path.join(dir, file);
-      if (fs.statSync(fullPath).isDirectory()) {
-        scanRustFiles(fullPath);
-      } else if (file.endsWith(".rs")) {
-        const content = fs.readFileSync(fullPath, "utf-8");
-        const cmdRegex = /#\[tauri::command\]\s*(?:pub\s+)?fn\s+(\w+)/g;
-        let cmdMatch = cmdRegex.exec(content);
-        while (cmdMatch !== null) {
-          rustCommands.push({
-            name: cmdMatch[1],
-            file: path.relative(ROOT_DIR, fullPath),
-          });
-          cmdMatch = cmdRegex.exec(content);
-        }
-      }
+
+  for (const rustFile of listFilesRecursive(
+    path.join(ROOT_DIR, "src-tauri/src"),
+    {
+      extensions: [".rs"],
+    },
+  )) {
+    const content = fs.readFileSync(rustFile, "utf-8");
+    const cmdRegex = /#\[tauri::command\]\s*(?:pub\s+)?fn\s+(\w+)/g;
+    let cmdMatch = cmdRegex.exec(content);
+    while (cmdMatch !== null) {
+      rustCommands.push({
+        name: cmdMatch[1],
+        file: path.relative(ROOT_DIR, rustFile),
+      });
+      cmdMatch = cmdRegex.exec(content);
     }
   }
-  scanRustFiles(path.join(ROOT_DIR, "src-tauri/src"));
 
   const generateHandlerMatch = /generate_handler!\[([\s\S]*?)\]/.exec(
     libContent,
@@ -459,26 +504,18 @@ if (fs.existsSync(RS_LIB_PATH)) {
 
 // 8. Check frontend invoke & mockIPC sync
 const frontendInvokes = new Set();
-function scanInvokes(dir) {
-  const list = fs.readdirSync(dir);
-  for (const file of list) {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      if (file === "mocks" || file === "node_modules" || file === "dist")
-        continue;
-      scanInvokes(fullPath);
-    } else if (file.endsWith(".ts") || file.endsWith(".tsx")) {
-      const content = fs.readFileSync(fullPath, "utf-8");
-      const invokeRegex = /invoke(?:<\w+>)?\(\s*["'](\w+)["']/g;
-      let invokeMatch = invokeRegex.exec(content);
-      while (invokeMatch !== null) {
-        frontendInvokes.add(invokeMatch[1]);
-        invokeMatch = invokeRegex.exec(content);
-      }
-    }
+for (const sourceFile of listFilesRecursive(path.join(ROOT_DIR, "src"), {
+  extensions: [".ts", ".tsx"],
+  ignoredDirs: new Set(["mocks", "node_modules", "dist"]),
+})) {
+  const content = fs.readFileSync(sourceFile, "utf-8");
+  const invokeRegex = /invoke(?:<\w+>)?\(\s*["'](\w+)["']/g;
+  let invokeMatch = invokeRegex.exec(content);
+  while (invokeMatch !== null) {
+    frontendInvokes.add(invokeMatch[1]);
+    invokeMatch = invokeRegex.exec(content);
   }
 }
-scanInvokes(path.join(ROOT_DIR, "src"));
 
 function checkMockIPCCase(mockPath, _isVitest = false) {
   if (fs.existsSync(mockPath)) {
@@ -501,39 +538,23 @@ checkMockIPCCase(TAURI_MOCK_PATH);
 checkMockIPCCase(VITEST_SETUP_PATH);
 
 // 9. Scan for any/as any violations
-function scanAnySafety(dir) {
-  const list = fs.readdirSync(dir);
-  for (const file of list) {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      if (
-        file === "mocks" ||
-        file === "node_modules" ||
-        file === "dist" ||
-        file === "test"
-      )
-        continue;
-      scanAnySafety(fullPath);
-    } else if (file.endsWith(".ts") || file.endsWith(".tsx")) {
-      if (
-        file.endsWith(".test.ts") ||
-        file.endsWith(".test.tsx") ||
-        file === "vite-env.d.ts"
-      )
-        continue;
-      const content = fs.readFileSync(fullPath, "utf-8");
-      // Match "as any" or ": any"
-      const anyRegex = /(?::\s*any\b|as\s+any\b)/g;
-      if (anyRegex.test(content)) {
-        const relativeFile = path.relative(ROOT_DIR, fullPath);
-        reportError(
-          `Type safety: "any" or "as any" usage detected in "${relativeFile}". Avoid type safety bypass.`,
-        );
-      }
-    }
+for (const sourceFile of listFilesRecursive(path.join(ROOT_DIR, "src"), {
+  extensions: [".ts", ".tsx"],
+  ignoredDirs: new Set(["mocks", "node_modules", "dist", "test"]),
+  ignoredFiles: new Set(["vite-env.d.ts"]),
+})) {
+  if (sourceFile.endsWith(".test.ts") || sourceFile.endsWith(".test.tsx")) {
+    continue;
+  }
+  const content = fs.readFileSync(sourceFile, "utf-8");
+  const anyRegex = /(?::\s*any\b|as\s+any\b)/g;
+  if (anyRegex.test(content)) {
+    const relativeFile = path.relative(ROOT_DIR, sourceFile);
+    reportError(
+      `Type safety: "any" or "as any" usage detected in "${relativeFile}". Avoid type safety bypass.`,
+    );
   }
 }
-scanAnySafety(path.join(ROOT_DIR, "src"));
 
 // 10. Check for placeholder / TODO leak
 const allowedTodos = [
@@ -555,61 +576,40 @@ const allowedTodos = [
   'if self.status == "placeholder" || !self.enabled || s.is_empty() {',
 ];
 
-function scanTodos(dir) {
-  const list = fs.readdirSync(dir);
-  for (const file of list) {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      if (
-        file === "node_modules" ||
-        file === "dist" ||
-        file === "mocks" ||
-        file === "test"
-      )
-        continue;
-      scanTodos(fullPath);
-    } else if (
-      file.endsWith(".ts") ||
-      file.endsWith(".tsx") ||
-      file.endsWith(".rs") ||
-      file.endsWith(".md")
-    ) {
-      if (
-        file.endsWith(".test.ts") ||
-        file.endsWith(".test.tsx") ||
-        file === "verify-architecture.js" ||
-        file === "scaffold-feature.js"
-      )
-        continue;
-      const content = fs.readFileSync(fullPath, "utf-8");
+function scanTodoFiles(rootDir) {
+  const files = listFilesRecursive(rootDir, {
+    extensions: [".ts", ".tsx", ".rs", ".md"],
+    ignoredDirs: new Set(["node_modules", "dist", "mocks", "test"]),
+    ignoredFiles: new Set(["verify-architecture.js", "scaffold-feature.js"]),
+  });
 
-      // Match TODO or placeholder/未実装
-      const todoLines = content.split("\n");
-      todoLines.forEach((line, idx) => {
-        // Ignore HTML placeholder= attributes
-        if (/placeholder=/i.test(line)) return;
-
-        // Ignore valid placeholder literal or comments in tests
-        if (line.includes('"placeholder"') || line.includes("is placeholder"))
-          return;
-
-        if (/todo|\bplaceholder\b|未実装/i.test(line)) {
-          const isAllowed = allowedTodos.some((allowed) =>
-            line.includes(allowed),
-          );
-          if (!isAllowed) {
-            const relativeFile = path.relative(ROOT_DIR, fullPath);
-            reportError(
-              `TODO/Placeholder leak in "${relativeFile}" at line ${idx + 1}: "${line.trim()}"`,
-            );
-          }
-        }
-      });
+  for (const filePath of files) {
+    if (filePath.endsWith(".test.ts") || filePath.endsWith(".test.tsx")) {
+      continue;
     }
+    const content = fs.readFileSync(filePath, "utf-8");
+    const todoLines = content.split("\n");
+    todoLines.forEach((line, idx) => {
+      if (/placeholder=/i.test(line)) return;
+      if (line.includes('"placeholder"') || line.includes("is placeholder"))
+        return;
+
+      if (/todo|\bplaceholder\b|未実装/i.test(line)) {
+        const isAllowed = allowedTodos.some((allowed) =>
+          line.includes(allowed),
+        );
+        if (!isAllowed) {
+          const relativeFile = path.relative(ROOT_DIR, filePath);
+          reportError(
+            `TODO/Placeholder leak in "${relativeFile}" at line ${idx + 1}: "${line.trim()}"`,
+          );
+        }
+      }
+    });
   }
 }
-scanTodos(path.join(ROOT_DIR, "src"));
-scanTodos(path.join(ROOT_DIR, "src-tauri/src"));
+scanTodoFiles(path.join(ROOT_DIR, "src"));
+scanTodoFiles(path.join(ROOT_DIR, "src-tauri/src"));
 
 // 11. Check that lib.rs does not directly use feature shortcuts
 const LIB_RS_PATH = path.join(ROOT_DIR, "src-tauri/src/lib.rs");
@@ -626,8 +626,8 @@ if (fs.existsSync(LIB_RS_PATH)) {
   }
 }
 
-console.log("\n----------------------------------------");
 if (errorsCount > 0) {
+  console.log("\n----------------------------------------");
   console.log(
     `\x1b[31m%s\x1b[0m`,
     `Verification FAILED with ${errorsCount} error(s).`,
@@ -636,7 +636,7 @@ if (errorsCount > 0) {
 } else {
   console.log(
     `\x1b[32m%s\x1b[0m`,
-    "Verification PASSED. Architecture is aligned!",
+    `Verification PASSED. Architecture is aligned (${successCount} checks).`,
   );
   process.exit(0);
 }
