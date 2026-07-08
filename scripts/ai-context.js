@@ -131,6 +131,7 @@ export function buildAiContext() {
     formatSection("Core docs", [
       "docs/ai-development.md - mandatory AI development rules",
       "docs/ai-foundation-audit.md - current AI development foundation status",
+      "docs/ai-quality-rubric.md - 100-point AI development quality bar",
       "docs/architecture.md - static feature-module overview",
       "docs/manual-verification.md - manual desktop checks",
       "docs/adr/001-static-feature-module.md - architecture decision",
@@ -143,9 +144,11 @@ export function buildAiContext() {
         "verify:architecture:verbose",
         "check:scripts",
         "check:ai-context",
+        "check:ai-foundation",
         "check:quick",
         "test",
         "check",
+        "check:all",
         "check:tauri",
         "scaffold:feature",
       ]

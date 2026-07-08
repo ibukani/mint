@@ -24,6 +24,8 @@ Use the package scripts in `package.json`:
 - `npm run tauri -- build` builds the distributable desktop app.
 - `npm run test` runs frontend Vitest tests.
 - `npm run check:quick` runs TypeScript, Biome, script syntax checks, and architecture validation without tests or bundling. Use it for fast feedback while iterating, then run the full checks before completion.
+- `npm run check:ai-foundation` verifies the AI development foundation itself: required scripts, Node version alignment, core AI docs, CI gates, and PR template checklists.
+- `npm run check:all` runs the full local release gate: frontend checks, scaffold smoke test, and Rust/Tauri checks.
 
 For Rust-only checks, run commands from `src-tauri/`, for example `cargo check` or `cargo test`.
 
@@ -55,56 +57,27 @@ All new features (tools) must be organized as follows:
 
 ## 4. Extension Guidelines (How to add a new tool)
 
-To add a new tool (e.g. `new_tool`), follow these steps:
+To add a new tool (e.g. `new_tool`), start from the scaffolder. Do not manually create the initial feature wiring.
 
-### Step 1: Update AppSettings Types
-Modify the global configuration types to include the new tool's settings.
+```bash
+npm run scaffold:feature new_tool NewTool
+```
 
-1. **TypeScript (`src/features/new_tool/types.ts` & `src/core/context/AppSettings.tsx`)**:
-   ```typescript
-   // src/features/new_tool/types.ts
-   export interface NewToolSettings {
-     enabled: boolean;
-     shortcut: string;
-     // other fields...
-   }
-   
-   // src/core/context/AppSettings.tsx
-   export interface AppSettings {
-     // ... existing features
-     newTool: NewToolSettings;
-   }
-   ```
-2. **Rust (`src-tauri/src/core/settings.rs`)**:
-   ```rust
-   #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-   pub struct NewToolSettings {
-       pub enabled: bool,
-       pub shortcut: String,
-   }
-   
-   #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
-   pub struct AppSettings {
-       // ... existing features
-       pub new_tool: NewToolSettings,
-   }
-   ```
+The scaffolder creates the frontend feature module, Rust feature module, AppSettings wiring, mock defaults, settings tab registration, and baseline architecture-compatible files. After generation:
 
-### Step 2: Create the Feature Module
-1. Create `src/features/new_tool/` and implement the settings panel (`NewToolSettings.tsx`) and optional overlay (`NewToolOverlay.tsx`).
-2. Create `src-tauri/src/features/new_tool.rs` and write any backend commands.
-
-### Step 3: Register in App Shell
-1. Import and place the settings panel inside `src/App.tsx` Settings tabs.
-2. If the tool has an overlay window, add a window in `tauri.conf.json` and route its label in `src/App.tsx`.
-3. Register the Rust commands in `src-tauri/src/lib.rs`.
+1. Implement feature-specific UI and behavior inside `src/features/new_tool/`.
+2. Add typed Rust commands in `src-tauri/src/features/new_tool.rs` only when backend behavior is needed.
+3. Register any new Rust command in `src-tauri/src/lib.rs` and add the matching browser/Vitest mock case.
+4. If the tool needs an overlay window, add the window in `src-tauri/tauri.conf.json` and route the label in `src/core/windowRoutes.ts`.
+5. Run `npm run check:quick`; before PR or handoff, run `npm run check:all` when the Rust/Tauri environment is available.
 
 ## 5. AI Development Harness & Testing
 
 ### 0. Token-Efficient Orientation
 - 最初に `npm run ai:context` を実行して、現時点の機能一覧、設定スキーマ、Tauri ウィンドウ、IPC コマンド、主要検証コマンドを確認してください。
 - 広い調査が必要な場合でも、まず `AGENTS.md`、本ファイル、該当 Skill、`npm run ai:context` の出力に絞り、必要になったファイルだけ追加で読んでください。
-- 検証ログは通常 `rtk npm run check:quick`、`rtk npm run check:ai-context`、`rtk npm run check` のように `rtk` 経由で取得し、失敗箇所中心の短い出力にしてください。アーキテクチャ検証の成功詳細が必要な場合だけ `npm run verify:architecture:verbose` を使ってください。
+- 完了判断では `docs/ai-quality-rubric.md` の100点基準を使い、各項目に対する現在の証拠を確認してください。
+- 検証ログは通常 `rtk npm run check:quick`、`rtk npm run check:ai-context`、`rtk npm run check:ai-foundation`、`rtk npm run check` のように `rtk` 経由で取得し、失敗箇所中心の短い出力にしてください。アーキテクチャ検証の成功詳細が必要な場合だけ `npm run verify:architecture:verbose` を使ってください。
 
 ### 1. Browser-Only Development & Mocking
 - 本アプリはブラウザ単体での動作確認用のTauri API自動モック環境 (`src/core/mocks/tauriMock.ts`) を備えています。
@@ -137,6 +110,10 @@ Modify the global configuration types to include the new tool's settings.
 
 ### 5. 一括検証コマンド (Full Verification)
 - コミット前やPR作成前には、必ず以下の一括検証コマンドを実行してください：
+  - ローカル環境で Rust/Tauri 依存関係が揃っている場合の最終ゲート:
+    ```bash
+    npm run check:all
+    ```
   - フロントエンド検証（TypeScript, Biome, Vitest, Validator, Vite Build）:
     ```bash
     npm run check

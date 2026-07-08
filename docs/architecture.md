@@ -38,9 +38,10 @@ Mint は、機能追加の安全性・拡張性・保守性を高めるため、
 npm run scaffold:feature <feature_name>
 ```
 
-その後、以下の手動設定を行います：
-- **Tauriコマンド追加**: Rust側でコマンドを実装し、`src-tauri/src/lib.rs` の `tauri::generate_handler!` に登録。
-- **Window Route追加**: `tauri.conf.json` にウィンドウ定義を追加し、`src/core/windowRoutes.ts` および `src/App.tsx` でルーティングを設定。
+生成後は、必要な機能差分だけを明示的に追加します：
+- **Tauriコマンド追加**: Rust側で型付きコマンドを実装し、`src-tauri/src/lib.rs` の `tauri::generate_handler!` とブラウザ/Vitestモックに登録。
+- **Window Route追加**: `tauri.conf.json` にウィンドウ定義を追加し、`src/core/windowRoutes.ts` でルーティングを設定。
+- **検証**: `npm run check:quick` で構造同期を確認し、PR前には環境が許す限り `npm run check:all` を実行。
 
 ## 5. 禁止パターン
 - ❌ **動的プラグイン機構**: セキュリティリスクと型安全性の低下を招くため禁止。

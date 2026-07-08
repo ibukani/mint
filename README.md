@@ -42,54 +42,19 @@
 
 ## 新しいツールの追加手順
 
-新しい機能（例: `my_tool`）を実装する手順は以下の通りです。
+新しい機能（例: `my_tool`）は、手作業ではなくスキャフォールドから追加します。
 
-### 1. フロントエンドの設定型定義を追加
-`src/core/context/AppSettings.tsx`（または `src/features/types.ts` 等の共通定義）の `AppSettings` インターフェースに新しい機能の設定スキーマを追加します。
-
-```typescript
-export interface MyToolSettings {
-  enabled: boolean;
-  shortcut: string;
-}
-
-export interface AppSettings {
-  // ... 既存の設定
-  myTool: MyToolSettings;
-}
+```bash
+npm run scaffold:feature my_tool MyTool
 ```
 
-### 2. バックエンド（Rust）の設定型定義を追加
-`src-tauri/src/core/settings.rs` 内の `AppSettings` 構造体に型定義を追記します。これにより、自動的にローカルファイルのセーブ・ロード対象になります。
+生成後は、機能固有のUI、型、Rustコマンド、ウィンドウ定義を必要に応じて実装し、以下で構造の同期を確認してください。
 
-```rust
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-pub struct MyToolSettings {
-    pub enabled: bool,
-    pub shortcut: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
-pub struct AppSettings {
-    // ... 既存の設定
-    pub my_tool: MyToolSettings,
-}
+```bash
+npm run check:quick
 ```
 
-### 3. フロントエンドに機能ディレクトリを作成
-`src/features/my_tool/` ディレクトリを作成し、設定UIやメインロジックを作成します。
-
-```text
-src/features/my_tool/
-├── components/
-│   └── MyToolSettings.tsx  # 設定画面のタブ内に表示するUI
-└── types.ts
-```
-
-### 4. アプリシェルへの結合
-- `src/App.tsx` の設定画面タブメニューに、作成した `MyToolSettings` を追加します。
-- 必要に応じて、`tauri.conf.json` にサブウィンドウを追加し、`App.tsx` でウィンドウ表示の分岐を行います。
-- 必要に応じて、`src-tauri/src/features/` に Rust のコマンドモジュールを作成し、`lib.rs` の `tauri::generate_handler!` に登録します。
+詳細なAI向け手順は `docs/ai-development.md`、`docs/ai-quality-rubric.md`、`.agents/skills/create_static_feature/SKILL.md` を参照してください。
 
 ---
 
@@ -112,9 +77,12 @@ npm run build
 
 # アプリのリリースビルド作成
 npm run tauri -- build
+
+# AI主体開発向けの最終ローカル検証
+npm run check:all
 ```
 
 ---
 
 ## 開発ガイドライン (AI アシスタント向け)
-AI アシスタントがコードを追加・修正する際は、ルートディレクトリの `.agents/AGENTS.md` に記載されているルールを厳格に遵守してください。
+AI アシスタントがコードを追加・修正する際は、ルートディレクトリの `AGENTS.md` と `docs/ai-development.md` に記載されているルールを厳格に遵守してください。

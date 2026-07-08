@@ -10,6 +10,9 @@ The project is in a good state for AI-assisted iteration:
 - Frontend, backend, mock, settings, window, and IPC wiring are checked by `npm run verify:architecture`.
 - Fast orientation is available through `npm run ai:context`.
 - Fast local feedback is available through `npm run check:quick`.
+- AI foundation drift is checked by `npm run check:ai-foundation`, covering required scripts, Node version alignment, core AI docs, CI gates, and the PR template checklist.
+- `docs/ai-quality-rubric.md` defines the 100-point quality bar and required evidence for AI-led changes.
+- Full local release verification is available through `npm run check:all`.
 - Full frontend and backend gates are available through `npm run check` and `npm run check:tauri`.
 - Feature scaffolding validates input names, auto-registers required wiring, and has a smoke test.
 - GitHub Actions runs frontend checks, scaffold smoke tests, and backend checks on pushes and pull requests to `main`.
@@ -22,6 +25,8 @@ No immediate required foundation improvements remain after the current audit. Th
 - `npm run check:quick` avoids tests and bundling while iterating.
 - `npm run verify:architecture` reports a one-line success summary by default.
 - `npm run verify:architecture:verbose` keeps detailed pass logs available when needed.
+- `npm run check:ai-foundation` catches stale AI development infrastructure before agents depend on it.
+- `docs/ai-quality-rubric.md` makes completion criteria explicit instead of relying on ad hoc judgment.
 - `scripts/scaffold-feature.js` prints a short summary by default and supports `--verbose` for file-level detail.
 - `rtk` commands remain the preferred way to collect concise command output.
 
@@ -31,6 +36,8 @@ Before considering AI-generated changes complete, run:
 
 ```bash
 npm run check:quick
+npm run check:ai-foundation
+npm run check:all
 npm run check
 npm run check:tauri
 ```
