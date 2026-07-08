@@ -1,6 +1,8 @@
 import type React from "react";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
+  Button,
   Field,
   FieldRow,
   Select,
@@ -18,11 +20,23 @@ export const ClockSettings: React.FC = () => {
 
   if (!clock) return null;
 
+  const resetClockSettings = () => {
+    handleChange("shortcut", defaultAppSettings.clock.shortcut);
+    handleChange("autoHideSeconds", defaultAppSettings.clock.autoHideSeconds);
+    handleChange("fontSize", defaultAppSettings.clock.fontSize);
+  };
+
   return (
     <SettingsSection
       title="時計オーバーレイ設定"
       description="ショートカットキーを押した際に画面右上に表示される時計のカスタマイズを行います。"
     >
+      <div className="feature-settings-actions">
+        <Button variant="ghost" onClick={resetClockSettings}>
+          デフォルトに戻す
+        </Button>
+      </div>
+
       <Field
         id="clock-shortcut-input"
         label="起動ショートカットキー"

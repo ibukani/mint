@@ -123,7 +123,37 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
   animation: fadeIn var(--transition-slow);
+}
+
+.settings-save-status {
+  align-self: flex-end;
+  min-height: 28px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface-control);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.settings-save-status--saved {
+  border-color: var(--border-success);
+  background: var(--surface-success);
+  color: var(--color-success);
+}
+
+.settings-save-status--error {
+  border-color: var(--border-error);
+  background: var(--surface-error);
+  color: var(--color-error);
+}
+
+.feature-settings-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .design-settings-section {
@@ -353,6 +383,18 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.transcription-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.transcription-result-actions__status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }
 
 .overlay-frame {

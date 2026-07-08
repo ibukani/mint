@@ -13,6 +13,11 @@ vi.mock("@tauri-apps/api/core", () => ({
 describe("VoiceToTextSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
   });
 
   it("loads api key on mount and saves api key on blur", async () => {
@@ -75,6 +80,50 @@ describe("VoiceToTextSettings", () => {
     });
   });
 
+  it("toggles API key visibility", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "w",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const apiKeyInput = screen.getByLabelText("API キー") as HTMLInputElement;
+    expect(apiKeyInput.type).toBe("password");
+
+    fireEvent.click(screen.getByRole("button", { name: "表示" }));
+
+    expect(apiKeyInput.type).toBe("text");
+    expect(
+      screen.getByRole("button", { name: "隠す", pressed: true }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "隠す" }));
+
+    expect(apiKeyInput.type).toBe("password");
+  });
+
   it("transcribes an audio file with the typed backend command", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
@@ -114,7 +163,7 @@ describe("VoiceToTextSettings", () => {
     });
 
     fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
-      target: { value: "/tmp/audio.wav" },
+      target: { value: "  /tmp/audio.wav  " },
     });
 
     await act(async () => {
@@ -125,5 +174,149 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
       "これはテスト音声です",
     );
+  });
+
+  it("requires an API key before transcription", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "文字起こしを実行" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("実行するには、APIキーを入力してください。"),
+    ).toBeInTheDocument();
+  });
+
+  it("copies and clears transcription results", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") {
+        return { text: "これはテスト音声です" };
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "結果をコピー" }));
+      await Promise.resolve();
+    });
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "これはテスト音声です",
+    );
+    expect(screen.getByText("コピーしました")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "結果をクリア" }));
+
+    expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
+    expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
+  });
+
+  it("resets editable voice-to-text settings without clearing the API key", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Shift+R",
+        baseUrl: "http://localhost:1234/v1",
+        model: "custom-model",
+        language: "en",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "save_settings") return undefined;
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+
+    expect(
+      screen.getByLabelText("この機能を有効にする (Enable Feature)"),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText("起動/録音ショートカットキー")).toHaveValue(
+      "Ctrl+Alt+V",
+    );
+    expect(screen.getByLabelText("API エンドポイント (Base URL)")).toHaveValue(
+      "https://api.openai.com/v1",
+    );
+    expect(screen.getByLabelText("モデル名")).toHaveValue("whisper-1");
+    expect(screen.getByLabelText("言語コード (Language)")).toHaveValue("ja");
+    expect(screen.getByLabelText("API キー")).toHaveValue("mocked-api-key");
   });
 });

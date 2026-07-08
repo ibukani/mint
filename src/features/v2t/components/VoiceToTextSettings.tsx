@@ -1,11 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
   Button,
   ErrorMessage,
   Field,
+  FieldRow,
   SettingsSection,
   TextArea,
   TextInput,
@@ -23,6 +25,8 @@ export const VoiceToTextSettings: React.FC = () => {
   const [audioFilePath, setAudioFilePath] = useState("");
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
 
   // Load API key from OS keychain
@@ -57,13 +61,14 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscribing(true);
     setTranscriptionText("");
     setTranscriptionError("");
+    setCopyStatus("");
 
     try {
       const result = await invoke<TranscriptionResult>(
         "transcribe_audio_file",
         {
           settings: voiceToText,
-          audio_file_path: audioFilePath,
+          audio_file_path: audioFilePath.trim(),
         },
       );
       setTranscriptionText(result.text);
@@ -75,11 +80,66 @@ export const VoiceToTextSettings: React.FC = () => {
     }
   };
 
+  const copyTranscriptionText = async () => {
+    if (!transcriptionText) return;
+
+    try {
+      await navigator.clipboard.writeText(transcriptionText);
+      setCopyStatus("コピーしました");
+    } catch (err) {
+      console.error("Failed to copy transcription text:", err);
+      setCopyStatus("コピーに失敗しました");
+    }
+  };
+
+  const clearTranscriptionText = () => {
+    setTranscriptionText("");
+    setTranscriptionError("");
+    setCopyStatus("");
+  };
+
+  const resetVoiceToTextSettings = () => {
+    handleChange("enabled", defaultAppSettings.voiceToText.enabled);
+    handleChange("shortcut", defaultAppSettings.voiceToText.shortcut);
+    handleChange("baseUrl", defaultAppSettings.voiceToText.baseUrl);
+    handleChange("model", defaultAppSettings.voiceToText.model);
+    handleChange("language", defaultAppSettings.voiceToText.language);
+  };
+
+  const canTranscribe =
+    voiceToText.enabled &&
+    apiKeyLoaded &&
+    Boolean(apiKey.trim()) &&
+    Boolean(audioFilePath.trim()) &&
+    !transcribing;
+
+  const transcribeHelpText = (() => {
+    if (!voiceToText.enabled) {
+      return "実行するには、この機能を有効にしてください。";
+    }
+    if (!apiKeyLoaded) {
+      return "APIキーを読み込み中です。";
+    }
+    if (!apiKey.trim()) {
+      return "実行するには、APIキーを入力してください。";
+    }
+    if (!audioFilePath.trim()) {
+      return "実行するには、音声ファイルパスを入力してください。";
+    }
+    return undefined;
+  })();
+
   return (
     <SettingsSection
       title="音声入力 (Voice to Text) 設定"
       description="OpenAI互換の音声認識APIを使って音声ファイルを文字起こしします。"
     >
+      <div className="feature-settings-actions">
+        <Button variant="ghost" onClick={resetVoiceToTextSettings}>
+          デフォルトに戻す
+        </Button>
+      </div>
+
       <Field
         id="v2t-enabled-checkbox"
         label="この機能を有効にする (Enable Feature)"
@@ -134,15 +194,25 @@ export const VoiceToTextSettings: React.FC = () => {
         label="API キー"
         helpText="音声認識APIの認証キーです。キーはOSのセキュアストレージ（Windows 資格情報マネージャー）に安全に保存されます。"
       >
-        <TextInput
-          id="v2t-api-key-input"
-          type="password"
-          value={apiKeyLoaded ? apiKey : ""}
-          onChange={(e) => setApiKey(e.target.value)}
-          onBlur={saveApiKey}
-          placeholder={apiKeyLoaded ? "APIキーを入力" : "読み込み中..."}
-          disabled={!apiKeyLoaded}
-        />
+        <FieldRow>
+          <TextInput
+            id="v2t-api-key-input"
+            type={showApiKey ? "text" : "password"}
+            value={apiKeyLoaded ? apiKey : ""}
+            onChange={(e) => setApiKey(e.target.value)}
+            onBlur={saveApiKey}
+            placeholder={apiKeyLoaded ? "APIキーを入力" : "読み込み中..."}
+            disabled={!apiKeyLoaded}
+          />
+          <Button
+            variant="ghost"
+            aria-pressed={showApiKey}
+            disabled={!apiKeyLoaded}
+            onClick={() => setShowApiKey((current) => !current)}
+          >
+            {showApiKey ? "隠す" : "表示"}
+          </Button>
+        </FieldRow>
       </Field>
 
       <Field
@@ -197,22 +267,8 @@ export const VoiceToTextSettings: React.FC = () => {
         />
       </Field>
 
-      <Field
-        helpText={
-          !voiceToText.enabled
-            ? "実行するには、この機能を有効にしてください。"
-            : undefined
-        }
-      >
-        <Button
-          onClick={transcribeAudioFile}
-          disabled={
-            transcribing ||
-            !voiceToText.enabled ||
-            !apiKeyLoaded ||
-            !audioFilePath.trim()
-          }
-        >
+      <Field helpText={transcribeHelpText}>
+        <Button onClick={transcribeAudioFile} disabled={!canTranscribe}>
           {transcribing ? "文字起こし中..." : "文字起こしを実行"}
         </Button>
       </Field>
@@ -221,6 +277,19 @@ export const VoiceToTextSettings: React.FC = () => {
 
       {transcriptionText && (
         <Field id="v2t-transcription-result" label="文字起こし結果">
+          <div className="transcription-result-actions">
+            <Button variant="ghost" onClick={copyTranscriptionText}>
+              結果をコピー
+            </Button>
+            <Button variant="ghost" onClick={clearTranscriptionText}>
+              結果をクリア
+            </Button>
+            {copyStatus && (
+              <span className="transcription-result-actions__status">
+                {copyStatus}
+              </span>
+            )}
+          </div>
           <TextArea
             id="v2t-transcription-result"
             value={transcriptionText}

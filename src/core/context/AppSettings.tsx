@@ -17,10 +17,13 @@ export interface AppSettings {
   voiceToText: VoiceToTextSettings;
 }
 
+export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
+
 interface AppSettingsContextType {
   settings: AppSettings | null;
   loading: boolean;
   error: string | null;
+  saveStatus: SaveStatus;
   shortcutErrors: Record<string, string>;
   clearError: () => void;
   updateSettings: (
@@ -40,6 +43,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [shortcutErrors, setShortcutErrors] = useState<Record<string, string>>(
     {},
   );
@@ -93,11 +97,13 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const commitSettings = useCallback(
     async (toSave: AppSettings, seq: number) => {
+      setSaveStatus("saving");
       try {
         await invoke("save_settings", { settings: toSave });
         // Only clear errors if this is still the latest save request
         if (sequenceRef.current === seq) {
           setShortcutErrors({});
+          setSaveStatus("saved");
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -105,6 +111,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         // Only apply error states if this request is still the latest
         if (sequenceRef.current === seq) {
           setError("設定の保存に失敗しました");
+          setSaveStatus("error");
           parseAndSetErrors(msg);
         }
       }
@@ -139,8 +146,11 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const clearError = useCallback(() => {
     setError(null);
+    if (saveStatus === "error") {
+      setSaveStatus("idle");
+    }
     setShortcutErrors({});
-  }, []);
+  }, [saveStatus]);
 
   const updateSettings = useCallback(
     (
@@ -183,6 +193,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         commitSettings(toSave, currentSeq);
       } else {
         // Debounce save
+        setSaveStatus("pending");
         timerRef.current = setTimeout(() => {
           if (!pendingSaveRef.current) return;
           const toSave = pendingSaveRef.current;
@@ -200,6 +211,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         settings,
         loading,
         error,
+        saveStatus,
         shortcutErrors,
         clearError,
         updateSettings,

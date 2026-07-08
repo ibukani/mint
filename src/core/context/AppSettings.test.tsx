@@ -7,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockSettings } from "../mocks/mockSettings";
 import { AppSettingsProvider, useAppSettings } from "./AppSettings";
 
@@ -17,7 +17,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const TestComponent: React.FC = () => {
-  const { settings, updateSettings, error, shortcutErrors } = useAppSettings();
+  const { settings, updateSettings, error, saveStatus, shortcutErrors } =
+    useAppSettings();
   if (!settings) return <div>Loading...</div>;
   return (
     <div>
@@ -25,6 +26,7 @@ const TestComponent: React.FC = () => {
       <div data-testid="clock-shortcut">{settings.clock.shortcut}</div>
       <div data-testid="clock-fontsize">{settings.clock.fontSize}</div>
       <div data-testid="error">{error || "no-error"}</div>
+      <div data-testid="save-status">{saveStatus}</div>
       <div data-testid="shortcut-error-clock">
         {shortcutErrors.clock || "no-clock-error"}
       </div>
@@ -68,6 +70,10 @@ describe("AppSettingsProvider", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("loads settings on mount", async () => {
     const mockSettings = createMockSettings();
     vi.mocked(invoke).mockResolvedValue(mockSettings);
@@ -109,6 +115,7 @@ describe("AppSettingsProvider", () => {
     });
 
     expect(screen.getByTestId("clock-fontsize")).toHaveTextContent("2.5rem");
+    expect(screen.getByTestId("save-status")).toHaveTextContent("pending");
     // save_settings should not be called immediately due to debounce
     expect(invoke).not.toHaveBeenCalledWith(
       "save_settings",
@@ -118,10 +125,12 @@ describe("AppSettingsProvider", () => {
     // Fast-forward time
     await act(async () => {
       vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(invoke).toHaveBeenCalledWith("save_settings", expect.any(Object));
-    vi.useRealTimers();
+    expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
   });
 
   it("saves important settings (shortcut/theme) immediately", async () => {
@@ -153,6 +162,9 @@ describe("AppSettingsProvider", () => {
         }),
       );
     });
+    await waitFor(() => {
+      expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
+    });
   });
 
   it("parses registration error and sets shortcut error state", async () => {
@@ -183,5 +195,6 @@ describe("AppSettingsProvider", () => {
         "時計ショートカットの登録に失敗しました",
       );
     });
+    expect(screen.getByTestId("save-status")).toHaveTextContent("error");
   });
 });

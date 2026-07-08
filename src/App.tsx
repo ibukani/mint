@@ -5,6 +5,7 @@ import { FeatureDashboard } from "./core/components/dashboard/FeatureDashboard";
 import { ErrorToast } from "./core/components/ErrorToast";
 import {
   AppSettingsProvider,
+  type SaveStatus,
   useAppSettings,
 } from "./core/context/AppSettings";
 import {
@@ -15,8 +16,16 @@ import {
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
 
+const saveStatusLabels: Record<SaveStatus, string> = {
+  idle: "",
+  pending: "保存待ち",
+  saving: "保存中...",
+  saved: "保存済み",
+  error: "保存エラー",
+};
+
 const AppContent: React.FC = () => {
-  const { settings, loading, error, clearError } = useAppSettings();
+  const { settings, loading, error, saveStatus, clearError } = useAppSettings();
   const [label, setLabel] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
 
@@ -47,6 +56,7 @@ const AppContent: React.FC = () => {
     setActiveTab(tabId);
   };
   const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab];
+  const saveStatusLabel = saveStatusLabels[saveStatus];
 
   return (
     <>
@@ -57,6 +67,14 @@ const AppContent: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       >
+        {saveStatusLabel && (
+          <div
+            className={`settings-save-status settings-save-status--${saveStatus}`}
+            role="status"
+          >
+            {saveStatusLabel}
+          </div>
+        )}
         {activeTab === "dashboard" ? (
           <FeatureDashboard onOpenSettings={openFeatureSettings} />
         ) : (
