@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { type InvokeArgs, invoke } from "@tauri-apps/api/core";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
@@ -26,16 +26,22 @@ describe("VoiceToTextSettings", () => {
       },
     };
 
-    vi.mocked(invoke).mockImplementation(((
-      cmd: string,
-      args?: { service?: string; key?: string },
-    ) => {
-      if (cmd === "load_settings") return Promise.resolve(mockSettings);
-      if (cmd === "load_api_key" && args?.service === "voice_to_text") {
-        return Promise.resolve("mocked-api-key");
-      }
-      return Promise.resolve();
-    }) as unknown as typeof invoke);
+    vi.mocked(invoke).mockImplementation(
+      async (cmd: string, args?: InvokeArgs) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (
+          cmd === "load_api_key" &&
+          args &&
+          typeof args === "object" &&
+          !Array.isArray(args) &&
+          "service" in args &&
+          args.service === "voice_to_text"
+        ) {
+          return "mocked-api-key";
+        }
+        return undefined;
+      },
+    );
 
     render(
       <AppSettingsProvider>

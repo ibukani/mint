@@ -205,7 +205,7 @@ impl Default for ${pascalName}Settings {
 
     // 7.3 Add field default to Default impl
     content = content.replace(
-      /(impl\s+Default\s+for\s+AppSettings\s*\{[\s\S]*?Self\s*\{)/,
+      /(impl\s+Default\s+for\s+AppSettings\s*\{[\s\S]*?fn\s+default\(\)\s*->\s*Self\s*\{\s*Self\s*\{)/,
       `$1\n            ${snakeName}: ${pascalName}Settings::default(),`,
     );
 
@@ -216,18 +216,15 @@ impl Default for ${pascalName}Settings {
   }
 }
 
-// 8. Auto-Register in mocks (tauriMock.ts & vitestSetup.ts)
-const mockPaths = [
-  path.join(ROOT_DIR, "src/core/mocks/tauriMock.ts"),
-  path.join(ROOT_DIR, "src/core/mocks/vitestSetup.ts"),
-];
+// 8. Auto-Register in mocks (mockSettings.ts)
+const mockPaths = [path.join(ROOT_DIR, "src/core/mocks/mockSettings.ts")];
 for (const mockPath of mockPaths) {
   if (fs.existsSync(mockPath)) {
     let content = fs.readFileSync(mockPath, "utf-8");
     if (!content.includes(`${camelName}:`)) {
       const defaultSettingsRegex =
-        /(const\s+defaultSettings:\s*AppSettings\s*=\s*\{)/;
-      const mockField = `\n    ${camelName}: {\n      enabled: false,\n      shortcut: "Ctrl+Alt+${pascalName.charAt(0)}",\n    },`;
+        /(export\s+const\s+createMockSettings\s*=\s*\([\s\S]*?\)\s*:\s*AppSettings\s*=>\s*\(\s*\{)/;
+      const mockField = `\n  ${camelName}: {\n    enabled: false,\n    shortcut: "Ctrl+Alt+${pascalName.charAt(0)}",\n  },`;
       content = content.replace(defaultSettingsRegex, `$1${mockField}`);
       fs.writeFileSync(mockPath, content, "utf-8");
       console.log(

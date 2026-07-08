@@ -14,10 +14,14 @@ pub fn run() {
                     if event.state == ShortcutState::Pressed {
                         let shortcut_str = shortcut.to_string();
                         if let Ok(settings) = core::settings::load_settings_internal(app) {
-                            if shortcut_str == settings.clock.shortcut {
-                                features::clock::toggle_clock_overlay(app);
-                            } else if shortcut_str == settings.voice_to_text.shortcut {
-                                println!("Voice to text triggered via global shortcut!");
+                            for (feature, keys) in settings.active_shortcuts() {
+                                if shortcut_str == keys {
+                                    match feature.as_str() {
+                                        "clock" => features::clock::toggle_clock_overlay(app),
+                                        "voiceToText" => println!("Voice to text triggered via global shortcut!"),
+                                        _ => {}
+                                    }
+                                }
                             }
                         }
                     }
@@ -33,29 +37,28 @@ pub fn run() {
             match core::settings::load_settings_internal(&handle) {
                 Ok(settings) => {
                     use tauri_plugin_global_shortcut::GlobalShortcutExt;
-                    let clock_shortcut = settings.clock.shortcut.trim();
-                    let v2t_shortcut = settings.voice_to_text.shortcut.trim();
-
-                    if !clock_shortcut.is_empty() && clock_shortcut != v2t_shortcut {
-                        if let Err(e) = app
-                            .global_shortcut()
-                            .register(clock_shortcut)
-                        {
-                            eprintln!("Failed to register clock shortcut: {}", e);
+                    let shortcuts = settings.active_shortcuts();
+                    
+                    // Check for duplicates
+                    let mut unique_keys = std::collections::HashSet::new();
+                    let mut has_duplicates = false;
+                    for (_, key) in &shortcuts {
+                        if !unique_keys.insert(key) {
+                            has_duplicates = true;
+                            break;
                         }
                     }
 
-                    if !v2t_shortcut.is_empty() && clock_shortcut != v2t_shortcut {
-                        if let Err(e) = app
-                            .global_shortcut()
-                            .register(v2t_shortcut)
-                        {
-                            eprintln!("Failed to register voice_to_text shortcut: {}", e);
-                        }
-                    }
-
-                    if !clock_shortcut.is_empty() && clock_shortcut == v2t_shortcut {
+                    if has_duplicates {
                         eprintln!("Warning: Global shortcuts are duplicated in settings. Not registering to prevent conflict.");
+                    } else {
+                        for (feature, key) in shortcuts {
+                            if !key.is_empty() {
+                                if let Err(e) = app.global_shortcut().register(&key) {
+                                    eprintln!("Failed to register {} shortcut: {}", feature, e);
+                                }
+                            }
+                        }
                     }
                 }
                 Err(e) => {

@@ -1,5 +1,5 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
-import type { AppSettings } from "../context/AppSettings";
+import { createMockSettings } from "./mockSettings";
 
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
 const isTauri =
@@ -23,22 +23,7 @@ if (!isTauri && typeof window !== "undefined") {
   const STORAGE_KEY = "mint_mock_settings";
 
   // Rust側のデフォルト実装と合わせた設定値の初期データ
-  const defaultSettings: AppSettings = {
-    theme: "dark",
-    clock: {
-      shortcut: "Ctrl+Alt+C",
-      autoHideSeconds: 3,
-      fontSize: "1.5rem",
-    },
-    voiceToText: {
-      enabled: false,
-      shortcut: "Ctrl+Alt+V",
-      baseUrl: "https://api.openai.com/v1",
-      model: "whisper-1",
-      language: "ja",
-      status: "placeholder",
-    },
-  };
+  const defaultSettings = createMockSettings();
 
   // IPC（Rust側のコマンド呼び出し）をモック化
   mockIPC(async (cmd, args) => {

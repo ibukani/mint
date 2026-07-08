@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createMockSettings } from "../mocks/mockSettings";
 import { AppSettingsProvider, useAppSettings } from "./AppSettings";
 
 // Mock invoke
@@ -68,19 +69,8 @@ describe("AppSettingsProvider", () => {
   });
 
   it("loads settings on mount", async () => {
-    const mockSettings = {
-      theme: "dark",
-      clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
-      voiceToText: {
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "w",
-        language: "ja",
-      },
-    };
-    vi.mocked(invoke).mockResolvedValue(
-      mockSettings as unknown as ReturnType<typeof invoke>,
-    );
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockResolvedValue(mockSettings);
 
     render(
       <AppSettingsProvider>
@@ -100,19 +90,8 @@ describe("AppSettingsProvider", () => {
 
   it("debounces normal settings save", async () => {
     vi.useFakeTimers();
-    const mockSettings = {
-      theme: "dark",
-      clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
-      voiceToText: {
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "w",
-        language: "ja",
-      },
-    };
-    vi.mocked(invoke).mockResolvedValue(
-      mockSettings as unknown as ReturnType<typeof invoke>,
-    );
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockResolvedValue(mockSettings);
 
     render(
       <AppSettingsProvider>
@@ -146,19 +125,8 @@ describe("AppSettingsProvider", () => {
   });
 
   it("saves important settings (shortcut/theme) immediately", async () => {
-    const mockSettings = {
-      theme: "dark",
-      clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
-      voiceToText: {
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "w",
-        language: "ja",
-      },
-    };
-    vi.mocked(invoke).mockResolvedValue(
-      mockSettings as unknown as ReturnType<typeof invoke>,
-    );
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockResolvedValue(mockSettings);
 
     render(
       <AppSettingsProvider>
@@ -188,24 +156,13 @@ describe("AppSettingsProvider", () => {
   });
 
   it("parses registration error and sets shortcut error state", async () => {
-    const mockSettings = {
-      theme: "dark",
-      clock: { shortcut: "Ctrl+Alt+C", autoHideSeconds: 3, fontSize: "1.5rem" },
-      voiceToText: {
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "w",
-        language: "ja",
-      },
-    };
-    vi.mocked(invoke).mockImplementation(((cmd: string) => {
-      if (cmd === "load_settings") return Promise.resolve(mockSettings);
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
       if (cmd === "save_settings")
-        return Promise.reject(
-          new Error("時計ショートカットの登録に失敗しました"),
-        );
-      return Promise.resolve();
-    }) as unknown as typeof invoke);
+        throw new Error("時計ショートカットの登録に失敗しました");
+      return undefined;
+    });
 
     render(
       <AppSettingsProvider>

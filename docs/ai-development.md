@@ -138,14 +138,31 @@ Modify the global configuration types to include the new tool's settings.
     npm run check:tauri
     ```
 
-### 6. React State Updater と非同期/副作用の分離
+### 6. Rust/Tauri Backend Verification Manual
+
+When running `npm run check:tauri` or working on the Rust backend, developers and AI agents must ensure the following environment constraints are met:
+
+- **Prerequisites**: Node.js (v20+), Rust, Cargo, and `rustup` must be installed.
+- **Tauri Linux Dependencies**: On Linux environments, ensure you have the required WebKitGTK and build-essential packages installed. Without them, `npm run check:tauri` or `cargo check` will fail to compile Tauri.
+- **Windows Environments**: Native Windows dependencies (MSVC or MinGW) must be installed.
+- **Missing Cargo**: If `cargo` is missing in the environment, you **cannot** execute `npm run check:tauri`. The AI agent must document this limitation in its final report if encountered.
+
+**Final Verification Steps (if environment permits):**
+To manually verify the backend, `cd src-tauri` and run:
+1. `cargo fmt --check` (Ensures formatting matches standard)
+2. `cargo clippy --all-targets --all-features -- -D warnings` (Catches memory/logic issues)
+3. `cargo test` (Runs backend unit tests)
+4. `cargo check` (Final compilation check)
+
+### 7. React State Updater と非同期/副作用の分離
 - `useState` や `useReducer` の setState（関数型アップデート `prev => ...` 内）の中で、Tauri の `invoke` のような非同期処理や副作用（Side Effect）を絶対に呼ばないでください。
 - 代わりに React の `useEffect`、あるいはイベントハンドラ（例: `useCallback` でラップした関数）の中で次の状態を計算した後に副作用を実行し、同期的に state を更新する設計にしてください。
 - レースコンディション（Debounce中の遅延保存による古いStateへの巻き戻り）を防ぐため、Sequence ID / Revision 番号でのガード処理を実装してください。
 
-### 7. Placeholder 機能の OS 副作用禁止
+### 8. Placeholder 機能の OS 副作用禁止
 - `placeholder` 状態の機能に対して、OS のグローバルショートカット登録やシステム状態の変更（例: レジストリ書き換え、バックグラウンドデーモン起動）を行わないでください。
 - バックエンド（Rust側）の設定構造体に `status` や `enabled` フィールドを設け、それがアクティブでない場合は副作用をスキップするガードを必ず実装してください。
+- `lib.rs` などでショートカットを登録・処理する際は、個別のフィーチャーのショートカット（例: `settings.voice_to_text.shortcut`）に直接アクセスするのではなく、必ず `settings.active_shortcuts()` メソッドを使用して有効なものだけを一括取得・処理してください。
 
 ## 6. Coding Style & Naming Conventions
 - Frontend code uses TypeScript modules, React function components, 2-space indentation, double quotes, and semicolons. Name React components in `PascalCase` and hooks/state variables in `camelCase`.

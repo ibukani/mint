@@ -1,27 +1,13 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import "@testing-library/jest-dom";
-import type { AppSettings } from "../context/AppSettings";
 
 // テスト環境でTauriのウィンドウ管理をモック
 mockWindows("main", "clock");
 
+import { createMockSettings } from "./mockSettings";
+
 // テスト用のデフォルト設定データ
-const defaultSettings: AppSettings = {
-  theme: "dark",
-  clock: {
-    shortcut: "Ctrl+Alt+C",
-    autoHideSeconds: 3,
-    fontSize: "1.5rem",
-  },
-  voiceToText: {
-    enabled: false,
-    shortcut: "Ctrl+Alt+V",
-    baseUrl: "https://api.openai.com/v1",
-    model: "whisper-1",
-    language: "ja",
-    status: "placeholder",
-  },
-};
+const defaultSettings = createMockSettings();
 
 // テスト中のIPC呼び出しの共通モック定義
 mockIPC(async (cmd, args) => {

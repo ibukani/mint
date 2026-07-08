@@ -9,6 +9,7 @@ const BACKUP_FILES = [
   "src-tauri/src/features/mod.rs",
   "src/core/context/AppSettings.tsx",
   "src-tauri/src/core/settings.rs",
+  "src/core/mocks/mockSettings.ts",
   "src/core/mocks/tauriMock.ts",
   "src/core/mocks/vitestSetup.ts",
   "src/App.tsx",

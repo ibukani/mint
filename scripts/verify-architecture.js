@@ -297,7 +297,12 @@ if (fs.existsSync(RS_SETTINGS_PATH)) {
   }
 }
 
-// 4. Check Mock synchronization (tauriMock.ts & vitestSetup.ts)
+// 4. Check Mock synchronization (mockSettings.ts & tauriMock.ts & vitestSetup.ts)
+const MOCK_SETTINGS_PATH = path.join(
+  ROOT_DIR,
+  "src/core/mocks/mockSettings.ts",
+);
+
 function checkMockSync(mockPath) {
   if (!fs.existsSync(mockPath)) {
     reportError(`Mock file not found at: ${mockPath}`);
@@ -328,8 +333,24 @@ function checkMockSync(mockPath) {
     }
   }
 }
-checkMockSync(TAURI_MOCK_PATH);
-checkMockSync(VITEST_SETUP_PATH);
+checkMockSync(MOCK_SETTINGS_PATH);
+
+function checkMockFactoryUsage(mockPath) {
+  if (fs.existsSync(mockPath)) {
+    const mockContent = fs.readFileSync(mockPath, "utf-8");
+    if (!/createMockSettings\(\)/.test(mockContent)) {
+      reportError(
+        `Mock Sync: "${path.basename(mockPath)}" should use createMockSettings()`,
+      );
+    } else {
+      reportSuccess(
+        `Mock Sync: "${path.basename(mockPath)}" uses createMockSettings()`,
+      );
+    }
+  }
+}
+checkMockFactoryUsage(TAURI_MOCK_PATH);
+checkMockFactoryUsage(VITEST_SETUP_PATH);
 
 // 5. Check App.tsx TAB_CONFIG / TAB_COMPONENTS
 if (fs.existsSync(APP_TSX_PATH)) {
@@ -568,6 +589,10 @@ function scanTodos(dir) {
         // Ignore HTML placeholder= attributes
         if (/placeholder=/i.test(line)) return;
 
+        // Ignore valid placeholder literal or comments in tests
+        if (line.includes('"placeholder"') || line.includes("is placeholder"))
+          return;
+
         if (/todo|\bplaceholder\b|未実装/i.test(line)) {
           const isAllowed = allowedTodos.some((allowed) =>
             line.includes(allowed),
@@ -585,6 +610,21 @@ function scanTodos(dir) {
 }
 scanTodos(path.join(ROOT_DIR, "src"));
 scanTodos(path.join(ROOT_DIR, "src-tauri/src"));
+
+// 11. Check that lib.rs does not directly use feature shortcuts
+const LIB_RS_PATH = path.join(ROOT_DIR, "src-tauri/src/lib.rs");
+if (fs.existsSync(LIB_RS_PATH)) {
+  const libRsContent = fs.readFileSync(LIB_RS_PATH, "utf-8");
+  if (/settings\.[a-zA-Z0-9_]+\.shortcut/.test(libRsContent)) {
+    reportError(
+      `lib.rs directly accesses a feature's shortcut (e.g. settings.voice_to_text.shortcut). Use settings.active_shortcuts() instead.`,
+    );
+  } else {
+    reportSuccess(
+      `lib.rs uses settings.active_shortcuts() instead of direct shortcut access.`,
+    );
+  }
+}
 
 console.log("\n----------------------------------------");
 if (errorsCount > 0) {
