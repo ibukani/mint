@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { focusAndSelectElementById } from "../../../core/dom/focus";
+import { useAutoClearStatus } from "../../../core/hooks/useAutoClearStatus";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { normalizeShortcut } from "../../../core/shortcuts";
 import {
@@ -44,13 +45,6 @@ export const VoiceToTextSettings: React.FC = () => {
   const [audioFilePasteStatus, setAudioFilePasteStatus] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
-  const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const apiKeyPasteStatusTimerRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
-  const audioFilePasteStatusTimerRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
 
   // Load API key from OS keychain
   useEffect(() => {
@@ -77,6 +71,31 @@ export const VoiceToTextSettings: React.FC = () => {
       console.error("Failed to save API key:", err);
     }
   }, [apiKey]);
+
+  const clearApiKeyPasteStatus = useCallback(() => {
+    setApiKeyPasteStatus("");
+  }, []);
+
+  const clearAudioFilePasteStatus = useCallback(() => {
+    setAudioFilePasteStatus("");
+  }, []);
+
+  const clearCopyStatus = useCallback(() => {
+    setCopyStatus("");
+  }, []);
+
+  const resolvePasteStatusDelayMs = useCallback(
+    () => PASTE_STATUS_VISIBLE_MS,
+    [],
+  );
+
+  const resolveCopyStatusDelayMs = useCallback(
+    (currentStatus: string) =>
+      currentStatus === "コピーしました"
+        ? PASTE_STATUS_VISIBLE_MS
+        : COPY_ERROR_VISIBLE_MS,
+    [],
+  );
 
   const pasteApiKey = async () => {
     try {
@@ -120,74 +139,17 @@ export const VoiceToTextSettings: React.FC = () => {
 
     focusAndSelectElementById("v2t-audio-file-input");
   }, [audioFilePasteStatus]);
-
-  useEffect(() => {
-    if (apiKeyPasteStatusTimerRef.current) {
-      clearTimeout(apiKeyPasteStatusTimerRef.current);
-      apiKeyPasteStatusTimerRef.current = null;
-    }
-
-    if (!apiKeyPasteStatus) return undefined;
-
-    apiKeyPasteStatusTimerRef.current = setTimeout(() => {
-      setApiKeyPasteStatus("");
-      apiKeyPasteStatusTimerRef.current = null;
-    }, PASTE_STATUS_VISIBLE_MS);
-
-    return () => {
-      if (apiKeyPasteStatusTimerRef.current) {
-        clearTimeout(apiKeyPasteStatusTimerRef.current);
-        apiKeyPasteStatusTimerRef.current = null;
-      }
-    };
-  }, [apiKeyPasteStatus]);
-
-  useEffect(() => {
-    if (audioFilePasteStatusTimerRef.current) {
-      clearTimeout(audioFilePasteStatusTimerRef.current);
-      audioFilePasteStatusTimerRef.current = null;
-    }
-
-    if (!audioFilePasteStatus) return undefined;
-
-    audioFilePasteStatusTimerRef.current = setTimeout(() => {
-      setAudioFilePasteStatus("");
-      audioFilePasteStatusTimerRef.current = null;
-    }, PASTE_STATUS_VISIBLE_MS);
-
-    return () => {
-      if (audioFilePasteStatusTimerRef.current) {
-        clearTimeout(audioFilePasteStatusTimerRef.current);
-        audioFilePasteStatusTimerRef.current = null;
-      }
-    };
-  }, [audioFilePasteStatus]);
-
-  useEffect(() => {
-    if (copyStatusTimerRef.current) {
-      clearTimeout(copyStatusTimerRef.current);
-      copyStatusTimerRef.current = null;
-    }
-
-    if (!copyStatus) return undefined;
-
-    const visibleMs =
-      copyStatus === "コピーしました"
-        ? PASTE_STATUS_VISIBLE_MS
-        : COPY_ERROR_VISIBLE_MS;
-
-    copyStatusTimerRef.current = setTimeout(() => {
-      setCopyStatus("");
-      copyStatusTimerRef.current = null;
-    }, visibleMs);
-
-    return () => {
-      if (copyStatusTimerRef.current) {
-        clearTimeout(copyStatusTimerRef.current);
-        copyStatusTimerRef.current = null;
-      }
-    };
-  }, [copyStatus]);
+  useAutoClearStatus(
+    apiKeyPasteStatus,
+    clearApiKeyPasteStatus,
+    resolvePasteStatusDelayMs,
+  );
+  useAutoClearStatus(
+    audioFilePasteStatus,
+    clearAudioFilePasteStatus,
+    resolvePasteStatusDelayMs,
+  );
+  useAutoClearStatus(copyStatus, clearCopyStatus, resolveCopyStatusDelayMs);
 
   if (!voiceToText) return null;
 
