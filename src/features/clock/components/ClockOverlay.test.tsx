@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
@@ -118,6 +118,42 @@ describe("ClockOverlay", () => {
     fireEvent.keyDown(window, { key: "Escape" });
 
     expect(hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the clock summary and date when enabled", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-07-09T12:34:56+09:00"));
+      vi.mocked(invoke).mockResolvedValue(
+        createMockSettings({
+          clock: { autoHideSeconds: 0, showDate: true },
+        }) as unknown as ReturnType<typeof invoke>,
+      );
+
+      render(
+        <AppSettingsProvider>
+          <ClockOverlay />
+        </AppSettingsProvider>,
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(
+        screen.getByText("2026年7月9日(木) 12:34:56", {
+          selector: ".sr-only",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("2026年7月9日(木)", {
+          selector: '.overlay-clock-date [aria-hidden="true"]',
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not auto-hide when the timer is disabled", async () => {
