@@ -14,6 +14,14 @@ describe("Checkbox", () => {
     expect(checkbox).toHaveClass("design-checkbox");
   });
 
+  it("does not use the text input styling", () => {
+    render(
+      <Checkbox id="sample-checkbox" checked={false} onChange={() => {}} />,
+    );
+
+    expect(screen.getByRole("checkbox")).not.toHaveClass("design-control");
+  });
+
   it("supports being used inside Field with help text", () => {
     render(
       <Field id="sample-checkbox" label="サンプル" helpText="補足説明">
