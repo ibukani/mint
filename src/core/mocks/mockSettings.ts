@@ -3,11 +3,20 @@ import { defaultAppSettings } from "../defaultSettings";
 
 const defaultMockSettings: AppSettings = {
   theme: defaultAppSettings.theme,
+  settingsShortcut: defaultAppSettings.settingsShortcut,
   clock: {
+    enabled: defaultAppSettings.clock.enabled,
     shortcut: defaultAppSettings.clock.shortcut,
     autoHideSeconds: defaultAppSettings.clock.autoHideSeconds,
     fontSize: defaultAppSettings.clock.fontSize,
     showDate: defaultAppSettings.clock.showDate,
+    showSeconds: defaultAppSettings.clock.showSeconds,
+    clockColor: defaultAppSettings.clock.clockColor,
+    blinkColon: defaultAppSettings.clock.blinkColon,
+    sizePercent: defaultAppSettings.clock.sizePercent,
+    displayMode: defaultAppSettings.clock.displayMode,
+    hourFormat: defaultAppSettings.clock.hourFormat,
+    glowEffect: defaultAppSettings.clock.glowEffect,
   },
   voiceToText: {
     enabled: defaultAppSettings.voiceToText.enabled,

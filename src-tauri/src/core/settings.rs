@@ -6,24 +6,75 @@ use tauri::{AppHandle, Manager};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ClockSettings {
+    pub enabled: bool,
     pub shortcut: String,
     pub auto_hide_seconds: u32,
     pub font_size: String,
     #[serde(default = "default_show_date")]
     pub show_date: bool,
+    #[serde(default = "default_show_seconds")]
+    pub show_seconds: bool,
+    #[serde(default = "default_clock_color")]
+    pub clock_color: String,
+    #[serde(default = "default_blink_colon")]
+    pub blink_colon: bool,
+    #[serde(default = "default_size_percent")]
+    pub size_percent: u32,
+    #[serde(default = "default_display_mode")]
+    pub display_mode: String,
+    #[serde(default = "default_hour_format")]
+    pub hour_format: String,
+    #[serde(default = "default_glow_effect")]
+    pub glow_effect: bool,
 }
 
 fn default_show_date() -> bool {
     true
 }
 
+fn default_show_seconds() -> bool {
+    true
+}
+
+fn default_clock_color() -> String {
+    "#818cf8".to_string()
+}
+
+fn default_blink_colon() -> bool {
+    true
+}
+
+fn default_size_percent() -> u32 {
+    100
+}
+
+fn default_display_mode() -> String {
+    "digital".to_string()
+}
+
+fn default_hour_format() -> String {
+    "24h".to_string()
+}
+
+fn default_glow_effect() -> bool {
+    true
+}
+
 impl Default for ClockSettings {
     fn default() -> Self {
         Self {
+            enabled: true,
             shortcut: "Ctrl+Alt+C".to_string(),
             auto_hide_seconds: 3,
             font_size: "1.5rem".to_string(),
             show_date: true,
+            show_seconds: true,
+            clock_color: "#818cf8".to_string(),
+            blink_colon: true,
+            size_percent: 100,
+            display_mode: "digital".to_string(),
+            hour_format: "24h".to_string(),
+            glow_effect: true,
         }
     }
 }
@@ -56,6 +107,7 @@ impl Default for VoiceToTextSettings {
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
     pub theme: String,
+    pub settings_shortcut: String,
     pub clock: ClockSettings,
     pub voice_to_text: VoiceToTextSettings,
 }
@@ -64,6 +116,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: "dark".to_string(),
+            settings_shortcut: "Ctrl+Alt+S".to_string(),
             clock: ClockSettings::default(),
             voice_to_text: VoiceToTextSettings::default(),
         }
@@ -78,7 +131,7 @@ pub trait ShortcutProvider {
 impl ShortcutProvider for ClockSettings {
     fn shortcut(&self) -> Option<&str> {
         let s = self.shortcut.trim();
-        if s.is_empty() {
+        if !self.enabled || s.is_empty() {
             None
         } else {
             Some(s)
@@ -106,6 +159,10 @@ impl ShortcutProvider for VoiceToTextSettings {
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
+        let s = self.settings_shortcut.trim();
+        if !s.is_empty() {
+            list.push(("settings", s));
+        }
         if let Some(s) = self.clock.shortcut() {
             list.push((self.clock.feature_id(), s));
         }
@@ -255,6 +312,8 @@ pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String
         .to_string()
     })?;
 
+    let _ = tauri::Emitter::emit(&app, "settings-changed", ());
+
     Ok(())
 }
 
@@ -313,6 +372,13 @@ mod tests {
         assert_eq!(settings.clock.auto_hide_seconds, 3);
         assert_eq!(settings.clock.font_size, "1.5rem");
         assert!(settings.clock.show_date);
+        assert!(settings.clock.show_seconds);
+        assert_eq!(settings.clock.clock_color, "#818cf8");
+        assert!(settings.clock.blink_colon);
+        assert_eq!(settings.clock.size_percent, 100);
+        assert_eq!(settings.clock.display_mode, "digital");
+        assert_eq!(settings.clock.hour_format, "24h");
+        assert!(settings.clock.glow_effect);
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
         assert_eq!(settings.voice_to_text.language, "ja");
 
@@ -323,6 +389,13 @@ mod tests {
         assert_eq!(settings.clock.shortcut, "Ctrl+C");
         assert_eq!(settings.clock.auto_hide_seconds, 3); // デフォルト補完
         assert!(settings.clock.show_date); // デフォルト補完
+        assert!(settings.clock.show_seconds); // デフォルト補完
+        assert_eq!(settings.clock.clock_color, "#818cf8"); // デフォルト補完
+        assert!(settings.clock.blink_colon); // デフォルト補完
+        assert_eq!(settings.clock.size_percent, 100); // デフォルト補完
+        assert_eq!(settings.clock.display_mode, "digital"); // デフォルト補完
+        assert_eq!(settings.clock.hour_format, "24h"); // デフォルト補完
+        assert!(settings.clock.glow_effect); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
     }
 }

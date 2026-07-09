@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type React from "react";
 import {
   createContext,
@@ -13,6 +14,7 @@ import type { VoiceToTextSettings } from "../../features/v2t/types";
 
 export interface AppSettings {
   theme: "dark" | "light";
+  settingsShortcut: string;
   clock: ClockSettings;
   voiceToText: VoiceToTextSettings;
 }
@@ -72,6 +74,25 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
     load();
+
+    const unlistenPromise = listen("settings-changed", async () => {
+      try {
+        const loaded = await invoke<AppSettings>("load_settings");
+        setSettings((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(loaded)) {
+            settingsRef.current = loaded;
+            return loaded;
+          }
+          return prev;
+        });
+      } catch (err) {
+        console.error("Failed to reload settings:", err);
+      }
+    });
+
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
   }, []);
 
   const parseAndSetErrors = useCallback((errorMessage: string) => {
@@ -211,10 +232,18 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           ? newSettings(prev)
           : { ...prev, ...newSettings };
 
+      // Avoid unnecessary saves if the settings haven't actually changed
+      if (JSON.stringify(prev) === JSON.stringify(updated)) {
+        return;
+      }
+
       // 2. Determine if we need an immediate save
       const isImportant =
         prev.theme !== updated.theme ||
+        prev.settingsShortcut !== updated.settingsShortcut ||
+        prev.clock.enabled !== updated.clock.enabled ||
         prev.clock.shortcut !== updated.clock.shortcut ||
+        prev.voiceToText.enabled !== updated.voiceToText.enabled ||
         prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
 
       // 3. Update local state and refs synchronously

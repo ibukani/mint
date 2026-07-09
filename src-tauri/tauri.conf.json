@@ -14,14 +14,18 @@
       {
         "label": "main",
         "title": "mint",
-        "width": 800,
-        "height": 600
+        "width": 900,
+        "height": 650,
+        "decorations": false,
+        "transparent": false,
+        "shadow": true,
+        "maximizable": false
       },
       {
         "label": "clock",
         "title": "Clock Overlay",
-        "width": 250,
-        "height": 80,
+        "width": 300,
+        "height": 110,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,

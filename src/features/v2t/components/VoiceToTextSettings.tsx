@@ -1,16 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
-import { normalizeShortcut } from "../../../core/shortcuts";
 import {
   Button,
   ErrorMessage,
   Field,
   FieldRow,
   SettingsSection,
+  ShortcutInput,
+  Switch,
   TextArea,
   TextInput,
 } from "../../../design/components";
@@ -25,8 +25,15 @@ const PASTE_STATUS_VISIBLE_MS = 2000;
 const COPY_ERROR_VISIBLE_MS = 5000;
 const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
 
+const getStatusLabelClass = (status: string) => {
+  const isError =
+    status.includes("失敗") ||
+    status.includes("ありません") ||
+    status.includes("エラー");
+  return `status-toast-label ${isError ? "status-toast-label--error" : ""}`;
+};
+
 export const VoiceToTextSettings: React.FC = () => {
-  const { setActiveTab } = useSettingsNavigation();
   const {
     featureSettings: voiceToText,
     handleChange,
@@ -359,9 +366,6 @@ export const VoiceToTextSettings: React.FC = () => {
       description="OpenAI互換の音声認識APIを使って音声ファイルを文字起こしします。"
     >
       <div className="feature-settings-toolbar">
-        <Button variant="ghost" onClick={() => setActiveTab("dashboard")}>
-          機能管理に戻る
-        </Button>
         <div className="feature-settings-actions">
           <Button variant="ghost" onClick={resetVoiceToTextSettings}>
             デフォルトに戻す
@@ -374,9 +378,8 @@ export const VoiceToTextSettings: React.FC = () => {
         label="この機能を有効にする (Enable Feature)"
         orientation="inline"
       >
-        <TextInput
+        <Switch
           id="v2t-enabled-checkbox"
-          type="checkbox"
           checked={voiceToText.enabled}
           onChange={(e) => handleChange("enabled", e.target.checked)}
         />
@@ -386,19 +389,14 @@ export const VoiceToTextSettings: React.FC = () => {
         id="v2t-shortcut-input"
         label="起動/録音ショートカットキー"
         error={shortcutError}
-        helpText="音声入力ワークフローを起動するグローバルショートカットキーを指定します。"
+        helpText="入力欄をクリックしてキーを押すことでショートカットキーを変更できます。"
       >
-        <TextInput
+        <ShortcutInput
           id="v2t-shortcut-input"
-          type="text"
-          autoFocus
           invalid={Boolean(shortcutError)}
           value={voiceToText.shortcut}
-          onChange={(e) => handleChange("shortcut", e.target.value)}
-          onBlur={(e) =>
-            handleChange("shortcut", normalizeShortcut(e.target.value))
-          }
-          placeholder="例: Ctrl+Alt+V"
+          onChange={(value) => handleChange("shortcut", value)}
+          placeholderText="例: Ctrl+Alt+V"
         />
       </Field>
 
@@ -465,7 +463,7 @@ export const VoiceToTextSettings: React.FC = () => {
           </Button>
           {apiKeyPasteStatus && (
             <span
-              className="transcription-result-actions__status"
+              className={getStatusLabelClass(apiKeyPasteStatus)}
               role="status"
               aria-live="polite"
               aria-atomic="true"
@@ -555,7 +553,7 @@ export const VoiceToTextSettings: React.FC = () => {
           </Button>
           {audioFilePasteStatus && (
             <span
-              className="transcription-result-actions__status"
+              className={getStatusLabelClass(audioFilePasteStatus)}
               role="status"
               aria-live="polite"
               aria-atomic="true"
@@ -568,7 +566,33 @@ export const VoiceToTextSettings: React.FC = () => {
 
       <Field id="v2t-transcribe-button" helpText={transcribeHelpText}>
         <Button onClick={transcribeAudioFile} disabled={!canTranscribe}>
-          {transcribing ? "文字起こし中..." : "文字起こしを実行"}
+          {transcribing ? (
+            <>
+              <svg
+                className="spinner-icon"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  strokeDasharray="60"
+                  strokeDashoffset="20"
+                />
+              </svg>
+              文字起こし中...
+            </>
+          ) : (
+            "文字起こしを実行"
+          )}
         </Button>
       </Field>
 
@@ -591,7 +615,7 @@ export const VoiceToTextSettings: React.FC = () => {
             </Button>
             {copyStatus && (
               <span
-                className="transcription-result-actions__status"
+                className={getStatusLabelClass(copyStatus)}
                 role="status"
                 aria-live="polite"
                 aria-atomic="true"

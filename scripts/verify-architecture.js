@@ -179,6 +179,18 @@ if (!appSettingsInterfaceMatch) {
   reportError(`Could not find "interface AppSettings" in AppSettings.tsx`);
 } else {
   const interfaceBody = appSettingsInterfaceMatch[1];
+
+  // Verify base properties
+  if (!/settingsShortcut\s*:\s*string/.test(interfaceBody)) {
+    reportError(
+      `AppSettings interface is missing property "settingsShortcut: string"`,
+    );
+  } else {
+    reportSuccess(
+      `AppSettings interface has property "settingsShortcut: string"`,
+    );
+  }
+
   for (const [folder, typeName] of importedSettings.entries()) {
     const propertyRegex = new RegExp(`(\\w+)\\s*\\??:\\s*${typeName}\\b`);
     const propMatch = propertyRegex.exec(interfaceBody);
@@ -340,6 +352,7 @@ if (fs.existsSync(RS_SETTINGS_PATH)) {
       const fieldName = match[1];
       if (
         fieldName !== "theme" && // Base property
+        fieldName !== "settings_shortcut" && // Base property
         !validationState.rustSettingsFields.has(fieldName)
       ) {
         reportError(
@@ -649,8 +662,16 @@ const disallowedGlobalClasses = [
 ];
 
 const designBoundaryAllowlist = new Map([
-  // Clock overlay forwards user-configured font size through a CSS custom property.
-  ["src/features/clock/components/ClockOverlay.tsx", new Set(["inline-style"])],
+  // Clock overlay forwards user-configured font size and color through a CSS custom property.
+  [
+    "src/features/clock/components/ClockOverlay.tsx",
+    new Set(["inline-style", "color-literal"]),
+  ],
+  // Clock settings needs preset color values for palette and inline styles for preview card.
+  [
+    "src/features/clock/components/ClockSettings.tsx",
+    new Set(["inline-style", "color-literal"]),
+  ],
 ]);
 
 function isDesignBoundaryAllowed(relativeFile, rule) {
@@ -668,7 +689,10 @@ for (const sourceFile of listFilesRecursive(FEATURES_DIR, {
   const content = fs.readFileSync(sourceFile, "utf-8");
 
   const colorLiteralRegex = /#[0-9a-fA-F]{3,8}\b/g;
-  if (colorLiteralRegex.test(content)) {
+  if (
+    colorLiteralRegex.test(content) &&
+    !isDesignBoundaryAllowed(relativeFile, "color-literal")
+  ) {
     reportError(
       `Design boundary: "${relativeFile}" contains hard-coded color literals. Use src/design tokens/components instead.`,
     );

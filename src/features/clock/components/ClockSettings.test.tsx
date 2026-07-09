@@ -16,19 +16,47 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
+    // 有効化チェックボックス検証
+    const enabledCheckbox = screen.getByLabelText(
+      "この機能を有効にする (Enable Feature)",
+    ) as HTMLInputElement;
+    expect(enabledCheckbox.checked).toBe(true);
+
     // 起動ショートカットキーの入力フィールド検証
     const inputs = screen.getAllByRole("textbox");
     const shortcutInput = inputs[0] as HTMLInputElement;
     expect(shortcutInput.value).toBe("Ctrl+Alt+C");
 
-    // 表示秒数の入力フィールド検証 (type="number" は spinbutton ロールを持つ)
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    // 表示秒数の入力フィールド検証
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     expect(secondsInput.value).toBe("3");
 
     const showDateCheckbox = screen.getByLabelText(
       "年月日と曜日を表示する",
     ) as HTMLInputElement;
     expect(showDateCheckbox.checked).toBe(true);
+
+    const sizePercentInput = screen.getByLabelText(
+      "時計のサイズ倍率",
+    ) as HTMLInputElement;
+    expect(sizePercentInput.value).toBe("100");
+
+    const displayModeSelect = screen.getByLabelText(
+      "表示モード",
+    ) as HTMLSelectElement;
+    expect(displayModeSelect.value).toBe("digital");
+
+    const hourFormatSelect = screen.getByLabelText(
+      "時間表記 (デジタル時のみ)",
+    ) as HTMLSelectElement;
+    expect(hourFormatSelect.value).toBe("24h");
+
+    const glowEffectCheckbox = screen.getByLabelText(
+      "ネオングロー効果を有効にする",
+    ) as HTMLInputElement;
+    expect(glowEffectCheckbox.checked).toBe(true);
   });
 
   it("resets clock settings to defaults", async () => {
@@ -42,28 +70,64 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
+    const enabledCheckbox = screen.getByLabelText(
+      "この機能を有効にする (Enable Feature)",
+    ) as HTMLInputElement;
     const shortcutInput = screen.getByLabelText(
       "起動ショートカットキー",
     ) as HTMLInputElement;
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     const fontSizeSelect = screen.getByLabelText(
       "フォントサイズ",
     ) as HTMLSelectElement;
     const showDateCheckbox = screen.getByLabelText(
       "年月日と曜日を表示する",
     ) as HTMLInputElement;
+    const showSecondsCheckbox = screen.getByLabelText(
+      "秒数を表示する",
+    ) as HTMLInputElement;
+    const blinkColonCheckbox = screen.getByLabelText(
+      "コロンを点滅させる",
+    ) as HTMLInputElement;
+    const sizePercentInput = screen.getByLabelText(
+      "時計のサイズ倍率",
+    ) as HTMLInputElement;
+    const displayModeSelect = screen.getByLabelText(
+      "表示モード",
+    ) as HTMLSelectElement;
+    const hourFormatSelect = screen.getByLabelText(
+      "時間表記 (デジタル時のみ)",
+    ) as HTMLSelectElement;
+    const glowEffectCheckbox = screen.getByLabelText(
+      "ネオングロー効果を有効にする",
+    ) as HTMLInputElement;
 
+    fireEvent.click(enabledCheckbox); // 有効をオフにする
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
     fireEvent.change(secondsInput, { target: { value: "12" } });
     fireEvent.change(fontSizeSelect, { target: { value: "2.5rem" } });
     fireEvent.click(showDateCheckbox);
+    fireEvent.click(showSecondsCheckbox);
+    fireEvent.click(blinkColonCheckbox);
+    fireEvent.change(sizePercentInput, { target: { value: "150" } });
+    fireEvent.change(displayModeSelect, { target: { value: "analog" } });
+    fireEvent.click(glowEffectCheckbox);
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
+    expect(enabledCheckbox.checked).toBe(true);
     expect(shortcutInput.value).toBe("Ctrl+Alt+C");
     expect(secondsInput.value).toBe("3");
     expect(fontSizeSelect.value).toBe("1.5rem");
     expect(showDateCheckbox.checked).toBe(true);
+    expect(showSecondsCheckbox.checked).toBe(true);
+    expect(blinkColonCheckbox.checked).toBe(true);
+    expect(sizePercentInput.value).toBe("100");
+    expect(displayModeSelect.value).toBe("digital");
+    expect(hourFormatSelect.value).toBe("24h");
+    expect(glowEffectCheckbox.checked).toBe(true);
   });
 
   it("returns focus to the shortcut field after resetting", async () => {
@@ -98,7 +162,9 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
 
     fireEvent.change(secondsInput, { target: { value: "999" } });
     expect(secondsInput.value).toBe("60");
@@ -118,7 +184,9 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     const decreaseButton = screen.getByRole("button", {
       name: "表示秒数を1秒減らす",
     });
@@ -145,7 +213,9 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     const increaseButton = screen.getByRole("button", {
       name: "表示秒数を1秒増やす",
     });
@@ -156,7 +226,7 @@ describe("ClockSettings component", () => {
     expect(secondsInput).toHaveFocus();
   });
 
-  it("trims shortcut whitespace when leaving the field", async () => {
+  it("records shortcut key combination on key down", async () => {
     render(
       <AppSettingsProvider>
         <ClockSettings />
@@ -171,8 +241,12 @@ describe("ClockSettings component", () => {
       "起動ショートカットキー",
     ) as HTMLInputElement;
 
-    fireEvent.change(shortcutInput, { target: { value: "  Ctrl+Shift+T  " } });
-    fireEvent.blur(shortcutInput);
+    fireEvent.focus(shortcutInput);
+    fireEvent.keyDown(shortcutInput, {
+      key: "t",
+      ctrlKey: true,
+      shiftKey: true,
+    });
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+T");
   });

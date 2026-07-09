@@ -1,9 +1,14 @@
 import type React from "react";
-import { Field, Select, SettingsSection } from "../../../design/components";
+import {
+  Field,
+  Select,
+  SettingsSection,
+  ShortcutInput,
+} from "../../../design/components";
 import { useAppSettings } from "../../context/AppSettings";
 
 export const GeneralSettings: React.FC = () => {
-  const { settings, updateSettings } = useAppSettings();
+  const { settings, updateSettings, shortcutErrors } = useAppSettings();
 
   if (!settings) return null;
 
@@ -24,6 +29,19 @@ export const GeneralSettings: React.FC = () => {
           <option value="dark">ダークモード (Dark)</option>
           <option value="light">ライトモード (Light)</option>
         </Select>
+      </Field>
+
+      <Field
+        id="settings-shortcut-input"
+        label="設定画面表示ショートカット"
+        error={shortcutErrors.settings}
+      >
+        <ShortcutInput
+          id="settings-shortcut-input"
+          value={settings.settingsShortcut}
+          invalid={!!shortcutErrors.settings}
+          onChange={(val) => updateSettings({ settingsShortcut: val })}
+        />
       </Field>
     </SettingsSection>
   );

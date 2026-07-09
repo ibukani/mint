@@ -10,7 +10,7 @@ interface SettingsNavigationContextType {
 const noop = () => {};
 
 const SettingsNavigationContext = createContext<SettingsNavigationContextType>({
-  activeTab: "dashboard",
+  activeTab: "general",
   setActiveTab: noop,
 });
 

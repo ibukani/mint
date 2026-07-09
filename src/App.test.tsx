@@ -6,7 +6,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -64,7 +63,9 @@ describe("App Window Routing", () => {
     });
 
     // Check settings screen structure
-    expect(screen.getByText("mint")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "mint", level: 1 }),
+    ).toBeInTheDocument();
     expect(document.title).toBe("mint - 一般設定");
     expect(screen.getByRole("button", { name: "一般設定" })).toHaveAttribute(
       "aria-current",
@@ -108,11 +109,11 @@ describe("App Window Routing", () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText("2026年7月9日(木)")).toBeInTheDocument();
+      expect(screen.getByText("2026年7月9日")).toBeInTheDocument();
+      expect(screen.getByText("木曜日")).toBeInTheDocument();
       expect(screen.getByText(/:/)).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();
       expect(document.title).toBe("mint - 時計オーバーレイ");
-      expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -140,7 +141,9 @@ describe("App Window Routing", () => {
       screen.getByRole("button", { name: "時計オーバーレイを閉じる" }),
     );
 
-    expect(hide).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(hide).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("hides the clock overlay with Escape", async () => {
@@ -163,31 +166,9 @@ describe("App Window Routing", () => {
 
     fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(hide).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows feature cards when the dashboard tab is selected", async () => {
-    vi.mocked(invoke).mockResolvedValue(
-      createMockSettings() as unknown as ReturnType<typeof invoke>,
-    );
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    expect(
-      screen.getByRole("heading", { name: "機能管理" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "時計オーバーレイ" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "音声入力" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("主要な機能の状態と代表設定を確認・編集できます。"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(hide).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("focuses the first field when switching to a settings tab", async () => {
@@ -197,515 +178,18 @@ describe("App Window Routing", () => {
 
     render(<App />);
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
+    });
 
     await waitFor(() => {
       expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();
     });
-  });
-
-  it("returns to the dashboard from a feature settings tab", async () => {
-    vi.mocked(invoke).mockResolvedValue(
-      createMockSettings() as unknown as ReturnType<typeof invoke>,
-    );
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
-    fireEvent.click(screen.getByRole("button", { name: "機能管理に戻る" }));
-
-    const dashboardTab = screen.getByRole("button", { name: "機能管理" });
-    expect(dashboardTab).toHaveAttribute("aria-current", "page");
-    await waitFor(() => {
-      expect(dashboardTab).toHaveFocus();
-    });
-    expect(
-      screen.getByRole("heading", { name: "機能管理" }),
-    ).toBeInTheDocument();
-  });
-
-  it("disables voice-to-text dashboard controls when the feature is unavailable", async () => {
-    vi.mocked(invoke).mockResolvedValue(
-      createMockSettings({
-        voiceToText: {
-          enabled: false,
-          shortcut: "Ctrl+Alt+V",
-          baseUrl: "http://api",
-          model: "whisper-1",
-          language: "ja",
-          status: "unavailable",
-        },
-      }) as unknown as ReturnType<typeof invoke>,
-    );
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const voiceToTextCard = screen
-      .getByRole("heading", { name: "音声入力" })
-      .closest("section");
-    expect(voiceToTextCard).not.toBeNull();
-
-    expect(
-      within(voiceToTextCard as HTMLElement).getByText(
-        "現在は利用できないため、設定は編集できません。",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(voiceToTextCard as HTMLElement).getByText(
-        "現在は利用できないため、設定は編集できません。",
-      ),
-    ).toHaveAttribute("id");
-    const unavailableHint = within(voiceToTextCard as HTMLElement).getByText(
-      "現在は利用できないため、設定は編集できません。",
-    );
-    expect(
-      within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "音声入力の詳細設定",
-      }),
-    ).toHaveAttribute("aria-describedby", unavailableHint.id);
-    expect(
-      within(voiceToTextCard as HTMLElement).getByLabelText(
-        "この機能を有効にする",
-      ),
-    ).toBeDisabled();
-    expect(
-      within(voiceToTextCard as HTMLElement).getByLabelText(
-        "この機能を有効にする",
-      ),
-    ).toHaveAttribute("aria-describedby");
-    expect(
-      within(voiceToTextCard as HTMLElement)
-        .getByLabelText("この機能を有効にする")
-        .getAttribute("aria-describedby"),
-    ).toContain(unavailableHint.id);
-  });
-
-  it("shows a preparation message when voice-to-text is still pending", async () => {
-    vi.mocked(invoke).mockResolvedValue(
-      createMockSettings({
-        voiceToText: {
-          enabled: false,
-          shortcut: "Ctrl+Alt+V",
-          baseUrl: "http://api",
-          model: "whisper-1",
-          language: "ja",
-          status: "placeholder",
-        },
-      }) as unknown as ReturnType<typeof invoke>,
-    );
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const voiceToTextCard = screen
-      .getByRole("heading", { name: "音声入力" })
-      .closest("section");
-    expect(voiceToTextCard).not.toBeNull();
-
-    expect(
-      within(voiceToTextCard as HTMLElement).getByText(
-        "準備中のため、設定は編集できません。",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(voiceToTextCard as HTMLElement).getByText(
-        "準備中のため、設定は編集できません。",
-      ),
-    ).toHaveAttribute("id");
-    const pendingHint = within(voiceToTextCard as HTMLElement).getByText(
-      "準備中のため、設定は編集できません。",
-    );
-    expect(
-      within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "音声入力の詳細設定",
-      }),
-    ).toHaveAttribute("aria-describedby", pendingHint.id);
-    expect(
-      within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "音声入力の詳細設定",
-      }),
-    ).toBeDisabled();
-    expect(
-      within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "音声入力の詳細設定",
-      }),
-    ).toHaveAttribute("title", "準備中のため、設定は編集できません。");
-    expect(
-      within(voiceToTextCard as HTMLElement).getByLabelText(
-        "この機能を有効にする",
-      ),
-    ).toHaveAttribute("aria-describedby");
-    expect(
-      within(voiceToTextCard as HTMLElement)
-        .getByLabelText("この機能を有効にする")
-        .getAttribute("aria-describedby"),
-    ).toContain(pendingHint.id);
-  });
-
-  it("shows an error badge when the clock shortcut registration fails", async () => {
-    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
-      if (cmd === "load_settings") {
-        return createMockSettings();
-      }
-      if (cmd === "save_settings") {
-        throw new Error("時計ショートカットの登録に失敗しました");
-      }
-      return null;
-    });
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const clockCard = screen
-      .getByRole("heading", { name: "時計オーバーレイ" })
-      .closest("section");
-    expect(clockCard).not.toBeNull();
-
-    const shortcutInput = within(clockCard as HTMLElement).getByLabelText(
-      "ショートカットキー",
-    );
-    fireEvent.change(shortcutInput, {
-      target: { value: "Ctrl+Shift+X" },
-    });
-    fireEvent.blur(shortcutInput);
-
-    await waitFor(() => {
-      expect(
-        within(clockCard as HTMLElement).getByText("エラー"),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("saves voice-to-text enabled changes from the dashboard", async () => {
-    vi.mocked(invoke).mockImplementation((cmd) => {
-      if (cmd === "load_settings") {
-        return Promise.resolve(createMockSettings());
-      }
-      if (cmd === "save_settings") {
-        return Promise.resolve();
-      }
-      return Promise.resolve(null);
-    });
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-    fireEvent.click(screen.getByLabelText("この機能を有効にする"));
-
-    await waitFor(() => {
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
-        settings: expect.objectContaining({
-          voiceToText: expect.objectContaining({ enabled: true }),
-        }),
-      });
-    });
-  });
-
-  it("shows save progress and success messages for dashboard edits", async () => {
-    try {
-      vi.mocked(invoke).mockImplementation((cmd) => {
-        if (cmd === "load_settings") {
-          return Promise.resolve(createMockSettings());
-        }
-        if (cmd === "save_settings") {
-          return Promise.resolve();
-        }
-        return Promise.resolve(null);
-      });
-
-      render(<App />);
-
-      await screen.findByRole("heading", { name: "一般設定" });
-      fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-      const voiceToTextCard = screen
-        .getByRole("heading", { name: "音声入力" })
-        .closest("section");
-      expect(voiceToTextCard).not.toBeNull();
-
-      vi.useFakeTimers();
-
-      fireEvent.change(
-        within(voiceToTextCard as HTMLElement).getByLabelText("モデル名"),
-        {
-          target: { value: "whisper-large-v3" },
-        },
-      );
-
-      expect(screen.getByRole("status")).toHaveTextContent("保存待ち...");
-
-      await act(async () => {
-        vi.advanceTimersByTime(500);
-        await Promise.resolve();
-      });
-
-      expect(screen.getByRole("status")).toHaveTextContent("保存完了");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("clamps clock auto-hide seconds from the dashboard", async () => {
-    vi.mocked(invoke).mockImplementation((cmd) => {
-      if (cmd === "load_settings") {
-        return Promise.resolve(createMockSettings());
-      }
-      if (cmd === "save_settings") {
-        return Promise.resolve();
-      }
-      return Promise.resolve(null);
-    });
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const clockCard = screen
-      .getByRole("heading", { name: "時計オーバーレイ" })
-      .closest("section");
-    expect(clockCard).not.toBeNull();
-
-    fireEvent.change(
-      within(clockCard as HTMLElement).getByLabelText("表示秒数"),
-      {
-        target: { value: "999" },
-      },
-    );
-
-    await waitFor(() => {
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
-        settings: expect.objectContaining({
-          clock: expect.objectContaining({ autoHideSeconds: 60 }),
-        }),
-      });
-    });
-  });
-
-  it("adjusts clock auto-hide seconds from the dashboard with step buttons", async () => {
-    vi.mocked(invoke).mockImplementation((cmd) => {
-      if (cmd === "load_settings") {
-        return Promise.resolve(createMockSettings());
-      }
-      if (cmd === "save_settings") {
-        return Promise.resolve();
-      }
-      return Promise.resolve(null);
-    });
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const clockCard = screen
-      .getByRole("heading", { name: "時計オーバーレイ" })
-      .closest("section");
-    expect(clockCard).not.toBeNull();
-
-    const secondsInput = within(clockCard as HTMLElement).getByRole(
-      "spinbutton",
-    ) as HTMLInputElement;
-    const decreaseButton = within(clockCard as HTMLElement).getByRole(
-      "button",
-      {
-        name: "表示秒数を1秒減らす",
-      },
-    );
-    const increaseButton = within(clockCard as HTMLElement).getByRole(
-      "button",
-      {
-        name: "表示秒数を1秒増やす",
-      },
-    );
-
-    expect(decreaseButton).toHaveTextContent("1秒減");
-    expect(increaseButton).toHaveTextContent("1秒増");
-
-    fireEvent.click(decreaseButton);
-    expect(secondsInput.value).toBe("2");
-
-    fireEvent.click(increaseButton);
-    fireEvent.click(increaseButton);
-    expect(secondsInput.value).toBe("4");
-  });
-
-  it("trims dashboard shortcut whitespace before saving", async () => {
-    vi.mocked(invoke).mockImplementation((cmd) => {
-      if (cmd === "load_settings") {
-        return Promise.resolve(createMockSettings());
-      }
-      if (cmd === "save_settings") {
-        return Promise.resolve();
-      }
-      return Promise.resolve(null);
-    });
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const clockCard = screen
-      .getByRole("heading", { name: "時計オーバーレイ" })
-      .closest("section");
-    expect(clockCard).not.toBeNull();
-
-    const shortcutInput = within(clockCard as HTMLElement).getByLabelText(
-      "ショートカットキー",
-    );
-    fireEvent.change(shortcutInput, {
-      target: { value: "  Ctrl+Shift+C  " },
-    });
-    fireEvent.blur(shortcutInput);
-
-    await waitFor(() => {
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
-        settings: expect.objectContaining({
-          clock: expect.objectContaining({ shortcut: "Ctrl+Shift+C" }),
-        }),
-      });
-    });
-  });
-
-  it("normalizes dashboard voice-to-text model and language before saving", async () => {
-    vi.mocked(invoke).mockImplementation((cmd) => {
-      if (cmd === "load_settings") {
-        return Promise.resolve(createMockSettings());
-      }
-      if (cmd === "save_settings") {
-        return Promise.resolve();
-      }
-      return Promise.resolve(null);
-    });
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const voiceToTextCard = screen
-      .getByRole("heading", { name: "音声入力" })
-      .closest("section");
-    expect(voiceToTextCard).not.toBeNull();
-
-    const modelInput = within(voiceToTextCard as HTMLElement).getByLabelText(
-      "モデル名",
-    );
-    const languageInput = within(voiceToTextCard as HTMLElement).getByLabelText(
-      "言語コード",
-    );
-
-    fireEvent.change(modelInput, {
-      target: { value: "  whisper-large-v3  " },
-    });
-    fireEvent.blur(modelInput);
-    fireEvent.change(languageInput, {
-      target: { value: "  EN  " },
-    });
-    fireEvent.blur(languageInput);
-
-    await waitFor(() => {
-      expect(vi.mocked(invoke)).toHaveBeenCalledWith("save_settings", {
-        settings: expect.objectContaining({
-          voiceToText: expect.objectContaining({
-            model: "whisper-large-v3",
-            language: "en",
-          }),
-        }),
-      });
-    });
-  });
-
-  it("shows shortcut errors inside the matching dashboard card", async () => {
-    vi.mocked(invoke).mockImplementation((cmd) => {
-      if (cmd === "load_settings") {
-        return Promise.resolve(createMockSettings());
-      }
-      if (cmd === "save_settings") {
-        return Promise.reject(
-          JSON.stringify({
-            type: "duplicateShortcut",
-            features: ["clock"],
-          }),
-        );
-      }
-      return Promise.resolve(null);
-    });
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const clockCard = screen
-      .getByRole("heading", { name: "時計オーバーレイ" })
-      .closest("section");
-    expect(clockCard).not.toBeNull();
-
-    fireEvent.change(
-      within(clockCard as HTMLElement).getByLabelText("ショートカットキー"),
-      {
-        target: { value: "Ctrl+Alt+V" },
-      },
-    );
-
-    await waitFor(() => {
-      expect(
-        within(clockCard as HTMLElement).getByText(
-          "ショートカットキーが重複しています",
-        ),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("opens feature detail settings from dashboard cards", async () => {
-    vi.mocked(invoke).mockResolvedValue(
-      createMockSettings() as unknown as ReturnType<typeof invoke>,
-    );
-
-    render(<App />);
-
-    await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-
-    const clockCard = screen
-      .getByRole("heading", { name: "時計オーバーレイ" })
-      .closest("section");
-    expect(clockCard).not.toBeNull();
-    fireEvent.click(
-      within(clockCard as HTMLElement).getByRole("button", {
-        name: "時計オーバーレイの詳細設定",
-      }),
-    );
-
-    expect(
-      screen.getByRole("heading", { name: "時計オーバーレイ設定" }),
-    ).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
-    const voiceToTextCard = screen
-      .getByRole("heading", { name: "音声入力" })
-      .closest("section");
-    expect(voiceToTextCard).not.toBeNull();
-    fireEvent.click(
-      within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "音声入力の詳細設定",
-      }),
-    );
-
-    expect(
-      screen.getByRole("heading", { name: "音声入力 (Voice to Text) 設定" }),
-    ).toBeInTheDocument();
   });
 });

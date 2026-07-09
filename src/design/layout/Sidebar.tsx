@@ -1,6 +1,9 @@
+import type React from "react";
+
 export interface SidebarTab<TTabId extends string = string> {
   id: TTabId;
   label: string;
+  icon?: React.ReactNode;
 }
 
 interface SidebarProps<TTabId extends string> {
@@ -29,7 +32,8 @@ export const Sidebar = <TTabId extends string>({
           aria-current={activeTab === tab.id ? "page" : undefined}
           onClick={() => onTabChange(tab.id)}
         >
-          {tab.label}
+          {tab.icon}
+          <span>{tab.label}</span>
         </button>
       ))}
     </nav>

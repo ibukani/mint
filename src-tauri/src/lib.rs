@@ -1,7 +1,7 @@
 mod core;
 mod features;
 
-use tauri::WindowEvent;
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -17,6 +17,13 @@ pub fn run() {
                                 if let Ok(parsed_keys) = keys.parse::<tauri_plugin_global_shortcut::Shortcut>() {
                                     if shortcut == &parsed_keys {
                                         match feature {
+                                            "settings" => {
+                                                if let Some(main_window) = app.get_webview_window("main") {
+                                                    let _ = main_window.show();
+                                                    let _ = main_window.unminimize();
+                                                    let _ = main_window.set_focus();
+                                                }
+                                            }
                                             "clock" => features::clock::toggle_clock_overlay(app),
                                             "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                             _ => {}
@@ -24,6 +31,13 @@ pub fn run() {
                                     }
                                 } else if shortcut.to_string() == keys {
                                     match feature {
+                                        "settings" => {
+                                            if let Some(main_window) = app.get_webview_window("main") {
+                                                let _ = main_window.show();
+                                                let _ = main_window.unminimize();
+                                                let _ = main_window.set_focus();
+                                            }
+                                        }
                                         "clock" => features::clock::toggle_clock_overlay(app),
                                         "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                         _ => {}
