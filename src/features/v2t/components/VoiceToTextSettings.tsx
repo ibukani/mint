@@ -100,11 +100,7 @@ export const VoiceToTextSettings: React.FC = () => {
   useEffect(() => {
     if (!transcriptionText) return;
 
-    const resultField = document.getElementById("v2t-transcription-result");
-    if (resultField instanceof HTMLTextAreaElement) {
-      resultField.focus();
-      resultField.select();
-    }
+    focusAndSelectElementById("v2t-transcription-result");
   }, [transcriptionText]);
 
   useEffect(() => {
