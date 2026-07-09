@@ -505,6 +505,78 @@ describe("VoiceToTextSettings", () => {
     }
   });
 
+  it("clears the copy error message after a short delay", async () => {
+    vi.useFakeTimers();
+    try {
+      const mockSettings = createMockSettings({
+        voiceToText: {
+          enabled: true,
+          shortcut: "Ctrl+Alt+V",
+          baseUrl: "http://api",
+          model: "whisper-1",
+          language: "ja",
+          status: "available",
+        },
+      });
+
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: vi.fn().mockRejectedValue(new Error("copy failed")),
+          readText: vi.fn().mockResolvedValue(undefined),
+        },
+      });
+
+      vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (cmd === "load_api_key") return "mocked-api-key";
+        if (cmd === "transcribe_audio_file") {
+          return { text: "これはテスト音声です" };
+        }
+        return undefined;
+      });
+
+      render(
+        <AppSettingsProvider>
+          <VoiceToTextSettings />
+        </AppSettingsProvider>,
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+        target: { value: "/tmp/audio.wav" },
+      });
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "文字起こしを実行" }),
+        );
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "結果をコピー" }));
+        await Promise.resolve();
+      });
+
+      expect(screen.getByText("コピーに失敗しました")).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+        await Promise.resolve();
+      });
+
+      expect(
+        screen.queryByText("コピーに失敗しました"),
+      ).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("clears stale transcription output when the audio file path changes", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {

@@ -22,6 +22,7 @@ import {
 import type { TranscriptionResult } from "../types";
 
 const PASTE_STATUS_VISIBLE_MS = 2000;
+const COPY_ERROR_VISIBLE_MS = 5000;
 
 export const VoiceToTextSettings: React.FC = () => {
   const { setActiveTab } = useSettingsNavigation();
@@ -147,12 +148,17 @@ export const VoiceToTextSettings: React.FC = () => {
       copyStatusTimerRef.current = null;
     }
 
-    if (copyStatus !== "コピーしました") return undefined;
+    if (!copyStatus) return undefined;
+
+    const visibleMs =
+      copyStatus === "コピーしました"
+        ? PASTE_STATUS_VISIBLE_MS
+        : COPY_ERROR_VISIBLE_MS;
 
     copyStatusTimerRef.current = setTimeout(() => {
       setCopyStatus("");
       copyStatusTimerRef.current = null;
-    }, PASTE_STATUS_VISIBLE_MS);
+    }, visibleMs);
 
     return () => {
       if (copyStatusTimerRef.current) {
