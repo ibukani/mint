@@ -154,6 +154,54 @@ describe("AppSettingsProvider", () => {
     expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
   });
 
+  it("restarts the debounce window when normal settings change again", async () => {
+    vi.useFakeTimers();
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockResolvedValue(mockSettings);
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("btn-fontsize"));
+      fireEvent.click(screen.getByTestId("btn-showdate"));
+    });
+
+    expect(screen.getByTestId("clock-fontsize")).toHaveTextContent("2.5rem");
+    expect(screen.getByTestId("clock-showdate")).toHaveTextContent("false");
+    expect(screen.getByTestId("save-status")).toHaveTextContent("pending");
+
+    expect(invoke).not.toHaveBeenCalledWith(
+      "save_settings",
+      expect.any(Object),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(invoke).toHaveBeenLastCalledWith(
+      "save_settings",
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          clock: expect.objectContaining({
+            fontSize: "2.5rem",
+            showDate: false,
+          }),
+        }),
+      }),
+    );
+  });
+
   it("saves date visibility changes", async () => {
     vi.useFakeTimers();
     const mockSettings = createMockSettings();
