@@ -13,13 +13,15 @@ vi.mock("@tauri-apps/api/core", () => ({
 let clockShownHandler:
   | ((event: { event: string; payload: unknown }) => void)
   | null = null;
+let clockShownCleanup: ReturnType<typeof vi.fn> | null = null;
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(async (event: string, handler: typeof clockShownHandler) => {
     if (event === "clock-shown") {
       clockShownHandler = handler;
     }
-    return vi.fn();
+    clockShownCleanup = vi.fn();
+    return clockShownCleanup;
   }),
 }));
 
@@ -35,6 +37,7 @@ describe("ClockOverlay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clockShownHandler = null;
+    clockShownCleanup = null;
     vi.mocked(getCurrentWindow).mockReturnValue({
       label: "clock",
       hide: vi.fn().mockResolvedValue(undefined),
@@ -186,5 +189,33 @@ describe("ClockOverlay", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("unsubscribes from clock-shown on unmount", async () => {
+    const hide = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getCurrentWindow).mockReturnValue({
+      label: "clock",
+      hide,
+      show: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof getCurrentWindow>);
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings({
+        clock: { autoHideSeconds: 3 },
+      }) as unknown as ReturnType<typeof invoke>,
+    );
+
+    const { unmount } = render(
+      <AppSettingsProvider>
+        <ClockOverlay />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    unmount();
+
+    expect(clockShownCleanup).toHaveBeenCalledTimes(1);
   });
 });
