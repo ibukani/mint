@@ -1,8 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
+import { useTimeoutTask } from "../../../core/hooks/useTimeoutTask";
 import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { formatClockDate, formatClockSummary } from "../formatting";
@@ -42,7 +43,7 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
 
 export const ClockOverlay: React.FC = () => {
   const { settings } = useAppSettings();
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { clearTimeoutTask, scheduleTimeoutTask } = useTimeoutTask();
 
   const hideClock = useCallback(() => {
     getCurrentWindow()
@@ -52,24 +53,17 @@ export const ClockOverlay: React.FC = () => {
       });
   }, []);
 
-  const clearHideTimer = useCallback(() => {
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-  }, []);
-
   const scheduleHide = useCallback(() => {
-    clearHideTimer();
+    clearTimeoutTask();
     if (!settings) return;
 
     const hideSeconds = settings.clock.autoHideSeconds;
     if (hideSeconds > 0) {
-      hideTimerRef.current = setTimeout(() => {
+      scheduleTimeoutTask(() => {
         hideClock();
       }, hideSeconds * 1000);
     }
-  }, [clearHideTimer, hideClock, settings]);
+  }, [clearTimeoutTask, hideClock, scheduleTimeoutTask, settings]);
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
@@ -87,15 +81,15 @@ export const ClockOverlay: React.FC = () => {
 
     return () => {
       disposed = true;
-      clearHideTimer();
+      clearTimeoutTask();
       unlisten?.();
     };
-  }, [clearHideTimer, scheduleHide]);
+  }, [clearTimeoutTask, scheduleHide]);
 
   useEffect(() => {
     scheduleHide();
-    return clearHideTimer;
-  }, [clearHideTimer, scheduleHide]);
+    return clearTimeoutTask;
+  }, [clearTimeoutTask, scheduleHide]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
