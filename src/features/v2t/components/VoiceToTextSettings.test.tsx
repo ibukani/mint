@@ -1046,7 +1046,12 @@ describe("VoiceToTextSettings", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
-    expect(screen.getByLabelText("起動/録音ショートカットキー")).toHaveFocus();
+    const shortcutInput = screen.getByLabelText(
+      "起動/録音ショートカットキー",
+    ) as HTMLInputElement;
+    expect(shortcutInput).toHaveFocus();
+    expect(shortcutInput.selectionStart).toBe(0);
+    expect(shortcutInput.selectionEnd).toBe(shortcutInput.value.length);
   });
 
   it("trims shortcut whitespace when leaving the field", async () => {

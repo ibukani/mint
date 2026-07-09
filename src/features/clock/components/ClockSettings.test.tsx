@@ -69,7 +69,12 @@ describe("ClockSettings component", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
-    expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();
+    const shortcutInput = screen.getByLabelText(
+      "起動ショートカットキー",
+    ) as HTMLInputElement;
+    expect(shortcutInput).toHaveFocus();
+    expect(shortcutInput.selectionStart).toBe(0);
+    expect(shortcutInput.selectionEnd).toBe(shortcutInput.value.length);
   });
 
   it("keeps auto-hide seconds within the supported range", async () => {

@@ -287,7 +287,11 @@ export const VoiceToTextSettings: React.FC = () => {
     setApiKeyPasteStatus("");
     setAudioFilePasteStatus("");
     setShowApiKey(false);
-    document.getElementById("v2t-shortcut-input")?.focus();
+    const shortcutInput = document.getElementById(
+      "v2t-shortcut-input",
+    ) as HTMLInputElement | null;
+    shortcutInput?.focus();
+    shortcutInput?.select();
   };
 
   const canTranscribe =

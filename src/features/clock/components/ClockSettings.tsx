@@ -32,7 +32,11 @@ export const ClockSettings: React.FC = () => {
     handleChange("shortcut", defaultAppSettings.clock.shortcut);
     handleChange("autoHideSeconds", defaultAppSettings.clock.autoHideSeconds);
     handleChange("fontSize", defaultAppSettings.clock.fontSize);
-    document.getElementById("clock-shortcut-input")?.focus();
+    const shortcutInput = document.getElementById(
+      "clock-shortcut-input",
+    ) as HTMLInputElement | null;
+    shortcutInput?.focus();
+    shortcutInput?.select();
   };
 
   const changeAutoHideSeconds = (delta: number) => {
