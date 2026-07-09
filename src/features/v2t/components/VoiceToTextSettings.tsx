@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
@@ -21,6 +21,8 @@ import {
 } from "../settings";
 import type { TranscriptionResult } from "../types";
 
+const PASTE_STATUS_VISIBLE_MS = 2000;
+
 export const VoiceToTextSettings: React.FC = () => {
   const { setActiveTab } = useSettingsNavigation();
   const {
@@ -38,6 +40,12 @@ export const VoiceToTextSettings: React.FC = () => {
   const [audioFilePasteStatus, setAudioFilePasteStatus] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const apiKeyPasteStatusTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const audioFilePasteStatusTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   // Load API key from OS keychain
   useEffect(() => {
@@ -89,6 +97,48 @@ export const VoiceToTextSettings: React.FC = () => {
       resultField.select();
     }
   }, [transcriptionText]);
+
+  useEffect(() => {
+    if (apiKeyPasteStatusTimerRef.current) {
+      clearTimeout(apiKeyPasteStatusTimerRef.current);
+      apiKeyPasteStatusTimerRef.current = null;
+    }
+
+    if (!apiKeyPasteStatus) return undefined;
+
+    apiKeyPasteStatusTimerRef.current = setTimeout(() => {
+      setApiKeyPasteStatus("");
+      apiKeyPasteStatusTimerRef.current = null;
+    }, PASTE_STATUS_VISIBLE_MS);
+
+    return () => {
+      if (apiKeyPasteStatusTimerRef.current) {
+        clearTimeout(apiKeyPasteStatusTimerRef.current);
+        apiKeyPasteStatusTimerRef.current = null;
+      }
+    };
+  }, [apiKeyPasteStatus]);
+
+  useEffect(() => {
+    if (audioFilePasteStatusTimerRef.current) {
+      clearTimeout(audioFilePasteStatusTimerRef.current);
+      audioFilePasteStatusTimerRef.current = null;
+    }
+
+    if (!audioFilePasteStatus) return undefined;
+
+    audioFilePasteStatusTimerRef.current = setTimeout(() => {
+      setAudioFilePasteStatus("");
+      audioFilePasteStatusTimerRef.current = null;
+    }, PASTE_STATUS_VISIBLE_MS);
+
+    return () => {
+      if (audioFilePasteStatusTimerRef.current) {
+        clearTimeout(audioFilePasteStatusTimerRef.current);
+        audioFilePasteStatusTimerRef.current = null;
+      }
+    };
+  }, [audioFilePasteStatus]);
 
   if (!voiceToText) return null;
 

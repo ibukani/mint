@@ -125,55 +125,70 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("pastes the API key from the clipboard", async () => {
-    const mockSettings = createMockSettings({
-      voiceToText: {
-        enabled: true,
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "w",
-        language: "ja",
-        status: "available",
-      },
-    });
+    vi.useFakeTimers();
+    try {
+      const mockSettings = createMockSettings({
+        voiceToText: {
+          enabled: true,
+          shortcut: "Ctrl+Alt+V",
+          baseUrl: "http://api",
+          model: "w",
+          language: "ja",
+          status: "available",
+        },
+      });
 
-    Object.assign(navigator, {
-      clipboard: {
-        readText: vi.fn().mockResolvedValue("  pasted-api-key  "),
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
-    });
+      Object.assign(navigator, {
+        clipboard: {
+          readText: vi.fn().mockResolvedValue("  pasted-api-key  "),
+          writeText: vi.fn().mockResolvedValue(undefined),
+        },
+      });
 
-    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
-      if (cmd === "load_settings") return mockSettings;
-      if (cmd === "load_api_key") return "";
-      return undefined;
-    });
+      vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (cmd === "load_api_key") return "";
+        return undefined;
+      });
 
-    render(
-      <AppSettingsProvider>
-        <VoiceToTextSettings />
-      </AppSettingsProvider>,
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    const apiKeyInput = screen.getByLabelText("API キー") as HTMLInputElement;
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "API キーを貼り付け" }),
+      render(
+        <AppSettingsProvider>
+          <VoiceToTextSettings />
+        </AppSettingsProvider>,
       );
-      await Promise.resolve();
-      await Promise.resolve();
-    });
 
-    expect(apiKeyInput).toHaveValue("pasted-api-key");
-    expect(apiKeyInput).toHaveFocus();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "API キーを貼り付けました",
-    );
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const apiKeyInput = screen.getByLabelText("API キー") as HTMLInputElement;
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "API キーを貼り付け" }),
+        );
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(apiKeyInput).toHaveValue("pasted-api-key");
+      expect(apiKeyInput).toHaveFocus();
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "API キーを貼り付けました",
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+        await Promise.resolve();
+      });
+
+      expect(
+        screen.queryByText("API キーを貼り付けました"),
+      ).not.toBeInTheDocument();
+      expect(apiKeyInput).toHaveFocus();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("ignores empty clipboard content when pasting the API key", async () => {
@@ -533,57 +548,72 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("pastes the audio file path from the clipboard", async () => {
-    const mockSettings = createMockSettings({
-      voiceToText: {
-        enabled: true,
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "whisper-1",
-        language: "ja",
-        status: "available",
-      },
-    });
+    vi.useFakeTimers();
+    try {
+      const mockSettings = createMockSettings({
+        voiceToText: {
+          enabled: true,
+          shortcut: "Ctrl+Alt+V",
+          baseUrl: "http://api",
+          model: "whisper-1",
+          language: "ja",
+          status: "available",
+        },
+      });
 
-    Object.assign(navigator, {
-      clipboard: {
-        readText: vi.fn().mockResolvedValue("  /tmp/audio.wav  "),
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
-    });
+      Object.assign(navigator, {
+        clipboard: {
+          readText: vi.fn().mockResolvedValue("  /tmp/audio.wav  "),
+          writeText: vi.fn().mockResolvedValue(undefined),
+        },
+      });
 
-    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
-      if (cmd === "load_settings") return mockSettings;
-      if (cmd === "load_api_key") return "mocked-api-key";
-      return undefined;
-    });
+      vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (cmd === "load_api_key") return "mocked-api-key";
+        return undefined;
+      });
 
-    render(
-      <AppSettingsProvider>
-        <VoiceToTextSettings />
-      </AppSettingsProvider>,
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    const audioFileInput = screen.getByLabelText(
-      "音声ファイルパス",
-    ) as HTMLInputElement;
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "音声ファイルパスを貼り付け" }),
+      render(
+        <AppSettingsProvider>
+          <VoiceToTextSettings />
+        </AppSettingsProvider>,
       );
-      await Promise.resolve();
-      await Promise.resolve();
-    });
 
-    expect(audioFileInput).toHaveValue("/tmp/audio.wav");
-    expect(audioFileInput).toHaveFocus();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "音声ファイルパスを貼り付けました",
-    );
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const audioFileInput = screen.getByLabelText(
+        "音声ファイルパス",
+      ) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "音声ファイルパスを貼り付け" }),
+        );
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(audioFileInput).toHaveValue("/tmp/audio.wav");
+      expect(audioFileInput).toHaveFocus();
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "音声ファイルパスを貼り付けました",
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+        await Promise.resolve();
+      });
+
+      expect(
+        screen.queryByText("音声ファイルパスを貼り付けました"),
+      ).not.toBeInTheDocument();
+      expect(audioFileInput).toHaveFocus();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("ignores empty clipboard content when pasting the audio file path", async () => {
