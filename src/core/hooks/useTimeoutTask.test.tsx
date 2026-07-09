@@ -38,4 +38,23 @@ describe("useTimeoutTask", () => {
 
     expect(task).not.toHaveBeenCalled();
   });
+
+  it("cancels a scheduled task on unmount", () => {
+    vi.useFakeTimers();
+
+    const task = vi.fn();
+    const { result, unmount } = renderHook(() => useTimeoutTask());
+
+    act(() => {
+      result.current.scheduleTimeoutTask(task, 1000);
+    });
+
+    unmount();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(task).not.toHaveBeenCalled();
+  });
 });
