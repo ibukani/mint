@@ -108,11 +108,17 @@ describe("App Window Routing", () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText("2026年7月9日(木)")).toHaveProperty(
-        "tagName",
-        "TIME",
-      );
-      expect(screen.getByText(/:/)).toBeInTheDocument();
+      expect(
+        screen.getByText("2026年7月9日(木) 12:34:56", {
+          selector: ".sr-only",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("2026年7月9日(木)", { selector: ".sr-only" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("12:34:56 PM", { selector: '[aria-hidden="true"]' }),
+      ).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();
       expect(document.title).toBe("mint - 時計オーバーレイ");
       expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();

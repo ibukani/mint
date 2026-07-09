@@ -8,6 +8,11 @@ import { OverlayCard, OverlayFrame } from "../../../design/layout";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
+const formatClockTime = (time: Date) =>
+  [time.getHours(), time.getMinutes(), time.getSeconds()]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+
 const formatClockDate = (time: Date) =>
   `${time.getFullYear()}年${time.getMonth() + 1}月${time.getDate()}日(${
     WEEKDAY_LABELS[time.getDay()]
@@ -24,15 +29,21 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
   return (
     <div className="overlay-clock-time">
       <time dateTime={time.toISOString()}>
-        {time.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })}
+        <span className="sr-only">
+          {formatClockDate(time)} {formatClockTime(time)}
+        </span>
+        <span aria-hidden="true">
+          {time.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+        </span>
       </time>
       {showDate ? (
         <time className="overlay-clock-date" dateTime={time.toISOString()}>
-          {formatClockDate(time)}
+          <span className="sr-only">{formatClockDate(time)}</span>
+          <span aria-hidden="true">{formatClockDate(time)}</span>
         </time>
       ) : null}
     </div>
