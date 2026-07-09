@@ -316,7 +316,9 @@ export const VoiceToTextSettings: React.FC = () => {
         </Button>
       </Field>
 
-      {transcriptionError && <ErrorMessage>{transcriptionError}</ErrorMessage>}
+      {transcriptionError && (
+        <ErrorMessage autoFocus>{transcriptionError}</ErrorMessage>
+      )}
 
       {transcriptionText && (
         <Field id="v2t-transcription-result" label="文字起こし結果">

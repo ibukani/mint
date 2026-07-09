@@ -225,6 +225,50 @@ describe("VoiceToTextSettings", () => {
     ).toBeInTheDocument();
   });
 
+  it("focuses the transcription error after a failed request", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") {
+        throw new Error("文字起こしに失敗しました");
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("文字起こしに失敗しました")).toHaveFocus();
+  });
+
   it("copies and clears transcription results", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
