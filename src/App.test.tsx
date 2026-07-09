@@ -106,6 +106,7 @@ describe("App Window Routing", () => {
     expect(clockCard).toBeInTheDocument();
     expect(screen.queryByText("mint")).not.toBeInTheDocument();
     expect(document.title).toBe("mint - 時計オーバーレイ");
+    expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
   });
 
   it("hides the clock overlay from the close button", async () => {

@@ -90,7 +90,10 @@ export const ClockOverlay: React.FC = () => {
         >
           閉じる
         </Button>
-        <TickingClock />
+        <div className="overlay-clock-content">
+          <TickingClock />
+          <p className="overlay-clock-hint">Esc でも閉じられます。</p>
+        </div>
       </OverlayCard>
     </OverlayFrame>
   );
