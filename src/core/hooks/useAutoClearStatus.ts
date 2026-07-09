@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useTimeoutTask } from "./useTimeoutTask";
 
 export function useAutoClearStatus<T extends string>(
   status: T,
@@ -6,29 +7,27 @@ export function useAutoClearStatus<T extends string>(
   resolveDelayMs: (status: T) => number | null,
   paused = false,
 ) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { clearTimeoutTask, scheduleTimeoutTask } = useTimeoutTask();
 
   useEffect(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+    clearTimeoutTask();
 
     if (!status || paused) return undefined;
 
     const delayMs = resolveDelayMs(status);
     if (delayMs === null) return undefined;
 
-    timerRef.current = setTimeout(() => {
+    scheduleTimeoutTask(() => {
       clearStatus();
-      timerRef.current = null;
     }, delayMs);
 
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [clearStatus, paused, resolveDelayMs, status]);
+    return clearTimeoutTask;
+  }, [
+    clearTimeoutTask,
+    clearStatus,
+    paused,
+    resolveDelayMs,
+    scheduleTimeoutTask,
+    status,
+  ]);
 }
