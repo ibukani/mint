@@ -273,6 +273,7 @@ describe("VoiceToTextSettings", () => {
 
     expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
     expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("音声ファイルパス")).toHaveFocus();
   });
 
   it("clears transcription output when resetting voice-to-text settings", async () => {

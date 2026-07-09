@@ -114,6 +114,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    document.getElementById("v2t-audio-file-input")?.focus();
   };
 
   const resetVoiceToTextSettings = () => {
