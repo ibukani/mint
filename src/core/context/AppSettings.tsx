@@ -166,7 +166,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     setSaveStatus("idle");
   }, []);
 
-  const resolveSaveStatusDelayMs = useCallback((currentStatus: string) => {
+  const resolveSaveStatusDelayMs = useCallback((currentStatus: SaveStatus) => {
     if (currentStatus === "saved") return SAVE_SUCCESS_VISIBLE_MS;
     if (currentStatus === "error") return SAVE_ERROR_VISIBLE_MS;
     return null;

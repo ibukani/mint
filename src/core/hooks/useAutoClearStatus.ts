@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 
-export function useAutoClearStatus(
-  status: string,
+export function useAutoClearStatus<T extends string>(
+  status: T,
   clearStatus: () => void,
-  resolveDelayMs: (status: string) => number | null,
+  resolveDelayMs: (status: T) => number | null,
   paused = false,
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
