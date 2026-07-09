@@ -355,6 +355,7 @@ try {
     ["check", "--write", "--unsafe", "."],
     {
       stdio: verbose ? "inherit" : "pipe",
+      shell: process.platform === "win32",
     },
   );
   if (biomeResult.error) {

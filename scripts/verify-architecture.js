@@ -664,7 +664,7 @@ for (const sourceFile of listFilesRecursive(FEATURES_DIR, {
   if (sourceFile.endsWith(".test.ts") || sourceFile.endsWith(".test.tsx")) {
     continue;
   }
-  const relativeFile = path.relative(ROOT_DIR, sourceFile);
+  const relativeFile = path.relative(ROOT_DIR, sourceFile).replace(/\\/g, "/");
   const content = fs.readFileSync(sourceFile, "utf-8");
 
   const colorLiteralRegex = /#[0-9a-fA-F]{3,8}\b/g;
