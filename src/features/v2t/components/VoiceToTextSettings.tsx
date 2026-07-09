@@ -140,6 +140,10 @@ export const VoiceToTextSettings: React.FC = () => {
     void transcribeAudioFile();
   };
 
+  const normalizeAudioFilePath = (value: string) => {
+    setAudioFilePath(value.trim());
+  };
+
   const resetVoiceToTextSettings = () => {
     handleChange("enabled", defaultAppSettings.voiceToText.enabled);
     handleChange("shortcut", defaultAppSettings.voiceToText.shortcut);
@@ -329,6 +333,7 @@ export const VoiceToTextSettings: React.FC = () => {
             type="text"
             value={audioFilePath}
             onChange={(e) => setAudioFilePath(e.target.value)}
+            onBlur={(e) => normalizeAudioFilePath(e.target.value)}
             onKeyDown={handleAudioFilePathKeyDown}
             placeholder="例: /Users/me/audio.wav"
           />

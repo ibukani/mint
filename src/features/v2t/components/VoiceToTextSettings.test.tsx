@@ -480,6 +480,46 @@ describe("VoiceToTextSettings", () => {
     expect(audioFileInput).toHaveFocus();
   });
 
+  it("trims the audio file path when leaving the field", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const audioFileInput = screen.getByLabelText(
+      "音声ファイルパス",
+    ) as HTMLInputElement;
+    fireEvent.change(audioFileInput, {
+      target: { value: "  /tmp/audio.wav  " },
+    });
+    fireEvent.blur(audioFileInput);
+
+    expect(audioFileInput).toHaveValue("/tmp/audio.wav");
+  });
+
   it("clears transcription output when resetting voice-to-text settings", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
