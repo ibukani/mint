@@ -65,6 +65,7 @@ describe("App Window Routing", () => {
 
     // Check settings screen structure
     expect(screen.getByText("mint")).toBeInTheDocument();
+    expect(document.title).toBe("mint - 一般設定");
     expect(screen.getAllByText("一般設定").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("heading", { name: "一般設定" }),
@@ -104,6 +105,7 @@ describe("App Window Routing", () => {
     const clockCard = screen.getByText(/:/);
     expect(clockCard).toBeInTheDocument();
     expect(screen.queryByText("mint")).not.toBeInTheDocument();
+    expect(document.title).toBe("mint - 時計オーバーレイ");
   });
 
   it("shows feature cards when the dashboard tab is selected", async () => {

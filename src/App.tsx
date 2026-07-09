@@ -24,6 +24,10 @@ const saveStatusLabels: Record<SaveStatus, string> = {
   error: "保存エラー",
 };
 
+const overlayWindowTitles: Record<string, string> = {
+  clock: "時計オーバーレイ",
+};
+
 const AppContent: React.FC = () => {
   const { settings, loading, error, saveStatus, clearError } = useAppSettings();
   const [label, setLabel] = useState<string | null>(null);
@@ -38,6 +42,16 @@ const AppContent: React.FC = () => {
       document.documentElement.dataset.theme = settings.theme;
     }
   }, [settings]);
+
+  useEffect(() => {
+    const tabLabel =
+      SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "一般設定";
+    const currentLabel =
+      label && label !== "main"
+        ? (overlayWindowTitles[label] ?? label)
+        : tabLabel;
+    document.title = `mint - ${currentLabel}`;
+  }, [activeTab, label]);
 
   if (loading) {
     return <div className="app-loading">設定を読み込み中...</div>;
