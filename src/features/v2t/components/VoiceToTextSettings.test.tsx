@@ -173,6 +173,55 @@ describe("VoiceToTextSettings", () => {
     expect(apiKeyInput).toHaveFocus();
   });
 
+  it("ignores empty clipboard content when pasting the API key", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "w",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    Object.assign(navigator, {
+      clipboard: {
+        readText: vi.fn().mockResolvedValue("   "),
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const apiKeyInput = screen.getByLabelText("API キー") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "API キーを貼り付け" }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(apiKeyInput).toHaveValue("mocked-api-key");
+    expect(apiKeyInput).not.toHaveFocus();
+  });
+
   it("transcribes an audio file with the typed backend command", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
@@ -529,6 +578,58 @@ describe("VoiceToTextSettings", () => {
 
     expect(audioFileInput).toHaveValue("/tmp/audio.wav");
     expect(audioFileInput).toHaveFocus();
+  });
+
+  it("ignores empty clipboard content when pasting the audio file path", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    Object.assign(navigator, {
+      clipboard: {
+        readText: vi.fn().mockResolvedValue("   "),
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const audioFileInput = screen.getByLabelText(
+      "音声ファイルパス",
+    ) as HTMLInputElement;
+    fireEvent.change(audioFileInput, { target: { value: "/tmp/audio.wav" } });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "音声ファイルパスを貼り付け" }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(audioFileInput).toHaveValue("/tmp/audio.wav");
+    expect(screen.getByLabelText("起動/録音ショートカットキー")).toHaveFocus();
   });
 
   it("trims the audio file path when leaving the field", async () => {

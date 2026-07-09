@@ -66,7 +66,9 @@ export const VoiceToTextSettings: React.FC = () => {
   const pasteApiKey = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      setApiKey(text.trim());
+      const value = text.trim();
+      if (!value) return;
+      setApiKey(value);
       document.getElementById("v2t-api-key-input")?.focus();
     } catch (err) {
       console.error("Failed to paste API key:", err);
@@ -136,7 +138,9 @@ export const VoiceToTextSettings: React.FC = () => {
   const pasteAudioFilePath = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      setAudioFilePath(text.trim());
+      const value = text.trim();
+      if (!value) return;
+      setAudioFilePath(value);
       document.getElementById("v2t-audio-file-input")?.focus();
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
