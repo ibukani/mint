@@ -64,7 +64,9 @@ describe("App Window Routing", () => {
     });
 
     // Check settings screen structure
-    expect(screen.getByText("mint")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "mint", level: 1 }),
+    ).toBeInTheDocument();
     expect(document.title).toBe("mint - 一般設定");
     expect(screen.getByRole("button", { name: "一般設定" })).toHaveAttribute(
       "aria-current",
