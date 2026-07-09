@@ -13,7 +13,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   ...props
 }) => {
   const classes = [
-    type === "checkbox" ? "design-checkbox" : "design-control",
+    "design-control",
     controlSize === "number" ? "design-control--number" : "",
     invalid ? "is-invalid" : "",
     className,

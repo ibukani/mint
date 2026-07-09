@@ -2,6 +2,7 @@ import type React from "react";
 import { useId } from "react";
 import {
   Button,
+  Checkbox,
   FeatureCard,
   Field,
   FieldRow,
@@ -215,9 +216,8 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
             label="この機能を有効にする"
             orientation="inline"
           >
-            <TextInput
+            <Checkbox
               id="dashboard-v2t-enabled-checkbox"
-              type="checkbox"
               checked={voiceToText.enabled}
               disabled={!voiceToTextAvailable}
               aria-describedby={

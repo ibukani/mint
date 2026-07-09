@@ -5,6 +5,7 @@ import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { normalizeShortcut } from "../../../core/shortcuts";
 import {
   Button,
+  Checkbox,
   Field,
   FieldRow,
   Select,
@@ -150,9 +151,8 @@ export const ClockSettings: React.FC = () => {
         orientation="inline"
         helpText="時計の下に年月日と曜日を表示します。"
       >
-        <TextInput
+        <Checkbox
           id="clock-show-date-checkbox"
-          type="checkbox"
           checked={clock.showDate}
           onChange={(e) => handleChange("showDate", e.target.checked)}
         />

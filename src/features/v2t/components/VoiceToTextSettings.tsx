@@ -7,6 +7,7 @@ import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { normalizeShortcut } from "../../../core/shortcuts";
 import {
   Button,
+  Checkbox,
   ErrorMessage,
   Field,
   FieldRow,
@@ -374,9 +375,8 @@ export const VoiceToTextSettings: React.FC = () => {
         label="この機能を有効にする (Enable Feature)"
         orientation="inline"
       >
-        <TextInput
+        <Checkbox
           id="v2t-enabled-checkbox"
-          type="checkbox"
           checked={voiceToText.enabled}
           onChange={(e) => handleChange("enabled", e.target.checked)}
         />
