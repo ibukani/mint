@@ -248,6 +248,30 @@ export const ClockOverlay: React.FC = () => {
   }, [settings]);
 
   useEffect(() => {
+    if (!settings) return;
+
+    const scale = settings.clock.sizePercent / 100;
+    const isAnalog = settings.clock.displayMode === "analog";
+    const w = Math.round((isAnalog ? 240 : 300) * scale);
+    const h = Math.round(
+      (isAnalog ? (settings.clock.showDate ? 250 : 190) : 110) * scale,
+    );
+
+    const win = getCurrentWindow();
+    import("@tauri-apps/api/dpi")
+      .then(({ LogicalSize }) => {
+        if (typeof win.setSize === "function") {
+          win.setSize(new LogicalSize(w, h)).catch((err) => {
+            console.error("Failed to resize clock window:", err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load Tauri DPI module:", err);
+      });
+  }, [settings]);
+
+  useEffect(() => {
     const unlistenPromise = listen("clock-shown", () => {
       setIsAnimateVisible(true);
       setIsHiding(false);
