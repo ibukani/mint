@@ -103,7 +103,11 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
           status={clockShortcutError ? "エラー" : "利用可能"}
           statusTone={clockShortcutError ? "error" : "available"}
           actions={
-            <Button variant="ghost" onClick={() => onOpenSettings("clock")}>
+            <Button
+              variant="ghost"
+              aria-label="時計オーバーレイの詳細設定"
+              onClick={() => onOpenSettings("clock")}
+            >
               詳細設定
             </Button>
           }
@@ -199,6 +203,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
                   ? voiceToTextAvailabilityMessage
                   : undefined
               }
+              aria-label="音声入力の詳細設定"
               onClick={() => onOpenSettings("voiceToText")}
             >
               詳細設定

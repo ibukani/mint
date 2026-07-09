@@ -260,7 +260,7 @@ describe("App Window Routing", () => {
     );
     expect(
       within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "詳細設定",
+        name: "音声入力の詳細設定",
       }),
     ).toHaveAttribute("aria-describedby", unavailableHint.id);
     expect(
@@ -319,17 +319,17 @@ describe("App Window Routing", () => {
     );
     expect(
       within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "詳細設定",
+        name: "音声入力の詳細設定",
       }),
     ).toHaveAttribute("aria-describedby", pendingHint.id);
     expect(
       within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "詳細設定",
+        name: "音声入力の詳細設定",
       }),
     ).toBeDisabled();
     expect(
       within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "詳細設定",
+        name: "音声入力の詳細設定",
       }),
     ).toHaveAttribute("title", "準備中のため、設定は編集できません。");
     expect(
@@ -680,7 +680,7 @@ describe("App Window Routing", () => {
     expect(clockCard).not.toBeNull();
     fireEvent.click(
       within(clockCard as HTMLElement).getByRole("button", {
-        name: "詳細設定",
+        name: "時計オーバーレイの詳細設定",
       }),
     );
 
@@ -695,7 +695,7 @@ describe("App Window Routing", () => {
     expect(voiceToTextCard).not.toBeNull();
     fireEvent.click(
       within(voiceToTextCard as HTMLElement).getByRole("button", {
-        name: "詳細設定",
+        name: "音声入力の詳細設定",
       }),
     );
 
