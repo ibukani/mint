@@ -4,11 +4,7 @@ import { createMockSettings } from "./mockSettings";
 
 describe("createMockSettings", () => {
   it("returns the default mock settings when no overrides are provided", () => {
-    expect(createMockSettings()).toEqual({
-      theme: defaultAppSettings.theme,
-      clock: defaultAppSettings.clock,
-      voiceToText: defaultAppSettings.voiceToText,
-    });
+    expect(createMockSettings()).toEqual(defaultAppSettings);
   });
 
   it("deep merges nested feature settings", () => {

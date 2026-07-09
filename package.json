@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "verify:architecture": "node scripts/verify-architecture.js",
     "verify:architecture:verbose": "node scripts/verify-architecture.js --verbose",
+    "visual:screenshots": "node scripts/capture-screenshots.js",
     "scaffold:feature": "node scripts/scaffold-feature.js",
     "lint": "biome lint .",
     "format": "biome format --write .",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.2",
+    "@playwright/test": "^1.61.1",
     "@tauri-apps/cli": "^2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
