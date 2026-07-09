@@ -139,6 +139,10 @@ body {
   font-weight: var(--font-weight-semibold);
 }
 
+.settings-save-status--idle {
+  visibility: hidden;
+}
+
 .settings-save-status--saved {
   border-color: var(--border-success);
   background: var(--surface-success);

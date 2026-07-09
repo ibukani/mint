@@ -67,14 +67,13 @@ const AppContent: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       >
-        {saveStatusLabel && (
-          <div
-            className={`settings-save-status settings-save-status--${saveStatus}`}
-            role="status"
-          >
-            {saveStatusLabel}
-          </div>
-        )}
+        <div
+          className={`settings-save-status settings-save-status--${saveStatus}`}
+          role={saveStatus === "idle" ? undefined : "status"}
+          aria-hidden={saveStatus === "idle"}
+        >
+          {saveStatusLabel}
+        </div>
         {activeTab === "dashboard" ? (
           <FeatureDashboard onOpenSettings={openFeatureSettings} />
         ) : (

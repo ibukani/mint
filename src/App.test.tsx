@@ -70,6 +70,7 @@ describe("App Window Routing", () => {
       screen.getByRole("heading", { name: "一般設定" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "機能管理" })).toBeNull();
+    expect(document.querySelector(".settings-save-status")).toBeInTheDocument();
   });
 
   it("renders ClockOverlay when label=clock", async () => {
