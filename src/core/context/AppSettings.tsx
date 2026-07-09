@@ -214,7 +214,9 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       // 2. Determine if we need an immediate save
       const isImportant =
         prev.theme !== updated.theme ||
+        prev.clock.enabled !== updated.clock.enabled ||
         prev.clock.shortcut !== updated.clock.shortcut ||
+        prev.voiceToText.enabled !== updated.voiceToText.enabled ||
         prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
 
       // 3. Update local state and refs synchronously

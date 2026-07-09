@@ -2,6 +2,12 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 /// Toggles the clock overlay window visibility.
 pub fn toggle_clock_overlay(app: &AppHandle) {
+    if let Ok(settings) = crate::core::settings::load_settings_internal(app) {
+        if !settings.clock.enabled {
+            return;
+        }
+    }
+
     if let Some(window) = app.get_webview_window("clock") {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();

@@ -3,6 +3,7 @@ import type { AppSettings } from "./context/AppSettings";
 export const defaultAppSettings: AppSettings = {
   theme: "dark",
   clock: {
+    enabled: true,
     shortcut: "Ctrl+Alt+C",
     autoHideSeconds: 3,
     fontSize: "1.5rem",

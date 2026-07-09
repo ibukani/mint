@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ClockSettings {
+    pub enabled: bool,
     pub shortcut: String,
     pub auto_hide_seconds: u32,
     pub font_size: String,
@@ -20,6 +21,7 @@ fn default_show_date() -> bool {
 impl Default for ClockSettings {
     fn default() -> Self {
         Self {
+            enabled: true,
             shortcut: "Ctrl+Alt+C".to_string(),
             auto_hide_seconds: 3,
             font_size: "1.5rem".to_string(),
@@ -78,7 +80,7 @@ pub trait ShortcutProvider {
 impl ShortcutProvider for ClockSettings {
     fn shortcut(&self) -> Option<&str> {
         let s = self.shortcut.trim();
-        if s.is_empty() {
+        if !self.enabled || s.is_empty() {
             None
         } else {
             Some(s)

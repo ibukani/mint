@@ -47,6 +47,13 @@ export const ClockOverlay: React.FC = () => {
       });
   }, []);
 
+  // Hide the clock window immediately if the clock feature is disabled in settings
+  useEffect(() => {
+    if (settings && !settings.clock.enabled) {
+      hideClock();
+    }
+  }, [settings, hideClock]);
+
   // listen to "clock-shown" event to restart timer
   useEffect(() => {
     const unlistenPromise = listen("clock-shown", () => {

@@ -4,6 +4,7 @@ import { defaultAppSettings } from "../defaultSettings";
 const defaultMockSettings: AppSettings = {
   theme: defaultAppSettings.theme,
   clock: {
+    enabled: defaultAppSettings.clock.enabled,
     shortcut: defaultAppSettings.clock.shortcut,
     autoHideSeconds: defaultAppSettings.clock.autoHideSeconds,
     fontSize: defaultAppSettings.clock.fontSize,

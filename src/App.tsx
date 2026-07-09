@@ -1,7 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
-import { FeatureDashboard } from "./core/components/dashboard/FeatureDashboard";
+import { useEffect, useState } from "react";
 import { ErrorToast } from "./core/components/ErrorToast";
 import {
   AppSettingsProvider,
@@ -33,10 +32,6 @@ const AppContent: React.FC = () => {
   const { settings, loading, error, saveStatus, clearError } = useAppSettings();
   const [label, setLabel] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
-  const previousTabRef = useRef<SettingsTabId>("general");
-  const dashboardFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);
@@ -58,29 +53,6 @@ const AppContent: React.FC = () => {
     document.title = `mint - ${currentLabel}`;
   }, [activeTab, label]);
 
-  useEffect(() => {
-    if (previousTabRef.current !== "dashboard" && activeTab === "dashboard") {
-      if (dashboardFocusTimerRef.current) {
-        clearTimeout(dashboardFocusTimerRef.current);
-      }
-
-      dashboardFocusTimerRef.current = setTimeout(() => {
-        document
-          .querySelector<HTMLButtonElement>('button[aria-current="page"]')
-          ?.focus();
-        dashboardFocusTimerRef.current = null;
-      }, 0);
-    }
-
-    previousTabRef.current = activeTab;
-    return () => {
-      if (dashboardFocusTimerRef.current) {
-        clearTimeout(dashboardFocusTimerRef.current);
-        dashboardFocusTimerRef.current = null;
-      }
-    };
-  }, [activeTab]);
-
   if (loading) {
     return <div className="app-loading">設定を読み込み中...</div>;
   }
@@ -92,11 +64,6 @@ const AppContent: React.FC = () => {
   }
 
   // Main settings window
-  const openFeatureSettings = (
-    tabId: Extract<SettingsTabId, "clock" | "voiceToText">,
-  ) => {
-    setActiveTab(tabId);
-  };
   const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab];
   const saveStatusLabel = saveStatusLabels[saveStatus];
 
@@ -120,11 +87,7 @@ const AppContent: React.FC = () => {
           >
             {saveStatusLabel}
           </div>
-          {activeTab === "dashboard" ? (
-            <FeatureDashboard onOpenSettings={openFeatureSettings} />
-          ) : (
-            <ActiveTabComponent />
-          )}
+          <ActiveTabComponent />
         </AppShell>
       </SettingsNavigationProvider>
     </>

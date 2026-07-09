@@ -16,6 +16,12 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
+    // 有効化チェックボックス検証
+    const enabledCheckbox = screen.getByLabelText(
+      "この機能を有効にする (Enable Feature)",
+    ) as HTMLInputElement;
+    expect(enabledCheckbox.checked).toBe(true);
+
     // 起動ショートカットキーの入力フィールド検証
     const inputs = screen.getAllByRole("textbox");
     const shortcutInput = inputs[0] as HTMLInputElement;
@@ -42,6 +48,9 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
+    const enabledCheckbox = screen.getByLabelText(
+      "この機能を有効にする (Enable Feature)",
+    ) as HTMLInputElement;
     const shortcutInput = screen.getByLabelText(
       "起動ショートカットキー",
     ) as HTMLInputElement;
@@ -53,6 +62,7 @@ describe("ClockSettings component", () => {
       "年月日と曜日を表示する",
     ) as HTMLInputElement;
 
+    fireEvent.click(enabledCheckbox); // 有効をオフにする
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
     fireEvent.change(secondsInput, { target: { value: "12" } });
     fireEvent.change(fontSizeSelect, { target: { value: "2.5rem" } });
@@ -60,6 +70,7 @@ describe("ClockSettings component", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
+    expect(enabledCheckbox.checked).toBe(true);
     expect(shortcutInput.value).toBe("Ctrl+Alt+C");
     expect(secondsInput.value).toBe("3");
     expect(fontSizeSelect.value).toBe("1.5rem");
