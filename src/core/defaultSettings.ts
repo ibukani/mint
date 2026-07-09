@@ -2,6 +2,7 @@ import type { AppSettings } from "./context/AppSettings";
 
 export const defaultAppSettings: AppSettings = {
   theme: "dark",
+  settingsShortcut: "Ctrl+Alt+S",
   clock: {
     enabled: true,
     shortcut: "Ctrl+Alt+C",

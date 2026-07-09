@@ -179,6 +179,18 @@ if (!appSettingsInterfaceMatch) {
   reportError(`Could not find "interface AppSettings" in AppSettings.tsx`);
 } else {
   const interfaceBody = appSettingsInterfaceMatch[1];
+
+  // Verify base properties
+  if (!/settingsShortcut\s*:\s*string/.test(interfaceBody)) {
+    reportError(
+      `AppSettings interface is missing property "settingsShortcut: string"`,
+    );
+  } else {
+    reportSuccess(
+      `AppSettings interface has property "settingsShortcut: string"`,
+    );
+  }
+
   for (const [folder, typeName] of importedSettings.entries()) {
     const propertyRegex = new RegExp(`(\\w+)\\s*\\??:\\s*${typeName}\\b`);
     const propMatch = propertyRegex.exec(interfaceBody);
@@ -340,6 +352,7 @@ if (fs.existsSync(RS_SETTINGS_PATH)) {
       const fieldName = match[1];
       if (
         fieldName !== "theme" && // Base property
+        fieldName !== "settings_shortcut" && // Base property
         !validationState.rustSettingsFields.has(fieldName)
       ) {
         reportError(

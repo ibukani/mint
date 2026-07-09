@@ -86,6 +86,7 @@ impl Default for VoiceToTextSettings {
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
     pub theme: String,
+    pub settings_shortcut: String,
     pub clock: ClockSettings,
     pub voice_to_text: VoiceToTextSettings,
 }
@@ -94,6 +95,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: "dark".to_string(),
+            settings_shortcut: "Ctrl+Alt+S".to_string(),
             clock: ClockSettings::default(),
             voice_to_text: VoiceToTextSettings::default(),
         }
@@ -136,6 +138,10 @@ impl ShortcutProvider for VoiceToTextSettings {
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
+        let s = self.settings_shortcut.trim();
+        if !s.is_empty() {
+            list.push(("settings", s));
+        }
         if let Some(s) = self.clock.shortcut() {
             list.push((self.clock.feature_id(), s));
         }

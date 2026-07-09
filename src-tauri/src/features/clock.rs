@@ -24,9 +24,7 @@ pub fn toggle_clock_overlay(app: &AppHandle) {
             if let Ok(Some(monitor)) = window.current_monitor() {
                 let monitor_size = monitor.size();
                 let margin = 20;
-                let x = monitor_size
-                    .width
-                    .saturating_sub(w + margin);
+                let x = monitor_size.width.saturating_sub(w + margin);
                 let y = margin;
                 let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(
                     x as i32, y as i32,

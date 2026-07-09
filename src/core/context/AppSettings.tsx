@@ -14,6 +14,7 @@ import type { VoiceToTextSettings } from "../../features/v2t/types";
 
 export interface AppSettings {
   theme: "dark" | "light";
+  settingsShortcut: string;
   clock: ClockSettings;
   voiceToText: VoiceToTextSettings;
 }
@@ -239,6 +240,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       // 2. Determine if we need an immediate save
       const isImportant =
         prev.theme !== updated.theme ||
+        prev.settingsShortcut !== updated.settingsShortcut ||
         prev.clock.enabled !== updated.clock.enabled ||
         prev.clock.shortcut !== updated.clock.shortcut ||
         prev.voiceToText.enabled !== updated.voiceToText.enabled ||

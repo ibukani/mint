@@ -179,8 +179,15 @@ describe("App Window Routing", () => {
 
     render(<App />);
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     await screen.findByRole("heading", { name: "一般設定" });
-    fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
+    });
 
     await waitFor(() => {
       expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();

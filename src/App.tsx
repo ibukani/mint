@@ -53,6 +53,20 @@ const AppContent: React.FC = () => {
     document.title = `mint - ${currentLabel}`;
   }, [activeTab, label]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeTab is used as a trigger for focusing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const contentEl = document.querySelector(".app-content");
+      if (contentEl) {
+        const focusable = contentEl.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([type="checkbox"]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+        );
+        focusable?.focus();
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
+
   if (loading) {
     return <div className="app-loading">設定を読み込み中...</div>;
   }

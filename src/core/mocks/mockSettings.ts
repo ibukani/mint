@@ -3,6 +3,7 @@ import { defaultAppSettings } from "../defaultSettings";
 
 const defaultMockSettings: AppSettings = {
   theme: defaultAppSettings.theme,
+  settingsShortcut: defaultAppSettings.settingsShortcut,
   clock: {
     enabled: defaultAppSettings.clock.enabled,
     shortcut: defaultAppSettings.clock.shortcut,
