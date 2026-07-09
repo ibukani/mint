@@ -83,6 +83,11 @@ export const VoiceToTextSettings: React.FC = () => {
     setCopyStatus("");
   }, []);
 
+  const clearTransientFeedback = useCallback(() => {
+    clearTranscriptionOutput();
+    clearPasteStatuses();
+  }, [clearPasteStatuses, clearTranscriptionOutput]);
+
   const clearApiKeyPasteStatus = useCallback(() => {
     setApiKeyPasteStatus("");
   }, []);
@@ -193,8 +198,7 @@ export const VoiceToTextSettings: React.FC = () => {
 
   const transcribeAudioFile = async () => {
     setTranscribing(true);
-    clearTranscriptionOutput();
-    clearPasteStatuses();
+    clearTransientFeedback();
 
     try {
       const result = await invoke<TranscriptionResult>(
@@ -227,8 +231,7 @@ export const VoiceToTextSettings: React.FC = () => {
   };
 
   const clearTranscriptionText = () => {
-    clearTranscriptionOutput();
-    clearPasteStatuses();
+    clearTransientFeedback();
     focusAndSelectElementById("v2t-audio-file-input");
   };
 
@@ -277,8 +280,7 @@ export const VoiceToTextSettings: React.FC = () => {
     handleChange("baseUrl", defaultAppSettings.voiceToText.baseUrl);
     handleChange("model", defaultAppSettings.voiceToText.model);
     handleChange("language", defaultAppSettings.voiceToText.language);
-    clearTranscriptionOutput();
-    clearPasteStatuses();
+    clearTransientFeedback();
     setShowApiKey(false);
     focusAndSelectElementById("v2t-shortcut-input");
   };
