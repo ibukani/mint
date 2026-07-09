@@ -216,7 +216,11 @@ export const VoiceToTextSettings: React.FC = () => {
     try {
       await navigator.clipboard.writeText(transcriptionText);
       setCopyStatus("コピーしました");
-      document.getElementById("v2t-copy-result-button")?.focus();
+      const resultField = document.getElementById(
+        "v2t-transcription-result",
+      ) as HTMLTextAreaElement | null;
+      resultField?.focus();
+      resultField?.select();
     } catch (err) {
       console.error("Failed to copy transcription text:", err);
       setCopyStatus("コピーに失敗しました");

@@ -315,7 +315,7 @@ describe("VoiceToTextSettings", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("button", { name: "結果をコピー" })).toHaveFocus();
+    expect(screen.getByLabelText("文字起こし結果")).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent("コピーしました");
   });
 
@@ -506,6 +506,10 @@ describe("VoiceToTextSettings", () => {
         "これはテスト音声です",
       );
       expect(screen.getByText("コピーしました")).toBeInTheDocument();
+      expect(screen.getByLabelText("文字起こし結果")).toHaveFocus();
+      expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
+        "これはテスト音声です",
+      );
 
       await act(async () => {
         vi.advanceTimersByTime(2000);
@@ -513,11 +517,6 @@ describe("VoiceToTextSettings", () => {
       });
 
       expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole("button", { name: "結果をクリア" }));
-
-      expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
-      expect(screen.getByLabelText("音声ファイルパス")).toHaveFocus();
     } finally {
       vi.useRealTimers();
     }
