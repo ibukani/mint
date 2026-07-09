@@ -174,6 +174,8 @@ describe("VoiceToTextSettings", () => {
 
       expect(apiKeyInput).toHaveValue("pasted-api-key");
       expect(apiKeyInput).toHaveFocus();
+      expect(apiKeyInput.selectionStart).toBe(0);
+      expect(apiKeyInput.selectionEnd).toBe(apiKeyInput.value.length);
       expect(screen.getByRole("status")).toHaveTextContent(
         "API キーを貼り付けました",
       );
@@ -787,6 +789,8 @@ describe("VoiceToTextSettings", () => {
 
       expect(audioFileInput).toHaveValue("/tmp/audio.wav");
       expect(audioFileInput).toHaveFocus();
+      expect(audioFileInput.selectionStart).toBe(0);
+      expect(audioFileInput.selectionEnd).toBe(audioFileInput.value.length);
       expect(screen.getByRole("status")).toHaveTextContent(
         "音声ファイルパスを貼り付けました",
       );

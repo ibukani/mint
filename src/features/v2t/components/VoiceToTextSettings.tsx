@@ -91,7 +91,11 @@ export const VoiceToTextSettings: React.FC = () => {
     } catch (err) {
       console.error("Failed to paste API key:", err);
     } finally {
-      document.getElementById("v2t-api-key-input")?.focus();
+      const apiKeyInput = document.getElementById(
+        "v2t-api-key-input",
+      ) as HTMLInputElement | null;
+      apiKeyInput?.focus();
+      apiKeyInput?.select();
     }
   };
 
@@ -114,6 +118,26 @@ export const VoiceToTextSettings: React.FC = () => {
     apiKeyInput?.focus();
     apiKeyInput?.select();
   }, [apiKeyLoaded, showApiKey]);
+
+  useEffect(() => {
+    if (apiKeyPasteStatus !== "API キーを貼り付けました") return;
+
+    const apiKeyInput = document.getElementById(
+      "v2t-api-key-input",
+    ) as HTMLInputElement | null;
+    apiKeyInput?.focus();
+    apiKeyInput?.select();
+  }, [apiKeyPasteStatus]);
+
+  useEffect(() => {
+    if (audioFilePasteStatus !== "音声ファイルパスを貼り付けました") return;
+
+    const audioFileInput = document.getElementById(
+      "v2t-audio-file-input",
+    ) as HTMLInputElement | null;
+    audioFileInput?.focus();
+    audioFileInput?.select();
+  }, [audioFilePasteStatus]);
 
   useEffect(() => {
     if (apiKeyPasteStatusTimerRef.current) {
@@ -268,7 +292,11 @@ export const VoiceToTextSettings: React.FC = () => {
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
     } finally {
-      document.getElementById("v2t-audio-file-input")?.focus();
+      const audioFileInput = document.getElementById(
+        "v2t-audio-file-input",
+      ) as HTMLInputElement | null;
+      audioFileInput?.focus();
+      audioFileInput?.select();
     }
   };
 
