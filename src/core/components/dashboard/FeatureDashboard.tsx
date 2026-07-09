@@ -94,7 +94,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
   return (
     <SettingsSection
       title="機能管理"
-      description="主要な機能の状態と代表設定をまとめて確認・編集できます。"
+      description="主要な機能の状態と代表設定を確認・編集できます。"
     >
       <div className="feature-dashboard">
         <FeatureCard

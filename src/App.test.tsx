@@ -180,6 +180,9 @@ describe("App Window Routing", () => {
     expect(
       screen.getByRole("heading", { name: "音声入力" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("主要な機能の状態と代表設定を確認・編集できます。"),
+    ).toBeInTheDocument();
   });
 
   it("focuses the first field when switching to a settings tab", async () => {
