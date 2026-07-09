@@ -182,6 +182,7 @@ describe("VoiceToTextSettings", () => {
     });
 
     expect(screen.getByRole("button", { name: "結果をコピー" })).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("コピーしました");
   });
 
   it("requires an API key before transcription", async () => {

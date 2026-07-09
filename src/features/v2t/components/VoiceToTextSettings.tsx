@@ -334,7 +334,12 @@ export const VoiceToTextSettings: React.FC = () => {
               結果をクリア
             </Button>
             {copyStatus && (
-              <span className="transcription-result-actions__status">
+              <span
+                className="transcription-result-actions__status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 {copyStatus}
               </span>
             )}
