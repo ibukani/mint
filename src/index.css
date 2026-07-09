@@ -1,6 +1,37 @@
 @import "./design/tokens.css";
 @import "./design/theme.css";
 
+/* Custom Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-accent) transparent;
+}
+
+/* Chrome, Safari, Edge, Tauri Webview */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-accent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-action);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--border-action-hover);
+}
+
 :root {
   font-family: var(--font-family-sans);
   line-height: 1.5;
@@ -759,6 +790,39 @@ body {
   font-family: var(--font-family-sans);
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  position: relative;
+}
+
+.overlay-clock-time.glow-effect {
+  text-shadow:
+    0 0 12px var(--clock-accent-color, #818cf8),
+    0 0 24px
+    color-mix(in srgb, var(--clock-accent-color, #818cf8) 35%, transparent);
+}
+
+.clock-ampm {
+  font-size: 0.32em;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  margin-right: 0.4em;
+  color: var(--color-text-secondary);
+  align-self: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+}
+
+.overlay-clock-time.glow-effect .clock-ampm {
+  border-color: color-mix(
+    in srgb,
+    var(--clock-accent-color, #818cf8) 25%,
+    transparent
+  );
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--clock-accent-color, #818cf8) 15%, transparent);
 }
 
 .clock-digits {
@@ -770,11 +834,11 @@ body {
   font-weight: var(--font-weight-medium);
   margin: 0 0.04em;
   color: var(--clock-accent-color, #818cf8);
-  transition: opacity 0.2s ease;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .clock-colon.blink-off {
-  opacity: 0.25;
+  opacity: 0.2;
 }
 
 .clock-seconds-separator {
@@ -793,10 +857,60 @@ body {
   margin-bottom: 0.06em;
 }
 
+/* Analog Clock Styling */
+.analog-clock-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: calc(140px * var(--clock-size-scale, 1));
+  height: calc(140px * var(--clock-size-scale, 1));
+  margin: var(--space-3) 0 var(--space-4) 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.analog-clock {
+  width: 100%;
+  height: 100%;
+}
+
+.analog-clock-face {
+  fill: rgba(15, 23, 42, 0.35);
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1.5;
+  transition:
+    fill 0.3s ease,
+    stroke 0.3s ease;
+}
+
+:root[data-theme="light"] .analog-clock-face {
+  fill: rgba(255, 255, 255, 0.45);
+  stroke: rgba(0, 0, 0, 0.06);
+}
+
+.analog-hand {
+  stroke-linecap: round;
+}
+
+.analog-hour-hand {
+  stroke-width: 4.5;
+  transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.analog-minute-hand {
+  stroke-width: 3;
+  transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.analog-second-hand {
+  stroke-width: 1.2;
+  transition: none; /* requestAnimationFrameで毎フレーム更新されるためtransitionは不要（入れると遅延・揺れが発生する） */
+}
+
 .overlay-clock-date-container {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 .overlay-clock-date {

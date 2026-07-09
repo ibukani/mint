@@ -42,6 +42,21 @@ describe("ClockSettings component", () => {
       "時計のサイズ倍率",
     ) as HTMLInputElement;
     expect(sizePercentInput.value).toBe("100");
+
+    const displayModeSelect = screen.getByLabelText(
+      "表示モード",
+    ) as HTMLSelectElement;
+    expect(displayModeSelect.value).toBe("digital");
+
+    const hourFormatSelect = screen.getByLabelText(
+      "時間表記 (デジタル時のみ)",
+    ) as HTMLSelectElement;
+    expect(hourFormatSelect.value).toBe("24h");
+
+    const glowEffectCheckbox = screen.getByLabelText(
+      "ネオングロー効果を有効にする",
+    ) as HTMLInputElement;
+    expect(glowEffectCheckbox.checked).toBe(true);
   });
 
   it("resets clock settings to defaults", async () => {
@@ -79,6 +94,15 @@ describe("ClockSettings component", () => {
     const sizePercentInput = screen.getByLabelText(
       "時計のサイズ倍率",
     ) as HTMLInputElement;
+    const displayModeSelect = screen.getByLabelText(
+      "表示モード",
+    ) as HTMLSelectElement;
+    const hourFormatSelect = screen.getByLabelText(
+      "時間表記 (デジタル時のみ)",
+    ) as HTMLSelectElement;
+    const glowEffectCheckbox = screen.getByLabelText(
+      "ネオングロー効果を有効にする",
+    ) as HTMLInputElement;
 
     fireEvent.click(enabledCheckbox); // 有効をオフにする
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
@@ -88,6 +112,8 @@ describe("ClockSettings component", () => {
     fireEvent.click(showSecondsCheckbox);
     fireEvent.click(blinkColonCheckbox);
     fireEvent.change(sizePercentInput, { target: { value: "150" } });
+    fireEvent.change(displayModeSelect, { target: { value: "analog" } });
+    fireEvent.click(glowEffectCheckbox);
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
@@ -99,6 +125,9 @@ describe("ClockSettings component", () => {
     expect(showSecondsCheckbox.checked).toBe(true);
     expect(blinkColonCheckbox.checked).toBe(true);
     expect(sizePercentInput.value).toBe("100");
+    expect(displayModeSelect.value).toBe("digital");
+    expect(hourFormatSelect.value).toBe("24h");
+    expect(glowEffectCheckbox.checked).toBe(true);
   });
 
   it("returns focus to the shortcut field after resetting", async () => {

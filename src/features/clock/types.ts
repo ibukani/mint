@@ -8,4 +8,7 @@ export interface ClockSettings {
   clockColor: string;
   blinkColon: boolean;
   sizePercent: number;
+  displayMode: "digital" | "analog";
+  hourFormat: "12h" | "24h";
+  glowEffect: boolean;
 }

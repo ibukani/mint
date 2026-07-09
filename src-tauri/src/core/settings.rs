@@ -20,6 +20,12 @@ pub struct ClockSettings {
     pub blink_colon: bool,
     #[serde(default = "default_size_percent")]
     pub size_percent: u32,
+    #[serde(default = "default_display_mode")]
+    pub display_mode: String,
+    #[serde(default = "default_hour_format")]
+    pub hour_format: String,
+    #[serde(default = "default_glow_effect")]
+    pub glow_effect: bool,
 }
 
 fn default_show_date() -> bool {
@@ -42,6 +48,18 @@ fn default_size_percent() -> u32 {
     100
 }
 
+fn default_display_mode() -> String {
+    "digital".to_string()
+}
+
+fn default_hour_format() -> String {
+    "24h".to_string()
+}
+
+fn default_glow_effect() -> bool {
+    true
+}
+
 impl Default for ClockSettings {
     fn default() -> Self {
         Self {
@@ -54,6 +72,9 @@ impl Default for ClockSettings {
             clock_color: "#818cf8".to_string(),
             blink_colon: true,
             size_percent: 100,
+            display_mode: "digital".to_string(),
+            hour_format: "24h".to_string(),
+            glow_effect: true,
         }
     }
 }
@@ -355,6 +376,9 @@ mod tests {
         assert_eq!(settings.clock.clock_color, "#818cf8");
         assert!(settings.clock.blink_colon);
         assert_eq!(settings.clock.size_percent, 100);
+        assert_eq!(settings.clock.display_mode, "digital");
+        assert_eq!(settings.clock.hour_format, "24h");
+        assert!(settings.clock.glow_effect);
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
         assert_eq!(settings.voice_to_text.language, "ja");
 
@@ -369,6 +393,9 @@ mod tests {
         assert_eq!(settings.clock.clock_color, "#818cf8"); // デフォルト補完
         assert!(settings.clock.blink_colon); // デフォルト補完
         assert_eq!(settings.clock.size_percent, 100); // デフォルト補完
+        assert_eq!(settings.clock.display_mode, "digital"); // デフォルト補完
+        assert_eq!(settings.clock.hour_format, "24h"); // デフォルト補完
+        assert!(settings.clock.glow_effect); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
     }
 }

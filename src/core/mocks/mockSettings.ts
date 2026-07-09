@@ -14,6 +14,9 @@ const defaultMockSettings: AppSettings = {
     clockColor: defaultAppSettings.clock.clockColor,
     blinkColon: defaultAppSettings.clock.blinkColon,
     sizePercent: defaultAppSettings.clock.sizePercent,
+    displayMode: defaultAppSettings.clock.displayMode,
+    hourFormat: defaultAppSettings.clock.hourFormat,
+    glowEffect: defaultAppSettings.clock.glowEffect,
   },
   voiceToText: {
     enabled: defaultAppSettings.voiceToText.enabled,

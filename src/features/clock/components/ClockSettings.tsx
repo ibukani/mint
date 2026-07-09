@@ -47,6 +47,9 @@ export const ClockSettings: React.FC = () => {
     handleChange("clockColor", defaultAppSettings.clock.clockColor);
     handleChange("blinkColon", defaultAppSettings.clock.blinkColon);
     handleChange("sizePercent", defaultAppSettings.clock.sizePercent);
+    handleChange("displayMode", defaultAppSettings.clock.displayMode);
+    handleChange("hourFormat", defaultAppSettings.clock.hourFormat);
+    handleChange("glowEffect", defaultAppSettings.clock.glowEffect);
     const shortcutInput = document.getElementById(
       "clock-shortcut-input",
     ) as HTMLInputElement | null;
@@ -162,6 +165,47 @@ export const ClockSettings: React.FC = () => {
         </Select>
       </Field>
 
+      <Field id="clock-display-mode-select" label="表示モード">
+        <Select
+          id="clock-display-mode-select"
+          value={clock.displayMode}
+          onChange={(e) =>
+            handleChange("displayMode", e.target.value as "digital" | "analog")
+          }
+        >
+          <option value="digital">デジタル (Digital)</option>
+          <option value="analog">アナログ (Analog)</option>
+        </Select>
+      </Field>
+
+      {clock.displayMode === "digital" && (
+        <Field id="clock-hour-format-select" label="時間表記 (デジタル時のみ)">
+          <Select
+            id="clock-hour-format-select"
+            value={clock.hourFormat}
+            onChange={(e) =>
+              handleChange("hourFormat", e.target.value as "12h" | "24h")
+            }
+          >
+            <option value="24h">24時間表記</option>
+            <option value="12h">12時間表記 (AM/PM)</option>
+          </Select>
+        </Field>
+      )}
+
+      <Field
+        id="clock-glow-effect-checkbox"
+        label="ネオングロー効果を有効にする"
+        orientation="inline"
+        helpText="時計の文字や針に発光効果（Glow）を適用します。"
+      >
+        <Switch
+          id="clock-glow-effect-checkbox"
+          checked={clock.glowEffect}
+          onChange={(e) => handleChange("glowEffect", e.target.checked)}
+        />
+      </Field>
+
       <Field
         id="clock-show-date-checkbox"
         label="年月日と曜日を表示する"
@@ -265,12 +309,13 @@ export const ClockSettings: React.FC = () => {
             style={
               {
                 position: "relative",
-                width: `${300 * (clock.sizePercent / 100)}px`,
-                height: `${110 * (clock.sizePercent / 100)}px`,
+                width: `${(clock.displayMode === "analog" ? 240 : 300) * (clock.sizePercent / 100)}px`,
+                height: `${(clock.displayMode === "analog" ? (clock.showDate ? 250 : 190) : 110) * (clock.sizePercent / 100)}px`,
                 margin: 0,
                 "--overlay-font-size": clock.fontSize,
                 "--clock-accent-color": clock.clockColor,
                 "--clock-size-scale": clock.sizePercent / 100,
+                transition: "width 0.3s ease, height 0.3s ease",
               } as React.CSSProperties
             }
           >
@@ -279,6 +324,10 @@ export const ClockSettings: React.FC = () => {
                 showDate={clock.showDate}
                 showSeconds={clock.showSeconds}
                 blinkColon={clock.blinkColon}
+                displayMode={clock.displayMode}
+                hourFormat={clock.hourFormat}
+                glowEffect={clock.glowEffect}
+                clockColor={clock.clockColor}
               />
             </div>
           </div>

@@ -13,6 +13,9 @@ export const defaultAppSettings: AppSettings = {
     clockColor: "#818cf8",
     blinkColon: true,
     sizePercent: 100,
+    displayMode: "digital",
+    hourFormat: "24h",
+    glowEffect: true,
   },
   voiceToText: {
     enabled: false,
