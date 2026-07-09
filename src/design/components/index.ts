@@ -9,6 +9,7 @@ export { SettingsSection } from "./SettingsSection";
 export { ShortcutInput } from "./ShortcutInput";
 export type { StatusBadgeTone } from "./StatusBadge";
 export { StatusBadge } from "./StatusBadge";
+export { Switch } from "./Switch";
 export { TextArea } from "./TextArea";
 export { TextInput } from "./TextInput";
 export { UnitLabel } from "./UnitLabel";

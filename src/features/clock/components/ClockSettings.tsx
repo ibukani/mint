@@ -8,6 +8,7 @@ import {
   Select,
   SettingsSection,
   ShortcutInput,
+  Switch,
   TextInput,
   UnitLabel,
 } from "../../../design/components";
@@ -86,9 +87,8 @@ export const ClockSettings: React.FC = () => {
         label="この機能を有効にする (Enable Feature)"
         orientation="inline"
       >
-        <TextInput
+        <Switch
           id="clock-enabled-checkbox"
-          type="checkbox"
           checked={clock.enabled}
           onChange={(e) => handleChange("enabled", e.target.checked)}
         />
@@ -168,9 +168,8 @@ export const ClockSettings: React.FC = () => {
         orientation="inline"
         helpText="時計の下に年月日と曜日を表示します。"
       >
-        <TextInput
+        <Switch
           id="clock-show-date-checkbox"
-          type="checkbox"
           checked={clock.showDate}
           onChange={(e) => handleChange("showDate", e.target.checked)}
         />
@@ -182,9 +181,8 @@ export const ClockSettings: React.FC = () => {
         orientation="inline"
         helpText="時刻表示に秒数を含めます。"
       >
-        <TextInput
+        <Switch
           id="clock-show-seconds-checkbox"
-          type="checkbox"
           checked={clock.showSeconds}
           onChange={(e) => handleChange("showSeconds", e.target.checked)}
         />
@@ -196,9 +194,8 @@ export const ClockSettings: React.FC = () => {
         orientation="inline"
         helpText="時間と分の間のコロン「:」を1秒おきに点滅させます。"
       >
-        <TextInput
+        <Switch
           id="clock-blink-colon-checkbox"
-          type="checkbox"
           checked={clock.blinkColon}
           onChange={(e) => handleChange("blinkColon", e.target.checked)}
         />

@@ -13,35 +13,35 @@
   --color-success: #86efac;
   --color-warning: #fde68a;
 
-  --surface-page: #080a13;
-  --surface-root: #0b0e1a;
-  --surface-panel: rgba(16, 20, 38, 0.72);
-  --surface-control: rgba(11, 14, 28, 0.85);
-  --surface-control-hover: rgba(255, 255, 255, 0.05);
-  --surface-accent: rgba(99, 102, 241, 0.12);
-  --surface-accent-action: rgba(99, 102, 241, 0.2);
-  --surface-accent-action-hover: rgba(99, 102, 241, 0.3);
-  --surface-error: rgba(239, 68, 68, 0.15);
-  --surface-success: rgba(34, 197, 94, 0.13);
-  --surface-warning: rgba(245, 158, 11, 0.14);
-  --surface-overlay: rgba(11, 14, 28, 0.85);
+  --surface-page: #05070e;
+  --surface-root: #080b15;
+  --surface-panel: rgba(13, 17, 33, 0.78);
+  --surface-control: rgba(9, 12, 24, 0.9);
+  --surface-control-hover: rgba(129, 140, 248, 0.08);
+  --surface-accent: rgba(99, 102, 241, 0.15);
+  --surface-accent-action: rgba(99, 102, 241, 0.25);
+  --surface-accent-action-hover: rgba(99, 102, 241, 0.35);
+  --surface-error: rgba(239, 68, 68, 0.18);
+  --surface-success: rgba(34, 197, 94, 0.15);
+  --surface-warning: rgba(245, 158, 11, 0.16);
+  --surface-overlay: rgba(9, 12, 24, 0.9);
   --surface-titlebar-btn-hover: rgba(255, 255, 255, 0.08);
   --surface-titlebar-btn-active: rgba(255, 255, 255, 0.15);
 
-  --border-panel: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-control: rgba(255, 255, 255, 0.08);
-  --border-control-focus: rgba(129, 140, 248, 0.65);
-  --border-accent: rgba(99, 102, 241, 0.25);
-  --border-action: rgba(99, 102, 241, 0.35);
-  --border-action-hover: rgba(129, 140, 248, 0.6);
-  --border-error: rgba(239, 68, 68, 0.3);
-  --border-success: rgba(34, 197, 94, 0.3);
-  --border-warning: rgba(245, 158, 11, 0.3);
-  --border-overlay: rgba(255, 255, 255, 0.08);
+  --border-panel: rgba(129, 140, 248, 0.15);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-control: rgba(255, 255, 255, 0.09);
+  --border-control-focus: rgba(167, 139, 250, 0.85);
+  --border-accent: rgba(129, 140, 248, 0.35);
+  --border-action: rgba(129, 140, 248, 0.45);
+  --border-action-hover: rgba(167, 139, 250, 0.8);
+  --border-error: rgba(239, 68, 68, 0.4);
+  --border-success: rgba(34, 197, 94, 0.4);
+  --border-warning: rgba(245, 158, 11, 0.4);
+  --border-overlay: rgba(255, 255, 255, 0.1);
 
-  --page-accent-top: rgba(129, 140, 248, 0.12);
-  --page-accent-bottom: rgba(192, 132, 252, 0.08);
+  --page-accent-top: rgba(129, 140, 248, 0.16);
+  --page-accent-bottom: rgba(192, 132, 252, 0.12);
 }
 
 :root[data-theme="light"] {
@@ -60,31 +60,31 @@
 
   --surface-page: #f8fafc;
   --surface-root: #f1f5f9;
-  --surface-panel: rgba(255, 255, 255, 0.85);
+  --surface-panel: rgba(255, 255, 255, 0.88);
   --surface-control: rgba(255, 255, 255, 0.98);
-  --surface-control-hover: rgba(99, 102, 241, 0.04);
-  --surface-accent: rgba(79, 70, 229, 0.1);
-  --surface-accent-action: rgba(79, 70, 229, 0.15);
-  --surface-accent-action-hover: rgba(79, 70, 229, 0.22);
-  --surface-error: rgba(239, 68, 68, 0.08);
-  --surface-success: rgba(34, 197, 94, 0.08);
-  --surface-warning: rgba(245, 158, 11, 0.1);
-  --surface-overlay: rgba(15, 23, 42, 0.82);
+  --surface-control-hover: rgba(79, 70, 229, 0.06);
+  --surface-accent: rgba(79, 70, 229, 0.12);
+  --surface-accent-action: rgba(79, 70, 229, 0.18);
+  --surface-accent-action-hover: rgba(79, 70, 229, 0.26);
+  --surface-error: rgba(239, 68, 68, 0.1);
+  --surface-success: rgba(34, 197, 94, 0.1);
+  --surface-warning: rgba(245, 158, 11, 0.12);
+  --surface-overlay: rgba(15, 23, 42, 0.85);
   --surface-titlebar-btn-hover: rgba(15, 23, 42, 0.06);
   --surface-titlebar-btn-active: rgba(15, 23, 42, 0.12);
 
-  --border-panel: rgba(15, 23, 42, 0.1);
-  --border-subtle: rgba(15, 23, 42, 0.06);
-  --border-control: rgba(15, 23, 42, 0.12);
-  --border-control-focus: rgba(79, 70, 229, 0.6);
-  --border-accent: rgba(79, 70, 229, 0.22);
-  --border-action: rgba(79, 70, 229, 0.35);
-  --border-action-hover: rgba(79, 70, 229, 0.55);
-  --border-error: rgba(220, 38, 38, 0.3);
-  --border-success: rgba(22, 163, 74, 0.3);
-  --border-warning: rgba(217, 119, 6, 0.3);
-  --border-overlay: rgba(15, 23, 42, 0.12);
+  --border-panel: rgba(79, 70, 229, 0.12);
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-control: rgba(15, 23, 42, 0.14);
+  --border-control-focus: rgba(79, 70, 229, 0.75);
+  --border-accent: rgba(79, 70, 229, 0.3);
+  --border-action: rgba(79, 70, 229, 0.42);
+  --border-action-hover: rgba(79, 70, 229, 0.7);
+  --border-error: rgba(220, 38, 38, 0.4);
+  --border-success: rgba(22, 163, 74, 0.4);
+  --border-warning: rgba(217, 119, 6, 0.4);
+  --border-overlay: rgba(15, 23, 42, 0.15);
 
-  --page-accent-top: rgba(79, 70, 229, 0.08);
-  --page-accent-bottom: rgba(124, 58, 237, 0.05);
+  --page-accent-top: rgba(79, 70, 229, 0.1);
+  --page-accent-bottom: rgba(124, 58, 237, 0.08);
 }

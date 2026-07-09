@@ -10,6 +10,7 @@ import {
   FieldRow,
   SettingsSection,
   ShortcutInput,
+  Switch,
   TextArea,
   TextInput,
 } from "../../../design/components";
@@ -377,9 +378,8 @@ export const VoiceToTextSettings: React.FC = () => {
         label="この機能を有効にする (Enable Feature)"
         orientation="inline"
       >
-        <TextInput
+        <Switch
           id="v2t-enabled-checkbox"
-          type="checkbox"
           checked={voiceToText.enabled}
           onChange={(e) => handleChange("enabled", e.target.checked)}
         />

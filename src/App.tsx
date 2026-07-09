@@ -24,6 +24,90 @@ const saveStatusLabels: Record<SaveStatus, string> = {
   error: "保存失敗",
 };
 
+const saveStatusIcons: Record<SaveStatus, React.ReactNode> = {
+  idle: null,
+  pending: (
+    <svg
+      className="spinner-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ marginRight: "4px" }}
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        strokeDasharray="60"
+        strokeDashoffset="20"
+      />
+    </svg>
+  ),
+  saving: (
+    <svg
+      className="spinner-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ marginRight: "4px" }}
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        strokeDasharray="60"
+        strokeDashoffset="20"
+      />
+    </svg>
+  ),
+  saved: (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ marginRight: "4px" }}
+      aria-hidden="true"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  ),
+  error: (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ marginRight: "4px" }}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" x2="12" y1="8" y2="12" />
+      <line x1="12" x2="12.01" y1="16" y2="16" />
+    </svg>
+  ),
+};
+
 const overlayWindowTitles: Record<string, string> = {
   clock: "時計オーバーレイ",
 };
@@ -99,7 +183,8 @@ const AppContent: React.FC = () => {
             role={saveStatus === "idle" ? undefined : "status"}
             aria-hidden={saveStatus === "idle"}
           >
-            {saveStatusLabel}
+            {saveStatusIcons[saveStatus]}
+            <span>{saveStatusLabel}</span>
           </div>
           <ActiveTabComponent />
         </AppShell>
