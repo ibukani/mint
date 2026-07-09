@@ -5,11 +5,13 @@ import { useAutoClearStatus } from "./useAutoClearStatus";
 
 const TestComponent = () => {
   const [status, setStatus] = useState("");
+  const [paused, setPaused] = useState(false);
 
   useAutoClearStatus(
     status,
     () => setStatus(""),
     (currentStatus) => (currentStatus === "error" ? 5000 : 2000),
+    paused,
   );
 
   return (
@@ -20,6 +22,9 @@ const TestComponent = () => {
       </button>
       <button type="button" onClick={() => setStatus("error")}>
         Error
+      </button>
+      <button type="button" onClick={() => setPaused((current) => !current)}>
+        Toggle Pause
       </button>
     </div>
   );
@@ -60,6 +65,32 @@ describe("useAutoClearStatus", () => {
 
       await act(async () => {
         vi.advanceTimersByTime(1);
+      });
+
+      expect(screen.getByTestId("status")).toHaveTextContent("empty");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("pauses the timer while paused", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<TestComponent />);
+
+      fireEvent.click(screen.getByRole("button", { name: "OK" }));
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Pause" }));
+
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(screen.getByTestId("status")).toHaveTextContent("ok");
+
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Pause" }));
+
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
       });
 
       expect(screen.getByTestId("status")).toHaveTextContent("empty");

@@ -4,6 +4,7 @@ export function useAutoClearStatus(
   status: string,
   clearStatus: () => void,
   resolveDelayMs: (status: string) => number | null,
+  paused = false,
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -13,7 +14,7 @@ export function useAutoClearStatus(
       timerRef.current = null;
     }
 
-    if (!status) return undefined;
+    if (!status || paused) return undefined;
 
     const delayMs = resolveDelayMs(status);
     if (delayMs === null) return undefined;
@@ -29,5 +30,5 @@ export function useAutoClearStatus(
         timerRef.current = null;
       }
     };
-  }, [clearStatus, resolveDelayMs, status]);
+  }, [clearStatus, paused, resolveDelayMs, status]);
 }
