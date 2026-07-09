@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { focusAndSelectElementById } from "../../../core/dom/focus";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { normalizeShortcut } from "../../../core/shortcuts";
 import {
@@ -25,15 +26,6 @@ import type { TranscriptionResult } from "../types";
 const PASTE_STATUS_VISIBLE_MS = 2000;
 const COPY_ERROR_VISIBLE_MS = 5000;
 const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
-
-const focusAndSelectInput = (id: string) => {
-  const input = document.getElementById(id) as
-    | HTMLInputElement
-    | HTMLTextAreaElement
-    | null;
-  input?.focus();
-  input?.select();
-};
 
 export const VoiceToTextSettings: React.FC = () => {
   const { setActiveTab } = useSettingsNavigation();
@@ -101,7 +93,7 @@ export const VoiceToTextSettings: React.FC = () => {
     } catch (err) {
       console.error("Failed to paste API key:", err);
     } finally {
-      focusAndSelectInput("v2t-api-key-input");
+      focusAndSelectElementById("v2t-api-key-input");
     }
   };
 
@@ -118,19 +110,19 @@ export const VoiceToTextSettings: React.FC = () => {
   useEffect(() => {
     if (!showApiKey || !apiKeyLoaded) return;
 
-    focusAndSelectInput("v2t-api-key-input");
+    focusAndSelectElementById("v2t-api-key-input");
   }, [apiKeyLoaded, showApiKey]);
 
   useEffect(() => {
     if (apiKeyPasteStatus !== "API キーを貼り付けました") return;
 
-    focusAndSelectInput("v2t-api-key-input");
+    focusAndSelectElementById("v2t-api-key-input");
   }, [apiKeyPasteStatus]);
 
   useEffect(() => {
     if (audioFilePasteStatus !== "音声ファイルパスを貼り付けました") return;
 
-    focusAndSelectInput("v2t-audio-file-input");
+    focusAndSelectElementById("v2t-audio-file-input");
   }, [audioFilePasteStatus]);
 
   useEffect(() => {
@@ -234,7 +226,7 @@ export const VoiceToTextSettings: React.FC = () => {
     try {
       await navigator.clipboard.writeText(transcriptionText);
       setCopyStatus("コピーしました");
-      focusAndSelectInput("v2t-transcription-result");
+      focusAndSelectElementById("v2t-transcription-result");
     } catch (err) {
       console.error("Failed to copy transcription text:", err);
       setCopyStatus("コピーに失敗しました");
@@ -247,7 +239,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setCopyStatus("");
     setApiKeyPasteStatus("");
     setAudioFilePasteStatus("");
-    focusAndSelectInput("v2t-audio-file-input");
+    focusAndSelectElementById("v2t-audio-file-input");
   };
 
   const clearTranscriptionOutput = () => {
@@ -264,7 +256,7 @@ export const VoiceToTextSettings: React.FC = () => {
 
   const clearAudioFilePath = () => {
     updateAudioFilePath("");
-    focusAndSelectInput("v2t-audio-file-input");
+    focusAndSelectElementById("v2t-audio-file-input");
   };
 
   const pasteAudioFilePath = async () => {
@@ -282,7 +274,7 @@ export const VoiceToTextSettings: React.FC = () => {
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
     } finally {
-      focusAndSelectInput("v2t-audio-file-input");
+      focusAndSelectElementById("v2t-audio-file-input");
     }
   };
 
@@ -309,7 +301,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setApiKeyPasteStatus("");
     setAudioFilePasteStatus("");
     setShowApiKey(false);
-    focusAndSelectInput("v2t-shortcut-input");
+    focusAndSelectElementById("v2t-shortcut-input");
   };
 
   const canTranscribe =
