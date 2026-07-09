@@ -1,5 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
@@ -24,6 +25,17 @@ interface TickingClockProps {
   glowEffect: boolean;
   clockColor: string;
 }
+
+export const getClockDimensions = (
+  displayMode: "digital" | "analog",
+  showDate: boolean,
+) => {
+  if (displayMode === "analog") {
+    return { width: 240, height: showDate ? 250 : 190 };
+  }
+
+  return { width: 420, height: showDate ? 168 : 132 };
+};
 
 const AnalogClock: React.FC<{
   time: Date;
@@ -173,6 +185,8 @@ export const TickingClock: React.FC<TickingClockProps> = ({
   const weekday = WEEKDAY_LABELS[time.getDay()];
 
   const isBlinkOff = blinkColon && time.getSeconds() % 2 === 0;
+  const machineDate = `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, "0")}-${String(time.getDate()).padStart(2, "0")}`;
+  const machineTime = `${String(rawHours).padStart(2, "0")}:${minutes}:${seconds}`;
 
   return (
     <>
@@ -184,24 +198,52 @@ export const TickingClock: React.FC<TickingClockProps> = ({
           clockColor={clockColor}
         />
       ) : (
-        <div
-          className={`overlay-clock-time ${glowEffect ? "glow-effect" : ""}`}
-        >
-          {is12h && <span className="clock-ampm">{ampm}</span>}
-          <span className="clock-digits">{displayHours}</span>
-          <span className={`clock-colon ${isBlinkOff ? "blink-off" : ""}`}>
-            :
-          </span>
-          <span className="clock-digits">{minutes}</span>
+        <div className="digital-clock">
+          {showDate && (
+            <div className="digital-clock__header">
+              <time className="digital-clock__date" dateTime={machineDate}>
+                {formattedDate}
+              </time>
+              <span className="digital-clock__weekday">{weekday}</span>
+            </div>
+          )}
+          <div className="digital-clock__body">
+            <time
+              className={`digital-clock__time ${glowEffect ? "glow-effect" : ""}`}
+              dateTime={machineTime}
+            >
+              <span className="clock-digits">{displayHours}</span>
+              <span
+                className={`clock-colon ${isBlinkOff ? "blink-off" : ""}`}
+                aria-hidden="true"
+              >
+                :
+              </span>
+              <span className="clock-digits">{minutes}</span>
+            </time>
+            {(showSeconds || is12h) && (
+              <div className="digital-clock__meta" aria-hidden="true">
+                <span className="clock-ampm">{is12h ? ampm : "SEC"}</span>
+                {showSeconds && (
+                  <span className="clock-seconds">{seconds}</span>
+                )}
+              </div>
+            )}
+          </div>
           {showSeconds && (
-            <>
-              <span className="clock-seconds-separator">.</span>
-              <span className="clock-digits clock-seconds">{seconds}</span>
-            </>
+            <div className="digital-clock__progress" aria-hidden="true">
+              <span
+                style={
+                  {
+                    "--clock-second-progress": `${((time.getSeconds() + time.getMilliseconds() / 1000) / 60) * 100}%`,
+                  } as React.CSSProperties
+                }
+              />
+            </div>
           )}
         </div>
       )}
-      {showDate && (
+      {showDate && displayMode === "analog" && (
         <div className="overlay-clock-date-container">
           <span className="overlay-clock-date">{formattedDate}</span>
           <span className="overlay-clock-weekday-badge">{weekday}</span>
@@ -251,11 +293,12 @@ export const ClockOverlay: React.FC = () => {
     if (!settings) return;
 
     const scale = settings.clock.sizePercent / 100;
-    const isAnalog = settings.clock.displayMode === "analog";
-    const w = Math.round((isAnalog ? 240 : 300) * scale);
-    const h = Math.round(
-      (isAnalog ? (settings.clock.showDate ? 250 : 190) : 110) * scale,
+    const dimensions = getClockDimensions(
+      settings.clock.displayMode,
+      settings.clock.showDate,
     );
+    const w = Math.round(dimensions.width * scale);
+    const h = Math.round(dimensions.height * scale);
 
     const win = getCurrentWindow();
     import("@tauri-apps/api/dpi")
@@ -318,7 +361,7 @@ export const ClockOverlay: React.FC = () => {
   return (
     <OverlayFrame>
       <OverlayCard
-        className={animationClass}
+        className={`${animationClass} overlay-card--${settings?.clock.displayMode ?? "digital"}`}
         style={
           {
             "--overlay-font-size": settings?.clock.fontSize,
@@ -335,20 +378,7 @@ export const ClockOverlay: React.FC = () => {
           aria-label="時計オーバーレイを閉じる"
           onClick={hideClock}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <X size={15} aria-hidden="true" />
         </button>
         <div className="overlay-clock-content">
           <TickingClock

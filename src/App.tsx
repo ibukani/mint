@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Check, CircleAlert, LoaderCircle } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { ErrorToast } from "./core/components/ErrorToast";
@@ -27,95 +28,32 @@ const saveStatusLabels: Record<SaveStatus, string> = {
 const saveStatusIcons: Record<SaveStatus, React.ReactNode> = {
   idle: null,
   pending: (
-    <svg
-      className="spinner-icon"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        strokeDasharray="60"
-        strokeDashoffset="20"
-      />
-    </svg>
+    <LoaderCircle className="spinner-icon" size={14} aria-hidden="true" />
   ),
   saving: (
-    <svg
-      className="spinner-icon"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        strokeDasharray="60"
-        strokeDashoffset="20"
-      />
-    </svg>
+    <LoaderCircle className="spinner-icon" size={14} aria-hidden="true" />
   ),
-  saved: (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  ),
-  error: (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" x2="12" y1="8" y2="12" />
-      <line x1="12" x2="12.01" y1="16" y2="16" />
-    </svg>
-  ),
+  saved: <Check size={14} aria-hidden="true" />,
+  error: <CircleAlert size={14} aria-hidden="true" />,
 };
 
 const overlayWindowTitles: Record<string, string> = {
   clock: "時計オーバーレイ",
 };
 
+const getInitialSettingsTab = (): SettingsTabId => {
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  return SETTINGS_TABS.some((tab) => tab.id === requestedTab)
+    ? (requestedTab as SettingsTabId)
+    : "general";
+};
+
 const AppContent: React.FC = () => {
   const { settings, loading, error, saveStatus, clearError } = useAppSettings();
   const [label, setLabel] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(
+    getInitialSettingsTab,
+  );
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);

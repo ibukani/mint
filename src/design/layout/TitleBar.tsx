@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, X } from "lucide-react";
 import type React from "react";
 
 interface TitleBarProps {
@@ -53,11 +54,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
       onMouseDown={handleMouseDown}
     >
       <div className="app-titlebar__logo" data-tauri-drag-region>
-        <span className="app-titlebar__icon" data-tauri-drag-region>
-          🍃
-        </span>
         <span className="app-titlebar__text" data-tauri-drag-region>
-          {title}
+          {title} settings
         </span>
       </div>
       <div className="app-titlebar__controls">
@@ -67,16 +65,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
           onClick={handleMinimize}
           aria-label="最小化"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-          >
-            <line x1="2.5" y1="6" x2="9.5" y2="6" />
-          </svg>
+          <Minus size={14} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -84,17 +73,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
           onClick={handleClose}
           aria-label="閉じる"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-          >
-            <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
-            <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" />
-          </svg>
+          <X size={14} aria-hidden="true" />
         </button>
       </div>
     </div>

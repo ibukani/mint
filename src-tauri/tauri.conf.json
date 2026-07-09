@@ -24,8 +24,8 @@
       {
         "label": "clock",
         "title": "Clock Overlay",
-        "width": 300,
-        "height": 110,
+        "width": 420,
+        "height": 168,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
