@@ -12,10 +12,13 @@ const isFocusSelectableElement = (
       typeof (element as Partial<FocusSelectableElement>).select === "function",
   );
 
-export const focusAndSelectElementById = (id: string) => {
-  const element = document.getElementById(id);
+export const focusAndSelectElement = (element: HTMLElement | null) => {
   if (!isFocusSelectableElement(element)) return;
 
   element.focus();
   element.select();
+};
+
+export const focusAndSelectElementById = (id: string) => {
+  focusAndSelectElement(document.getElementById(id));
 };
