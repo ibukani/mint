@@ -129,6 +129,7 @@ body {
 
 .settings-save-status {
   align-self: flex-end;
+  min-width: 8ch;
   min-height: 28px;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border-control);
@@ -137,6 +138,8 @@ body {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .settings-save-status--idle {
