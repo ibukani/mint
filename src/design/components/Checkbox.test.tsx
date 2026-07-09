@@ -22,6 +22,22 @@ describe("Checkbox", () => {
     expect(screen.getByRole("checkbox")).not.toHaveClass("design-control");
   });
 
+  it("passes through aria-invalid state", () => {
+    render(
+      <Checkbox
+        id="sample-checkbox"
+        checked={false}
+        onChange={() => {}}
+        aria-invalid="true"
+      />,
+    );
+
+    expect(screen.getByRole("checkbox")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
   it("supports being used inside Field with help text", () => {
     render(
       <Field id="sample-checkbox" label="サンプル" helpText="補足説明">
