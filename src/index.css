@@ -598,7 +598,7 @@ body {
     0 0 25px
     color-mix(in srgb, var(--clock-accent-color, #818cf8) 25%, transparent),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  font-size: var(--overlay-font-size, 1.5rem);
+  font-size: calc(var(--overlay-font-size, 1.5rem) * var(--clock-size-scale, 1));
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   letter-spacing: 0.02em;
@@ -723,8 +723,8 @@ body {
   margin: 0;
   font-size: 0.32em;
   font-weight: var(--font-weight-regular);
-  color: var(--color-text-subtle);
-  opacity: 0.8;
+  color: var(--color-text-muted);
+  opacity: 0.9;
 }
 
 .overlay-card .overlay-close-button {

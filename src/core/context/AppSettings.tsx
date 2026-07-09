@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type React from "react";
 import {
   createContext,
@@ -72,6 +73,25 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
     load();
+
+    const unlistenPromise = listen("settings-changed", async () => {
+      try {
+        const loaded = await invoke<AppSettings>("load_settings");
+        setSettings((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(loaded)) {
+            settingsRef.current = loaded;
+            return loaded;
+          }
+          return prev;
+        });
+      } catch (err) {
+        console.error("Failed to reload settings:", err);
+      }
+    });
+
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
   }, []);
 
   const parseAndSetErrors = useCallback((errorMessage: string) => {

@@ -45,6 +45,7 @@ export const ClockSettings: React.FC = () => {
     handleChange("showSeconds", defaultAppSettings.clock.showSeconds);
     handleChange("clockColor", defaultAppSettings.clock.clockColor);
     handleChange("blinkColon", defaultAppSettings.clock.blinkColon);
+    handleChange("sizePercent", defaultAppSettings.clock.sizePercent);
     const shortcutInput = document.getElementById(
       "clock-shortcut-input",
     ) as HTMLInputElement | null;
@@ -204,6 +205,39 @@ export const ClockSettings: React.FC = () => {
         />
       </Field>
 
+      <Field
+        id="clock-size-percent-input"
+        label="時計のサイズ倍率"
+        helpText="時計オーバーレイの表示倍率（50% 〜 250%、推奨: 100%）を指定します。倍率に応じて文字の大きさも自動的にスケールします。"
+      >
+        <FieldRow>
+          <TextInput
+            id="clock-size-percent-input"
+            type="number"
+            min="50"
+            max="250"
+            controlSize="number"
+            value={clock.sizePercent}
+            onChange={(e) =>
+              handleChange(
+                "sizePercent",
+                Math.max(50, Math.min(250, Number.parseInt(e.target.value) || 100)),
+              )
+            }
+          />
+          <UnitLabel>%</UnitLabel>
+          <input
+            type="range"
+            min="50"
+            max="250"
+            step="5"
+            value={clock.sizePercent}
+            onChange={(e) => handleChange("sizePercent", Number.parseInt(e.target.value))}
+            style={{ flex: 1, margin: "0 var(--space-3)" }}
+          />
+        </FieldRow>
+      </Field>
+
       <Field id="clock-color-picker" label="時計のテーマカラー">
         <div className="color-picker-palette">
           {PRESET_COLORS.map((color) => (
@@ -230,11 +264,12 @@ export const ClockSettings: React.FC = () => {
             style={
               {
                 position: "relative",
-                width: "300px",
-                height: "110px",
+                width: `${300 * (clock.sizePercent / 100)}px`,
+                height: `${110 * (clock.sizePercent / 100)}px`,
                 margin: 0,
-                fontSize: clock.fontSize,
+                "--overlay-font-size": clock.fontSize,
                 "--clock-accent-color": clock.clockColor,
+                "--clock-size-scale": clock.sizePercent / 100,
               } as React.CSSProperties
             }
           >

@@ -7,4 +7,5 @@ export interface ClockSettings {
   showSeconds: boolean;
   clockColor: string;
   blinkColon: boolean;
+  sizePercent: number;
 }

@@ -155,6 +155,7 @@ export const ClockOverlay: React.FC = () => {
           {
             "--overlay-font-size": settings?.clock.fontSize,
             "--clock-accent-color": clockColor,
+            "--clock-size-scale": settings ? settings.clock.sizePercent / 100 : 1,
           } as React.CSSProperties
         }
       >

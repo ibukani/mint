@@ -27,14 +27,19 @@ describe("ClockSettings component", () => {
     const shortcutInput = inputs[0] as HTMLInputElement;
     expect(shortcutInput.value).toBe("Ctrl+Alt+C");
 
-    // 表示秒数の入力フィールド検証 (type="number" は spinbutton ロールを持つ)
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    // 表示秒数の入力フィールド検証
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     expect(secondsInput.value).toBe("3");
 
     const showDateCheckbox = screen.getByLabelText(
       "年月日と曜日を表示する",
     ) as HTMLInputElement;
     expect(showDateCheckbox.checked).toBe(true);
+
+    const sizePercentInput = screen.getByLabelText("時計のサイズ倍率") as HTMLInputElement;
+    expect(sizePercentInput.value).toBe("100");
   });
 
   it("resets clock settings to defaults", async () => {
@@ -54,7 +59,9 @@ describe("ClockSettings component", () => {
     const shortcutInput = screen.getByLabelText(
       "起動ショートカットキー",
     ) as HTMLInputElement;
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     const fontSizeSelect = screen.getByLabelText(
       "フォントサイズ",
     ) as HTMLSelectElement;
@@ -67,6 +74,7 @@ describe("ClockSettings component", () => {
     const blinkColonCheckbox = screen.getByLabelText(
       "コロンを点滅させる",
     ) as HTMLInputElement;
+    const sizePercentInput = screen.getByLabelText("時計のサイズ倍率") as HTMLInputElement;
 
     fireEvent.click(enabledCheckbox); // 有効をオフにする
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
@@ -75,6 +83,7 @@ describe("ClockSettings component", () => {
     fireEvent.click(showDateCheckbox);
     fireEvent.click(showSecondsCheckbox);
     fireEvent.click(blinkColonCheckbox);
+    fireEvent.change(sizePercentInput, { target: { value: "150" } });
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
@@ -85,6 +94,7 @@ describe("ClockSettings component", () => {
     expect(showDateCheckbox.checked).toBe(true);
     expect(showSecondsCheckbox.checked).toBe(true);
     expect(blinkColonCheckbox.checked).toBe(true);
+    expect(sizePercentInput.value).toBe("100");
   });
 
   it("returns focus to the shortcut field after resetting", async () => {
@@ -119,7 +129,9 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
 
     fireEvent.change(secondsInput, { target: { value: "999" } });
     expect(secondsInput.value).toBe("60");
@@ -139,7 +151,9 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     const decreaseButton = screen.getByRole("button", {
       name: "表示秒数を1秒減らす",
     });
@@ -166,7 +180,9 @@ describe("ClockSettings component", () => {
       expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
     });
 
-    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const secondsInput = screen.getByLabelText(
+      "表示秒数 (0でトグル表示)",
+    ) as HTMLInputElement;
     const increaseButton = screen.getByRole("button", {
       name: "表示秒数を1秒増やす",
     });

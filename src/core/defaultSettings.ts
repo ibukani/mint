@@ -11,6 +11,7 @@ export const defaultAppSettings: AppSettings = {
     showSeconds: true,
     clockColor: "#818cf8",
     blinkColon: true,
+    sizePercent: 100,
   },
   voiceToText: {
     enabled: false,

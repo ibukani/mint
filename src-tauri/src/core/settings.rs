@@ -18,6 +18,8 @@ pub struct ClockSettings {
     pub clock_color: String,
     #[serde(default = "default_blink_colon")]
     pub blink_colon: bool,
+    #[serde(default = "default_size_percent")]
+    pub size_percent: u32,
 }
 
 fn default_show_date() -> bool {
@@ -36,6 +38,10 @@ fn default_blink_colon() -> bool {
     true
 }
 
+fn default_size_percent() -> u32 {
+    100
+}
+
 impl Default for ClockSettings {
     fn default() -> Self {
         Self {
@@ -47,6 +53,7 @@ impl Default for ClockSettings {
             show_seconds: true,
             clock_color: "#818cf8".to_string(),
             blink_colon: true,
+            size_percent: 100,
         }
     }
 }
@@ -278,6 +285,8 @@ pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String
         .to_string()
     })?;
 
+    let _ = tauri::Emitter::emit(&app, "settings-changed", ());
+
     Ok(())
 }
 
@@ -339,6 +348,7 @@ mod tests {
         assert!(settings.clock.show_seconds);
         assert_eq!(settings.clock.clock_color, "#818cf8");
         assert!(settings.clock.blink_colon);
+        assert_eq!(settings.clock.size_percent, 100);
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
         assert_eq!(settings.voice_to_text.language, "ja");
 
@@ -352,6 +362,7 @@ mod tests {
         assert!(settings.clock.show_seconds); // デフォルト補完
         assert_eq!(settings.clock.clock_color, "#818cf8"); // デフォルト補完
         assert!(settings.clock.blink_colon); // デフォルト補完
+        assert_eq!(settings.clock.size_percent, 100); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
     }
 }

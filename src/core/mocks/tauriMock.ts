@@ -7,7 +7,9 @@ const isTauri =
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !==
     undefined;
 
-const isTest = typeof process !== "undefined" && process.env.NODE_ENV === "test";
+declare const process: { env?: { NODE_ENV?: string } } | undefined;
+const isTest =
+  typeof process !== "undefined" && process?.env?.NODE_ENV === "test";
 
 if (!isTauri && typeof window !== "undefined" && !isTest) {
   console.log(
