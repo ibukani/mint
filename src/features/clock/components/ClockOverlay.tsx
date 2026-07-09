@@ -82,13 +82,23 @@ export const ClockOverlay: React.FC = () => {
   }, [clearHideTimer, hideClock, settings]);
 
   useEffect(() => {
-    const unlistenPromise = listen("clock-shown", () => {
+    let unlisten: (() => void) | null = null;
+    let disposed = false;
+
+    void listen("clock-shown", () => {
       scheduleHide();
+    }).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+      unlisten = cleanup;
     });
 
     return () => {
+      disposed = true;
       clearHideTimer();
-      unlistenPromise.then((unlisten) => unlisten());
+      unlisten?.();
     };
   }, [clearHideTimer, scheduleHide]);
 
