@@ -124,6 +124,55 @@ describe("VoiceToTextSettings", () => {
     expect(apiKeyInput.type).toBe("password");
   });
 
+  it("pastes the API key from the clipboard", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "w",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    Object.assign(navigator, {
+      clipboard: {
+        readText: vi.fn().mockResolvedValue("  pasted-api-key  "),
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const apiKeyInput = screen.getByLabelText("API キー") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "API キーを貼り付け" }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(apiKeyInput).toHaveValue("pasted-api-key");
+    expect(apiKeyInput).toHaveFocus();
+  });
+
   it("transcribes an audio file with the typed backend command", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
@@ -471,7 +520,9 @@ describe("VoiceToTextSettings", () => {
       "音声ファイルパス",
     ) as HTMLInputElement;
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "貼り付け" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: "音声ファイルパスを貼り付け" }),
+      );
       await Promise.resolve();
       await Promise.resolve();
     });

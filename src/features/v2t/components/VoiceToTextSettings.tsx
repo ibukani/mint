@@ -63,6 +63,16 @@ export const VoiceToTextSettings: React.FC = () => {
     }
   }, [apiKey]);
 
+  const pasteApiKey = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setApiKey(text.trim());
+      document.getElementById("v2t-api-key-input")?.focus();
+    } catch (err) {
+      console.error("Failed to paste API key:", err);
+    }
+  };
+
   useEffect(() => {
     if (!transcriptionText) return;
 
@@ -269,6 +279,14 @@ export const VoiceToTextSettings: React.FC = () => {
           />
           <Button
             variant="ghost"
+            disabled={!apiKeyLoaded}
+            aria-label="API キーを貼り付け"
+            onClick={pasteApiKey}
+          >
+            貼り付け
+          </Button>
+          <Button
+            variant="ghost"
             aria-pressed={showApiKey}
             disabled={!apiKeyLoaded}
             onClick={() => setShowApiKey((current) => !current)}
@@ -337,7 +355,11 @@ export const VoiceToTextSettings: React.FC = () => {
             onKeyDown={handleAudioFilePathKeyDown}
             placeholder="例: /Users/me/audio.wav"
           />
-          <Button variant="ghost" onClick={pasteAudioFilePath}>
+          <Button
+            variant="ghost"
+            aria-label="音声ファイルパスを貼り付け"
+            onClick={pasteAudioFilePath}
+          >
             貼り付け
           </Button>
           <Button variant="ghost" onClick={clearAudioFilePath}>
