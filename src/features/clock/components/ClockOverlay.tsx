@@ -9,6 +9,7 @@ import { formatClockDate, formatClockSummary } from "../formatting";
 
 const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
   const [time, setTime] = useState(new Date());
+  const clockTimestamp = time.toISOString();
   const clockDate = formatClockDate(time);
   const clockSummary = formatClockSummary(time);
 
@@ -19,7 +20,7 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
 
   return (
     <div className="overlay-clock-time">
-      <time dateTime={time.toISOString()}>
+      <time dateTime={clockTimestamp}>
         <span className="sr-only">{clockSummary}</span>
         <span aria-hidden="true">
           {time.toLocaleTimeString([], {
@@ -30,7 +31,7 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
         </span>
       </time>
       {showDate ? (
-        <time className="overlay-clock-date" dateTime={time.toISOString()}>
+        <time className="overlay-clock-date" dateTime={clockTimestamp}>
           <span className="sr-only">{clockDate}</span>
           <span aria-hidden="true">{clockDate}</span>
         </time>
