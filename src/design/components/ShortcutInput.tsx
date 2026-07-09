@@ -7,7 +7,6 @@ interface ShortcutInputProps {
   id?: string;
   invalid?: boolean;
   placeholderText?: string;
-  autoFocus?: boolean;
 }
 
 export const ShortcutInput: React.FC<ShortcutInputProps> = ({
@@ -16,7 +15,6 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
   id,
   invalid = false,
   placeholderText = "キーを押して設定...",
-  autoFocus = false,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
 
@@ -126,7 +124,6 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
         className={classes}
         value={displayValue}
         readOnly
-        autoFocus={autoFocus}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}

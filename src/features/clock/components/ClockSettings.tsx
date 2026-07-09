@@ -102,7 +102,6 @@ export const ClockSettings: React.FC = () => {
       >
         <ShortcutInput
           id="clock-shortcut-input"
-          autoFocus
           invalid={Boolean(shortcutError)}
           value={clock.shortcut}
           onChange={(value) => handleChange("shortcut", value)}
@@ -223,7 +222,7 @@ export const ClockSettings: React.FC = () => {
                 "sizePercent",
                 Math.max(
                   50,
-                  Math.min(250, Number.parseInt(e.target.value) || 100),
+                  Math.min(250, Number.parseInt(e.target.value, 10) || 100),
                 ),
               )
             }
@@ -236,7 +235,7 @@ export const ClockSettings: React.FC = () => {
             step="5"
             value={clock.sizePercent}
             onChange={(e) =>
-              handleChange("sizePercent", Number.parseInt(e.target.value))
+              handleChange("sizePercent", Number.parseInt(e.target.value, 10))
             }
             style={{ flex: 1, margin: "0 var(--space-3)" }}
           />
