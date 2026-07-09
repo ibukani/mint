@@ -35,6 +35,16 @@ export const ClockSettings: React.FC = () => {
     document.getElementById("clock-shortcut-input")?.focus();
   };
 
+  const changeAutoHideSeconds = (delta: number) => {
+    handleChange(
+      "autoHideSeconds",
+      Math.max(
+        CLOCK_AUTO_HIDE_MIN_SECONDS,
+        Math.min(CLOCK_AUTO_HIDE_MAX_SECONDS, clock.autoHideSeconds + delta),
+      ),
+    );
+  };
+
   return (
     <SettingsSection
       title="時計オーバーレイ設定"
@@ -91,6 +101,22 @@ export const ClockSettings: React.FC = () => {
               )
             }
           />
+          <Button
+            variant="ghost"
+            onClick={() => changeAutoHideSeconds(-1)}
+            disabled={clock.autoHideSeconds <= CLOCK_AUTO_HIDE_MIN_SECONDS}
+            aria-label="表示秒数を1秒減らす"
+          >
+            -
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => changeAutoHideSeconds(1)}
+            disabled={clock.autoHideSeconds >= CLOCK_AUTO_HIDE_MAX_SECONDS}
+            aria-label="表示秒数を1秒増やす"
+          >
+            +
+          </Button>
           <UnitLabel>秒</UnitLabel>
         </FieldRow>
       </Field>

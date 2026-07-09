@@ -92,6 +92,33 @@ describe("ClockSettings component", () => {
     expect(secondsInput.value).toBe("0");
   });
 
+  it("adjusts auto-hide seconds with step buttons", async () => {
+    render(
+      <AppSettingsProvider>
+        <ClockSettings />
+      </AppSettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
+    });
+
+    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const decreaseButton = screen.getByRole("button", {
+      name: "表示秒数を1秒減らす",
+    });
+    const increaseButton = screen.getByRole("button", {
+      name: "表示秒数を1秒増やす",
+    });
+
+    fireEvent.click(decreaseButton);
+    expect(secondsInput.value).toBe("2");
+
+    fireEvent.click(increaseButton);
+    fireEvent.click(increaseButton);
+    expect(secondsInput.value).toBe("4");
+  });
+
   it("trims shortcut whitespace when leaving the field", async () => {
     render(
       <AppSettingsProvider>
