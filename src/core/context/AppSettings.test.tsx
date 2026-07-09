@@ -267,4 +267,56 @@ describe("AppSettingsProvider", () => {
     });
     expect(screen.getByTestId("save-status")).toHaveTextContent("error");
   });
+
+  it("clears the top-level error when the user makes a new change", async () => {
+    vi.useFakeTimers();
+    const mockSettings = createMockSettings();
+    let saveAttempts = 0;
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "save_settings") {
+        saveAttempts += 1;
+        if (saveAttempts === 1) {
+          throw new Error("時計ショートカットの登録に失敗しました");
+        }
+        return undefined;
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("btn-theme"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("save-status")).toHaveTextContent("error");
+    expect(screen.getByTestId("error")).toHaveTextContent(
+      "設定の保存に失敗しました",
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("btn-fontsize"));
+    });
+
+    expect(screen.getByTestId("error")).toHaveTextContent("no-error");
+    expect(screen.getByTestId("save-status")).toHaveTextContent("pending");
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
+  });
 });

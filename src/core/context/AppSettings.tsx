@@ -220,6 +220,10 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       // 3. Update local state and refs synchronously
       settingsRef.current = updated;
       setSettings(updated);
+      if (saveStatus === "error") {
+        setError(null);
+        setSaveStatus("idle");
+      }
 
       // 4. Increment sequence ID for race condition protection
       sequenceRef.current += 1;
@@ -248,7 +252,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         }, SAVE_DEBOUNCE_MS);
       }
     },
-    [commitSettings],
+    [commitSettings, saveStatus],
   );
 
   return (
