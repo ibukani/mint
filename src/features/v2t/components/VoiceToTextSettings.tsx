@@ -479,7 +479,7 @@ export const VoiceToTextSettings: React.FC = () => {
       <Field
         id="v2t-audio-file-input"
         label="音声ファイルパス"
-        helpText="wav、mp3、m4a など、利用する音声認識APIが対応する音声ファイルを指定します。"
+        helpText="wav、mp3、m4a など、利用する音声認識APIが対応する音声ファイルを指定します。Enter でも文字起こしを開始できます。"
       >
         <FieldRow>
           <TextInput
