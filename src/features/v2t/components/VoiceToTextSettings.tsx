@@ -106,6 +106,16 @@ export const VoiceToTextSettings: React.FC = () => {
   }, [transcriptionText]);
 
   useEffect(() => {
+    if (!showApiKey || !apiKeyLoaded) return;
+
+    const apiKeyInput = document.getElementById(
+      "v2t-api-key-input",
+    ) as HTMLInputElement | null;
+    apiKeyInput?.focus();
+    apiKeyInput?.select();
+  }, [apiKeyLoaded, showApiKey]);
+
+  useEffect(() => {
     if (apiKeyPasteStatusTimerRef.current) {
       clearTimeout(apiKeyPasteStatusTimerRef.current);
       apiKeyPasteStatusTimerRef.current = null;

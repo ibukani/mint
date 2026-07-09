@@ -115,6 +115,7 @@ describe("VoiceToTextSettings", () => {
     fireEvent.click(screen.getByRole("button", { name: "表示" }));
 
     expect(apiKeyInput.type).toBe("text");
+    expect(apiKeyInput).toHaveFocus();
     expect(
       screen.getByRole("button", { name: "隠す", pressed: true }),
     ).toBeInTheDocument();
