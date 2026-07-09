@@ -207,6 +207,7 @@ describe("App Window Routing", () => {
     expect(
       screen.getByRole("heading", { name: "機能管理" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "機能管理" })).toHaveFocus();
   });
 
   it("disables voice-to-text dashboard controls when the feature is unavailable", async () => {

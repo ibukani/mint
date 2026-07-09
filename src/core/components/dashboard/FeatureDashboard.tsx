@@ -84,6 +84,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
     <SettingsSection
       title="機能管理"
       description="主要な機能の状態と代表設定をまとめて確認・編集できます。"
+      autoFocusTitle
     >
       <div className="feature-dashboard">
         <FeatureCard
