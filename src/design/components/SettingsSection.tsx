@@ -25,19 +25,17 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
   return (
     <section className="design-settings-section" aria-labelledby={titleId}>
-      <div className="design-settings-section__header">
-        <h2
-          ref={titleRef}
-          className="design-settings-section__title"
-          id={titleId}
-          tabIndex={autoFocusTitle ? -1 : undefined}
-        >
-          {title}
-        </h2>
-        {description && (
-          <p className="design-settings-section__description">{description}</p>
-        )}
-      </div>
+      <h2
+        ref={titleRef}
+        className="design-settings-section__title"
+        id={titleId}
+        tabIndex={autoFocusTitle ? -1 : undefined}
+      >
+        {title}
+      </h2>
+      {description && (
+        <p className="design-settings-section__description">{description}</p>
+      )}
       {children}
     </section>
   );

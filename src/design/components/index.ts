@@ -1,5 +1,4 @@
 export { Button } from "./Button";
-export { Checkbox } from "./Checkbox";
 export { ErrorMessage } from "./ErrorMessage";
 export { FeatureCard } from "./FeatureCard";
 export { Field } from "./Field";

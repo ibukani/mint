@@ -3,16 +3,18 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
-import { useTimeoutTask } from "../../../core/hooks/useTimeoutTask";
 import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
-import { formatClockDate, formatClockSummary } from "../formatting";
+
+const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"] as const;
+
+const formatClockDate = (time: Date) =>
+  `${time.getFullYear()}年${time.getMonth() + 1}月${time.getDate()}日(${
+    WEEKDAY_LABELS[time.getDay()]
+  })`;
 
 const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
   const [time, setTime] = useState(new Date());
-  const clockTimestamp = time.toISOString();
-  const clockDate = formatClockDate(time);
-  const clockSummary = formatClockSummary(time);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -21,21 +23,13 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
 
   return (
     <div className="overlay-clock-time">
-      <time dateTime={clockTimestamp}>
-        <span className="sr-only">{clockSummary}</span>
-        <span aria-hidden="true">
-          {time.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })}
-        </span>
-      </time>
+      {time.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })}
       {showDate ? (
-        <time className="overlay-clock-date" dateTime={clockTimestamp}>
-          <span className="sr-only">{clockDate}</span>
-          <span aria-hidden="true">{clockDate}</span>
-        </time>
+        <div className="overlay-clock-date">{formatClockDate(time)}</div>
       ) : null}
     </div>
   );
@@ -43,7 +37,7 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
 
 export const ClockOverlay: React.FC = () => {
   const { settings } = useAppSettings();
-  const { clearTimeoutTask, scheduleTimeoutTask } = useTimeoutTask();
+  const [trigger, setTrigger] = useState(0);
 
   const hideClock = useCallback(() => {
     getCurrentWindow()
@@ -53,43 +47,30 @@ export const ClockOverlay: React.FC = () => {
       });
   }, []);
 
-  const scheduleHide = useCallback(() => {
-    clearTimeoutTask();
-    if (!settings) return;
-
-    const hideSeconds = settings.clock.autoHideSeconds;
-    if (hideSeconds > 0) {
-      scheduleTimeoutTask(() => {
-        hideClock();
-      }, hideSeconds * 1000);
-    }
-  }, [clearTimeoutTask, hideClock, scheduleTimeoutTask, settings]);
-
+  // listen to "clock-shown" event to restart timer
   useEffect(() => {
-    let unlisten: (() => void) | null = null;
-    let disposed = false;
-
-    void listen("clock-shown", () => {
-      scheduleHide();
-    }).then((cleanup) => {
-      if (disposed) {
-        cleanup();
-        return;
-      }
-      unlisten = cleanup;
+    const unlistenPromise = listen("clock-shown", () => {
+      setTrigger((prev) => prev + 1);
     });
 
     return () => {
-      disposed = true;
-      clearTimeoutTask();
-      unlisten?.();
+      unlistenPromise.then((unlisten) => unlisten());
     };
-  }, [clearTimeoutTask, scheduleHide]);
+  }, []);
 
   useEffect(() => {
-    scheduleHide();
-    return clearTimeoutTask;
-  }, [clearTimeoutTask, scheduleHide]);
+    if (!settings) return;
+    void trigger; // Dummy reference for dependency array linter
+    const hideSeconds = settings.clock.autoHideSeconds;
+    if (hideSeconds > 0) {
+      const timer = setTimeout(() => {
+        getCurrentWindow()
+          .hide()
+          .catch((e) => console.error("Failed to hide clock window:", e));
+      }, hideSeconds * 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [settings, trigger]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
