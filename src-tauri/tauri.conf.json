@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Mint",
+  "productName": "mint",
   "version": "0.1.0",
   "identifier": "com.ibuibu.mint",
   "build": {
@@ -13,12 +13,9 @@
     "windows": [
       {
         "label": "main",
-        "title": "Mint",
-        "width": 1040,
-        "height": 720,
-        "minWidth": 760,
-        "minHeight": 560,
-        "center": true
+        "title": "mint",
+        "width": 800,
+        "height": 600
       },
       {
         "label": "clock",

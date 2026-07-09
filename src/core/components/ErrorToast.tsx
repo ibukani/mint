@@ -1,6 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useAutoClearStatus } from "../hooks/useAutoClearStatus";
+import { useCallback, useEffect, useRef } from "react";
 
 interface ErrorToastProps {
   message: string | null;
@@ -11,24 +10,26 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
   message,
   onDismiss,
 }) => {
-  const [isPaused, setIsPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  const clearPausedState = useCallback(() => {
-    setIsPaused(false);
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   }, []);
 
-  useAutoClearStatus(
-    message ?? "",
-    onDismiss,
-    (currentMessage: string) => (currentMessage ? 5000 : null),
-    isPaused,
-  );
+  const startTimer = useCallback(() => {
+    clearTimer();
+    if (!message) return;
+    timerRef.current = setTimeout(onDismiss, 5000);
+  }, [clearTimer, message, onDismiss]);
 
   useEffect(() => {
     if (!message) {
-      clearPausedState();
+      clearTimer();
       return undefined;
     }
 
@@ -37,8 +38,9 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
         ? document.activeElement
         : null;
     closeButtonRef.current?.focus();
-    return undefined;
-  }, [clearPausedState, message]);
+    startTimer();
+    return clearTimer;
+  }, [clearTimer, message, startTimer]);
 
   useEffect(() => {
     if (!message) return undefined;
@@ -72,12 +74,12 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
     <div
       className="error-toast"
       role="alert"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onFocus={() => setIsPaused(true)}
+      onMouseEnter={clearTimer}
+      onMouseLeave={startTimer}
+      onFocus={clearTimer}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setIsPaused(false);
+          startTimer();
         }
       }}
     >

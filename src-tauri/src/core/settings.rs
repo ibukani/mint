@@ -312,7 +312,7 @@ mod tests {
         assert_eq!(settings.clock.shortcut, "Ctrl+Alt+C");
         assert_eq!(settings.clock.auto_hide_seconds, 3);
         assert_eq!(settings.clock.font_size, "1.5rem");
-        assert!(settings.clock.show_date);
+        assert_eq!(settings.clock.show_date, true);
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
         assert_eq!(settings.voice_to_text.language, "ja");
 
@@ -322,7 +322,7 @@ mod tests {
         assert_eq!(settings.theme, "light");
         assert_eq!(settings.clock.shortcut, "Ctrl+C");
         assert_eq!(settings.clock.auto_hide_seconds, 3); // デフォルト補完
-        assert!(settings.clock.show_date); // デフォルト補完
+        assert_eq!(settings.clock.show_date, true); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
     }
 }
