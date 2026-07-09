@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
@@ -52,7 +52,7 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
 
 export const ClockOverlay: React.FC = () => {
   const { settings } = useAppSettings();
-  const [trigger, setTrigger] = useState(0);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hideClock = useCallback(() => {
     getCurrentWindow()
@@ -62,30 +62,40 @@ export const ClockOverlay: React.FC = () => {
       });
   }, []);
 
-  // listen to "clock-shown" event to restart timer
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleHide = useCallback(() => {
+    clearHideTimer();
+    if (!settings) return;
+
+    const hideSeconds = settings.clock.autoHideSeconds;
+    if (hideSeconds > 0) {
+      hideTimerRef.current = setTimeout(() => {
+        hideClock();
+      }, hideSeconds * 1000);
+    }
+  }, [clearHideTimer, hideClock, settings]);
+
   useEffect(() => {
     const unlistenPromise = listen("clock-shown", () => {
-      setTrigger((prev) => prev + 1);
+      scheduleHide();
     });
 
     return () => {
+      clearHideTimer();
       unlistenPromise.then((unlisten) => unlisten());
     };
-  }, []);
+  }, [clearHideTimer, scheduleHide]);
 
   useEffect(() => {
-    if (!settings) return;
-    void trigger; // Dummy reference for dependency array linter
-    const hideSeconds = settings.clock.autoHideSeconds;
-    if (hideSeconds > 0) {
-      const timer = setTimeout(() => {
-        getCurrentWindow()
-          .hide()
-          .catch((e) => console.error("Failed to hide clock window:", e));
-      }, hideSeconds * 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [settings, trigger]);
+    scheduleHide();
+    return clearHideTimer;
+  }, [clearHideTimer, scheduleHide]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
