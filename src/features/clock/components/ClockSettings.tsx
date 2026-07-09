@@ -29,16 +29,18 @@ export const ClockSettings: React.FC = () => {
 
   if (!clock) return null;
 
+  const focusAndSelectInput = (id: string) => {
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    input?.focus();
+    input?.select();
+  };
+
   const resetClockSettings = () => {
     handleChange("shortcut", defaultAppSettings.clock.shortcut);
     handleChange("autoHideSeconds", defaultAppSettings.clock.autoHideSeconds);
     handleChange("fontSize", defaultAppSettings.clock.fontSize);
     handleChange("showDate", defaultAppSettings.clock.showDate);
-    const shortcutInput = document.getElementById(
-      "clock-shortcut-input",
-    ) as HTMLInputElement | null;
-    shortcutInput?.focus();
-    shortcutInput?.select();
+    focusAndSelectInput("clock-shortcut-input");
   };
 
   const changeAutoHideSeconds = (delta: number) => {
@@ -49,11 +51,7 @@ export const ClockSettings: React.FC = () => {
         Math.min(CLOCK_AUTO_HIDE_MAX_SECONDS, clock.autoHideSeconds + delta),
       ),
     );
-    const autoHideSecondsInput = document.getElementById(
-      "clock-hide-seconds-input",
-    ) as HTMLInputElement | null;
-    autoHideSecondsInput?.focus();
-    autoHideSecondsInput?.select();
+    focusAndSelectInput("clock-hide-seconds-input");
   };
 
   return (
