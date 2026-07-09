@@ -18,7 +18,8 @@
         "height": 650,
         "decorations": false,
         "transparent": false,
-        "shadow": true
+        "shadow": true,
+        "maximizable": false
       },
       {
         "label": "clock",

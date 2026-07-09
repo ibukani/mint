@@ -1198,7 +1198,11 @@ describe("VoiceToTextSettings", () => {
     ) as HTMLInputElement;
 
     fireEvent.focus(shortcutInput);
-    fireEvent.keyDown(shortcutInput, { key: "v", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(shortcutInput, {
+      key: "v",
+      ctrlKey: true,
+      shiftKey: true,
+    });
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+V");
   });

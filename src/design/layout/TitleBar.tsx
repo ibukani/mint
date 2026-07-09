@@ -17,17 +17,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
     }
   };
 
-  const handleMaximize = async () => {
-    try {
-      const win = getCurrentWindow();
-      if (typeof win.toggleMaximize === "function") {
-        await win.toggleMaximize();
-      }
-    } catch (e) {
-      console.warn("Failed to toggle maximize window:", e);
-    }
-  };
-
   const handleClose = async () => {
     try {
       const win = getCurrentWindow();
@@ -87,23 +76,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
             strokeWidth="1.2"
           >
             <line x1="2.5" y1="6" x2="9.5" y2="6" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="app-titlebar__button app-titlebar__button--maximize"
-          onClick={handleMaximize}
-          aria-label="最大化"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-          >
-            <rect x="2.5" y="2.5" width="7" height="7" rx="1" />
           </svg>
         </button>
         <button

@@ -6,10 +6,9 @@ export { FieldRow } from "./FieldRow";
 export { Panel } from "./Panel";
 export { Select } from "./Select";
 export { SettingsSection } from "./SettingsSection";
+export { ShortcutInput } from "./ShortcutInput";
 export type { StatusBadgeTone } from "./StatusBadge";
 export { StatusBadge } from "./StatusBadge";
 export { TextArea } from "./TextArea";
 export { TextInput } from "./TextInput";
 export { UnitLabel } from "./UnitLabel";
-export { ShortcutInput } from "./ShortcutInput";
-

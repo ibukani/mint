@@ -38,7 +38,9 @@ describe("ClockSettings component", () => {
     ) as HTMLInputElement;
     expect(showDateCheckbox.checked).toBe(true);
 
-    const sizePercentInput = screen.getByLabelText("時計のサイズ倍率") as HTMLInputElement;
+    const sizePercentInput = screen.getByLabelText(
+      "時計のサイズ倍率",
+    ) as HTMLInputElement;
     expect(sizePercentInput.value).toBe("100");
   });
 
@@ -74,7 +76,9 @@ describe("ClockSettings component", () => {
     const blinkColonCheckbox = screen.getByLabelText(
       "コロンを点滅させる",
     ) as HTMLInputElement;
-    const sizePercentInput = screen.getByLabelText("時計のサイズ倍率") as HTMLInputElement;
+    const sizePercentInput = screen.getByLabelText(
+      "時計のサイズ倍率",
+    ) as HTMLInputElement;
 
     fireEvent.click(enabledCheckbox); // 有効をオフにする
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
@@ -209,7 +213,11 @@ describe("ClockSettings component", () => {
     ) as HTMLInputElement;
 
     fireEvent.focus(shortcutInput);
-    fireEvent.keyDown(shortcutInput, { key: "t", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(shortcutInput, {
+      key: "t",
+      ctrlKey: true,
+      shiftKey: true,
+    });
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+T");
   });

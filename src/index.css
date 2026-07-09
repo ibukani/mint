@@ -598,7 +598,10 @@ body {
     0 0 25px
     color-mix(in srgb, var(--clock-accent-color, #818cf8) 25%, transparent),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  font-size: calc(var(--overlay-font-size, 1.5rem) * var(--clock-size-scale, 1));
+  font-size: calc(
+    var(--overlay-font-size, 1.5rem) *
+    var(--clock-size-scale, 1)
+  );
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   letter-spacing: 0.02em;

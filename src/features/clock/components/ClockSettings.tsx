@@ -221,7 +221,10 @@ export const ClockSettings: React.FC = () => {
             onChange={(e) =>
               handleChange(
                 "sizePercent",
-                Math.max(50, Math.min(250, Number.parseInt(e.target.value) || 100)),
+                Math.max(
+                  50,
+                  Math.min(250, Number.parseInt(e.target.value) || 100),
+                ),
               )
             }
           />
@@ -232,7 +235,9 @@ export const ClockSettings: React.FC = () => {
             max="250"
             step="5"
             value={clock.sizePercent}
-            onChange={(e) => handleChange("sizePercent", Number.parseInt(e.target.value))}
+            onChange={(e) =>
+              handleChange("sizePercent", Number.parseInt(e.target.value))
+            }
             style={{ flex: 1, margin: "0 var(--space-3)" }}
           />
         </FieldRow>
