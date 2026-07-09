@@ -81,6 +81,15 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
     voiceToText.enabled,
     voiceToText.status,
   );
+  const changeClockAutoHideSeconds = (delta: number) => {
+    updateClock(
+      "autoHideSeconds",
+      Math.max(
+        CLOCK_AUTO_HIDE_MIN_SECONDS,
+        Math.min(CLOCK_AUTO_HIDE_MAX_SECONDS, clock.autoHideSeconds + delta),
+      ),
+    );
+  };
 
   return (
     <SettingsSection
@@ -134,6 +143,22 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
                   )
                 }
               />
+              <Button
+                variant="ghost"
+                onClick={() => changeClockAutoHideSeconds(-1)}
+                disabled={clock.autoHideSeconds <= CLOCK_AUTO_HIDE_MIN_SECONDS}
+                aria-label="表示秒数を1秒減らす"
+              >
+                -
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => changeClockAutoHideSeconds(1)}
+                disabled={clock.autoHideSeconds >= CLOCK_AUTO_HIDE_MAX_SECONDS}
+                aria-label="表示秒数を1秒増やす"
+              >
+                +
+              </Button>
               <UnitLabel>秒</UnitLabel>
             </FieldRow>
           </Field>

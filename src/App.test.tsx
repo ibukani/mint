@@ -484,6 +484,51 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("adjusts clock auto-hide seconds from the dashboard with step buttons", async () => {
+    vi.mocked(invoke).mockImplementation((cmd) => {
+      if (cmd === "load_settings") {
+        return Promise.resolve(createMockSettings());
+      }
+      if (cmd === "save_settings") {
+        return Promise.resolve();
+      }
+      return Promise.resolve(null);
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const clockCard = screen
+      .getByRole("heading", { name: "時計オーバーレイ" })
+      .closest("section");
+    expect(clockCard).not.toBeNull();
+
+    const secondsInput = within(clockCard as HTMLElement).getByRole(
+      "spinbutton",
+    ) as HTMLInputElement;
+    const decreaseButton = within(clockCard as HTMLElement).getByRole(
+      "button",
+      {
+        name: "表示秒数を1秒減らす",
+      },
+    );
+    const increaseButton = within(clockCard as HTMLElement).getByRole(
+      "button",
+      {
+        name: "表示秒数を1秒増やす",
+      },
+    );
+
+    fireEvent.click(decreaseButton);
+    expect(secondsInput.value).toBe("2");
+
+    fireEvent.click(increaseButton);
+    fireEvent.click(increaseButton);
+    expect(secondsInput.value).toBe("4");
+  });
+
   it("trims dashboard shortcut whitespace before saving", async () => {
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "load_settings") {
