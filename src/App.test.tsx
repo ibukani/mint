@@ -183,6 +183,47 @@ describe("App Window Routing", () => {
     ).toBeDisabled();
   });
 
+  it("shows a preparation message when voice-to-text is still pending", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings({
+        voiceToText: {
+          enabled: false,
+          shortcut: "Ctrl+Alt+V",
+          baseUrl: "http://api",
+          model: "whisper-1",
+          language: "ja",
+          status: "placeholder",
+        },
+      }) as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const voiceToTextCard = screen
+      .getByRole("heading", { name: "音声入力" })
+      .closest("section");
+    expect(voiceToTextCard).not.toBeNull();
+
+    expect(
+      within(voiceToTextCard as HTMLElement).getByText(
+        "準備中のため、設定は編集できません。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(voiceToTextCard as HTMLElement).getByRole("button", {
+        name: "詳細設定",
+      }),
+    ).toBeDisabled();
+    expect(
+      within(voiceToTextCard as HTMLElement).getByRole("button", {
+        name: "詳細設定",
+      }),
+    ).toHaveAttribute("title", "準備中のため、設定は編集できません。");
+  });
+
   it("shows an error badge when the clock shortcut registration fails", async () => {
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
       if (cmd === "load_settings") {

@@ -71,6 +71,10 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
   if (!clock || !voiceToText) return null;
 
   const voiceToTextAvailable = voiceToText.status === "available";
+  const voiceToTextAvailabilityMessage =
+    voiceToText.status === pendingStatus
+      ? "準備中のため、設定は編集できません。"
+      : "現在は利用できないため、設定は編集できません。";
   const voiceToTextStatus = getVoiceToTextStatus(
     voiceToText.enabled,
     voiceToText.status,
@@ -153,14 +157,17 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
             voiceToTextShortcutError ? "error" : voiceToTextStatus.tone
           }
           helpText={
-            voiceToTextAvailable
-              ? undefined
-              : "現在は利用できないため、設定は編集できません。"
+            voiceToTextAvailable ? undefined : voiceToTextAvailabilityMessage
           }
           actions={
             <Button
               variant="ghost"
               disabled={!voiceToTextAvailable}
+              title={
+                !voiceToTextAvailable
+                  ? voiceToTextAvailabilityMessage
+                  : undefined
+              }
               onClick={() => onOpenSettings("voiceToText")}
             >
               詳細設定
@@ -177,6 +184,11 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="checkbox"
               checked={voiceToText.enabled}
               disabled={!voiceToTextAvailable}
+              title={
+                !voiceToTextAvailable
+                  ? voiceToTextAvailabilityMessage
+                  : undefined
+              }
               onChange={(e) => updateVoiceToText("enabled", e.target.checked)}
             />
           </Field>
@@ -192,6 +204,11 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               invalid={Boolean(voiceToTextShortcutError)}
               value={voiceToText.shortcut}
               disabled={!voiceToTextAvailable}
+              title={
+                !voiceToTextAvailable
+                  ? voiceToTextAvailabilityMessage
+                  : undefined
+              }
               onChange={(e) => updateVoiceToText("shortcut", e.target.value)}
               onBlur={(e) =>
                 updateVoiceToText("shortcut", normalizeShortcut(e.target.value))
@@ -206,6 +223,11 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="text"
               value={voiceToText.model}
               disabled={!voiceToTextAvailable}
+              title={
+                !voiceToTextAvailable
+                  ? voiceToTextAvailabilityMessage
+                  : undefined
+              }
               onChange={(e) => updateVoiceToText("model", e.target.value)}
               onBlur={(e) =>
                 updateVoiceToText("model", normalizeModelName(e.target.value))
@@ -220,6 +242,11 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="text"
               value={voiceToText.language}
               disabled={!voiceToTextAvailable}
+              title={
+                !voiceToTextAvailable
+                  ? voiceToTextAvailabilityMessage
+                  : undefined
+              }
               onChange={(e) => updateVoiceToText("language", e.target.value)}
               onBlur={(e) =>
                 updateVoiceToText(
