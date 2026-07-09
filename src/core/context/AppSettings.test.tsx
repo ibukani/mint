@@ -167,6 +167,39 @@ describe("AppSettingsProvider", () => {
     });
   });
 
+  it("clears the saved status after a short delay", async () => {
+    vi.useFakeTimers();
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockResolvedValue(mockSettings);
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("btn-theme"));
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("save-status")).toHaveTextContent("idle");
+  });
+
   it("parses registration error and sets shortcut error state", async () => {
     const mockSettings = createMockSettings();
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {

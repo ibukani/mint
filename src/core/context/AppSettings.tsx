@@ -36,6 +36,7 @@ const AppSettingsContext = createContext<AppSettingsContextType | undefined>(
 );
 
 const SAVE_DEBOUNCE_MS = 500;
+const SAVE_SUCCESS_VISIBLE_MS = 2000;
 
 export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -52,6 +53,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const settingsRef = useRef<AppSettings | null>(null);
   const pendingSaveRef = useRef<AppSettings | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceRef = useRef<number>(0);
 
   useEffect(() => {
@@ -150,6 +152,27 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       setSaveStatus("idle");
     }
     setShortcutErrors({});
+  }, [saveStatus]);
+
+  useEffect(() => {
+    if (saveStatusTimerRef.current) {
+      clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = null;
+    }
+
+    if (saveStatus === "saved") {
+      saveStatusTimerRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+        saveStatusTimerRef.current = null;
+      }, SAVE_SUCCESS_VISIBLE_MS);
+    }
+
+    return () => {
+      if (saveStatusTimerRef.current) {
+        clearTimeout(saveStatusTimerRef.current);
+        saveStatusTimerRef.current = null;
+      }
+    };
   }, [saveStatus]);
 
   const updateSettings = useCallback(
