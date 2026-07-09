@@ -24,6 +24,18 @@ describe("ErrorToast", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
+  it("focuses the dismiss button when shown", () => {
+    const onDismiss = vi.fn();
+
+    render(
+      <ErrorToast message="設定の保存に失敗しました" onDismiss={onDismiss} />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "エラー通知を閉じる" }),
+    ).toHaveFocus();
+  });
+
   it("dismisses the alert with Escape", () => {
     const onDismiss = vi.fn();
 

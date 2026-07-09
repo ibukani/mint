@@ -11,6 +11,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
   onDismiss,
 }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -31,6 +32,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       return undefined;
     }
 
+    closeButtonRef.current?.focus();
     startTimer();
     return clearTimer;
   }, [clearTimer, message, startTimer]);
@@ -68,6 +70,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
         <span className="error-toast-hint">Esc でも閉じられます。</span>
       </div>
       <button
+        ref={closeButtonRef}
         type="button"
         className="error-toast-close"
         aria-label="エラー通知を閉じる"
