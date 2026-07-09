@@ -1,12 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { focusAndSelectElementById } from "../../../core/dom/focus";
+import { useAutoClearStatus } from "../../../core/hooks/useAutoClearStatus";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
+import { useFocusAndSelectElementById } from "../../../core/hooks/useFocusAndSelectElementById";
 import { normalizeShortcut } from "../../../core/shortcuts";
 import {
   Button,
+  Checkbox,
   ErrorMessage,
   Field,
   FieldRow,
@@ -42,13 +46,6 @@ export const VoiceToTextSettings: React.FC = () => {
   const [audioFilePasteStatus, setAudioFilePasteStatus] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
-  const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const apiKeyPasteStatusTimerRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
-  const audioFilePasteStatusTimerRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
 
   // Load API key from OS keychain
   useEffect(() => {
@@ -76,146 +73,123 @@ export const VoiceToTextSettings: React.FC = () => {
     }
   }, [apiKey]);
 
+  const clearPasteStatuses = useCallback(() => {
+    setApiKeyPasteStatus("");
+    setAudioFilePasteStatus("");
+  }, []);
+
+  const clearTranscriptionOutput = useCallback(() => {
+    setTranscriptionText("");
+    setTranscriptionError("");
+    setCopyStatus("");
+  }, []);
+
+  const clearTransientFeedback = useCallback(() => {
+    clearTranscriptionOutput();
+    clearPasteStatuses();
+  }, [clearPasteStatuses, clearTranscriptionOutput]);
+
+  const clearApiKeyPasteStatus = useCallback(() => {
+    setApiKeyPasteStatus("");
+  }, []);
+
+  const clearAudioFilePasteStatus = useCallback(() => {
+    setAudioFilePasteStatus("");
+  }, []);
+
+  const clearCopyStatus = useCallback(() => {
+    setCopyStatus("");
+  }, []);
+
+  const resolvePasteStatusDelayMs = useCallback(
+    () => PASTE_STATUS_VISIBLE_MS,
+    [],
+  );
+
+  const resolveCopyStatusDelayMs = useCallback(
+    (currentStatus: string) =>
+      currentStatus === "コピーしました"
+        ? PASTE_STATUS_VISIBLE_MS
+        : COPY_ERROR_VISIBLE_MS,
+    [],
+  );
+
+  const pasteTrimmedClipboardText = useCallback(
+    async ({
+      errorLabel,
+      focusTargetId,
+      onEmpty,
+      onValue,
+    }: {
+      errorLabel: string;
+      focusTargetId: string;
+      onEmpty: () => void;
+      onValue: (value: string) => void;
+    }) => {
+      try {
+        const text = await navigator.clipboard.readText();
+        const value = text.trim();
+        if (!value) {
+          onEmpty();
+          return;
+        }
+        onValue(value);
+      } catch (err) {
+        console.error(`Failed to paste ${errorLabel}:`, err);
+      } finally {
+        focusAndSelectElementById(focusTargetId);
+      }
+    },
+    [],
+  );
+
   const pasteApiKey = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const value = text.trim();
-      if (!value) {
+    await pasteTrimmedClipboardText({
+      errorLabel: "API key",
+      focusTargetId: "v2t-api-key-input",
+      onEmpty: () => {
         setApiKeyPasteStatus(EMPTY_PASTE_STATUS);
         setAudioFilePasteStatus("");
         return;
-      }
-      setApiKey(value);
-      setApiKeyPasteStatus("API キーを貼り付けました");
-      setAudioFilePasteStatus("");
-    } catch (err) {
-      console.error("Failed to paste API key:", err);
-    } finally {
-      const apiKeyInput = document.getElementById(
-        "v2t-api-key-input",
-      ) as HTMLInputElement | null;
-      apiKeyInput?.focus();
-      apiKeyInput?.select();
-    }
+      },
+      onValue: (value) => {
+        setApiKey(value);
+        clearPasteStatuses();
+        setApiKeyPasteStatus("API キーを貼り付けました");
+      },
+    });
   };
 
-  useEffect(() => {
-    if (!transcriptionText) return;
-
-    const resultField = document.getElementById("v2t-transcription-result");
-    if (resultField instanceof HTMLTextAreaElement) {
-      resultField.focus();
-      resultField.select();
-    }
-  }, [transcriptionText]);
-
-  useEffect(() => {
-    if (!showApiKey || !apiKeyLoaded) return;
-
-    const apiKeyInput = document.getElementById(
-      "v2t-api-key-input",
-    ) as HTMLInputElement | null;
-    apiKeyInput?.focus();
-    apiKeyInput?.select();
-  }, [apiKeyLoaded, showApiKey]);
-
-  useEffect(() => {
-    if (apiKeyPasteStatus !== "API キーを貼り付けました") return;
-
-    const apiKeyInput = document.getElementById(
-      "v2t-api-key-input",
-    ) as HTMLInputElement | null;
-    apiKeyInput?.focus();
-    apiKeyInput?.select();
-  }, [apiKeyPasteStatus]);
-
-  useEffect(() => {
-    if (audioFilePasteStatus !== "音声ファイルパスを貼り付けました") return;
-
-    const audioFileInput = document.getElementById(
-      "v2t-audio-file-input",
-    ) as HTMLInputElement | null;
-    audioFileInput?.focus();
-    audioFileInput?.select();
-  }, [audioFilePasteStatus]);
-
-  useEffect(() => {
-    if (apiKeyPasteStatusTimerRef.current) {
-      clearTimeout(apiKeyPasteStatusTimerRef.current);
-      apiKeyPasteStatusTimerRef.current = null;
-    }
-
-    if (!apiKeyPasteStatus) return undefined;
-
-    apiKeyPasteStatusTimerRef.current = setTimeout(() => {
-      setApiKeyPasteStatus("");
-      apiKeyPasteStatusTimerRef.current = null;
-    }, PASTE_STATUS_VISIBLE_MS);
-
-    return () => {
-      if (apiKeyPasteStatusTimerRef.current) {
-        clearTimeout(apiKeyPasteStatusTimerRef.current);
-        apiKeyPasteStatusTimerRef.current = null;
-      }
-    };
-  }, [apiKeyPasteStatus]);
-
-  useEffect(() => {
-    if (audioFilePasteStatusTimerRef.current) {
-      clearTimeout(audioFilePasteStatusTimerRef.current);
-      audioFilePasteStatusTimerRef.current = null;
-    }
-
-    if (!audioFilePasteStatus) return undefined;
-
-    audioFilePasteStatusTimerRef.current = setTimeout(() => {
-      setAudioFilePasteStatus("");
-      audioFilePasteStatusTimerRef.current = null;
-    }, PASTE_STATUS_VISIBLE_MS);
-
-    return () => {
-      if (audioFilePasteStatusTimerRef.current) {
-        clearTimeout(audioFilePasteStatusTimerRef.current);
-        audioFilePasteStatusTimerRef.current = null;
-      }
-    };
-  }, [audioFilePasteStatus]);
-
-  useEffect(() => {
-    if (copyStatusTimerRef.current) {
-      clearTimeout(copyStatusTimerRef.current);
-      copyStatusTimerRef.current = null;
-    }
-
-    if (!copyStatus) return undefined;
-
-    const visibleMs =
-      copyStatus === "コピーしました"
-        ? PASTE_STATUS_VISIBLE_MS
-        : COPY_ERROR_VISIBLE_MS;
-
-    copyStatusTimerRef.current = setTimeout(() => {
-      setCopyStatus("");
-      copyStatusTimerRef.current = null;
-    }, visibleMs);
-
-    return () => {
-      if (copyStatusTimerRef.current) {
-        clearTimeout(copyStatusTimerRef.current);
-        copyStatusTimerRef.current = null;
-      }
-    };
-  }, [copyStatus]);
+  useFocusAndSelectElementById(
+    Boolean(transcriptionText),
+    "v2t-transcription-result",
+  );
+  useFocusAndSelectElementById(showApiKey && apiKeyLoaded, "v2t-api-key-input");
+  useFocusAndSelectElementById(
+    apiKeyPasteStatus === "API キーを貼り付けました",
+    "v2t-api-key-input",
+  );
+  useFocusAndSelectElementById(
+    audioFilePasteStatus === "音声ファイルパスを貼り付けました",
+    "v2t-audio-file-input",
+  );
+  useAutoClearStatus(
+    apiKeyPasteStatus,
+    clearApiKeyPasteStatus,
+    resolvePasteStatusDelayMs,
+  );
+  useAutoClearStatus(
+    audioFilePasteStatus,
+    clearAudioFilePasteStatus,
+    resolvePasteStatusDelayMs,
+  );
+  useAutoClearStatus(copyStatus, clearCopyStatus, resolveCopyStatusDelayMs);
 
   if (!voiceToText) return null;
 
   const transcribeAudioFile = async () => {
     setTranscribing(true);
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
-    setApiKeyPasteStatus("");
-    setAudioFilePasteStatus("");
+    clearTransientFeedback();
 
     try {
       const result = await invoke<TranscriptionResult>(
@@ -240,11 +214,7 @@ export const VoiceToTextSettings: React.FC = () => {
     try {
       await navigator.clipboard.writeText(transcriptionText);
       setCopyStatus("コピーしました");
-      const resultField = document.getElementById(
-        "v2t-transcription-result",
-      ) as HTMLTextAreaElement | null;
-      resultField?.focus();
-      resultField?.select();
+      focusAndSelectElementById("v2t-transcription-result");
     } catch (err) {
       console.error("Failed to copy transcription text:", err);
       setCopyStatus("コピーに失敗しました");
@@ -252,18 +222,8 @@ export const VoiceToTextSettings: React.FC = () => {
   };
 
   const clearTranscriptionText = () => {
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
-    setApiKeyPasteStatus("");
-    setAudioFilePasteStatus("");
-    document.getElementById("v2t-audio-file-input")?.focus();
-  };
-
-  const clearTranscriptionOutput = () => {
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
+    clearTransientFeedback();
+    focusAndSelectElementById("v2t-audio-file-input");
   };
 
   const updateAudioFilePath = (value: string) => {
@@ -274,30 +234,24 @@ export const VoiceToTextSettings: React.FC = () => {
 
   const clearAudioFilePath = () => {
     updateAudioFilePath("");
-    document.getElementById("v2t-audio-file-input")?.focus();
+    focusAndSelectElementById("v2t-audio-file-input");
   };
 
   const pasteAudioFilePath = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const value = text.trim();
-      if (!value) {
+    await pasteTrimmedClipboardText({
+      errorLabel: "audio file path",
+      focusTargetId: "v2t-audio-file-input",
+      onEmpty: () => {
         setAudioFilePasteStatus(EMPTY_PASTE_STATUS);
         setApiKeyPasteStatus("");
         return;
-      }
-      setAudioFilePath(value);
-      setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
-      setApiKeyPasteStatus("");
-    } catch (err) {
-      console.error("Failed to paste audio file path:", err);
-    } finally {
-      const audioFileInput = document.getElementById(
-        "v2t-audio-file-input",
-      ) as HTMLInputElement | null;
-      audioFileInput?.focus();
-      audioFileInput?.select();
-    }
+      },
+      onValue: (value) => {
+        setAudioFilePath(value);
+        clearPasteStatuses();
+        setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
+      },
+    });
   };
 
   const handleAudioFilePathKeyDown = (event: React.KeyboardEvent) => {
@@ -317,17 +271,9 @@ export const VoiceToTextSettings: React.FC = () => {
     handleChange("baseUrl", defaultAppSettings.voiceToText.baseUrl);
     handleChange("model", defaultAppSettings.voiceToText.model);
     handleChange("language", defaultAppSettings.voiceToText.language);
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
-    setApiKeyPasteStatus("");
-    setAudioFilePasteStatus("");
+    clearTransientFeedback();
     setShowApiKey(false);
-    const shortcutInput = document.getElementById(
-      "v2t-shortcut-input",
-    ) as HTMLInputElement | null;
-    shortcutInput?.focus();
-    shortcutInput?.select();
+    focusAndSelectElementById("v2t-shortcut-input");
   };
 
   const canTranscribe =
@@ -374,9 +320,8 @@ export const VoiceToTextSettings: React.FC = () => {
         label="この機能を有効にする (Enable Feature)"
         orientation="inline"
       >
-        <TextInput
+        <Checkbox
           id="v2t-enabled-checkbox"
-          type="checkbox"
           checked={voiceToText.enabled}
           onChange={(e) => handleChange("enabled", e.target.checked)}
         />

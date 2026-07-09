@@ -1,10 +1,12 @@
 import type React from "react";
 import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { focusAndSelectElementById } from "../../../core/dom/focus";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { normalizeShortcut } from "../../../core/shortcuts";
 import {
   Button,
+  Checkbox,
   Field,
   FieldRow,
   Select,
@@ -33,11 +35,7 @@ export const ClockSettings: React.FC = () => {
     handleChange("autoHideSeconds", defaultAppSettings.clock.autoHideSeconds);
     handleChange("fontSize", defaultAppSettings.clock.fontSize);
     handleChange("showDate", defaultAppSettings.clock.showDate);
-    const shortcutInput = document.getElementById(
-      "clock-shortcut-input",
-    ) as HTMLInputElement | null;
-    shortcutInput?.focus();
-    shortcutInput?.select();
+    focusAndSelectElementById("clock-shortcut-input");
   };
 
   const changeAutoHideSeconds = (delta: number) => {
@@ -48,11 +46,7 @@ export const ClockSettings: React.FC = () => {
         Math.min(CLOCK_AUTO_HIDE_MAX_SECONDS, clock.autoHideSeconds + delta),
       ),
     );
-    const autoHideSecondsInput = document.getElementById(
-      "clock-hide-seconds-input",
-    ) as HTMLInputElement | null;
-    autoHideSecondsInput?.focus();
-    autoHideSecondsInput?.select();
+    focusAndSelectElementById("clock-hide-seconds-input");
   };
 
   return (
@@ -150,9 +144,8 @@ export const ClockSettings: React.FC = () => {
         orientation="inline"
         helpText="時計の下に年月日と曜日を表示します。"
       >
-        <TextInput
+        <Checkbox
           id="clock-show-date-checkbox"
-          type="checkbox"
           checked={clock.showDate}
           onChange={(e) => handleChange("showDate", e.target.checked)}
         />

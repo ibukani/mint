@@ -17,6 +17,19 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
+let clockShownHandler:
+  | ((event: { event: string; payload: unknown }) => void)
+  | null = null;
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (event: string, handler: typeof clockShownHandler) => {
+    if (event === "clock-shown") {
+      clockShownHandler = handler;
+    }
+    return vi.fn();
+  }),
+}));
+
 // Mock getCurrentWindow
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn(() => ({
@@ -29,6 +42,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 describe("App Window Routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clockShownHandler = null;
     vi.mocked(getCurrentWindow).mockReturnValue({
       label: "main",
       hide: vi.fn().mockResolvedValue(undefined),
@@ -108,11 +122,71 @@ describe("App Window Routing", () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText("2026年7月9日(木)")).toBeInTheDocument();
-      expect(screen.getByText(/:/)).toBeInTheDocument();
+      expect(
+        screen.getByText("2026年7月9日(木) 12:34:56", {
+          selector: ".sr-only",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("2026年7月9日(木)", { selector: ".sr-only" }),
+      ).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();
       expect(document.title).toBe("mint - 時計オーバーレイ");
       expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("restarts the clock auto-hide timer when the clock-shown event fires", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-07-09T12:34:56+09:00"));
+      const hide = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(getCurrentWindow).mockReturnValue({
+        label: "clock",
+        hide,
+        show: vi.fn().mockResolvedValue(undefined),
+      } as unknown as ReturnType<typeof getCurrentWindow>);
+      vi.mocked(invoke).mockResolvedValue(
+        createMockSettings({
+          voiceToText: {
+            enabled: false,
+            shortcut: "Ctrl+Alt+V",
+            baseUrl: "http://api",
+            model: "w",
+            language: "ja",
+            status: "available",
+          },
+        }) as unknown as ReturnType<typeof invoke>,
+      );
+
+      render(<App />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+        clockShownHandler?.({ event: "clock-shown", payload: undefined });
+      });
+
+      expect(hide).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(2999);
+        await Promise.resolve();
+      });
+
+      expect(hide).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(1);
+        await Promise.resolve();
+      });
+
+      expect(hide).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }

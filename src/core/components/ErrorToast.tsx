@@ -1,5 +1,6 @@
 import type React from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAutoClearStatus } from "../hooks/useAutoClearStatus";
 
 interface ErrorToastProps {
   message: string | null;
@@ -10,26 +11,24 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
   message,
   onDismiss,
 }) => {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  const clearTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+  const clearPausedState = useCallback(() => {
+    setIsPaused(false);
   }, []);
 
-  const startTimer = useCallback(() => {
-    clearTimer();
-    if (!message) return;
-    timerRef.current = setTimeout(onDismiss, 5000);
-  }, [clearTimer, message, onDismiss]);
+  useAutoClearStatus(
+    message ?? "",
+    onDismiss,
+    (currentMessage: string) => (currentMessage ? 5000 : null),
+    isPaused,
+  );
 
   useEffect(() => {
     if (!message) {
-      clearTimer();
+      clearPausedState();
       return undefined;
     }
 
@@ -38,9 +37,8 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
         ? document.activeElement
         : null;
     closeButtonRef.current?.focus();
-    startTimer();
-    return clearTimer;
-  }, [clearTimer, message, startTimer]);
+    return undefined;
+  }, [clearPausedState, message]);
 
   useEffect(() => {
     if (!message) return undefined;
@@ -74,12 +72,12 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
     <div
       className="error-toast"
       role="alert"
-      onMouseEnter={clearTimer}
-      onMouseLeave={startTimer}
-      onFocus={clearTimer}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocus={() => setIsPaused(true)}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          startTimer();
+          setIsPaused(false);
         }
       }}
     >

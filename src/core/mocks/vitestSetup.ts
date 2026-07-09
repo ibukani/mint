@@ -17,7 +17,6 @@ mockIPC(async (cmd, args) => {
     case "load_settings":
       return defaultSettings;
     case "save_settings":
-      console.log("[Vitest Mock] save_settings called with:", args);
       return;
     case "load_api_key":
       return "mock-api-key";

@@ -10,12 +10,20 @@ import {
 } from "react";
 import type { ClockSettings } from "../../features/clock/types";
 import type { VoiceToTextSettings } from "../../features/v2t/types";
+import { useAutoClearStatus } from "../hooks/useAutoClearStatus";
+import { useTimeoutTask } from "../hooks/useTimeoutTask";
 
 export interface AppSettings {
   theme: "dark" | "light";
   clock: ClockSettings;
   voiceToText: VoiceToTextSettings;
 }
+
+type AppSettingsPatch = {
+  theme?: AppSettings["theme"];
+  clock?: Partial<AppSettings["clock"]>;
+  voiceToText?: Partial<AppSettings["voiceToText"]>;
+};
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -27,7 +35,7 @@ interface AppSettingsContextType {
   shortcutErrors: Record<string, string>;
   clearError: () => void;
   updateSettings: (
-    newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
+    newSettings: AppSettingsPatch | ((prev: AppSettings) => AppSettings),
   ) => void;
 }
 
@@ -53,10 +61,11 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   // Reference to the latest requested settings state
   const settingsRef = useRef<AppSettings | null>(null);
   const pendingSaveRef = useRef<AppSettings | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceRef = useRef<number>(0);
+  const {
+    clearTimeoutTask: clearSaveDebounceTimer,
+    scheduleTimeoutTask: scheduleSaveDebounceTimer,
+  } = useTimeoutTask();
 
   useEffect(() => {
     async function load() {
@@ -125,15 +134,12 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const flushPendingSettings = useCallback(async () => {
     if (pendingSaveRef.current) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      clearSaveDebounceTimer();
       const toSave = pendingSaveRef.current;
       pendingSaveRef.current = null;
       await commitSettings(toSave, sequenceRef.current);
     }
-  }, [commitSettings]);
+  }, [clearSaveDebounceTimer, commitSettings]);
 
   // Handle unload and unmount flushes
   useEffect(() => {
@@ -156,52 +162,20 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     setShortcutErrors({});
   }, [saveStatus]);
 
-  useEffect(() => {
-    if (saveStatusTimerRef.current) {
-      clearTimeout(saveStatusTimerRef.current);
-      saveStatusTimerRef.current = null;
-    }
+  const clearSaveStatus = useCallback(() => {
+    setSaveStatus("idle");
+  }, []);
 
-    if (saveStatus === "saved") {
-      saveStatusTimerRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-        saveStatusTimerRef.current = null;
-      }, SAVE_SUCCESS_VISIBLE_MS);
-    }
+  const resolveSaveStatusDelayMs = useCallback((currentStatus: SaveStatus) => {
+    if (currentStatus === "saved") return SAVE_SUCCESS_VISIBLE_MS;
+    if (currentStatus === "error") return SAVE_ERROR_VISIBLE_MS;
+    return null;
+  }, []);
 
-    return () => {
-      if (saveStatusTimerRef.current) {
-        clearTimeout(saveStatusTimerRef.current);
-        saveStatusTimerRef.current = null;
-      }
-    };
-  }, [saveStatus]);
-
-  useEffect(() => {
-    if (saveErrorTimerRef.current) {
-      clearTimeout(saveErrorTimerRef.current);
-      saveErrorTimerRef.current = null;
-    }
-
-    if (saveStatus === "error") {
-      saveErrorTimerRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-        saveErrorTimerRef.current = null;
-      }, SAVE_ERROR_VISIBLE_MS);
-    }
-
-    return () => {
-      if (saveErrorTimerRef.current) {
-        clearTimeout(saveErrorTimerRef.current);
-        saveErrorTimerRef.current = null;
-      }
-    };
-  }, [saveStatus]);
+  useAutoClearStatus(saveStatus, clearSaveStatus, resolveSaveStatusDelayMs);
 
   const updateSettings = useCallback(
-    (
-      newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
-    ) => {
+    (newSettings: AppSettingsPatch | ((prev: AppSettings) => AppSettings)) => {
       // 1. Calculate next state outside of the React state updater
       const prev = settingsRef.current;
       if (!prev) return;
@@ -209,7 +183,16 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       const updated =
         typeof newSettings === "function"
           ? newSettings(prev)
-          : { ...prev, ...newSettings };
+          : {
+              ...prev,
+              ...newSettings,
+              clock: newSettings.clock
+                ? { ...prev.clock, ...newSettings.clock }
+                : prev.clock,
+              voiceToText: newSettings.voiceToText
+                ? { ...prev.voiceToText, ...newSettings.voiceToText }
+                : prev.voiceToText,
+            };
 
       // 2. Determine if we need an immediate save
       const isImportant =
@@ -231,10 +214,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // 5. Handle Side-Effects
       pendingSaveRef.current = updated;
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      clearSaveDebounceTimer();
 
       if (isImportant) {
         // Immediate save
@@ -244,7 +224,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       } else {
         // Debounce save
         setSaveStatus("pending");
-        timerRef.current = setTimeout(() => {
+        scheduleSaveDebounceTimer(() => {
           if (!pendingSaveRef.current) return;
           const toSave = pendingSaveRef.current;
           pendingSaveRef.current = null;
@@ -252,7 +232,12 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         }, SAVE_DEBOUNCE_MS);
       }
     },
-    [commitSettings, saveStatus],
+    [
+      clearSaveDebounceTimer,
+      commitSettings,
+      saveStatus,
+      scheduleSaveDebounceTimer,
+    ],
   );
 
   return (
