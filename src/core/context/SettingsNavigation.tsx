@@ -7,9 +7,12 @@ interface SettingsNavigationContextType {
   setActiveTab: (tabId: SettingsTabId) => void;
 }
 
-const SettingsNavigationContext = createContext<
-  SettingsNavigationContextType | undefined
->(undefined);
+const noop = () => {};
+
+const SettingsNavigationContext = createContext<SettingsNavigationContextType>({
+  activeTab: "dashboard",
+  setActiveTab: noop,
+});
 
 interface SettingsNavigationProviderProps {
   activeTab: SettingsTabId;
@@ -28,11 +31,5 @@ export const SettingsNavigationProvider: React.FC<
 };
 
 export const useSettingsNavigation = () => {
-  const context = useContext(SettingsNavigationContext);
-  if (!context) {
-    throw new Error(
-      "useSettingsNavigation must be used within a SettingsNavigationProvider",
-    );
-  }
-  return context;
+  return useContext(SettingsNavigationContext);
 };

@@ -174,6 +174,7 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
       "これはテスト音声です",
     );
+    expect(screen.getByLabelText("文字起こし結果")).toHaveFocus();
   });
 
   it("requires an API key before transcription", async () => {

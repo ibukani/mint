@@ -63,6 +63,16 @@ export const VoiceToTextSettings: React.FC = () => {
     }
   }, [apiKey]);
 
+  useEffect(() => {
+    if (!transcriptionText) return;
+
+    const resultField = document.getElementById("v2t-transcription-result");
+    if (resultField instanceof HTMLTextAreaElement) {
+      resultField.focus();
+      resultField.select();
+    }
+  }, [transcriptionText]);
+
   if (!voiceToText) return null;
 
   const transcribeAudioFile = async () => {
