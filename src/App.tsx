@@ -9,7 +9,6 @@ import {
   useAppSettings,
 } from "./core/context/AppSettings";
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
-import { useTimeoutTask } from "./core/hooks/useTimeoutTask";
 import {
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
@@ -35,7 +34,9 @@ const AppContent: React.FC = () => {
   const [label, setLabel] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
   const previousTabRef = useRef<SettingsTabId>("general");
-  const { clearTimeoutTask, scheduleTimeoutTask } = useTimeoutTask();
+  const dashboardFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);
@@ -59,16 +60,26 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (previousTabRef.current !== "dashboard" && activeTab === "dashboard") {
-      scheduleTimeoutTask(() => {
+      if (dashboardFocusTimerRef.current) {
+        clearTimeout(dashboardFocusTimerRef.current);
+      }
+
+      dashboardFocusTimerRef.current = setTimeout(() => {
         document
           .querySelector<HTMLButtonElement>('button[aria-current="page"]')
           ?.focus();
+        dashboardFocusTimerRef.current = null;
       }, 0);
     }
 
     previousTabRef.current = activeTab;
-    return clearTimeoutTask;
-  }, [activeTab, clearTimeoutTask, scheduleTimeoutTask]);
+    return () => {
+      if (dashboardFocusTimerRef.current) {
+        clearTimeout(dashboardFocusTimerRef.current);
+        dashboardFocusTimerRef.current = null;
+      }
+    };
+  }, [activeTab]);
 
   if (loading) {
     return <div className="app-loading">設定を読み込み中...</div>;

@@ -245,57 +245,16 @@ impl Default for ${pascalName}Settings {
   }
 }
 
-// 8. Auto-Register in frontend defaults
-const defaultSettingsPath = path.join(ROOT_DIR, "src/core/defaultSettings.ts");
-if (fs.existsSync(defaultSettingsPath)) {
-  let content = fs.readFileSync(defaultSettingsPath, "utf-8");
-  if (!content.includes(`${camelName}:`)) {
-    const defaultField = `  ${camelName}: {
-    enabled: false,
-    shortcut: "Ctrl+Alt+${pascalName.charAt(0)}",
-  },
-`;
-    content = content.replace(/(\};\s*)$/, `${defaultField}$1`);
-    fs.writeFileSync(defaultSettingsPath, content, "utf-8");
-    recordAction(
-      "[AUTO-REGISTERED] defaultSettings.ts に既定値を登録しました。",
-    );
-  }
-}
-
-// 9. Auto-Register in mocks (mockSettings.ts)
+// 8. Auto-Register in mocks (mockSettings.ts)
 const mockPaths = [path.join(ROOT_DIR, "src/core/mocks/mockSettings.ts")];
 for (const mockPath of mockPaths) {
   if (fs.existsSync(mockPath)) {
     let content = fs.readFileSync(mockPath, "utf-8");
-    if (
-      !content.includes(`${camelName}?: Partial<AppSettings["${camelName}"]>;`)
-    ) {
-      content = content.replace(
-        /(export\s+interface\s+MockSettingsOverrides\s*\{)/,
-        `$1\n  ${camelName}?: Partial<AppSettings["${camelName}"]>;`,
-      );
-    }
-    if (!content.includes(`${camelName}: {`)) {
-      const defaultMockField = `  ${camelName}: {
-    enabled: defaultAppSettings.${camelName}.enabled,
-    shortcut: defaultAppSettings.${camelName}.shortcut,
-  },
-`;
-      content = content.replace(
-        /(const\s+defaultMockSettings:\s+AppSettings\s*=\s*\{)/,
-        `$1\n${defaultMockField}`,
-      );
-    }
-    if (!content.includes(`...overrides?.${camelName}`)) {
-      const mergeField = `  ${camelName}: {
-    ...defaultMockSettings.${camelName},
-    ...overrides?.${camelName},
-  },
-`;
-      content = content.replace(/(\}\);\s*)$/, `${mergeField}$1`);
-    }
-    if (content !== fs.readFileSync(mockPath, "utf-8")) {
+    if (!content.includes(`${camelName}:`)) {
+      const defaultSettingsRegex =
+        /(export\s+const\s+createMockSettings\s*=\s*\([\s\S]*?\)\s*:\s*AppSettings\s*=>\s*\(\s*\{)/;
+      const mockField = `\n  ${camelName}: {\n    enabled: false,\n    shortcut: "Ctrl+Alt+${pascalName.charAt(0)}",\n  },`;
+      content = content.replace(defaultSettingsRegex, `$1${mockField}`);
       fs.writeFileSync(mockPath, content, "utf-8");
       recordAction(
         `[AUTO-REGISTERED] ${path.basename(mockPath)} にモックデータを登録しました。`,
@@ -304,7 +263,7 @@ for (const mockPath of mockPaths) {
   }
 }
 
-// 10. Auto-Register in settingsTabs.ts
+// 9. Auto-Register in settingsTabs.ts
 const settingsTabsPath = path.join(
   ROOT_DIR,
   "src/core/navigation/settingsTabs.ts",
