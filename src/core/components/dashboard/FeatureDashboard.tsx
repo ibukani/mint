@@ -85,7 +85,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
         <FeatureCard
           title="時計オーバーレイ"
           description="ショートカットで現在時刻を画面上に表示します。"
-          status="利用可能"
+          status={clockShortcutError ? "エラー" : "利用可能"}
           statusTone={clockShortcutError ? "error" : "available"}
           actions={
             <Button variant="ghost" onClick={() => onOpenSettings("clock")}>

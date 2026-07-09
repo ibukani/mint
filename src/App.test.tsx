@@ -183,6 +183,42 @@ describe("App Window Routing", () => {
     ).toBeDisabled();
   });
 
+  it("shows an error badge when the clock shortcut registration fails", async () => {
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") {
+        return createMockSettings();
+      }
+      if (cmd === "save_settings") {
+        throw new Error("時計ショートカットの登録に失敗しました");
+      }
+      return null;
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const clockCard = screen
+      .getByRole("heading", { name: "時計オーバーレイ" })
+      .closest("section");
+    expect(clockCard).not.toBeNull();
+
+    const shortcutInput = within(clockCard as HTMLElement).getByLabelText(
+      "ショートカットキー",
+    );
+    fireEvent.change(shortcutInput, {
+      target: { value: "Ctrl+Shift+X" },
+    });
+    fireEvent.blur(shortcutInput);
+
+    await waitFor(() => {
+      expect(
+        within(clockCard as HTMLElement).getByText("エラー"),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("saves voice-to-text enabled changes from the dashboard", async () => {
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "load_settings") {
