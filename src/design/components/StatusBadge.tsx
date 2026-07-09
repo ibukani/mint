@@ -9,7 +9,11 @@ interface StatusBadgeProps {
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ children, tone }) => {
   return (
-    <span className={`design-status-badge design-status-badge--${tone}`}>
+    <span
+      className={`design-status-badge design-status-badge--${tone}`}
+      aria-live="polite"
+      aria-atomic="true"
+    >
       {children}
     </span>
   );

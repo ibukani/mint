@@ -18,5 +18,6 @@ describe("FeatureCard", () => {
     expect(
       screen.getByRole("region", { name: "音声入力 (Voice to Text)" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("利用可能")).toHaveAttribute("aria-live", "polite");
   });
 });
