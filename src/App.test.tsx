@@ -521,6 +521,9 @@ describe("App Window Routing", () => {
       },
     );
 
+    expect(decreaseButton).toHaveTextContent("1秒減");
+    expect(increaseButton).toHaveTextContent("1秒増");
+
     fireEvent.click(decreaseButton);
     expect(secondsInput.value).toBe("2");
 

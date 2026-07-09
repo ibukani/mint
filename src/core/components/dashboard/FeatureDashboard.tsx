@@ -149,7 +149,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
                 disabled={clock.autoHideSeconds <= CLOCK_AUTO_HIDE_MIN_SECONDS}
                 aria-label="表示秒数を1秒減らす"
               >
-                -
+                1秒減
               </Button>
               <Button
                 variant="ghost"
@@ -157,7 +157,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
                 disabled={clock.autoHideSeconds >= CLOCK_AUTO_HIDE_MAX_SECONDS}
                 aria-label="表示秒数を1秒増やす"
               >
-                +
+                1秒増
               </Button>
               <UnitLabel>秒</UnitLabel>
             </FieldRow>
