@@ -8,8 +8,8 @@
   --font-size-sm: 0.85rem;
   --font-size-md: 0.9rem;
   --font-size-base: 0.95rem;
-  --font-size-lg: 1.4rem;
-  --font-size-xl: 1.8rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -27,6 +27,7 @@
   --size-app-max-width: 1200px;
   --size-sidebar-width: 232px;
   --size-button-min-height: 42px;
+  --size-content-max-width: 860px;
   --size-number-input-width: 100px;
   --size-checkbox: 20px;
 

@@ -17,6 +17,7 @@
   --surface-root: #151618;
   --surface-panel: rgb(26 27 30 / 88%);
   --surface-panel-raised: rgb(34 35 39 / 94%);
+  --surface-panel-soft: rgb(255 255 255 / 3%);
   --surface-control: rgb(20 21 24 / 92%);
   --surface-control-hover: rgb(255 255 255 / 5%);
   --surface-accent: rgb(70 214 181 / 11%);
@@ -62,6 +63,7 @@
   --surface-root: #eee9df;
   --surface-panel: rgb(255 253 248 / 88%);
   --surface-panel-raised: rgb(255 255 255 / 96%);
+  --surface-panel-soft: rgb(29 35 32 / 3%);
   --surface-control: rgb(255 255 255 / 94%);
   --surface-control-hover: rgb(29 35 32 / 5%);
   --surface-accent: rgb(8 127 104 / 10%);
