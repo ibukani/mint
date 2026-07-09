@@ -10,6 +10,7 @@ interface FeatureCardProps {
   children: React.ReactNode;
   actions?: React.ReactNode;
   helpText?: React.ReactNode;
+  helpTextId?: string;
 }
 
 export const FeatureCard: React.FC<FeatureCardProps> = ({
@@ -20,8 +21,12 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
   children,
   actions,
   helpText,
+  helpTextId,
 }) => {
   const titleId = useId();
+  const resolvedHelpTextId = helpText
+    ? (helpTextId ?? `${titleId}-help`)
+    : undefined;
 
   return (
     <section className="design-feature-card" aria-labelledby={titleId}>
@@ -34,7 +39,11 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
         </div>
         <StatusBadge tone={statusTone}>{status}</StatusBadge>
       </div>
-      {helpText && <p className="design-feature-card__help">{helpText}</p>}
+      {helpText && (
+        <p className="design-feature-card__help" id={resolvedHelpTextId}>
+          {helpText}
+        </p>
+      )}
       <div className="design-feature-card__body">{children}</div>
       {actions && <div className="design-feature-card__actions">{actions}</div>}
     </section>

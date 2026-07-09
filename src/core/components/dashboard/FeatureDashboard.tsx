@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 import {
   Button,
   FeatureCard,
@@ -67,6 +68,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
     handleChange: updateVoiceToText,
     shortcutError: voiceToTextShortcutError,
   } = useFeatureSettings("voiceToText");
+  const voiceToTextAvailabilityId = useId();
 
   if (!clock || !voiceToText) return null;
 
@@ -157,6 +159,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
           statusTone={
             voiceToTextShortcutError ? "error" : voiceToTextStatus.tone
           }
+          helpTextId={voiceToTextAvailabilityId}
           helpText={
             voiceToTextAvailable ? undefined : voiceToTextAvailabilityMessage
           }
@@ -164,6 +167,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
             <Button
               variant="ghost"
               disabled={!voiceToTextAvailable}
+              aria-describedby={
+                voiceToTextAvailable ? undefined : voiceToTextAvailabilityId
+              }
               title={
                 !voiceToTextAvailable
                   ? voiceToTextAvailabilityMessage
@@ -185,6 +191,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="checkbox"
               checked={voiceToText.enabled}
               disabled={!voiceToTextAvailable}
+              aria-describedby={
+                voiceToTextAvailable ? undefined : voiceToTextAvailabilityId
+              }
               title={
                 !voiceToTextAvailable
                   ? voiceToTextAvailabilityMessage
@@ -205,6 +214,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               invalid={Boolean(voiceToTextShortcutError)}
               value={voiceToText.shortcut}
               disabled={!voiceToTextAvailable}
+              aria-describedby={
+                voiceToTextAvailable ? undefined : voiceToTextAvailabilityId
+              }
               title={
                 !voiceToTextAvailable
                   ? voiceToTextAvailabilityMessage
@@ -224,6 +236,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="text"
               value={voiceToText.model}
               disabled={!voiceToTextAvailable}
+              aria-describedby={
+                voiceToTextAvailable ? undefined : voiceToTextAvailabilityId
+              }
               title={
                 !voiceToTextAvailable
                   ? voiceToTextAvailabilityMessage
@@ -243,6 +258,9 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="text"
               value={voiceToText.language}
               disabled={!voiceToTextAvailable}
+              aria-describedby={
+                voiceToTextAvailable ? undefined : voiceToTextAvailabilityId
+              }
               title={
                 !voiceToTextAvailable
                   ? voiceToTextAvailabilityMessage

@@ -244,15 +244,33 @@ describe("App Window Routing", () => {
       ),
     ).toBeInTheDocument();
     expect(
+      within(voiceToTextCard as HTMLElement).getByText(
+        "現在は利用できないため、設定は編集できません。",
+      ),
+    ).toHaveAttribute("id");
+    const unavailableHint = within(voiceToTextCard as HTMLElement).getByText(
+      "現在は利用できないため、設定は編集できません。",
+    );
+    expect(
       within(voiceToTextCard as HTMLElement).getByRole("button", {
         name: "詳細設定",
       }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-describedby", unavailableHint.id);
     expect(
       within(voiceToTextCard as HTMLElement).getByLabelText(
         "この機能を有効にする",
       ),
     ).toBeDisabled();
+    expect(
+      within(voiceToTextCard as HTMLElement).getByLabelText(
+        "この機能を有効にする",
+      ),
+    ).toHaveAttribute("aria-describedby");
+    expect(
+      within(voiceToTextCard as HTMLElement)
+        .getByLabelText("この機能を有効にする")
+        .getAttribute("aria-describedby"),
+    ).toContain(unavailableHint.id);
   });
 
   it("shows a preparation message when voice-to-text is still pending", async () => {
@@ -285,6 +303,19 @@ describe("App Window Routing", () => {
       ),
     ).toBeInTheDocument();
     expect(
+      within(voiceToTextCard as HTMLElement).getByText(
+        "準備中のため、設定は編集できません。",
+      ),
+    ).toHaveAttribute("id");
+    const pendingHint = within(voiceToTextCard as HTMLElement).getByText(
+      "準備中のため、設定は編集できません。",
+    );
+    expect(
+      within(voiceToTextCard as HTMLElement).getByRole("button", {
+        name: "詳細設定",
+      }),
+    ).toHaveAttribute("aria-describedby", pendingHint.id);
+    expect(
       within(voiceToTextCard as HTMLElement).getByRole("button", {
         name: "詳細設定",
       }),
@@ -294,6 +325,16 @@ describe("App Window Routing", () => {
         name: "詳細設定",
       }),
     ).toHaveAttribute("title", "準備中のため、設定は編集できません。");
+    expect(
+      within(voiceToTextCard as HTMLElement).getByLabelText(
+        "この機能を有効にする",
+      ),
+    ).toHaveAttribute("aria-describedby");
+    expect(
+      within(voiceToTextCard as HTMLElement)
+        .getByLabelText("この機能を有効にする")
+        .getAttribute("aria-describedby"),
+    ).toContain(pendingHint.id);
   });
 
   it("shows an error badge when the clock shortcut registration fails", async () => {
