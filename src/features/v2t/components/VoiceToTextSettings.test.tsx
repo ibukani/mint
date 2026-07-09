@@ -1163,7 +1163,7 @@ describe("VoiceToTextSettings", () => {
     expect(shortcutInput.selectionEnd).toBe(shortcutInput.value.length);
   });
 
-  it("trims shortcut whitespace when leaving the field", async () => {
+  it("records shortcut key combination on key down", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
@@ -1197,8 +1197,8 @@ describe("VoiceToTextSettings", () => {
       "起動/録音ショートカットキー",
     ) as HTMLInputElement;
 
-    fireEvent.change(shortcutInput, { target: { value: "  Ctrl+Shift+V  " } });
-    fireEvent.blur(shortcutInput);
+    fireEvent.focus(shortcutInput);
+    fireEvent.keyDown(shortcutInput, { key: "v", ctrlKey: true, shiftKey: true });
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+V");
   });

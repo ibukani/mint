@@ -109,7 +109,8 @@ describe("App Window Routing", () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText("2026年7月9日(木)")).toBeInTheDocument();
+      expect(screen.getByText("2026年7月9日")).toBeInTheDocument();
+      expect(screen.getByText("木曜日")).toBeInTheDocument();
       expect(screen.getByText(/:/)).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();
       expect(document.title).toBe("mint - 時計オーバーレイ");
@@ -141,7 +142,9 @@ describe("App Window Routing", () => {
       screen.getByRole("button", { name: "時計オーバーレイを閉じる" }),
     );
 
-    expect(hide).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(hide).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("hides the clock overlay with Escape", async () => {
@@ -164,7 +167,9 @@ describe("App Window Routing", () => {
 
     fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(hide).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(hide).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("focuses the first field when switching to a settings tab", async () => {

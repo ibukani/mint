@@ -61,12 +61,20 @@ describe("ClockSettings component", () => {
     const showDateCheckbox = screen.getByLabelText(
       "年月日と曜日を表示する",
     ) as HTMLInputElement;
+    const showSecondsCheckbox = screen.getByLabelText(
+      "秒数を表示する",
+    ) as HTMLInputElement;
+    const blinkColonCheckbox = screen.getByLabelText(
+      "コロンを点滅させる",
+    ) as HTMLInputElement;
 
     fireEvent.click(enabledCheckbox); // 有効をオフにする
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
     fireEvent.change(secondsInput, { target: { value: "12" } });
     fireEvent.change(fontSizeSelect, { target: { value: "2.5rem" } });
     fireEvent.click(showDateCheckbox);
+    fireEvent.click(showSecondsCheckbox);
+    fireEvent.click(blinkColonCheckbox);
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
@@ -75,6 +83,8 @@ describe("ClockSettings component", () => {
     expect(secondsInput.value).toBe("3");
     expect(fontSizeSelect.value).toBe("1.5rem");
     expect(showDateCheckbox.checked).toBe(true);
+    expect(showSecondsCheckbox.checked).toBe(true);
+    expect(blinkColonCheckbox.checked).toBe(true);
   });
 
   it("returns focus to the shortcut field after resetting", async () => {
@@ -167,7 +177,7 @@ describe("ClockSettings component", () => {
     expect(secondsInput).toHaveFocus();
   });
 
-  it("trims shortcut whitespace when leaving the field", async () => {
+  it("records shortcut key combination on key down", async () => {
     render(
       <AppSettingsProvider>
         <ClockSettings />
@@ -182,8 +192,8 @@ describe("ClockSettings component", () => {
       "起動ショートカットキー",
     ) as HTMLInputElement;
 
-    fireEvent.change(shortcutInput, { target: { value: "  Ctrl+Shift+T  " } });
-    fireEvent.blur(shortcutInput);
+    fireEvent.focus(shortcutInput);
+    fireEvent.keyDown(shortcutInput, { key: "t", ctrlKey: true, shiftKey: true });
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+T");
   });

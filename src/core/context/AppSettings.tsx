@@ -211,6 +211,11 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
           ? newSettings(prev)
           : { ...prev, ...newSettings };
 
+      // Avoid unnecessary saves if the settings haven't actually changed
+      if (JSON.stringify(prev) === JSON.stringify(updated)) {
+        return;
+      }
+
       // 2. Determine if we need an immediate save
       const isImportant =
         prev.theme !== updated.theme ||

@@ -8,6 +8,9 @@ export const defaultAppSettings: AppSettings = {
     autoHideSeconds: 3,
     fontSize: "1.5rem",
     showDate: true,
+    showSeconds: true,
+    clockColor: "#818cf8",
+    blinkColon: true,
   },
   voiceToText: {
     enabled: false,

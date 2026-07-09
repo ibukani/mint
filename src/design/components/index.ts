@@ -11,3 +11,5 @@ export { StatusBadge } from "./StatusBadge";
 export { TextArea } from "./TextArea";
 export { TextInput } from "./TextInput";
 export { UnitLabel } from "./UnitLabel";
+export { ShortcutInput } from "./ShortcutInput";
+

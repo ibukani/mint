@@ -16,7 +16,7 @@ pub fn toggle_clock_overlay(app: &AppHandle) {
                 let monitor_size = monitor.size();
                 let window_size = window
                     .outer_size()
-                    .unwrap_or(tauri::PhysicalSize::new(250, 80));
+                    .unwrap_or(tauri::PhysicalSize::new(300, 110));
                 let margin = 20;
                 let x = monitor_size
                     .width

@@ -7,7 +7,9 @@ const isTauri =
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !==
     undefined;
 
-if (!isTauri && typeof window !== "undefined") {
+const isTest = typeof process !== "undefined" && process.env.NODE_ENV === "test";
+
+if (!isTauri && typeof window !== "undefined" && !isTest) {
   console.log(
     "[Tauri Mock] 非Tauri環境（ブラウザ）を検出しました。Tauri APIのモックを初期化します。",
   );

@@ -12,9 +12,27 @@ pub struct ClockSettings {
     pub font_size: String,
     #[serde(default = "default_show_date")]
     pub show_date: bool,
+    #[serde(default = "default_show_seconds")]
+    pub show_seconds: bool,
+    #[serde(default = "default_clock_color")]
+    pub clock_color: String,
+    #[serde(default = "default_blink_colon")]
+    pub blink_colon: bool,
 }
 
 fn default_show_date() -> bool {
+    true
+}
+
+fn default_show_seconds() -> bool {
+    true
+}
+
+fn default_clock_color() -> String {
+    "#818cf8".to_string()
+}
+
+fn default_blink_colon() -> bool {
     true
 }
 
@@ -26,6 +44,9 @@ impl Default for ClockSettings {
             auto_hide_seconds: 3,
             font_size: "1.5rem".to_string(),
             show_date: true,
+            show_seconds: true,
+            clock_color: "#818cf8".to_string(),
+            blink_colon: true,
         }
     }
 }
@@ -315,6 +336,9 @@ mod tests {
         assert_eq!(settings.clock.auto_hide_seconds, 3);
         assert_eq!(settings.clock.font_size, "1.5rem");
         assert!(settings.clock.show_date);
+        assert!(settings.clock.show_seconds);
+        assert_eq!(settings.clock.clock_color, "#818cf8");
+        assert!(settings.clock.blink_colon);
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
         assert_eq!(settings.voice_to_text.language, "ja");
 
@@ -325,6 +349,9 @@ mod tests {
         assert_eq!(settings.clock.shortcut, "Ctrl+C");
         assert_eq!(settings.clock.auto_hide_seconds, 3); // デフォルト補完
         assert!(settings.clock.show_date); // デフォルト補完
+        assert!(settings.clock.show_seconds); // デフォルト補完
+        assert_eq!(settings.clock.clock_color, "#818cf8"); // デフォルト補完
+        assert!(settings.clock.blink_colon); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
     }
 }

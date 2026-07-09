@@ -4,4 +4,7 @@ export interface ClockSettings {
   autoHideSeconds: number;
   fontSize: string;
   showDate: boolean;
+  showSeconds: boolean;
+  clockColor: string;
+  blinkColon: boolean;
 }
