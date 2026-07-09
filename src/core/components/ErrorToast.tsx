@@ -12,6 +12,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
 }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -32,6 +33,10 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       return undefined;
     }
 
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     closeButtonRef.current?.focus();
     startTimer();
     return clearTimer;
@@ -49,6 +54,19 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [message, onDismiss]);
+
+  useEffect(() => {
+    if (message) return undefined;
+
+    const restoreTarget = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+
+    if (restoreTarget && document.contains(restoreTarget)) {
+      restoreTarget.focus();
+    }
+
+    return undefined;
+  }, [message]);
 
   if (!message) return null;
 

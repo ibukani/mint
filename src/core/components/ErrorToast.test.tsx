@@ -36,6 +36,41 @@ describe("ErrorToast", () => {
     ).toHaveFocus();
   });
 
+  it("restores focus to the previously active element when dismissed", () => {
+    const onDismiss = vi.fn();
+
+    const { rerender } = render(
+      <div>
+        <button type="button">元のボタン</button>
+        <ErrorToast message={null} onDismiss={onDismiss} />
+      </div>,
+    );
+
+    screen.getByRole("button", { name: "元のボタン" }).focus();
+
+    rerender(
+      <div>
+        <button type="button">元のボタン</button>
+        <ErrorToast message="設定の保存に失敗しました" onDismiss={onDismiss} />
+      </div>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "エラー通知を閉じる" }),
+    ).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "エラー通知を閉じる" }));
+    rerender(
+      <div>
+        <button type="button">元のボタン</button>
+        <ErrorToast message={null} onDismiss={onDismiss} />
+      </div>,
+    );
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "元のボタン" })).toHaveFocus();
+  });
+
   it("dismisses the alert with Escape", () => {
     const onDismiss = vi.fn();
 
