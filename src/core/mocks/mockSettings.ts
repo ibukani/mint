@@ -1,6 +1,12 @@
 import type { AppSettings } from "../context/AppSettings";
 import { defaultAppSettings } from "../defaultSettings";
 
+export interface MockSettingsOverrides {
+  theme?: AppSettings["theme"];
+  clock?: Partial<AppSettings["clock"]>;
+  voiceToText?: Partial<AppSettings["voiceToText"]>;
+}
+
 const defaultMockSettings: AppSettings = {
   theme: defaultAppSettings.theme,
   clock: {
@@ -20,8 +26,16 @@ const defaultMockSettings: AppSettings = {
 };
 
 export const createMockSettings = (
-  overrides?: Partial<AppSettings>,
+  overrides?: MockSettingsOverrides,
 ): AppSettings => ({
   ...defaultMockSettings,
   ...overrides,
+  clock: {
+    ...defaultMockSettings.clock,
+    ...overrides?.clock,
+  },
+  voiceToText: {
+    ...defaultMockSettings.voiceToText,
+    ...overrides?.voiceToText,
+  },
 });
