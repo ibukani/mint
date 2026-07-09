@@ -434,18 +434,14 @@ describe("App Window Routing", () => {
         },
       );
 
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "変更を保存しています...",
-      );
+      expect(screen.getByRole("status")).toHaveTextContent("保存待ち...");
 
       await act(async () => {
         vi.advanceTimersByTime(500);
         await Promise.resolve();
       });
 
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "設定を保存しました",
-      );
+      expect(screen.getByRole("status")).toHaveTextContent("保存完了");
     } finally {
       vi.useRealTimers();
     }

@@ -19,10 +19,10 @@ import { AppShell } from "./design/layout";
 
 const saveStatusLabels: Record<SaveStatus, string> = {
   idle: "",
-  pending: "変更を保存しています...",
-  saving: "設定を保存中...",
-  saved: "設定を保存しました",
-  error: "設定の保存に失敗しました",
+  pending: "保存待ち...",
+  saving: "保存中...",
+  saved: "保存完了",
+  error: "保存失敗",
 };
 
 const overlayWindowTitles: Record<string, string> = {
