@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { ClockSettings } from "../../features/clock/types";
 import type { VoiceToTextSettings } from "../../features/v2t/types";
+import { useAutoClearStatus } from "../hooks/useAutoClearStatus";
 import { useTimeoutTask } from "../hooks/useTimeoutTask";
 
 export interface AppSettings {
@@ -64,14 +65,6 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const {
     clearTimeoutTask: clearSaveDebounceTimer,
     scheduleTimeoutTask: scheduleSaveDebounceTimer,
-  } = useTimeoutTask();
-  const {
-    clearTimeoutTask: clearSaveStatusTimer,
-    scheduleTimeoutTask: scheduleSaveStatusTimer,
-  } = useTimeoutTask();
-  const {
-    clearTimeoutTask: clearSaveErrorTimer,
-    scheduleTimeoutTask: scheduleSaveErrorTimer,
   } = useTimeoutTask();
 
   useEffect(() => {
@@ -169,29 +162,17 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     setShortcutErrors({});
   }, [saveStatus]);
 
-  useEffect(() => {
-    clearSaveStatusTimer();
+  const clearSaveStatus = useCallback(() => {
+    setSaveStatus("idle");
+  }, []);
 
-    if (saveStatus === "saved") {
-      scheduleSaveStatusTimer(() => {
-        setSaveStatus("idle");
-      }, SAVE_SUCCESS_VISIBLE_MS);
-    }
+  const resolveSaveStatusDelayMs = useCallback((currentStatus: string) => {
+    if (currentStatus === "saved") return SAVE_SUCCESS_VISIBLE_MS;
+    if (currentStatus === "error") return SAVE_ERROR_VISIBLE_MS;
+    return null;
+  }, []);
 
-    return clearSaveStatusTimer;
-  }, [clearSaveStatusTimer, saveStatus, scheduleSaveStatusTimer]);
-
-  useEffect(() => {
-    clearSaveErrorTimer();
-
-    if (saveStatus === "error") {
-      scheduleSaveErrorTimer(() => {
-        setSaveStatus("idle");
-      }, SAVE_ERROR_VISIBLE_MS);
-    }
-
-    return clearSaveErrorTimer;
-  }, [clearSaveErrorTimer, saveStatus, scheduleSaveErrorTimer]);
+  useAutoClearStatus(saveStatus, clearSaveStatus, resolveSaveStatusDelayMs);
 
   const updateSettings = useCallback(
     (newSettings: AppSettingsPatch | ((prev: AppSettings) => AppSettings)) => {
