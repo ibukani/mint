@@ -23,13 +23,17 @@ const TickingClock: React.FC<{ showDate: boolean }> = ({ showDate }) => {
 
   return (
     <div className="overlay-clock-time">
-      {time.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })}
+      <time dateTime={time.toISOString()}>
+        {time.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })}
+      </time>
       {showDate ? (
-        <div className="overlay-clock-date">{formatClockDate(time)}</div>
+        <time className="overlay-clock-date" dateTime={time.toISOString()}>
+          {formatClockDate(time)}
+        </time>
       ) : null}
     </div>
   );
