@@ -9,6 +9,12 @@ pub struct ClockSettings {
     pub shortcut: String,
     pub auto_hide_seconds: u32,
     pub font_size: String,
+    #[serde(default = "default_show_date")]
+    pub show_date: bool,
+}
+
+fn default_show_date() -> bool {
+    true
 }
 
 impl Default for ClockSettings {
@@ -17,6 +23,7 @@ impl Default for ClockSettings {
             shortcut: "Ctrl+Alt+C".to_string(),
             auto_hide_seconds: 3,
             font_size: "1.5rem".to_string(),
+            show_date: true,
         }
     }
 }
@@ -305,6 +312,7 @@ mod tests {
         assert_eq!(settings.clock.shortcut, "Ctrl+Alt+C");
         assert_eq!(settings.clock.auto_hide_seconds, 3);
         assert_eq!(settings.clock.font_size, "1.5rem");
+        assert_eq!(settings.clock.show_date, true);
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
         assert_eq!(settings.voice_to_text.language, "ja");
 
@@ -314,6 +322,7 @@ mod tests {
         assert_eq!(settings.theme, "light");
         assert_eq!(settings.clock.shortcut, "Ctrl+C");
         assert_eq!(settings.clock.auto_hide_seconds, 3); // デフォルト補完
+        assert_eq!(settings.clock.show_date, true); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
     }
 }

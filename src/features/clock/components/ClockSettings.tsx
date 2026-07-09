@@ -32,6 +32,7 @@ export const ClockSettings: React.FC = () => {
     handleChange("shortcut", defaultAppSettings.clock.shortcut);
     handleChange("autoHideSeconds", defaultAppSettings.clock.autoHideSeconds);
     handleChange("fontSize", defaultAppSettings.clock.fontSize);
+    handleChange("showDate", defaultAppSettings.clock.showDate);
     const shortcutInput = document.getElementById(
       "clock-shortcut-input",
     ) as HTMLInputElement | null;
@@ -141,6 +142,20 @@ export const ClockSettings: React.FC = () => {
           <option value="2rem">大 (2rem)</option>
           <option value="2.5rem">特大 (2.5rem)</option>
         </Select>
+      </Field>
+
+      <Field
+        id="clock-show-date-checkbox"
+        label="年月日と曜日を表示する"
+        orientation="inline"
+        helpText="時計の下に年月日と曜日を表示します。"
+      >
+        <TextInput
+          id="clock-show-date-checkbox"
+          type="checkbox"
+          checked={clock.showDate}
+          onChange={(e) => handleChange("showDate", e.target.checked)}
+        />
       </Field>
     </SettingsSection>
   );

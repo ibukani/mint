@@ -25,6 +25,7 @@ const TestComponent: React.FC = () => {
       <div data-testid="theme">{settings.theme}</div>
       <div data-testid="clock-shortcut">{settings.clock.shortcut}</div>
       <div data-testid="clock-fontsize">{settings.clock.fontSize}</div>
+      <div data-testid="clock-showdate">{String(settings.clock.showDate)}</div>
       <div data-testid="error">{error || "no-error"}</div>
       <div data-testid="save-status">{saveStatus}</div>
       <div data-testid="shortcut-error-clock">
@@ -61,6 +62,18 @@ const TestComponent: React.FC = () => {
       >
         Change FontSize
       </button>
+      <button
+        type="button"
+        onClick={() =>
+          updateSettings((prev) => ({
+            ...prev,
+            clock: { ...prev.clock, showDate: !prev.clock.showDate },
+          }))
+        }
+        data-testid="btn-showdate"
+      >
+        Toggle ShowDate
+      </button>
     </div>
   );
 };
@@ -91,6 +104,7 @@ describe("AppSettingsProvider", () => {
     });
 
     expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+    expect(screen.getByTestId("clock-showdate")).toHaveTextContent("true");
     expect(invoke).toHaveBeenCalledWith("load_settings");
   });
 
@@ -131,6 +145,44 @@ describe("AppSettingsProvider", () => {
 
     expect(invoke).toHaveBeenCalledWith("save_settings", expect.any(Object));
     expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
+  });
+
+  it("saves date visibility changes", async () => {
+    vi.useFakeTimers();
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockResolvedValue(mockSettings);
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("btn-showdate"));
+    });
+
+    expect(screen.getByTestId("clock-showdate")).toHaveTextContent("false");
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(invoke).toHaveBeenCalledWith(
+      "save_settings",
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          clock: expect.objectContaining({
+            showDate: false,
+          }),
+        }),
+      }),
+    );
   });
 
   it("saves important settings (shortcut/theme) immediately", async () => {

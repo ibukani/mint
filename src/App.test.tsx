@@ -79,38 +79,43 @@ describe("App Window Routing", () => {
   });
 
   it("renders ClockOverlay when label=clock", async () => {
-    vi.mocked(getCurrentWindow).mockReturnValue({
-      label: "clock",
-      hide: vi.fn().mockResolvedValue(undefined),
-      show: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ReturnType<typeof getCurrentWindow>);
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-07-09T12:34:56+09:00"));
+      vi.mocked(getCurrentWindow).mockReturnValue({
+        label: "clock",
+        hide: vi.fn().mockResolvedValue(undefined),
+        show: vi.fn().mockResolvedValue(undefined),
+      } as unknown as ReturnType<typeof getCurrentWindow>);
 
-    const mockSettings = createMockSettings({
-      voiceToText: {
-        enabled: false,
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "w",
-        language: "ja",
-        status: "available",
-      },
-    });
-    vi.mocked(invoke).mockResolvedValue(
-      mockSettings as unknown as ReturnType<typeof invoke>,
-    );
+      const mockSettings = createMockSettings({
+        voiceToText: {
+          enabled: false,
+          shortcut: "Ctrl+Alt+V",
+          baseUrl: "http://api",
+          model: "w",
+          language: "ja",
+          status: "available",
+        },
+      });
+      vi.mocked(invoke).mockResolvedValue(
+        mockSettings as unknown as ReturnType<typeof invoke>,
+      );
 
-    render(<App />);
+      render(<App />);
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
-    // colons in formatted time
-    const clockCard = screen.getByText(/:/);
-    expect(clockCard).toBeInTheDocument();
-    expect(screen.queryByText("mint")).not.toBeInTheDocument();
-    expect(document.title).toBe("mint - 時計オーバーレイ");
-    expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
+      expect(screen.getByText("2026年7月9日(木)")).toBeInTheDocument();
+      expect(screen.getByText(/:/)).toBeInTheDocument();
+      expect(screen.queryByText("mint")).not.toBeInTheDocument();
+      expect(document.title).toBe("mint - 時計オーバーレイ");
+      expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("hides the clock overlay from the close button", async () => {

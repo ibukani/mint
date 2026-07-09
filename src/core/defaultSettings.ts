@@ -6,6 +6,7 @@ export const defaultAppSettings: AppSettings = {
     shortcut: "Ctrl+Alt+C",
     autoHideSeconds: 3,
     fontSize: "1.5rem",
+    showDate: true,
   },
   voiceToText: {
     enabled: false,

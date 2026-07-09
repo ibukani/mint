@@ -461,6 +461,21 @@ body {
   gap: var(--space-2);
 }
 
+.overlay-clock-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.overlay-clock-date {
+  font-size: 0.62em;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+  text-shadow: none;
+  letter-spacing: 0.02em;
+}
+
 .overlay-clock-hint {
   margin: 0;
   font-size: var(--font-size-sm);

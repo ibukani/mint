@@ -7,6 +7,7 @@ const defaultMockSettings: AppSettings = {
     shortcut: defaultAppSettings.clock.shortcut,
     autoHideSeconds: defaultAppSettings.clock.autoHideSeconds,
     fontSize: defaultAppSettings.clock.fontSize,
+    showDate: defaultAppSettings.clock.showDate,
   },
   voiceToText: {
     enabled: defaultAppSettings.voiceToText.enabled,

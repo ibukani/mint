@@ -24,6 +24,11 @@ describe("ClockSettings component", () => {
     // 表示秒数の入力フィールド検証 (type="number" は spinbutton ロールを持つ)
     const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
     expect(secondsInput.value).toBe("3");
+
+    const showDateCheckbox = screen.getByLabelText(
+      "年月日と曜日を表示する",
+    ) as HTMLInputElement;
+    expect(showDateCheckbox.checked).toBe(true);
   });
 
   it("resets clock settings to defaults", async () => {
@@ -44,16 +49,21 @@ describe("ClockSettings component", () => {
     const fontSizeSelect = screen.getByLabelText(
       "フォントサイズ",
     ) as HTMLSelectElement;
+    const showDateCheckbox = screen.getByLabelText(
+      "年月日と曜日を表示する",
+    ) as HTMLInputElement;
 
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
     fireEvent.change(secondsInput, { target: { value: "12" } });
     fireEvent.change(fontSizeSelect, { target: { value: "2.5rem" } });
+    fireEvent.click(showDateCheckbox);
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
     expect(shortcutInput.value).toBe("Ctrl+Alt+C");
     expect(secondsInput.value).toBe("3");
     expect(fontSizeSelect.value).toBe("1.5rem");
+    expect(showDateCheckbox.checked).toBe(true);
   });
 
   it("returns focus to the shortcut field after resetting", async () => {
