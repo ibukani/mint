@@ -435,61 +435,74 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("copies and clears transcription results", async () => {
-    const mockSettings = createMockSettings({
-      voiceToText: {
-        enabled: true,
-        shortcut: "Ctrl+Alt+V",
-        baseUrl: "http://api",
-        model: "whisper-1",
-        language: "ja",
-        status: "available",
-      },
-    });
+    vi.useFakeTimers();
+    try {
+      const mockSettings = createMockSettings({
+        voiceToText: {
+          enabled: true,
+          shortcut: "Ctrl+Alt+V",
+          baseUrl: "http://api",
+          model: "whisper-1",
+          language: "ja",
+          status: "available",
+        },
+      });
 
-    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
-      if (cmd === "load_settings") return mockSettings;
-      if (cmd === "load_api_key") return "mocked-api-key";
-      if (cmd === "transcribe_audio_file") {
-        return { text: "これはテスト音声です" };
-      }
-      return undefined;
-    });
+      vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (cmd === "load_api_key") return "mocked-api-key";
+        if (cmd === "transcribe_audio_file") {
+          return { text: "これはテスト音声です" };
+        }
+        return undefined;
+      });
 
-    render(
-      <AppSettingsProvider>
-        <VoiceToTextSettings />
-      </AppSettingsProvider>,
-    );
+      render(
+        <AppSettingsProvider>
+          <VoiceToTextSettings />
+        </AppSettingsProvider>,
+      );
 
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
 
-    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
-      target: { value: "/tmp/audio.wav" },
-    });
+      fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+        target: { value: "/tmp/audio.wav" },
+      });
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
-      await Promise.resolve();
-    });
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "文字起こしを実行" }),
+        );
+        await Promise.resolve();
+      });
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "結果をコピー" }));
-      await Promise.resolve();
-    });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "結果をコピー" }));
+        await Promise.resolve();
+      });
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      "これはテスト音声です",
-    );
-    expect(screen.getByText("コピーしました")).toBeInTheDocument();
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "これはテスト音声です",
+      );
+      expect(screen.getByText("コピーしました")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "結果をクリア" }));
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+        await Promise.resolve();
+      });
 
-    expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
-    expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("音声ファイルパス")).toHaveFocus();
+      expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "結果をクリア" }));
+
+      expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("音声ファイルパス")).toHaveFocus();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("starts transcription from the audio file field when Enter is pressed", async () => {

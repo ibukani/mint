@@ -40,6 +40,7 @@ export const VoiceToTextSettings: React.FC = () => {
   const [audioFilePasteStatus, setAudioFilePasteStatus] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiKeyPasteStatusTimerRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
@@ -139,6 +140,27 @@ export const VoiceToTextSettings: React.FC = () => {
       }
     };
   }, [audioFilePasteStatus]);
+
+  useEffect(() => {
+    if (copyStatusTimerRef.current) {
+      clearTimeout(copyStatusTimerRef.current);
+      copyStatusTimerRef.current = null;
+    }
+
+    if (copyStatus !== "コピーしました") return undefined;
+
+    copyStatusTimerRef.current = setTimeout(() => {
+      setCopyStatus("");
+      copyStatusTimerRef.current = null;
+    }, PASTE_STATUS_VISIBLE_MS);
+
+    return () => {
+      if (copyStatusTimerRef.current) {
+        clearTimeout(copyStatusTimerRef.current);
+        copyStatusTimerRef.current = null;
+      }
+    };
+  }, [copyStatus]);
 
   if (!voiceToText) return null;
 
