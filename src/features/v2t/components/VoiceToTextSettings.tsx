@@ -211,9 +211,16 @@ export const VoiceToTextSettings: React.FC = () => {
     document.getElementById("v2t-audio-file-input")?.focus();
   };
 
-  const clearAudioFilePath = () => {
-    setAudioFilePath("");
+  const updateAudioFilePath = (value: string) => {
+    setAudioFilePath(value);
+    setTranscriptionText("");
+    setTranscriptionError("");
+    setCopyStatus("");
     setAudioFilePasteStatus("");
+  };
+
+  const clearAudioFilePath = () => {
+    updateAudioFilePath("");
     document.getElementById("v2t-audio-file-input")?.focus();
   };
 
@@ -455,8 +462,7 @@ export const VoiceToTextSettings: React.FC = () => {
             type="text"
             value={audioFilePath}
             onChange={(e) => {
-              setAudioFilePath(e.target.value);
-              setAudioFilePasteStatus("");
+              updateAudioFilePath(e.target.value);
             }}
             onBlur={(e) => normalizeAudioFilePath(e.target.value)}
             onKeyDown={handleAudioFilePathKeyDown}
