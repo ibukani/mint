@@ -104,6 +104,7 @@ export const VoiceToTextSettings: React.FC = () => {
     try {
       await navigator.clipboard.writeText(transcriptionText);
       setCopyStatus("コピーしました");
+      document.getElementById("v2t-copy-result-button")?.focus();
     } catch (err) {
       console.error("Failed to copy transcription text:", err);
       setCopyStatus("コピーに失敗しました");
@@ -320,7 +321,11 @@ export const VoiceToTextSettings: React.FC = () => {
       {transcriptionText && (
         <Field id="v2t-transcription-result" label="文字起こし結果">
           <div className="transcription-result-actions">
-            <Button variant="ghost" onClick={copyTranscriptionText}>
+            <Button
+              id="v2t-copy-result-button"
+              variant="ghost"
+              onClick={copyTranscriptionText}
+            >
               結果をコピー
             </Button>
             <Button variant="ghost" onClick={clearTranscriptionText}>

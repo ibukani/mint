@@ -175,6 +175,13 @@ describe("VoiceToTextSettings", () => {
       "これはテスト音声です",
     );
     expect(screen.getByLabelText("文字起こし結果")).toHaveFocus();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "結果をコピー" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("button", { name: "結果をコピー" })).toHaveFocus();
   });
 
   it("requires an API key before transcription", async () => {
