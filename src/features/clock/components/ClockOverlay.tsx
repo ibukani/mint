@@ -336,7 +336,6 @@ export const ClockOverlay: React.FC = () => {
             glowEffect={settings?.clock.glowEffect ?? true}
             clockColor={clockColor}
           />
-          <p className="overlay-clock-hint">Esc でも閉じられます。</p>
         </div>
       </OverlayCard>
     </OverlayFrame>

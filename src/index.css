@@ -936,14 +936,6 @@ body {
   text-transform: uppercase;
 }
 
-.overlay-clock-hint {
-  margin: 0;
-  font-size: 0.32em;
-  font-weight: var(--font-weight-regular);
-  color: var(--color-text-muted);
-  opacity: 0.9;
-}
-
 .overlay-card .overlay-close-button {
   position: absolute;
   top: var(--space-2);
