@@ -43,6 +43,11 @@ export const ClockSettings: React.FC = () => {
         Math.min(CLOCK_AUTO_HIDE_MAX_SECONDS, clock.autoHideSeconds + delta),
       ),
     );
+    const autoHideSecondsInput = document.getElementById(
+      "clock-hide-seconds-input",
+    ) as HTMLInputElement | null;
+    autoHideSecondsInput?.focus();
+    autoHideSecondsInput?.select();
   };
 
   return (

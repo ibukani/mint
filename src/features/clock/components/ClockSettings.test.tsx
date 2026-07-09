@@ -119,6 +119,28 @@ describe("ClockSettings component", () => {
     expect(secondsInput.value).toBe("4");
   });
 
+  it("returns focus to the seconds field after using step buttons", async () => {
+    render(
+      <AppSettingsProvider>
+        <ClockSettings />
+      </AppSettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
+    });
+
+    const secondsInput = screen.getByRole("spinbutton") as HTMLInputElement;
+    const increaseButton = screen.getByRole("button", {
+      name: "表示秒数を1秒増やす",
+    });
+
+    fireEvent.click(increaseButton);
+
+    expect(secondsInput.value).toBe("4");
+    expect(secondsInput).toHaveFocus();
+  });
+
   it("trims shortcut whitespace when leaving the field", async () => {
     render(
       <AppSettingsProvider>
