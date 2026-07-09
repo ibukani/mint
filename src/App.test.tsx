@@ -126,6 +126,21 @@ describe("App Window Routing", () => {
     ).toBeInTheDocument();
   });
 
+  it("focuses the first field when switching to a settings tab", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();
+    });
+  });
+
   it("disables voice-to-text dashboard controls when the feature is unavailable", async () => {
     vi.mocked(invoke).mockResolvedValue(
       createMockSettings({

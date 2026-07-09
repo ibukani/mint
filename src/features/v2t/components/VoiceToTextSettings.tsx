@@ -172,6 +172,7 @@ export const VoiceToTextSettings: React.FC = () => {
         <TextInput
           id="v2t-shortcut-input"
           type="text"
+          autoFocus
           invalid={Boolean(shortcutError)}
           value={voiceToText.shortcut}
           onChange={(e) => handleChange("shortcut", e.target.value)}

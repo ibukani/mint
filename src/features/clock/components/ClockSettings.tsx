@@ -52,6 +52,7 @@ export const ClockSettings: React.FC = () => {
         <TextInput
           id="clock-shortcut-input"
           type="text"
+          autoFocus
           invalid={Boolean(shortcutError)}
           value={clock.shortcut}
           onChange={(e) => handleChange("shortcut", e.target.value)}

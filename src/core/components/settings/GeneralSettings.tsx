@@ -16,6 +16,7 @@ export const GeneralSettings: React.FC = () => {
         <Select
           id="theme-select"
           value={settings.theme}
+          autoFocus
           onChange={(e) =>
             updateSettings({ theme: e.target.value as "dark" | "light" })
           }
