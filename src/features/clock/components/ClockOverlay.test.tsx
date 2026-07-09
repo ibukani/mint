@@ -145,11 +145,7 @@ describe("ClockOverlay", () => {
           selector: ".sr-only",
         }),
       ).toBeInTheDocument();
-      expect(
-        screen.getByText("2026年7月9日(木)", {
-          selector: '.overlay-clock-date [aria-hidden="true"]',
-        }),
-      ).toBeInTheDocument();
+      expect(screen.getAllByText("2026年7月9日(木)")).toHaveLength(2);
       expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
