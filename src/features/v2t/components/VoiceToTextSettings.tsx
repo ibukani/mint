@@ -114,6 +114,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionError("");
     setCopyStatus("");
     setShowApiKey(false);
+    document.getElementById("v2t-shortcut-input")?.focus();
   };
 
   const canTranscribe =

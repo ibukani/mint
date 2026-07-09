@@ -56,6 +56,22 @@ describe("ClockSettings component", () => {
     expect(fontSizeSelect.value).toBe("1.5rem");
   });
 
+  it("returns focus to the shortcut field after resetting", async () => {
+    render(
+      <AppSettingsProvider>
+        <ClockSettings />
+      </AppSettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("時計オーバーレイ設定")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+
+    expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();
+  });
+
   it("keeps auto-hide seconds within the supported range", async () => {
     render(
       <AppSettingsProvider>
