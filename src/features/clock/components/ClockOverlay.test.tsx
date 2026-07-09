@@ -119,4 +119,40 @@ describe("ClockOverlay", () => {
 
     expect(hide).toHaveBeenCalledTimes(1);
   });
+
+  it("does not auto-hide when the timer is disabled", async () => {
+    vi.useFakeTimers();
+    try {
+      const hide = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(getCurrentWindow).mockReturnValue({
+        label: "clock",
+        hide,
+        show: vi.fn().mockResolvedValue(undefined),
+      } as unknown as ReturnType<typeof getCurrentWindow>);
+      vi.mocked(invoke).mockResolvedValue(
+        createMockSettings({
+          clock: { autoHideSeconds: 0 },
+        }) as unknown as ReturnType<typeof invoke>,
+      );
+
+      render(
+        <AppSettingsProvider>
+          <ClockOverlay />
+        </AppSettingsProvider>,
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(10000);
+        await Promise.resolve();
+      });
+
+      expect(hide).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
