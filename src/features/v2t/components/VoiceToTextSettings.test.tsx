@@ -376,6 +376,61 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByLabelText("音声ファイルパス")).toHaveFocus();
   });
 
+  it("starts transcription from the audio file field when Enter is pressed", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(
+      async (cmd: string, args?: InvokeArgs) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (cmd === "load_api_key") return "mocked-api-key";
+        if (cmd === "transcribe_audio_file") {
+          expect(args).toMatchObject({
+            settings: mockSettings.voiceToText,
+            audio_file_path: "/tmp/audio.wav",
+          });
+          return { text: "これはテスト音声です" };
+        }
+        return undefined;
+      },
+    );
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const audioFileInput = screen.getByLabelText(
+      "音声ファイルパス",
+    ) as HTMLInputElement;
+    fireEvent.change(audioFileInput, {
+      target: { value: "  /tmp/audio.wav  " },
+    });
+    await act(async () => {
+      fireEvent.keyDown(audioFileInput, { key: "Enter" });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
+      "これはテスト音声です",
+    );
+  });
+
   it("clears transcription output when resetting voice-to-text settings", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {

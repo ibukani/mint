@@ -123,6 +123,13 @@ export const VoiceToTextSettings: React.FC = () => {
     document.getElementById("v2t-audio-file-input")?.focus();
   };
 
+  const handleAudioFilePathKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key !== "Enter" || !canTranscribe) return;
+
+    event.preventDefault();
+    void transcribeAudioFile();
+  };
+
   const resetVoiceToTextSettings = () => {
     handleChange("enabled", defaultAppSettings.voiceToText.enabled);
     handleChange("shortcut", defaultAppSettings.voiceToText.shortcut);
@@ -312,6 +319,7 @@ export const VoiceToTextSettings: React.FC = () => {
             type="text"
             value={audioFilePath}
             onChange={(e) => setAudioFilePath(e.target.value)}
+            onKeyDown={handleAudioFilePathKeyDown}
             placeholder="例: /Users/me/audio.wav"
           />
           <Button variant="ghost" onClick={clearAudioFilePath}>
