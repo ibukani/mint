@@ -70,6 +70,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
 
   if (!clock || !voiceToText) return null;
 
+  const voiceToTextAvailable = voiceToText.status === "available";
   const voiceToTextStatus = getVoiceToTextStatus(
     voiceToText.enabled,
     voiceToText.status,
@@ -151,9 +152,15 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
           statusTone={
             voiceToTextShortcutError ? "error" : voiceToTextStatus.tone
           }
+          helpText={
+            voiceToTextAvailable
+              ? undefined
+              : "現在は利用できないため、設定は編集できません。"
+          }
           actions={
             <Button
               variant="ghost"
+              disabled={!voiceToTextAvailable}
               onClick={() => onOpenSettings("voiceToText")}
             >
               詳細設定
@@ -169,6 +176,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               id="dashboard-v2t-enabled-checkbox"
               type="checkbox"
               checked={voiceToText.enabled}
+              disabled={!voiceToTextAvailable}
               onChange={(e) => updateVoiceToText("enabled", e.target.checked)}
             />
           </Field>
@@ -183,6 +191,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               type="text"
               invalid={Boolean(voiceToTextShortcutError)}
               value={voiceToText.shortcut}
+              disabled={!voiceToTextAvailable}
               onChange={(e) => updateVoiceToText("shortcut", e.target.value)}
               onBlur={(e) =>
                 updateVoiceToText("shortcut", normalizeShortcut(e.target.value))
@@ -196,6 +205,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               id="dashboard-v2t-model-input"
               type="text"
               value={voiceToText.model}
+              disabled={!voiceToTextAvailable}
               onChange={(e) => updateVoiceToText("model", e.target.value)}
               onBlur={(e) =>
                 updateVoiceToText("model", normalizeModelName(e.target.value))
@@ -209,6 +219,7 @@ export const FeatureDashboard: React.FC<FeatureDashboardProps> = ({
               id="dashboard-v2t-language-input"
               type="text"
               value={voiceToText.language}
+              disabled={!voiceToTextAvailable}
               onChange={(e) => updateVoiceToText("language", e.target.value)}
               onBlur={(e) =>
                 updateVoiceToText(

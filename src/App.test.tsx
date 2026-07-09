@@ -126,6 +126,47 @@ describe("App Window Routing", () => {
     ).toBeInTheDocument();
   });
 
+  it("disables voice-to-text dashboard controls when the feature is unavailable", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings({
+        voiceToText: {
+          enabled: false,
+          shortcut: "Ctrl+Alt+V",
+          baseUrl: "http://api",
+          model: "whisper-1",
+          language: "ja",
+          status: "unavailable",
+        },
+      }) as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+    const voiceToTextCard = screen
+      .getByRole("heading", { name: "音声入力" })
+      .closest("section");
+    expect(voiceToTextCard).not.toBeNull();
+
+    expect(
+      within(voiceToTextCard as HTMLElement).getByText(
+        "現在は利用できないため、設定は編集できません。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(voiceToTextCard as HTMLElement).getByRole("button", {
+        name: "詳細設定",
+      }),
+    ).toBeDisabled();
+    expect(
+      within(voiceToTextCard as HTMLElement).getByLabelText(
+        "この機能を有効にする",
+      ),
+    ).toBeDisabled();
+  });
+
   it("saves voice-to-text enabled changes from the dashboard", async () => {
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "load_settings") {
