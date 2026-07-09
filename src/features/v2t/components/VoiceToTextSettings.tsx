@@ -108,23 +108,50 @@ export const VoiceToTextSettings: React.FC = () => {
     [],
   );
 
+  const pasteTrimmedClipboardText = useCallback(
+    async ({
+      errorLabel,
+      focusTargetId,
+      onEmpty,
+      onValue,
+    }: {
+      errorLabel: string;
+      focusTargetId: string;
+      onEmpty: () => void;
+      onValue: (value: string) => void;
+    }) => {
+      try {
+        const text = await navigator.clipboard.readText();
+        const value = text.trim();
+        if (!value) {
+          onEmpty();
+          return;
+        }
+        onValue(value);
+      } catch (err) {
+        console.error(`Failed to paste ${errorLabel}:`, err);
+      } finally {
+        focusAndSelectElementById(focusTargetId);
+      }
+    },
+    [],
+  );
+
   const pasteApiKey = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const value = text.trim();
-      if (!value) {
+    await pasteTrimmedClipboardText({
+      errorLabel: "API key",
+      focusTargetId: "v2t-api-key-input",
+      onEmpty: () => {
         setApiKeyPasteStatus(EMPTY_PASTE_STATUS);
         setAudioFilePasteStatus("");
         return;
-      }
-      setApiKey(value);
-      clearPasteStatuses();
-      setApiKeyPasteStatus("API キーを貼り付けました");
-    } catch (err) {
-      console.error("Failed to paste API key:", err);
-    } finally {
-      focusAndSelectElementById("v2t-api-key-input");
-    }
+      },
+      onValue: (value) => {
+        setApiKey(value);
+        clearPasteStatuses();
+        setApiKeyPasteStatus("API キーを貼り付けました");
+      },
+    });
   };
 
   useEffect(() => {
@@ -217,22 +244,20 @@ export const VoiceToTextSettings: React.FC = () => {
   };
 
   const pasteAudioFilePath = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const value = text.trim();
-      if (!value) {
+    await pasteTrimmedClipboardText({
+      errorLabel: "audio file path",
+      focusTargetId: "v2t-audio-file-input",
+      onEmpty: () => {
         setAudioFilePasteStatus(EMPTY_PASTE_STATUS);
         setApiKeyPasteStatus("");
         return;
-      }
-      setAudioFilePath(value);
-      clearPasteStatuses();
-      setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
-    } catch (err) {
-      console.error("Failed to paste audio file path:", err);
-    } finally {
-      focusAndSelectElementById("v2t-audio-file-input");
-    }
+      },
+      onValue: (value) => {
+        setAudioFilePath(value);
+        clearPasteStatuses();
+        setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
+      },
+    });
   };
 
   const handleAudioFilePathKeyDown = (event: React.KeyboardEvent) => {
