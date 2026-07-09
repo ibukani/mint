@@ -1,8 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorToast } from "./ErrorToast";
 
 describe("ErrorToast", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renders an accessible alert with a dismiss button", () => {
     const onDismiss = vi.fn();
 
@@ -27,6 +31,30 @@ describe("ErrorToast", () => {
     );
 
     fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the toast visible while hovered and dismisses after leaving", async () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+
+    render(
+      <ErrorToast message="設定の保存に失敗しました" onDismiss={onDismiss} />,
+    );
+
+    fireEvent.mouseEnter(screen.getByRole("alert"));
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    fireEvent.mouseLeave(screen.getByRole("alert"));
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
