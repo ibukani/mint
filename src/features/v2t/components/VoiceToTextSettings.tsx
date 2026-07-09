@@ -407,6 +407,7 @@ export const VoiceToTextSettings: React.FC = () => {
             type={showApiKey ? "text" : "password"}
             value={apiKeyLoaded ? apiKey : ""}
             onChange={(e) => {
+              clearTranscriptionOutput();
               setApiKey(e.target.value);
               setApiKeyPasteStatus("");
             }}
