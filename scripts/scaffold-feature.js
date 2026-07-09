@@ -245,16 +245,39 @@ impl Default for ${pascalName}Settings {
   }
 }
 
-// 8. Auto-Register in mocks (mockSettings.ts)
+// 8. Auto-Register in frontend defaults
+const defaultSettingsPath = path.join(ROOT_DIR, "src/core/defaultSettings.ts");
+if (fs.existsSync(defaultSettingsPath)) {
+  let content = fs.readFileSync(defaultSettingsPath, "utf-8");
+  if (!content.includes(`${camelName}:`)) {
+    const defaultField = `  ${camelName}: {
+    enabled: false,
+    shortcut: "Ctrl+Alt+${pascalName.charAt(0)}",
+  },
+`;
+    content = content.replace(/(\};\s*)$/, `${defaultField}$1`);
+    fs.writeFileSync(defaultSettingsPath, content, "utf-8");
+    recordAction(
+      "[AUTO-REGISTERED] defaultSettings.ts に既定値を登録しました。",
+    );
+  }
+}
+
+// 9. Auto-Register in mocks (mockSettings.ts)
 const mockPaths = [path.join(ROOT_DIR, "src/core/mocks/mockSettings.ts")];
 for (const mockPath of mockPaths) {
   if (fs.existsSync(mockPath)) {
     let content = fs.readFileSync(mockPath, "utf-8");
     if (!content.includes(`${camelName}:`)) {
-      const defaultSettingsRegex =
-        /(export\s+const\s+createMockSettings\s*=\s*\([\s\S]*?\)\s*:\s*AppSettings\s*=>\s*\(\s*\{)/;
-      const mockField = `\n  ${camelName}: {\n    enabled: false,\n    shortcut: "Ctrl+Alt+${pascalName.charAt(0)}",\n  },`;
-      content = content.replace(defaultSettingsRegex, `$1${mockField}`);
+      const defaultMockField = `  ${camelName}: {
+    enabled: defaultAppSettings.${camelName}.enabled,
+    shortcut: defaultAppSettings.${camelName}.shortcut,
+  },
+`;
+      content = content.replace(
+        /(const\s+defaultMockSettings:\s+AppSettings\s*=\s*\{)/,
+        `$1\n${defaultMockField}`,
+      );
       fs.writeFileSync(mockPath, content, "utf-8");
       recordAction(
         `[AUTO-REGISTERED] ${path.basename(mockPath)} にモックデータを登録しました。`,
@@ -314,6 +337,7 @@ try {
     ["check", "--write", "--unsafe", "."],
     {
       stdio: verbose ? "inherit" : "pipe",
+      shell: process.platform === "win32",
     },
   );
   if (biomeResult.error) {

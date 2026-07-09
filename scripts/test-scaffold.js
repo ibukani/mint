@@ -100,7 +100,10 @@ try {
   });
 
   console.log("Running full frontend check...");
-  execFileSync(npmCmd, ["run", "check"], { stdio: "inherit" });
+  execFileSync(npmCmd, ["run", "check"], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
 
   console.log("\x1b[32m[PASS]\x1b[0m Scaffold smoke test succeeded.");
 } catch (err) {

@@ -16,4 +16,8 @@ export const defaultAppSettings: AppSettings = {
     language: "ja",
     status: "available",
   },
+  testFeature: {
+    enabled: false,
+    shortcut: "Ctrl+Alt+T",
+  },
 };
