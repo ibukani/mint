@@ -110,6 +110,10 @@ export const VoiceToTextSettings: React.FC = () => {
     handleChange("baseUrl", defaultAppSettings.voiceToText.baseUrl);
     handleChange("model", defaultAppSettings.voiceToText.model);
     handleChange("language", defaultAppSettings.voiceToText.language);
+    setTranscriptionText("");
+    setTranscriptionError("");
+    setCopyStatus("");
+    setShowApiKey(false);
   };
 
   const canTranscribe =
