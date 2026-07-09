@@ -23,6 +23,7 @@ import type { TranscriptionResult } from "../types";
 
 const PASTE_STATUS_VISIBLE_MS = 2000;
 const COPY_ERROR_VISIBLE_MS = 5000;
+const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
 
 export const VoiceToTextSettings: React.FC = () => {
   const { setActiveTab } = useSettingsNavigation();
@@ -79,7 +80,11 @@ export const VoiceToTextSettings: React.FC = () => {
     try {
       const text = await navigator.clipboard.readText();
       const value = text.trim();
-      if (!value) return;
+      if (!value) {
+        setApiKeyPasteStatus(EMPTY_PASTE_STATUS);
+        setAudioFilePasteStatus("");
+        return;
+      }
       setApiKey(value);
       setApiKeyPasteStatus("API キーを貼り付けました");
       setAudioFilePasteStatus("");
@@ -234,7 +239,11 @@ export const VoiceToTextSettings: React.FC = () => {
     try {
       const text = await navigator.clipboard.readText();
       const value = text.trim();
-      if (!value) return;
+      if (!value) {
+        setAudioFilePasteStatus(EMPTY_PASTE_STATUS);
+        setApiKeyPasteStatus("");
+        return;
+      }
       setAudioFilePath(value);
       setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
       setApiKeyPasteStatus("");
