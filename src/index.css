@@ -160,6 +160,14 @@ body {
   justify-content: flex-end;
 }
 
+.feature-settings-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
 .design-settings-section {
   display: flex;
   flex-direction: column;

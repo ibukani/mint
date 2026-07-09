@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { normalizeShortcut } from "../../../core/shortcuts";
@@ -21,6 +22,7 @@ import {
 import type { TranscriptionResult } from "../types";
 
 export const VoiceToTextSettings: React.FC = () => {
+  const { setActiveTab } = useSettingsNavigation();
   const {
     featureSettings: voiceToText,
     handleChange,
@@ -145,10 +147,15 @@ export const VoiceToTextSettings: React.FC = () => {
       title="音声入力 (Voice to Text) 設定"
       description="OpenAI互換の音声認識APIを使って音声ファイルを文字起こしします。"
     >
-      <div className="feature-settings-actions">
-        <Button variant="ghost" onClick={resetVoiceToTextSettings}>
-          デフォルトに戻す
+      <div className="feature-settings-toolbar">
+        <Button variant="ghost" onClick={() => setActiveTab("dashboard")}>
+          機能管理に戻る
         </Button>
+        <div className="feature-settings-actions">
+          <Button variant="ghost" onClick={resetVoiceToTextSettings}>
+            デフォルトに戻す
+          </Button>
+        </div>
       </div>
 
       <Field

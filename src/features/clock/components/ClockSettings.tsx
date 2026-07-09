@@ -1,4 +1,5 @@
 import type React from "react";
+import { useSettingsNavigation } from "../../../core/context/SettingsNavigation";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { normalizeShortcut } from "../../../core/shortcuts";
@@ -18,6 +19,7 @@ import {
 } from "../settings";
 
 export const ClockSettings: React.FC = () => {
+  const { setActiveTab } = useSettingsNavigation();
   const {
     featureSettings: clock,
     handleChange,
@@ -38,10 +40,15 @@ export const ClockSettings: React.FC = () => {
       title="時計オーバーレイ設定"
       description="ショートカットキーを押した際に画面右上に表示される時計のカスタマイズを行います。"
     >
-      <div className="feature-settings-actions">
-        <Button variant="ghost" onClick={resetClockSettings}>
-          デフォルトに戻す
+      <div className="feature-settings-toolbar">
+        <Button variant="ghost" onClick={() => setActiveTab("dashboard")}>
+          機能管理に戻る
         </Button>
+        <div className="feature-settings-actions">
+          <Button variant="ghost" onClick={resetClockSettings}>
+            デフォルトに戻す
+          </Button>
+        </div>
       </div>
 
       <Field

@@ -8,6 +8,7 @@ import {
   type SaveStatus,
   useAppSettings,
 } from "./core/context/AppSettings";
+import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
 import {
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
@@ -75,25 +76,30 @@ const AppContent: React.FC = () => {
   return (
     <>
       <ErrorToast message={error} onDismiss={clearError} />
-      <AppShell
-        title="mint"
-        tabs={SETTINGS_TABS}
+      <SettingsNavigationProvider
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        setActiveTab={setActiveTab}
       >
-        <div
-          className={`settings-save-status settings-save-status--${saveStatus}`}
-          role={saveStatus === "idle" ? undefined : "status"}
-          aria-hidden={saveStatus === "idle"}
+        <AppShell
+          title="mint"
+          tabs={SETTINGS_TABS}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
         >
-          {saveStatusLabel}
-        </div>
-        {activeTab === "dashboard" ? (
-          <FeatureDashboard onOpenSettings={openFeatureSettings} />
-        ) : (
-          <ActiveTabComponent />
-        )}
-      </AppShell>
+          <div
+            className={`settings-save-status settings-save-status--${saveStatus}`}
+            role={saveStatus === "idle" ? undefined : "status"}
+            aria-hidden={saveStatus === "idle"}
+          >
+            {saveStatusLabel}
+          </div>
+          {activeTab === "dashboard" ? (
+            <FeatureDashboard onOpenSettings={openFeatureSettings} />
+          ) : (
+            <ActiveTabComponent />
+          )}
+        </AppShell>
+      </SettingsNavigationProvider>
     </>
   );
 };

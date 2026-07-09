@@ -144,6 +144,22 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("returns to the dashboard from a feature settings tab", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
+    fireEvent.click(screen.getByRole("button", { name: "機能管理に戻る" }));
+
+    expect(
+      screen.getByRole("heading", { name: "機能管理" }),
+    ).toBeInTheDocument();
+  });
+
   it("disables voice-to-text dashboard controls when the feature is unavailable", async () => {
     vi.mocked(invoke).mockResolvedValue(
       createMockSettings({
