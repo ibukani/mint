@@ -74,6 +74,13 @@ const TestComponent: React.FC = () => {
       >
         Toggle ShowDate
       </button>
+      <button
+        type="button"
+        onClick={() => updateSettings({ clock: { showDate: false } })}
+        data-testid="btn-partial-clock"
+      >
+        Partial Clock Patch
+      </button>
     </div>
   );
 };
@@ -183,6 +190,37 @@ describe("AppSettingsProvider", () => {
         }),
       }),
     );
+  });
+
+  it("preserves nested settings when applying partial updates", async () => {
+    const mockSettings = createMockSettings({
+      clock: {
+        shortcut: "Ctrl+Alt+K",
+        fontSize: "2rem",
+        showDate: true,
+      },
+    });
+    vi.mocked(invoke).mockResolvedValue(mockSettings);
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("btn-partial-clock"));
+    });
+
+    expect(screen.getByTestId("clock-shortcut")).toHaveTextContent(
+      "Ctrl+Alt+K",
+    );
+    expect(screen.getByTestId("clock-fontsize")).toHaveTextContent("2rem");
+    expect(screen.getByTestId("clock-showdate")).toHaveTextContent("false");
   });
 
   it("saves important settings (shortcut/theme) immediately", async () => {

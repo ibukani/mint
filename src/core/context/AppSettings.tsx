@@ -17,6 +17,12 @@ export interface AppSettings {
   voiceToText: VoiceToTextSettings;
 }
 
+type AppSettingsPatch = {
+  theme?: AppSettings["theme"];
+  clock?: Partial<AppSettings["clock"]>;
+  voiceToText?: Partial<AppSettings["voiceToText"]>;
+};
+
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
 interface AppSettingsContextType {
@@ -27,7 +33,7 @@ interface AppSettingsContextType {
   shortcutErrors: Record<string, string>;
   clearError: () => void;
   updateSettings: (
-    newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
+    newSettings: AppSettingsPatch | ((prev: AppSettings) => AppSettings),
   ) => void;
 }
 
@@ -199,9 +205,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [saveStatus]);
 
   const updateSettings = useCallback(
-    (
-      newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
-    ) => {
+    (newSettings: AppSettingsPatch | ((prev: AppSettings) => AppSettings)) => {
       // 1. Calculate next state outside of the React state updater
       const prev = settingsRef.current;
       if (!prev) return;
@@ -209,7 +213,16 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       const updated =
         typeof newSettings === "function"
           ? newSettings(prev)
-          : { ...prev, ...newSettings };
+          : {
+              ...prev,
+              ...newSettings,
+              clock: newSettings.clock
+                ? { ...prev.clock, ...newSettings.clock }
+                : prev.clock,
+              voiceToText: newSettings.voiceToText
+                ? { ...prev.voiceToText, ...newSettings.voiceToText }
+                : prev.voiceToText,
+            };
 
       // 2. Determine if we need an immediate save
       const isImportant =
