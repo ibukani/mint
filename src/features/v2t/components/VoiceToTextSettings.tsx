@@ -123,6 +123,16 @@ export const VoiceToTextSettings: React.FC = () => {
     document.getElementById("v2t-audio-file-input")?.focus();
   };
 
+  const pasteAudioFilePath = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setAudioFilePath(text.trim());
+      document.getElementById("v2t-audio-file-input")?.focus();
+    } catch (err) {
+      console.error("Failed to paste audio file path:", err);
+    }
+  };
+
   const handleAudioFilePathKeyDown = (event: React.KeyboardEvent) => {
     if (event.key !== "Enter" || !canTranscribe) return;
 
@@ -322,6 +332,9 @@ export const VoiceToTextSettings: React.FC = () => {
             onKeyDown={handleAudioFilePathKeyDown}
             placeholder="例: /Users/me/audio.wav"
           />
+          <Button variant="ghost" onClick={pasteAudioFilePath}>
+            貼り付け
+          </Button>
           <Button variant="ghost" onClick={clearAudioFilePath}>
             クリア
           </Button>
