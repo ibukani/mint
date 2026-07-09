@@ -354,6 +354,54 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("shows save progress and success messages for dashboard edits", async () => {
+    try {
+      vi.mocked(invoke).mockImplementation((cmd) => {
+        if (cmd === "load_settings") {
+          return Promise.resolve(createMockSettings());
+        }
+        if (cmd === "save_settings") {
+          return Promise.resolve();
+        }
+        return Promise.resolve(null);
+      });
+
+      render(<App />);
+
+      await screen.findByRole("heading", { name: "一般設定" });
+      fireEvent.click(screen.getByRole("button", { name: "機能管理" }));
+
+      const voiceToTextCard = screen
+        .getByRole("heading", { name: "音声入力" })
+        .closest("section");
+      expect(voiceToTextCard).not.toBeNull();
+
+      vi.useFakeTimers();
+
+      fireEvent.change(
+        within(voiceToTextCard as HTMLElement).getByLabelText("モデル名"),
+        {
+          target: { value: "whisper-large-v3" },
+        },
+      );
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "変更を保存しています...",
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(500);
+        await Promise.resolve();
+      });
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "設定を保存しました",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("clamps clock auto-hide seconds from the dashboard", async () => {
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === "load_settings") {
