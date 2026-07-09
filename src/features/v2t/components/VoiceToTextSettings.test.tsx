@@ -224,6 +224,14 @@ describe("VoiceToTextSettings", () => {
     expect(
       screen.getByText("実行するには、APIキーを入力してください。"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "文字起こしを実行" }),
+    ).toHaveAttribute("aria-describedby");
+    expect(
+      screen
+        .getByRole("button", { name: "文字起こしを実行" })
+        .getAttribute("aria-describedby"),
+    ).toContain("v2t-transcribe-button-help");
   });
 
   it("focuses the transcription error after a failed request", async () => {

@@ -320,7 +320,7 @@ export const VoiceToTextSettings: React.FC = () => {
         </FieldRow>
       </Field>
 
-      <Field helpText={transcribeHelpText}>
+      <Field id="v2t-transcribe-button" helpText={transcribeHelpText}>
         <Button onClick={transcribeAudioFile} disabled={!canTranscribe}>
           {transcribing ? "文字起こし中..." : "文字起こしを実行"}
         </Button>
