@@ -232,11 +232,15 @@ export const VoiceToTextSettings: React.FC = () => {
     document.getElementById("v2t-audio-file-input")?.focus();
   };
 
-  const updateAudioFilePath = (value: string) => {
-    setAudioFilePath(value);
+  const clearTranscriptionOutput = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+  };
+
+  const updateAudioFilePath = (value: string) => {
+    setAudioFilePath(value);
+    clearTranscriptionOutput();
     setAudioFilePasteStatus("");
   };
 
@@ -381,7 +385,10 @@ export const VoiceToTextSettings: React.FC = () => {
           id="v2t-base-url-input"
           type="text"
           value={voiceToText.baseUrl}
-          onChange={(e) => handleChange("baseUrl", e.target.value)}
+          onChange={(e) => {
+            clearTranscriptionOutput();
+            handleChange("baseUrl", e.target.value);
+          }}
           onBlur={(e) =>
             handleChange("baseUrl", normalizeBaseUrl(e.target.value))
           }
@@ -450,7 +457,10 @@ export const VoiceToTextSettings: React.FC = () => {
           id="v2t-model-input"
           type="text"
           value={voiceToText.model}
-          onChange={(e) => handleChange("model", e.target.value)}
+          onChange={(e) => {
+            clearTranscriptionOutput();
+            handleChange("model", e.target.value);
+          }}
           onBlur={(e) =>
             handleChange("model", normalizeModelName(e.target.value))
           }
@@ -472,7 +482,10 @@ export const VoiceToTextSettings: React.FC = () => {
           id="v2t-language-input"
           type="text"
           value={voiceToText.language}
-          onChange={(e) => handleChange("language", e.target.value)}
+          onChange={(e) => {
+            clearTranscriptionOutput();
+            handleChange("language", e.target.value);
+          }}
           onBlur={(e) =>
             handleChange("language", normalizeLanguageCode(e.target.value))
           }

@@ -968,6 +968,59 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByLabelText("API キー")).toHaveValue("mocked-api-key");
   });
 
+  it("clears transcription output when voice-to-text settings change", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") {
+        return { text: "これはテスト音声です" };
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
+      "これはテスト音声です",
+    );
+
+    fireEvent.change(screen.getByLabelText("モデル名"), {
+      target: { value: "gpt-4o-mini-transcribe" },
+    });
+
+    expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
+    expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
+  });
+
   it("resets editable voice-to-text settings without clearing the API key", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
