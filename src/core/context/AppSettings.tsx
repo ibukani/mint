@@ -37,6 +37,7 @@ const AppSettingsContext = createContext<AppSettingsContextType | undefined>(
 
 const SAVE_DEBOUNCE_MS = 500;
 const SAVE_SUCCESS_VISIBLE_MS = 2000;
+const SAVE_ERROR_VISIBLE_MS = 5000;
 
 export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -54,6 +55,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const pendingSaveRef = useRef<AppSettings | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceRef = useRef<number>(0);
 
   useEffect(() => {
@@ -171,6 +173,27 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (saveStatusTimerRef.current) {
         clearTimeout(saveStatusTimerRef.current);
         saveStatusTimerRef.current = null;
+      }
+    };
+  }, [saveStatus]);
+
+  useEffect(() => {
+    if (saveErrorTimerRef.current) {
+      clearTimeout(saveErrorTimerRef.current);
+      saveErrorTimerRef.current = null;
+    }
+
+    if (saveStatus === "error") {
+      saveErrorTimerRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+        saveErrorTimerRef.current = null;
+      }, SAVE_ERROR_VISIBLE_MS);
+    }
+
+    return () => {
+      if (saveErrorTimerRef.current) {
+        clearTimeout(saveErrorTimerRef.current);
+        saveErrorTimerRef.current = null;
       }
     };
   }, [saveStatus]);

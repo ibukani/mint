@@ -200,6 +200,43 @@ describe("AppSettingsProvider", () => {
     expect(screen.getByTestId("save-status")).toHaveTextContent("idle");
   });
 
+  it("clears the error status after a short delay", async () => {
+    vi.useFakeTimers();
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "save_settings")
+        throw new Error("時計ショートカットの登録に失敗しました");
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("btn-theme"));
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("save-status")).toHaveTextContent("error");
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.getByTestId("save-status")).toHaveTextContent("idle");
+  });
+
   it("parses registration error and sets shortcut error state", async () => {
     const mockSettings = createMockSettings();
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
