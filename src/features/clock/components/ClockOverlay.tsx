@@ -1,8 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
+import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 
 const TickingClock: React.FC = () => {
@@ -27,6 +28,14 @@ const TickingClock: React.FC = () => {
 export const ClockOverlay: React.FC = () => {
   const { settings } = useAppSettings();
   const [trigger, setTrigger] = useState(0);
+
+  const hideClock = useCallback(() => {
+    getCurrentWindow()
+      .hide()
+      .catch((e) => {
+        console.error("Failed to hide clock window:", e);
+      });
+  }, []);
 
   // listen to "clock-shown" event to restart timer
   useEffect(() => {
@@ -53,6 +62,17 @@ export const ClockOverlay: React.FC = () => {
     }
   }, [settings, trigger]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        hideClock();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hideClock]);
+
   return (
     <OverlayFrame>
       <OverlayCard
@@ -62,6 +82,14 @@ export const ClockOverlay: React.FC = () => {
           } as React.CSSProperties
         }
       >
+        <Button
+          variant="ghost"
+          className="overlay-close-button"
+          aria-label="時計オーバーレイを閉じる"
+          onClick={hideClock}
+        >
+          閉じる
+        </Button>
         <TickingClock />
       </OverlayCard>
     </OverlayFrame>

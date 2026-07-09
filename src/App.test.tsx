@@ -108,6 +108,54 @@ describe("App Window Routing", () => {
     expect(document.title).toBe("mint - 時計オーバーレイ");
   });
 
+  it("hides the clock overlay from the close button", async () => {
+    const hide = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getCurrentWindow).mockReturnValue({
+      label: "clock",
+      hide,
+      show: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof getCurrentWindow>);
+
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "時計オーバーレイを閉じる" }),
+    );
+
+    expect(hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the clock overlay with Escape", async () => {
+    const hide = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getCurrentWindow).mockReturnValue({
+      label: "clock",
+      hide,
+      show: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof getCurrentWindow>);
+
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(hide).toHaveBeenCalledTimes(1);
+  });
+
   it("shows feature cards when the dashboard tab is selected", async () => {
     vi.mocked(invoke).mockResolvedValue(
       createMockSettings() as unknown as ReturnType<typeof invoke>,
