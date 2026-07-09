@@ -270,6 +270,46 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByText("文字起こしに失敗しました")).toHaveFocus();
   });
 
+  it("clears the audio file path from the clear button", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const audioFileInput = screen.getByLabelText(
+      "音声ファイルパス",
+    ) as HTMLInputElement;
+    fireEvent.change(audioFileInput, { target: { value: "/tmp/audio.wav" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "クリア" }));
+
+    expect(audioFileInput).toHaveValue("");
+    expect(audioFileInput).toHaveFocus();
+  });
+
   it("copies and clears transcription results", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
