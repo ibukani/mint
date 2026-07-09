@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 import { StatusBadge, type StatusBadgeTone } from "./StatusBadge";
 
 interface FeatureCardProps {
@@ -20,11 +21,13 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
   actions,
   helpText,
 }) => {
+  const titleId = useId();
+
   return (
-    <section className="design-feature-card" aria-labelledby={`${title}-title`}>
+    <section className="design-feature-card" aria-labelledby={titleId}>
       <div className="design-feature-card__header">
         <div className="design-feature-card__heading">
-          <h3 className="design-feature-card__title" id={`${title}-title`}>
+          <h3 className="design-feature-card__title" id={titleId}>
             {title}
           </h3>
           <p className="design-feature-card__description">{description}</p>
