@@ -208,10 +208,14 @@ describe("App Window Routing", () => {
     fireEvent.click(screen.getByRole("button", { name: "時計オーバーレイ" }));
     fireEvent.click(screen.getByRole("button", { name: "機能管理に戻る" }));
 
+    const dashboardTab = screen.getByRole("button", { name: "機能管理" });
+    expect(dashboardTab).toHaveAttribute("aria-current", "page");
+    await waitFor(() => {
+      expect(dashboardTab).toHaveFocus();
+    });
     expect(
       screen.getByRole("heading", { name: "機能管理" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "機能管理" })).toHaveFocus();
   });
 
   it("disables voice-to-text dashboard controls when the feature is unavailable", async () => {
