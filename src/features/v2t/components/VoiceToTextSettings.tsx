@@ -6,6 +6,7 @@ import { defaultAppSettings } from "../../../core/defaultSettings";
 import { focusAndSelectElementById } from "../../../core/dom/focus";
 import { useAutoClearStatus } from "../../../core/hooks/useAutoClearStatus";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
+import { useFocusAndSelectElementById } from "../../../core/hooks/useFocusAndSelectElementById";
 import { normalizeShortcut } from "../../../core/shortcuts";
 import {
   Button,
@@ -159,29 +160,19 @@ export const VoiceToTextSettings: React.FC = () => {
     });
   };
 
-  useEffect(() => {
-    if (!transcriptionText) return;
-
-    focusAndSelectElementById("v2t-transcription-result");
-  }, [transcriptionText]);
-
-  useEffect(() => {
-    if (!showApiKey || !apiKeyLoaded) return;
-
-    focusAndSelectElementById("v2t-api-key-input");
-  }, [apiKeyLoaded, showApiKey]);
-
-  useEffect(() => {
-    if (apiKeyPasteStatus !== "API キーを貼り付けました") return;
-
-    focusAndSelectElementById("v2t-api-key-input");
-  }, [apiKeyPasteStatus]);
-
-  useEffect(() => {
-    if (audioFilePasteStatus !== "音声ファイルパスを貼り付けました") return;
-
-    focusAndSelectElementById("v2t-audio-file-input");
-  }, [audioFilePasteStatus]);
+  useFocusAndSelectElementById(
+    Boolean(transcriptionText),
+    "v2t-transcription-result",
+  );
+  useFocusAndSelectElementById(showApiKey && apiKeyLoaded, "v2t-api-key-input");
+  useFocusAndSelectElementById(
+    apiKeyPasteStatus === "API キーを貼り付けました",
+    "v2t-api-key-input",
+  );
+  useFocusAndSelectElementById(
+    audioFilePasteStatus === "音声ファイルパスを貼り付けました",
+    "v2t-audio-file-input",
+  );
   useAutoClearStatus(
     apiKeyPasteStatus,
     clearApiKeyPasteStatus,
