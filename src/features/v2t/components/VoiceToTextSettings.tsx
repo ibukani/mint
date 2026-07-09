@@ -34,6 +34,8 @@ export const VoiceToTextSettings: React.FC = () => {
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
+  const [apiKeyPasteStatus, setApiKeyPasteStatus] = useState("");
+  const [audioFilePasteStatus, setAudioFilePasteStatus] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
 
@@ -69,6 +71,8 @@ export const VoiceToTextSettings: React.FC = () => {
       const value = text.trim();
       if (!value) return;
       setApiKey(value);
+      setApiKeyPasteStatus("API キーを貼り付けました");
+      setAudioFilePasteStatus("");
     } catch (err) {
       console.error("Failed to paste API key:", err);
     } finally {
@@ -93,6 +97,8 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    setApiKeyPasteStatus("");
+    setAudioFilePasteStatus("");
 
     try {
       const result = await invoke<TranscriptionResult>(
@@ -128,11 +134,14 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    setApiKeyPasteStatus("");
+    setAudioFilePasteStatus("");
     document.getElementById("v2t-audio-file-input")?.focus();
   };
 
   const clearAudioFilePath = () => {
     setAudioFilePath("");
+    setAudioFilePasteStatus("");
     document.getElementById("v2t-audio-file-input")?.focus();
   };
 
@@ -142,6 +151,8 @@ export const VoiceToTextSettings: React.FC = () => {
       const value = text.trim();
       if (!value) return;
       setAudioFilePath(value);
+      setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
+      setApiKeyPasteStatus("");
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
     } finally {
@@ -169,6 +180,8 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    setApiKeyPasteStatus("");
+    setAudioFilePasteStatus("");
     setShowApiKey(false);
     document.getElementById("v2t-shortcut-input")?.focus();
   };
@@ -278,7 +291,10 @@ export const VoiceToTextSettings: React.FC = () => {
             id="v2t-api-key-input"
             type={showApiKey ? "text" : "password"}
             value={apiKeyLoaded ? apiKey : ""}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              setApiKeyPasteStatus("");
+            }}
             onBlur={saveApiKey}
             placeholder={apiKeyLoaded ? "APIキーを入力" : "読み込み中..."}
             disabled={!apiKeyLoaded}
@@ -299,6 +315,16 @@ export const VoiceToTextSettings: React.FC = () => {
           >
             {showApiKey ? "隠す" : "表示"}
           </Button>
+          {apiKeyPasteStatus && (
+            <span
+              className="transcription-result-actions__status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {apiKeyPasteStatus}
+            </span>
+          )}
         </FieldRow>
       </Field>
 
@@ -356,7 +382,10 @@ export const VoiceToTextSettings: React.FC = () => {
             id="v2t-audio-file-input"
             type="text"
             value={audioFilePath}
-            onChange={(e) => setAudioFilePath(e.target.value)}
+            onChange={(e) => {
+              setAudioFilePath(e.target.value);
+              setAudioFilePasteStatus("");
+            }}
             onBlur={(e) => normalizeAudioFilePath(e.target.value)}
             onKeyDown={handleAudioFilePathKeyDown}
             placeholder="例: /Users/me/audio.wav"
@@ -371,6 +400,16 @@ export const VoiceToTextSettings: React.FC = () => {
           <Button variant="ghost" onClick={clearAudioFilePath}>
             クリア
           </Button>
+          {audioFilePasteStatus && (
+            <span
+              className="transcription-result-actions__status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {audioFilePasteStatus}
+            </span>
+          )}
         </FieldRow>
       </Field>
 

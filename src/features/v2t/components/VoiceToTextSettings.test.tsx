@@ -171,6 +171,9 @@ describe("VoiceToTextSettings", () => {
 
     expect(apiKeyInput).toHaveValue("pasted-api-key");
     expect(apiKeyInput).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "API キーを貼り付けました",
+    );
   });
 
   it("ignores empty clipboard content when pasting the API key", async () => {
@@ -578,6 +581,9 @@ describe("VoiceToTextSettings", () => {
 
     expect(audioFileInput).toHaveValue("/tmp/audio.wav");
     expect(audioFileInput).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "音声ファイルパスを貼り付けました",
+    );
   });
 
   it("ignores empty clipboard content when pasting the audio file path", async () => {
