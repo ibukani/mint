@@ -72,6 +72,17 @@ export const VoiceToTextSettings: React.FC = () => {
     }
   }, [apiKey]);
 
+  const clearPasteStatuses = useCallback(() => {
+    setApiKeyPasteStatus("");
+    setAudioFilePasteStatus("");
+  }, []);
+
+  const clearTranscriptionOutput = useCallback(() => {
+    setTranscriptionText("");
+    setTranscriptionError("");
+    setCopyStatus("");
+  }, []);
+
   const clearApiKeyPasteStatus = useCallback(() => {
     setApiKeyPasteStatus("");
   }, []);
@@ -107,8 +118,8 @@ export const VoiceToTextSettings: React.FC = () => {
         return;
       }
       setApiKey(value);
+      clearPasteStatuses();
       setApiKeyPasteStatus("API キーを貼り付けました");
-      setAudioFilePasteStatus("");
     } catch (err) {
       console.error("Failed to paste API key:", err);
     } finally {
@@ -155,11 +166,8 @@ export const VoiceToTextSettings: React.FC = () => {
 
   const transcribeAudioFile = async () => {
     setTranscribing(true);
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
-    setApiKeyPasteStatus("");
-    setAudioFilePasteStatus("");
+    clearTranscriptionOutput();
+    clearPasteStatuses();
 
     try {
       const result = await invoke<TranscriptionResult>(
@@ -192,18 +200,9 @@ export const VoiceToTextSettings: React.FC = () => {
   };
 
   const clearTranscriptionText = () => {
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
-    setApiKeyPasteStatus("");
-    setAudioFilePasteStatus("");
+    clearTranscriptionOutput();
+    clearPasteStatuses();
     focusAndSelectElementById("v2t-audio-file-input");
-  };
-
-  const clearTranscriptionOutput = () => {
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
   };
 
   const updateAudioFilePath = (value: string) => {
@@ -227,8 +226,8 @@ export const VoiceToTextSettings: React.FC = () => {
         return;
       }
       setAudioFilePath(value);
+      clearPasteStatuses();
       setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
-      setApiKeyPasteStatus("");
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
     } finally {
@@ -253,11 +252,8 @@ export const VoiceToTextSettings: React.FC = () => {
     handleChange("baseUrl", defaultAppSettings.voiceToText.baseUrl);
     handleChange("model", defaultAppSettings.voiceToText.model);
     handleChange("language", defaultAppSettings.voiceToText.language);
-    setTranscriptionText("");
-    setTranscriptionError("");
-    setCopyStatus("");
-    setApiKeyPasteStatus("");
-    setAudioFilePasteStatus("");
+    clearTranscriptionOutput();
+    clearPasteStatuses();
     setShowApiKey(false);
     focusAndSelectElementById("v2t-shortcut-input");
   };
