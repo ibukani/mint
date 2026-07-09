@@ -63,7 +63,10 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
         }
       }}
     >
-      <span className="error-toast-message">{message}</span>
+      <div className="error-toast-body">
+        <span className="error-toast-message">{message}</span>
+        <span className="error-toast-hint">Esc でも閉じられます。</span>
+      </div>
       <button
         type="button"
         className="error-toast-close"

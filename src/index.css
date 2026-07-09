@@ -491,8 +491,20 @@ body {
   animation: slideIn var(--transition-slow);
 }
 
-.error-toast-message {
+.error-toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   flex: 1;
+}
+
+.error-toast-message {
+  font-weight: var(--font-weight-medium);
+}
+
+.error-toast-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 .error-toast-close {

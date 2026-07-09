@@ -17,6 +17,7 @@ describe("ErrorToast", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "設定の保存に失敗しました",
     );
+    expect(screen.getByText("Esc でも閉じられます。")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "エラー通知を閉じる" }));
 
