@@ -6,7 +6,7 @@
   line-height: 1.5;
   font-weight: var(--font-weight-regular);
   color: var(--color-text-primary);
-  background-color: transparent;
+  background-color: var(--surface-root);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,16 +20,15 @@ body {
   justify-content: center;
   min-width: 320px;
   min-height: 100vh;
-  background: transparent;
+  background: var(--surface-page);
   overflow: hidden;
 }
 
 #root {
   width: 100%;
-  max-width: var(--size-app-max-width);
   height: 100vh;
-  margin: 0 auto;
-  padding: 12px;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -55,15 +54,15 @@ body {
     var(--surface-panel);
   backdrop-filter: blur(var(--blur-xl));
   -webkit-backdrop-filter: blur(var(--blur-xl));
-  border: 1px solid var(--border-panel);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-panel);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 24px);
+  height: 100vh;
   min-height: 520px;
   padding: 0;
   gap: 0;
