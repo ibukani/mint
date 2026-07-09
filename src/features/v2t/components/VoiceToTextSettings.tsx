@@ -69,9 +69,10 @@ export const VoiceToTextSettings: React.FC = () => {
       const value = text.trim();
       if (!value) return;
       setApiKey(value);
-      document.getElementById("v2t-api-key-input")?.focus();
     } catch (err) {
       console.error("Failed to paste API key:", err);
+    } finally {
+      document.getElementById("v2t-api-key-input")?.focus();
     }
   };
 
@@ -141,9 +142,10 @@ export const VoiceToTextSettings: React.FC = () => {
       const value = text.trim();
       if (!value) return;
       setAudioFilePath(value);
-      document.getElementById("v2t-audio-file-input")?.focus();
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
+    } finally {
+      document.getElementById("v2t-audio-file-input")?.focus();
     }
   };
 

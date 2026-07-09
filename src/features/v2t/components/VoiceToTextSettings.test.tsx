@@ -219,7 +219,7 @@ describe("VoiceToTextSettings", () => {
     });
 
     expect(apiKeyInput).toHaveValue("mocked-api-key");
-    expect(apiKeyInput).not.toHaveFocus();
+    expect(apiKeyInput).toHaveFocus();
   });
 
   it("transcribes an audio file with the typed backend command", async () => {
@@ -629,7 +629,7 @@ describe("VoiceToTextSettings", () => {
     });
 
     expect(audioFileInput).toHaveValue("/tmp/audio.wav");
-    expect(screen.getByLabelText("起動/録音ショートカットキー")).toHaveFocus();
+    expect(audioFileInput).toHaveFocus();
   });
 
   it("trims the audio file path when leaving the field", async () => {
