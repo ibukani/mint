@@ -26,6 +26,7 @@ export const Sidebar = <TTabId extends string>({
           className={`app-sidebar__button ${
             activeTab === tab.id ? "app-sidebar__button--active" : ""
           }`}
+          aria-current={activeTab === tab.id ? "page" : undefined}
           onClick={() => onTabChange(tab.id)}
         >
           {tab.label}
