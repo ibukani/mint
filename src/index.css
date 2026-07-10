@@ -1874,6 +1874,8 @@ body {
 
 /* Digital clock workspace */
 .overlay-card--digital {
+  --clock-render-color: var(--clock-accent-color, #4fd1b5);
+
   justify-content: stretch;
   padding: calc(18px * var(--clock-size-scale, 1))
     calc(22px * var(--clock-size-scale, 1));
@@ -1886,7 +1888,7 @@ body {
   left: 50%;
   width: calc(46px * var(--clock-size-scale, 1));
   height: 2px;
-  background: var(--clock-accent-color, #4fd1b5);
+  background: var(--clock-render-color);
   content: "";
   transform: translateX(-50%);
 }
@@ -1939,11 +1941,11 @@ body {
   height: calc(3px * var(--clock-size-scale, 1));
   flex: 0 0 calc(3px * var(--clock-size-scale, 1));
   border-radius: 50%;
-  background: var(--clock-accent-color, #4fd1b5);
+  background: var(--clock-render-color);
 }
 
 .digital-clock__weekday {
-  color: var(--clock-accent-color, #4fd1b5);
+  color: var(--clock-render-color);
   font-size: 0.5em;
   font-weight: var(--font-weight-bold);
   line-height: 1.2;
@@ -1963,7 +1965,7 @@ body {
   display: flex;
   min-width: 0;
   align-items: center;
-  color: var(--clock-accent-color, #4fd1b5);
+  color: var(--clock-render-color);
   font-family: var(--font-family-sans);
   font-size: 2.12em;
   font-variant-numeric: tabular-nums;
@@ -1973,18 +1975,20 @@ body {
 
 .digital-clock__time.glow-effect {
   text-shadow:
-    0 0 10px color-mix(in srgb, var(--clock-accent-color) 75%, transparent),
-    0 0 26px color-mix(in srgb, var(--clock-accent-color) 30%, transparent);
+    0 0 10px color-mix(in srgb, var(--clock-render-color) 75%, transparent),
+    0 0 26px color-mix(in srgb, var(--clock-render-color) 30%, transparent);
 }
 
 .digital-clock__time .clock-digits {
   min-width: 1.25em;
+  color: var(--clock-render-color);
   text-align: center;
 }
 
 .digital-clock__time .clock-colon {
   width: 0.35em;
   margin: 0;
+  color: var(--clock-render-color);
   text-align: center;
 }
 
@@ -2011,7 +2015,7 @@ body {
   border: 0;
   border-radius: 0;
   color: var(--color-text-muted);
-  font-size: 0.3em;
+  font-size: 0.4em;
   font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
@@ -2019,8 +2023,8 @@ body {
 .digital-clock__meta .clock-seconds {
   align-self: auto;
   margin: 0;
-  color: var(--clock-accent-color, #4fd1b5);
-  font-size: 0.72em;
+  color: var(--clock-render-color);
+  font-size: 0.78em;
   font-variant-numeric: tabular-nums;
   font-weight: var(--font-weight-semibold);
   line-height: 1;
@@ -2039,11 +2043,205 @@ body {
   display: block;
   width: var(--clock-second-progress);
   height: 100%;
-  background: var(--clock-accent-color, #4fd1b5);
-  box-shadow: 0 0 8px var(--clock-accent-color, #4fd1b5);
+  background: var(--clock-render-color);
+  box-shadow: 0 0 8px var(--clock-render-color);
   transition: width 0.18s linear;
 }
 
 .clock-preview-card.overlay-card--digital {
   min-width: min(var(--preview-width), 100%);
+}
+
+:root[data-theme="light"] .overlay-card--digital {
+  --clock-render-color: color-mix(
+    in srgb,
+    var(--clock-accent-color, #087f6b) 80%,
+    #17201e 20%
+  );
+}
+
+:root[data-theme="light"] .digital-clock__time.glow-effect {
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--clock-render-color) 28%, transparent),
+    0 0 18px color-mix(in srgb, var(--clock-render-color) 16%, transparent);
+}
+
+/* Voice-to-text workspace */
+.v2t-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-3) 0 var(--space-4);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.v2t-feature-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.v2t-feature-state > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.v2t-feature-state label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.v2t-feature-state span {
+  color: var(--color-text-subtle);
+  font-size: 0.7rem;
+}
+
+.v2t-workspace {
+  display: grid;
+  grid-template-columns: minmax(380px, 1fr) minmax(330px, 0.9fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.v2t-settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.v2t-model-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.45fr);
+  gap: var(--space-4);
+}
+
+.v2t-row-input {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.v2t-icon-button {
+  width: 40px;
+  min-width: 40px;
+  flex: 0 0 40px;
+  padding: 0;
+  border-color: var(--border-control);
+}
+
+.v2t-workbench {
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-root);
+}
+
+.v2t-workbench__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.v2t-workbench__kicker {
+  color: var(--color-accent);
+  font-size: 0.68rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+.v2t-workbench__header h3 {
+  margin: 3px 0 0;
+  font-size: var(--font-size-base);
+}
+
+.v2t-readiness {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-subtle);
+  font-size: 0.68rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+.v2t-readiness.is-ready {
+  border-color: var(--border-success);
+  background: var(--surface-success);
+  color: var(--color-success);
+}
+
+.v2t-workbench__body {
+  display: flex;
+  min-height: 360px;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+
+.v2t-transcribe-button {
+  width: 100%;
+}
+
+.v2t-empty-state {
+  display: flex;
+  min-height: 150px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
+.v2t-empty-state svg {
+  color: var(--color-text-subtle);
+  opacity: 0.65;
+}
+
+.v2t-workbench textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+@media (max-width: 920px) {
+  .v2t-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .v2t-workbench {
+    position: static;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .v2t-settings-header {
+    align-items: flex-start;
+  }
+
+  .v2t-settings-header > .design-button {
+    width: 38px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .v2t-model-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .v2t-workbench__body {
+    min-height: 320px;
+    padding: var(--space-4);
+  }
 }
