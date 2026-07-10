@@ -46,11 +46,6 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.feature-settings-state span {
-  color: var(--color-text-subtle);
-  font-size: 0.7rem;
-}
-
 .shortcut-input-wrapper {
   position: relative;
 }

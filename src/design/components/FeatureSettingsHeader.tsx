@@ -1,6 +1,7 @@
 import { RotateCcw } from "lucide-react";
 import type React from "react";
 import { Button } from "./Button";
+import { StatusBadge } from "./StatusBadge";
 import { Switch } from "./Switch";
 
 interface FeatureSettingsHeaderProps {
@@ -31,7 +32,9 @@ export const FeatureSettingsHeader: React.FC<FeatureSettingsHeaderProps> = ({
         />
         <div>
           <label htmlFor={switchId}>{label}</label>
-          <span>{enabled ? "有効" : "無効"}</span>
+          <StatusBadge tone={enabled ? "enabled" : "disabled"}>
+            {enabled ? "有効" : "無効"}
+          </StatusBadge>
         </div>
       </div>
       <Button
