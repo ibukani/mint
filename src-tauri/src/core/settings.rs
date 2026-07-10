@@ -377,9 +377,27 @@ pub fn save_settings(
     }
 
     // Update the in-memory cache so subsequent reads are instant
-    *state.0.lock().unwrap() = Some(settings);
+    *state.0.lock().unwrap() = Some(settings.clone());
 
     let _ = tauri::Emitter::emit(&app, "settings-changed", ());
+
+    // Update window sizes and positions using the new settings
+    use tauri::Manager;
+    if let Some(clock_win) = app.get_webview_window("clock") {
+        if clock_win.is_visible().unwrap_or(false) {
+            crate::features::clock::show_clock_overlay(&app, &settings);
+        }
+    }
+    if let Some(calendar_win) = app.get_webview_window("calendar") {
+        if calendar_win.is_visible().unwrap_or(false) {
+            let clock_was_visible = app
+                .get_webview_window("clock")
+                .and_then(|clock| clock.is_visible().ok())
+                .unwrap_or(false);
+            let docked = settings.clock.enabled && clock_was_visible;
+            crate::features::calendar::position_calendar(&app, docked, &settings);
+        }
+    }
 
     Ok(())
 }

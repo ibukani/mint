@@ -1,13 +1,10 @@
 import { listen } from "@tauri-apps/api/event";
-import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
-import { getClockDimensions } from "../components/ClockDisplay";
 
 const HIDE_ANIMATION_MS = 280;
-const WINDOW_MARGIN = 20;
-const WINDOW_PADDING = 16;
 
 export const useClockOverlay = () => {
   const { settings } = useAppSettings();
@@ -62,47 +59,6 @@ export const useClockOverlay = () => {
         .hide()
         .catch((error) => console.error("Failed to hide clock window:", error));
     }
-  }, [settings]);
-
-  useEffect(() => {
-    if (!settings) return;
-
-    const scale = settings.clock.sizePercent / 100;
-    const dimensions = getClockDimensions(
-      settings.clock.displayMode,
-      settings.clock.showDate,
-    );
-    const width = Math.round(dimensions.width * scale) + WINDOW_PADDING;
-    const height = Math.round(dimensions.height * scale) + WINDOW_PADDING;
-    const window = getCurrentWindow();
-
-    Promise.all([import("@tauri-apps/api/dpi"), currentMonitor()])
-      .then(([{ LogicalSize, LogicalPosition }, monitor]) => {
-        if (typeof window.setSize === "function") {
-          window.setSize(new LogicalSize(width, height)).catch((error) => {
-            console.error("Failed to resize clock window:", error);
-          });
-        }
-        if (monitor && typeof window.setPosition === "function") {
-          const monitorWidth = monitor.size.width / monitor.scaleFactor;
-          window
-            .setPosition(
-              new LogicalPosition(
-                monitorWidth - width - WINDOW_MARGIN,
-                WINDOW_MARGIN,
-              ),
-            )
-            .catch((error) => {
-              console.error("Failed to reposition clock window:", error);
-            });
-        }
-      })
-      .catch((error) => {
-        console.error(
-          "Failed to load Tauri DPI module or monitor details:",
-          error,
-        );
-      });
   }, [settings]);
 
   useEffect(() => {
