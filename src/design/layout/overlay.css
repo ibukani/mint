@@ -21,23 +21,29 @@
   justify-content: center;
   margin: 8px;
   padding: var(--space-4);
-  border: 1px solid var(--border-overlay);
+  border: 1px solid
+    color-mix(in srgb, var(--color-text-primary) 11%, transparent);
   border-radius: var(--radius-lg);
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--surface-overlay) 92%, var(--surface-elevated)),
-    var(--surface-overlay)
-  );
-  backdrop-filter: blur(var(--blur-xl));
-  box-shadow:
-    0 18px 42px rgb(0 0 0 / 30%),
-    0 0 22px
-    color-mix(
-      in srgb,
-      var(--clock-accent-color, var(--color-accent)) 14%,
-      transparent
+  background:
+    radial-gradient(
+      circle at 12% -24%,
+      color-mix(
+        in srgb,
+        var(--clock-accent-color, var(--color-accent)) 10%,
+        transparent
+      ),
+      transparent 48%
     ),
-    inset 0 1px 0 rgb(255 255 255 / 8%);
+    linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--surface-overlay) 88%, var(--surface-elevated)),
+      var(--surface-overlay) 62%
+    );
+  backdrop-filter: blur(24px) saturate(1.16);
+  box-shadow:
+    0 24px 64px rgb(0 0 0 / 34%),
+    0 3px 12px rgb(0 0 0 / 22%),
+    inset 0 1px 0 color-mix(in srgb, white 9%, transparent);
   color: var(--color-text-primary);
   font-size: calc(
     var(--overlay-font-size, 1.5rem) *
@@ -45,13 +51,11 @@
   );
   font-weight: var(--font-weight-semibold);
   opacity: 0;
-  filter: blur(4px);
   overflow: hidden;
-  transform: scale(0.96) translateY(-6px);
+  transform: scale(0.985) translateY(-4px);
   transition:
-    opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
-    filter 220ms ease-out;
+    opacity 180ms ease-out,
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .overlay-card::after {
@@ -59,7 +63,7 @@
   z-index: -1;
   inset: 1px;
   border: 1px solid
-    color-mix(in srgb, var(--color-text-primary) 5%, transparent);
+    color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border-radius: calc(var(--radius-lg) - 1px);
   content: "";
   pointer-events: none;
@@ -67,43 +71,35 @@
 
 :root[data-theme="light"] .overlay-card {
   box-shadow:
-    0 18px 42px rgb(23 32 30 / 14%),
-    0 0 18px
-    color-mix(
-      in srgb,
-      var(--clock-accent-color, var(--color-accent)) 10%,
-      transparent
-    ),
-    inset 0 1px 0 rgb(255 255 255 / 60%);
+    0 24px 64px rgb(23 32 30 / 16%),
+    0 3px 12px rgb(23 32 30 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 72%);
 }
 
 .overlay-card.is-visible {
   opacity: 1;
-  filter: blur(0);
   transform: scale(1) translateY(0);
 }
 
 .overlay-card.is-hiding {
   opacity: 0;
-  filter: blur(5px);
-  transform: scale(0.94) translateY(6px);
+  transform: scale(0.985) translateY(4px);
 }
 
 .overlay-card .overlay-close-button {
   position: absolute;
   z-index: 10;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   display: grid;
-  width: 30px;
-  min-height: 30px;
-  height: 30px;
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
   place-items: center;
   padding: 0;
-  border: 1px solid
-    color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  border: 1px solid transparent;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-control) 52%, transparent);
+  background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
   transition:
@@ -114,8 +110,8 @@
 }
 
 .overlay-card .overlay-close-button:hover {
-  border-color: var(--border-control-focus);
-  background: var(--surface-control-hover);
+  border-color: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+  background: color-mix(in srgb, var(--surface-control-hover) 70%, transparent);
   color: var(--color-text-primary);
 }
 
@@ -135,13 +131,20 @@
   position: absolute;
   top: 0;
   left: 50%;
-  width: calc(46px * var(--clock-size-scale, 1));
+  width: calc(36px * var(--clock-size-scale, 1));
   height: 2px;
   border-radius: 999px;
   background: var(--clock-render-color);
-  box-shadow: 0 0 10px var(--clock-render-color);
+  box-shadow: 0 0 12px
+    color-mix(in srgb, var(--clock-render-color) 70%, transparent);
   content: "";
   transform: translateX(-50%);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .overlay-card {
+    background: var(--surface-overlay);
+  }
 }
 
 :root[data-theme="light"] .overlay-card--digital {

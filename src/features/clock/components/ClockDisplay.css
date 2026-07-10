@@ -1,170 +1,19 @@
 .overlay-clock-content {
   display: flex;
+  width: 100%;
+  height: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  width: 100%;
-}
-
-.overlay-clock-time {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  font-family: var(--font-family-sans);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  position: relative;
-}
-
-.overlay-clock-time.glow-effect {
-  text-shadow:
-    0 0 12px var(--clock-accent-color, #818cf8),
-    0 0 24px
-    color-mix(in srgb, var(--clock-accent-color, #818cf8) 35%, transparent);
-}
-
-.clock-ampm {
-  font-size: 0.32em;
-  font-weight: var(--font-weight-bold);
-  text-transform: uppercase;
-  margin-right: 0.4em;
-  color: var(--color-text-secondary);
-  align-self: center;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 2px 5px;
-  border-radius: var(--radius-sm);
-  line-height: 1;
-  letter-spacing: 0.05em;
-  transition: all 0.3s ease;
-}
-
-.overlay-clock-time.glow-effect .clock-ampm {
-  border-color: color-mix(
-    in srgb,
-    var(--clock-accent-color, #818cf8) 25%,
-    transparent
-  );
-  box-shadow: 0 0 8px
-    color-mix(in srgb, var(--clock-accent-color, #818cf8) 15%, transparent);
-}
-
-.clock-digits {
-  font-weight: var(--font-weight-bold);
-  color: var(--clock-accent-color, #818cf8);
-}
-
-.clock-colon {
-  font-weight: var(--font-weight-medium);
-  margin: 0 0.04em;
-  color: var(--clock-accent-color, #818cf8);
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.clock-colon.blink-off {
-  opacity: 0.2;
-}
-
-.clock-seconds-separator {
-  font-size: 0.6em;
-  opacity: 0.4;
-  margin: 0 0.1em;
-  color: var(--clock-accent-color, #818cf8);
-}
-
-.clock-seconds {
-  font-size: 0.6em;
-  font-weight: var(--font-weight-medium);
-  opacity: 0.75;
-  color: var(--clock-accent-color, #818cf8);
-  align-self: flex-end;
-  margin-bottom: 0.06em;
-}
-
-.analog-clock-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: calc(140px * var(--clock-size-scale, 1));
-  height: calc(140px * var(--clock-size-scale, 1));
-  margin: var(--space-3) 0 var(--space-4) 0;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.analog-clock {
-  width: 100%;
-  height: 100%;
-}
-
-.analog-clock-face {
-  fill: rgba(15, 23, 42, 0.35);
-  stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 1.5;
-  transition:
-    fill 0.3s ease,
-    stroke 0.3s ease;
-}
-
-:root[data-theme="light"] .analog-clock-face {
-  fill: rgba(255, 255, 255, 0.45);
-  stroke: rgba(0, 0, 0, 0.06);
-}
-
-.analog-hand {
-  stroke-linecap: round;
-}
-
-.analog-hour-hand {
-  stroke-width: 4.5;
-  transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.analog-minute-hand {
-  stroke-width: 3;
-  transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.analog-second-hand {
-  stroke-width: 1.2;
-  transition: none;
-}
-
-.overlay-clock-date-container {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-}
-
-.overlay-clock-date {
-  font-size: 0.45em;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  letter-spacing: 0.04em;
-}
-
-.overlay-clock-weekday-badge {
-  font-size: 0.38em;
-  padding: 2px 6px;
-  background: color-mix(
-    in srgb,
-    var(--clock-accent-color, #818cf8) 12%,
-    transparent
-  );
-  border: 1px solid
-    color-mix(in srgb, var(--clock-accent-color, #818cf8) 25%, transparent);
-  border-radius: var(--radius-sm);
-  color: var(--clock-accent-color, #818cf8);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
 }
 
 .overlay-card--digital .overlay-clock-content {
   align-items: stretch;
-  height: 100%;
 }
 
 .digital-clock {
+  position: relative;
   display: flex;
   width: 100%;
   height: 100%;
@@ -175,16 +24,19 @@
 
 .digital-clock__header {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: center;
-  gap: calc(10px * var(--clock-size-scale, 1));
-  margin-bottom: calc(11px * var(--clock-size-scale, 1));
+  gap: calc(9px * var(--clock-size-scale, 1));
+  margin-bottom: calc(9px * var(--clock-size-scale, 1));
+  padding-inline: calc(36px * var(--clock-size-scale, 1));
 }
 
 .digital-clock__date {
   display: inline-flex;
+  min-width: 0;
   align-items: baseline;
-  gap: calc(7px * var(--clock-size-scale, 1));
+  gap: calc(5px * var(--clock-size-scale, 1));
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   white-space: nowrap;
@@ -192,29 +44,29 @@
 
 .digital-clock__year {
   color: var(--color-text-muted);
-  font-size: 0.46em;
+  font-size: 0.43em;
   font-weight: var(--font-weight-medium);
+  letter-spacing: 0.02em;
 }
 
 .digital-clock__month-day {
   color: var(--color-text-primary);
-  font-size: 0.58em;
-  font-weight: var(--font-weight-bold);
-}
-
-.digital-clock__date-divider {
-  width: calc(3px * var(--clock-size-scale, 1));
-  height: calc(3px * var(--clock-size-scale, 1));
-  flex: 0 0 calc(3px * var(--clock-size-scale, 1));
-  border-radius: 50%;
-  background: var(--clock-render-color);
+  font-size: 0.55em;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.015em;
 }
 
 .digital-clock__weekday {
+  padding: calc(3px * var(--clock-size-scale, 1))
+    calc(7px * var(--clock-size-scale, 1));
+  border: 1px solid
+    color-mix(in srgb, var(--clock-render-color) 24%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--clock-render-color) 8%, transparent);
   color: var(--clock-render-color);
-  font-size: 0.5em;
-  font-weight: var(--font-weight-bold);
-  line-height: 1.2;
+  font-size: 0.38em;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -233,122 +85,219 @@
   align-items: center;
   color: var(--clock-render-color);
   font-family: var(--font-family-sans);
-  font-size: 2.12em;
-  font-variant-numeric: tabular-nums;
+  font-size: 2.16em;
+  font-feature-settings:
+    "tnum" 1,
+    "zero" 1;
+  font-variant-numeric: tabular-nums slashed-zero;
   font-weight: var(--font-weight-semibold);
-  line-height: 0.9;
+  letter-spacing: -0.055em;
+  line-height: 0.86;
 }
 
 .digital-clock__time.glow-effect {
   text-shadow:
-    0 0 10px color-mix(in srgb, var(--clock-render-color) 75%, transparent),
-    0 0 26px color-mix(in srgb, var(--clock-render-color) 30%, transparent);
+    0 0 12px color-mix(in srgb, var(--clock-render-color) 38%, transparent),
+    0 0 32px color-mix(in srgb, var(--clock-render-color) 16%, transparent);
 }
 
 .digital-clock__time .clock-digits {
-  min-width: 1.25em;
+  min-width: 1.24em;
   color: var(--clock-render-color);
   text-align: center;
 }
 
 .digital-clock__time .clock-colon {
-  width: 0.35em;
+  width: 0.32em;
   margin: 0;
-  color: var(--clock-render-color);
+  color: color-mix(in srgb, var(--clock-render-color) 76%, transparent);
+  font-weight: var(--font-weight-medium);
   text-align: center;
+  transition: opacity 320ms ease;
+}
+
+.clock-colon.blink-off {
+  opacity: 0.24;
 }
 
 .digital-clock__meta {
   position: absolute;
-  left: calc(50% + 96px * var(--clock-size-scale, 1));
   top: 50%;
+  left: calc(50% + 98px * var(--clock-size-scale, 1));
   display: flex;
   min-width: calc(48px * var(--clock-size-scale, 1));
-  align-self: stretch;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: calc(3px * var(--clock-size-scale, 1));
+  gap: calc(4px * var(--clock-size-scale, 1));
   padding-left: calc(13px * var(--clock-size-scale, 1));
-  border-left: 1px solid var(--border-overlay);
+  border-left: 1px solid
+    color-mix(in srgb, var(--color-text-primary) 10%, transparent);
   transform: translateY(-50%);
 }
 
 .digital-clock__meta .clock-ampm {
-  align-self: auto;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
   color: var(--color-text-muted);
-  font-size: 0.4em;
+  font-size: 0.3em;
   font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.12em;
   line-height: 1;
 }
 
 .digital-clock__meta .clock-seconds {
-  align-self: auto;
-  margin: 0;
   color: var(--clock-render-color);
-  font-size: 0.78em;
+  font-size: 0.68em;
   font-variant-numeric: tabular-nums;
   font-weight: var(--font-weight-semibold);
   line-height: 1;
-  opacity: 1;
 }
 
 .digital-clock__progress {
-  width: 100%;
-  height: calc(2px * var(--clock-size-scale, 1));
-  margin-top: calc(11px * var(--clock-size-scale, 1));
+  width: calc(100% - 18px * var(--clock-size-scale, 1));
+  height: 2px;
+  margin: calc(12px * var(--clock-size-scale, 1)) auto 0;
   overflow: hidden;
-  background: color-mix(in srgb, var(--color-text-muted) 18%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
 }
 
 .digital-clock__progress span {
   display: block;
   width: var(--clock-second-progress);
   height: 100%;
-  background: var(--clock-render-color);
-  box-shadow: 0 0 8px var(--clock-render-color);
-  transition: width 0.18s linear;
-}
-
-:root[data-theme="light"] .digital-clock__time.glow-effect {
-  text-shadow:
-    0 0 8px color-mix(in srgb, var(--clock-render-color) 28%, transparent),
-    0 0 18px color-mix(in srgb, var(--clock-render-color) 16%, transparent);
-}
-
-.digital-clock__header {
-  text-shadow: 0 1px 2px rgb(0 0 0 / 20%);
-}
-
-.digital-clock__time {
-  letter-spacing: -0.04em;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 18%);
-}
-
-.digital-clock__time.glow-effect {
-  text-shadow:
-    0 0 10px color-mix(in srgb, var(--clock-render-color) 75%, transparent),
-    0 0 26px color-mix(in srgb, var(--clock-render-color) 30%, transparent),
-    0 1px 2px rgb(0 0 0 / 20%);
-}
-
-.digital-clock__progress {
-  border-radius: 999px;
-}
-
-.digital-clock__progress span {
   border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--clock-render-color) 52%, transparent),
+    var(--clock-render-color)
+  );
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--clock-render-color) 45%, transparent);
+  transition: width 180ms linear;
 }
 
 .analog-clock-container {
-  filter: drop-shadow(0 12px 18px rgb(0 0 0 / 18%));
+  --clock-dynamic-color: var(--clock-accent-color, var(--color-accent));
+
+  display: flex;
+  width: calc(148px * var(--clock-size-scale, 1));
+  height: calc(148px * var(--clock-size-scale, 1));
+  align-items: center;
+  justify-content: center;
+  margin: var(--space-2) 0 var(--space-3);
+  color: var(--clock-dynamic-color);
+  filter: drop-shadow(0 14px 20px rgb(0 0 0 / 20%));
+}
+
+.analog-clock-container.glow {
+  filter: drop-shadow(0 14px 20px rgb(0 0 0 / 20%))
+    drop-shadow(
+      0 0 10px color-mix(in srgb, var(--clock-dynamic-color) 18%, transparent)
+    );
+}
+
+.analog-clock {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .analog-clock-face {
-  fill: color-mix(in srgb, var(--surface-control) 80%, transparent);
-  stroke: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  fill: color-mix(in srgb, var(--surface-control) 76%, transparent);
+  stroke: color-mix(in srgb, var(--color-text-primary) 13%, transparent);
+  stroke-width: 1.4;
+}
+
+.analog-clock__inner {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
+  stroke-width: 1;
+}
+
+.analog-clock__tick {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.25;
+  opacity: 0.34;
+}
+
+.analog-clock__tick.is-major {
+  stroke-width: 2.8;
+  opacity: 0.88;
+}
+
+.analog-hand {
+  transform: rotate(var(--hand-rotation));
+  transform-origin: 100px 100px;
+  stroke: var(--color-text-primary);
+  stroke-linecap: round;
+}
+
+.analog-hour-hand {
+  stroke-width: 5.2;
+}
+
+.analog-minute-hand {
+  stroke-width: 3.2;
+  opacity: 0.92;
+}
+
+.analog-second-hand {
+  stroke: var(--clock-dynamic-color);
+  stroke-width: 1.4;
+}
+
+.analog-clock-container.glow .analog-second-hand {
+  filter: drop-shadow(0 0 3px var(--clock-dynamic-color));
+}
+
+.analog-clock__pin {
+  fill: var(--color-text-primary);
+  stroke: color-mix(in srgb, var(--surface-overlay) 82%, transparent);
+  stroke-width: 2;
+}
+
+.analog-clock__pin-core {
+  fill: var(--clock-dynamic-color);
+}
+
+.overlay-clock-date-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.overlay-clock-date {
+  color: var(--color-text-secondary);
+  font-size: 0.43em;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.015em;
+}
+
+.overlay-clock-weekday-badge {
+  padding: 3px 7px;
+  border: 1px solid
+    color-mix(in srgb, var(--clock-dynamic-color) 24%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--clock-dynamic-color) 8%, transparent);
+  color: var(--clock-dynamic-color);
+  font-size: 0.34em;
+  font-weight: var(--font-weight-semibold);
+}
+
+:root[data-theme="light"] .digital-clock__time.glow-effect {
+  text-shadow: 0 0 16px
+    color-mix(in srgb, var(--clock-render-color) 18%, transparent);
+}
+
+:root[data-theme="light"] .analog-clock-container {
+  filter: drop-shadow(0 12px 18px rgb(23 32 30 / 12%));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digital-clock__time .clock-colon,
+  .digital-clock__progress span {
+    transition: none;
+  }
 }

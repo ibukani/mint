@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarClock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
 import { buildCalendarDays, shiftMonth, startOfMonth } from "../calendar";
@@ -59,6 +59,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       onKeyDown={handleKeyDown}
     >
       <header className="month-calendar__header">
+        <h2 aria-live="polite" aria-label={monthLabel}>
+          <span className="month-calendar__year">
+            {viewMonth.getFullYear()}年
+          </span>
+          <strong className="month-calendar__month">
+            {viewMonth.getMonth() + 1}月
+          </strong>
+        </h2>
         <div className="month-calendar__switcher">
           <button
             type="button"
@@ -68,7 +76,6 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
           >
             <ChevronLeft size={18} aria-hidden="true" />
           </button>
-          <h2 aria-live="polite">{monthLabel}</h2>
           <button
             type="button"
             className="month-calendar__nav-button"
@@ -100,7 +107,11 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
               aria-current={day.isToday ? "date" : undefined}
               onClick={() => onOpenDay(day.machineDate)}
             >
-              <time dateTime={day.machineDate}>{day.date.getDate()}</time>
+              <time dateTime={day.machineDate}>
+                <span className="month-calendar__day-number">
+                  {day.date.getDate()}
+                </span>
+              </time>
               {dayEvents.length > 0 && (
                 <span
                   className="month-calendar__event-dot"
@@ -127,18 +138,22 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
             aria-label={`次の予定、${nextEvent.title}`}
             onClick={() => onOpenEvent(nextEvent)}
           >
-            <span>次の予定</span>
-            <strong>
-              {formatEventDate(nextEvent)} {formatEventTime(nextEvent)}
+            <CalendarClock size={15} aria-hidden="true" />
+            <span className="month-calendar__next-eyebrow">次の予定</span>
+            <strong className="month-calendar__next-title">
+              {nextEvent.title}
             </strong>
-            <span>{nextEvent.title}</span>
+            <time className="month-calendar__next-time">
+              {formatEventDate(nextEvent)} {formatEventTime(nextEvent)}
+            </time>
           </button>
         ) : (
           <div
             className="month-calendar__next-event is-empty"
             aria-live="polite"
           >
-            <span>
+            <CalendarClock size={15} aria-hidden="true" />
+            <span className="month-calendar__next-empty-label">
               {loading ? "予定を確認中…" : error || "次の予定はありません"}
             </span>
           </div>
