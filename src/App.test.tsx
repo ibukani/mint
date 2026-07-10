@@ -109,7 +109,9 @@ describe("App Window Routing", () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText("2026年7月9日")).toBeInTheDocument();
+      expect(document.querySelector(".digital-clock__date")).toHaveTextContent(
+        "2026年7月9日",
+      );
       expect(screen.getByText("木曜日")).toBeInTheDocument();
       expect(screen.getByText(/:/)).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();

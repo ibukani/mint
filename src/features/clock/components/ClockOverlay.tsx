@@ -202,8 +202,17 @@ export const TickingClock: React.FC<TickingClockProps> = ({
           {showDate && (
             <div className="digital-clock__header">
               <time className="digital-clock__date" dateTime={machineDate}>
-                {formattedDate}
+                <span className="digital-clock__year">
+                  {time.getFullYear()}年
+                </span>
+                <span className="digital-clock__month-day">
+                  {time.getMonth() + 1}月{time.getDate()}日
+                </span>
               </time>
+              <span
+                className="digital-clock__date-divider"
+                aria-hidden="true"
+              />
               <span className="digital-clock__weekday">{weekday}</span>
             </div>
           )}
@@ -222,8 +231,8 @@ export const TickingClock: React.FC<TickingClockProps> = ({
               <span className="clock-digits">{minutes}</span>
             </time>
             {(showSeconds || is12h) && (
-              <div className="digital-clock__meta" aria-hidden="true">
-                <span className="clock-ampm">{is12h ? ampm : "SEC"}</span>
+              <div className="digital-clock__meta">
+                <span className="clock-ampm">{is12h ? ampm : "秒"}</span>
                 {showSeconds && (
                   <span className="clock-seconds">{seconds}</span>
                 )}

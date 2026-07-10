@@ -1883,11 +1883,12 @@ body {
 .overlay-card--digital::before {
   position: absolute;
   top: 0;
-  left: calc(22px * var(--clock-size-scale, 1));
+  left: 50%;
   width: calc(46px * var(--clock-size-scale, 1));
   height: 2px;
   background: var(--clock-accent-color, #4fd1b5);
   content: "";
+  transform: translateX(-50%);
 }
 
 .overlay-card--digital .overlay-clock-content {
@@ -1907,44 +1908,55 @@ body {
 .digital-clock__header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: calc(10px * var(--clock-size-scale, 1));
-  padding-right: calc(34px * var(--clock-size-scale, 1));
-  margin-bottom: calc(10px * var(--clock-size-scale, 1));
+  margin-bottom: calc(11px * var(--clock-size-scale, 1));
 }
 
 .digital-clock__date {
-  color: var(--color-text-primary);
-  font-size: 0.56em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(7px * var(--clock-size-scale, 1));
   font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   white-space: nowrap;
 }
 
-.digital-clock__weekday {
-  display: inline-flex;
-  align-items: center;
-  min-height: calc(22px * var(--clock-size-scale, 1));
-  padding: 0 calc(9px * var(--clock-size-scale, 1));
-  border: 1px solid
-    color-mix(in srgb, var(--clock-accent-color, #4fd1b5) 35%, transparent);
-  border-radius: calc(4px * var(--clock-size-scale, 1));
-  background: color-mix(
-    in srgb,
-    var(--clock-accent-color, #4fd1b5) 16%,
-    transparent
-  );
-  color: var(--clock-accent-color, #4fd1b5);
+.digital-clock__year {
+  color: var(--color-text-muted);
   font-size: 0.46em;
+  font-weight: var(--font-weight-medium);
+}
+
+.digital-clock__month-day {
+  color: var(--color-text-primary);
+  font-size: 0.58em;
+  font-weight: var(--font-weight-bold);
+}
+
+.digital-clock__date-divider {
+  width: calc(3px * var(--clock-size-scale, 1));
+  height: calc(3px * var(--clock-size-scale, 1));
+  flex: 0 0 calc(3px * var(--clock-size-scale, 1));
+  border-radius: 50%;
+  background: var(--clock-accent-color, #4fd1b5);
+}
+
+.digital-clock__weekday {
+  color: var(--clock-accent-color, #4fd1b5);
+  font-size: 0.5em;
   font-weight: var(--font-weight-bold);
   line-height: 1.2;
   white-space: nowrap;
 }
 
 .digital-clock__body {
+  position: relative;
   display: flex;
+  width: 100%;
   min-width: 0;
   align-items: center;
+  justify-content: center;
 }
 
 .digital-clock__time {
@@ -1953,7 +1965,7 @@ body {
   align-items: center;
   color: var(--clock-accent-color, #4fd1b5);
   font-family: var(--font-family-sans);
-  font-size: 2.05em;
+  font-size: 2.12em;
   font-variant-numeric: tabular-nums;
   font-weight: var(--font-weight-semibold);
   line-height: 0.9;
@@ -1977,6 +1989,9 @@ body {
 }
 
 .digital-clock__meta {
+  position: absolute;
+  left: calc(50% + 96px * var(--clock-size-scale, 1));
+  top: 50%;
   display: flex;
   min-width: calc(48px * var(--clock-size-scale, 1));
   align-self: stretch;
@@ -1984,9 +1999,9 @@ body {
   align-items: flex-start;
   justify-content: center;
   gap: calc(3px * var(--clock-size-scale, 1));
-  padding-left: calc(14px * var(--clock-size-scale, 1));
-  margin-left: calc(14px * var(--clock-size-scale, 1));
+  padding-left: calc(13px * var(--clock-size-scale, 1));
   border-left: 1px solid var(--border-overlay);
+  transform: translateY(-50%);
 }
 
 .digital-clock__meta .clock-ampm {

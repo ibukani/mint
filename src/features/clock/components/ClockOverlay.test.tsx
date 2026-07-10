@@ -38,7 +38,9 @@ describe("digital clock presentation", () => {
       />,
     );
 
-    expect(screen.getByText("2026年7月10日")).toBeInTheDocument();
+    expect(container.querySelector(".digital-clock__date")).toHaveTextContent(
+      "2026年7月10日",
+    );
     expect(screen.getByText("金曜日")).toBeInTheDocument();
     expect(screen.getByText("18")).toBeInTheDocument();
     expect(
@@ -63,7 +65,9 @@ describe("digital clock presentation", () => {
     );
 
     expect(screen.getByText("PM")).toBeInTheDocument();
-    expect(screen.queryByText("2026年7月10日")).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".digital-clock__date"),
+    ).not.toBeInTheDocument();
     expect(
       container.querySelector(".digital-clock__progress"),
     ).not.toBeInTheDocument();
