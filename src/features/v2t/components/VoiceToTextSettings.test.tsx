@@ -80,6 +80,48 @@ describe("VoiceToTextSettings", () => {
     });
   });
 
+  it("shows an error when saving the API key fails", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "w",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "save_api_key") throw new Error("keychain unavailable");
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const apiKeyInput = screen.getByLabelText("API キー");
+    fireEvent.change(apiKeyInput, { target: { value: "new-api-key" } });
+    await act(async () => {
+      fireEvent.blur(apiKeyInput);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "APIキーの保存に失敗しました。もう一度お試しください。",
+    );
+  });
+
   it("toggles API key visibility", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
@@ -258,6 +300,56 @@ describe("VoiceToTextSettings", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("shows an error when the API key cannot be read from the clipboard", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "w",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    Object.assign(navigator, {
+      clipboard: {
+        readText: vi.fn().mockRejectedValue(new Error("permission denied")),
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "API キーを貼り付け" }),
+      );
+      await Promise.resolve();
+    });
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(
+      "クリップボードから貼り付けられませんでした",
+    );
+    expect(status).toHaveClass("status-toast-label--error");
   });
 
   it("transcribes an audio file with the typed backend command", async () => {
@@ -736,6 +828,11 @@ describe("VoiceToTextSettings", () => {
     expect(
       screen.getByText(/Enter でも文字起こしを開始できます。/),
     ).toBeInTheDocument();
+    expect(screen.getByText("準備中")).toHaveAttribute("aria-live", "polite");
+    expect(screen.getByLabelText("音声ファイルパス")).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Enter",
+    );
   });
 
   it("pastes the audio file path from the clipboard", async () => {
@@ -876,6 +973,56 @@ describe("VoiceToTextSettings", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("shows an error when the audio file path cannot be read from the clipboard", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Ctrl+Alt+V",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    Object.assign(navigator, {
+      clipboard: {
+        readText: vi.fn().mockRejectedValue(new Error("permission denied")),
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "音声ファイルパスを貼り付け" }),
+      );
+      await Promise.resolve();
+    });
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(
+      "クリップボードから貼り付けられませんでした",
+    );
+    expect(status).toHaveClass("status-toast-label--error");
   });
 
   it("trims the audio file path when leaving the field", async () => {

@@ -37,12 +37,15 @@ import type { TranscriptionResult } from "../types";
 const PASTE_STATUS_VISIBLE_MS = 2000;
 const COPY_ERROR_VISIBLE_MS = 5000;
 const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
+const CLIPBOARD_READ_ERROR_STATUS =
+  "クリップボードから貼り付けられませんでした";
 
 const getStatusLabelClass = (status: string) => {
   const isError =
     status.includes("失敗") ||
     status.includes("ありません") ||
-    status.includes("エラー");
+    status.includes("エラー") ||
+    status.includes("ませんでした");
   return `status-toast-label ${isError ? "status-toast-label--error" : ""}`;
 };
 
@@ -54,6 +57,7 @@ export const VoiceToTextSettings: React.FC = () => {
   } = useFeatureSettings("voiceToText");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyLoaded, setApiKeyLoaded] = useState(false);
+  const [apiKeySaveError, setApiKeySaveError] = useState("");
   const [audioFilePath, setAudioFilePath] = useState("");
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
@@ -91,8 +95,12 @@ export const VoiceToTextSettings: React.FC = () => {
   const saveApiKey = useCallback(async () => {
     try {
       await invoke("save_api_key", { service: "voice_to_text", key: apiKey });
+      setApiKeySaveError("");
     } catch (err) {
       console.error("Failed to save API key:", err);
+      setApiKeySaveError(
+        "APIキーの保存に失敗しました。もう一度お試しください。",
+      );
     }
   }, [apiKey]);
 
@@ -110,6 +118,8 @@ export const VoiceToTextSettings: React.FC = () => {
       setAudioFilePasteStatus("");
     } catch (err) {
       console.error("Failed to paste API key:", err);
+      setApiKeyPasteStatus(CLIPBOARD_READ_ERROR_STATUS);
+      setAudioFilePasteStatus("");
     } finally {
       const apiKeyInput = document.getElementById(
         "v2t-api-key-input",
@@ -311,6 +321,8 @@ export const VoiceToTextSettings: React.FC = () => {
       setApiKeyPasteStatus("");
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
+      setAudioFilePasteStatus(CLIPBOARD_READ_ERROR_STATUS);
+      setApiKeyPasteStatus("");
     } finally {
       const audioFileInput = document.getElementById(
         "v2t-audio-file-input",
@@ -474,6 +486,7 @@ export const VoiceToTextSettings: React.FC = () => {
                   onChange={(e) => {
                     clearTranscriptionOutput();
                     setApiKey(e.target.value);
+                    setApiKeySaveError("");
                     setApiKeyPasteStatus("");
                   }}
                   onBlur={saveApiKey}
@@ -516,6 +529,9 @@ export const VoiceToTextSettings: React.FC = () => {
                   </span>
                 )}
               </FieldRow>
+              {apiKeySaveError && (
+                <ErrorMessage>{apiKeySaveError}</ErrorMessage>
+              )}
             </Field>
 
             <div className="v2t-model-grid">
@@ -579,6 +595,7 @@ export const VoiceToTextSettings: React.FC = () => {
         <section
           className="v2t-workbench"
           aria-labelledby="v2t-workbench-title"
+          aria-busy={transcribing}
         >
           <div className="v2t-workbench__header">
             <div>
@@ -587,6 +604,7 @@ export const VoiceToTextSettings: React.FC = () => {
             </div>
             <span
               className={`v2t-readiness ${canTranscribe ? "is-ready" : ""}`}
+              aria-live="polite"
             >
               {canTranscribe ? "実行可能" : "準備中"}
             </span>
@@ -608,6 +626,7 @@ export const VoiceToTextSettings: React.FC = () => {
                   }}
                   onBlur={(e) => normalizeAudioFilePath(e.target.value)}
                   onKeyDown={handleAudioFilePathKeyDown}
+                  aria-keyshortcuts="Enter"
                   placeholder="例: /Users/me/audio.wav"
                 />
                 <Button

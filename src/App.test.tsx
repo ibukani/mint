@@ -72,12 +72,47 @@ describe("App Window Routing", () => {
       "aria-current",
       "page",
     );
+    expect(
+      screen.getByRole("button", { name: "一般設定" }),
+    ).toHaveAccessibleDescription("テーマと起動操作");
     expect(screen.getAllByText("一般設定").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("heading", { name: "一般設定" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "機能管理" })).toBeNull();
     expect(document.querySelector(".settings-save-status")).toBeInTheDocument();
+  });
+
+  it("announces the loading state while settings are being fetched", () => {
+    vi.mocked(invoke).mockReturnValue(new Promise(() => {}) as never);
+
+    render(<App />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("設定を読み込み中...");
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("lets the user retry when settings loading fails", async () => {
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke)
+      .mockRejectedValueOnce(new Error("settings unavailable"))
+      .mockResolvedValue(mockSettings as unknown as ReturnType<typeof invoke>);
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "設定を読み込めませんでした",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("設定の読み込みに失敗しました")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "再読み込み" }));
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    expect(
+      screen.queryByRole("heading", { name: "設定を読み込めませんでした" }),
+    ).toBeNull();
   });
 
   it("renders ClockOverlay when label=clock", async () => {

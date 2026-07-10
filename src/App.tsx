@@ -15,6 +15,7 @@ import {
   type SettingsTabId,
 } from "./core/navigation/settingsTabs";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
+import { Button } from "./design/components";
 import { AppShell } from "./design/layout";
 
 const saveStatusLabels: Record<SaveStatus, string> = {
@@ -60,7 +61,8 @@ const getInitialSettingsTab = (): SettingsTabId => {
 };
 
 const AppContent: React.FC = () => {
-  const { settings, loading, error, saveStatus, clearError } = useAppSettings();
+  const { settings, loading, error, saveStatus, clearError, reloadSettings } =
+    useAppSettings();
   const [label, setLabel] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     getInitialSettingsTab,
@@ -109,7 +111,16 @@ const AppContent: React.FC = () => {
   }, [activeTab]);
 
   if (loading) {
-    return <div className="app-loading">設定を読み込み中...</div>;
+    return (
+      <div
+        className="app-loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        設定を読み込み中...
+      </div>
+    );
   }
 
   // Overlay window routing via lookup table
@@ -121,6 +132,7 @@ const AppContent: React.FC = () => {
   // Main settings window
   const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab];
   const saveStatusLabel = saveStatusLabels[saveStatus];
+  const settingsLoadError = !settings && error;
 
   return (
     <>
@@ -143,7 +155,18 @@ const AppContent: React.FC = () => {
             {saveStatusIcons[saveStatus]}
             <span>{saveStatusLabel}</span>
           </div>
-          <ActiveTabComponent />
+          {settingsLoadError ? (
+            <section
+              className="app-error-state"
+              aria-labelledby="app-error-title"
+            >
+              <h2 id="app-error-title">設定を読み込めませんでした</h2>
+              <p>{error}</p>
+              <Button onClick={() => void reloadSettings()}>再読み込み</Button>
+            </section>
+          ) : (
+            <ActiveTabComponent />
+          )}
         </AppShell>
       </SettingsNavigationProvider>
     </>

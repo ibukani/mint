@@ -41,13 +41,24 @@ export const Sidebar = <TTabId extends string>({
               activeTab === tab.id ? "app-sidebar__button--active" : ""
             }`}
             aria-label={tab.label}
+            aria-describedby={
+              tab.description
+                ? `app-sidebar-tab-${tab.id}-description`
+                : undefined
+            }
             aria-current={activeTab === tab.id ? "page" : undefined}
             onClick={() => onTabChange(tab.id)}
           >
-            <span className="app-sidebar__button-icon">{tab.icon}</span>
+            <span className="app-sidebar__button-icon" aria-hidden="true">
+              {tab.icon}
+            </span>
             <span className="app-sidebar__button-copy">
               <span>{tab.label}</span>
-              {tab.description && <small>{tab.description}</small>}
+              {tab.description && (
+                <small id={`app-sidebar-tab-${tab.id}-description`}>
+                  {tab.description}
+                </small>
+              )}
             </span>
           </button>
         ))}

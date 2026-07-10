@@ -28,6 +28,7 @@ interface AppSettingsContextType {
   saveStatus: SaveStatus;
   shortcutErrors: Record<string, string>;
   clearError: () => void;
+  reloadSettings: () => Promise<void>;
   updateSettings: (
     newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
   ) => void;
@@ -60,20 +61,23 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceRef = useRef<number>(0);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const loaded = await invoke<AppSettings>("load_settings");
-        setSettings(loaded);
-        settingsRef.current = loaded;
-      } catch (err) {
-        console.error("Failed to load settings:", err);
-        setError("設定の読み込みに失敗しました");
-      } finally {
-        setLoading(false);
-      }
+  const reloadSettings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const loaded = await invoke<AppSettings>("load_settings");
+      setSettings(loaded);
+      settingsRef.current = loaded;
+    } catch (err) {
+      console.error("Failed to load settings:", err);
+      setError("設定の読み込みに失敗しました");
+    } finally {
+      setLoading(false);
     }
-    load();
+  }, []);
+
+  useEffect(() => {
+    void reloadSettings();
 
     const unlistenPromise = listen("settings-changed", async () => {
       try {
@@ -93,7 +97,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
     };
-  }, []);
+  }, [reloadSettings]);
 
   const parseAndSetErrors = useCallback((errorMessage: string) => {
     const newErrors: Record<string, string> = {};
@@ -293,6 +297,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         saveStatus,
         shortcutErrors,
         clearError,
+        reloadSettings,
         updateSettings,
       }}
     >
