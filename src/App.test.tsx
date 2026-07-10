@@ -28,6 +28,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 describe("App Window Routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     vi.mocked(getCurrentWindow).mockReturnValue({
       label: "main",
       hide: vi.fn().mockResolvedValue(undefined),
@@ -193,5 +194,38 @@ describe("App Window Routing", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();
     });
+  });
+
+  it("restores the last selected settings tab", async () => {
+    window.localStorage.setItem("mint.active-settings-tab", "clock");
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "時計オーバーレイ設定" });
+
+    expect(
+      screen.getByRole("button", { name: "時計オーバーレイ" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("prefers an explicit tab query over the restored tab", async () => {
+    window.localStorage.setItem("mint.active-settings-tab", "clock");
+    window.history.pushState({}, "", "?tab=voiceToText");
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "音声入力設定" });
+
+    expect(screen.getByRole("button", { name: "音声入力" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    window.history.pushState({}, "", "/");
   });
 });

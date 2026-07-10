@@ -41,11 +41,22 @@ const overlayWindowTitles: Record<string, string> = {
   clock: "時計オーバーレイ",
 };
 
+const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
+
 const getInitialSettingsTab = (): SettingsTabId => {
   const requestedTab = new URLSearchParams(window.location.search).get("tab");
-  return SETTINGS_TABS.some((tab) => tab.id === requestedTab)
-    ? (requestedTab as SettingsTabId)
-    : "general";
+  if (SETTINGS_TABS.some((tab) => tab.id === requestedTab)) {
+    return requestedTab as SettingsTabId;
+  }
+
+  try {
+    const storedTab = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    return SETTINGS_TABS.some((tab) => tab.id === storedTab)
+      ? (storedTab as SettingsTabId)
+      : "general";
+  } catch {
+    return "general";
+  }
 };
 
 const AppContent: React.FC = () => {
@@ -64,6 +75,14 @@ const AppContent: React.FC = () => {
       document.documentElement.dataset.theme = settings.theme;
     }
   }, [settings]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    } catch {
+      // Ignore storage failures so settings navigation remains usable.
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const tabLabel =
