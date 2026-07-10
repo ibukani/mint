@@ -1,11 +1,16 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, X } from "lucide-react";
 import type React from "react";
 
 interface TitleBarProps {
   title?: string;
+  contextLabel?: string;
 }
 
-export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
+export const TitleBar: React.FC<TitleBarProps> = ({
+  title = "mint",
+  contextLabel = "設定",
+}) => {
   const handleMinimize = async () => {
     try {
       const win = getCurrentWindow();
@@ -53,11 +58,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
       onMouseDown={handleMouseDown}
     >
       <div className="app-titlebar__logo" data-tauri-drag-region>
-        <span className="app-titlebar__icon" data-tauri-drag-region>
-          🍃
-        </span>
         <span className="app-titlebar__text" data-tauri-drag-region>
           {title}
+        </span>
+        <span className="app-titlebar__separator" aria-hidden="true">
+          /
+        </span>
+        <span className="app-titlebar__context" data-tauri-drag-region>
+          {contextLabel}
         </span>
       </div>
       <div className="app-titlebar__controls">
@@ -66,35 +74,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
           className="app-titlebar__button app-titlebar__button--minimize"
           onClick={handleMinimize}
           aria-label="最小化"
+          title="最小化"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-          >
-            <line x1="2.5" y1="6" x2="9.5" y2="6" />
-          </svg>
+          <Minus size={14} aria-hidden="true" />
         </button>
         <button
           type="button"
           className="app-titlebar__button app-titlebar__button--close"
           onClick={handleClose}
           aria-label="閉じる"
+          title="閉じる"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-          >
-            <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
-            <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" />
-          </svg>
+          <X size={14} aria-hidden="true" />
         </button>
       </div>
     </div>

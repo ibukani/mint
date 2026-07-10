@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { Button } from "./Button";
 import { Field } from "./Field";
+import { FieldRow } from "./FieldRow";
 import { TextInput } from "./TextInput";
 
 describe("Field", () => {
@@ -27,6 +29,27 @@ describe("Field", () => {
     expect(screen.getByText("入力エラー")).toHaveAttribute(
       "id",
       "sample-input-error",
+    );
+  });
+
+  it("connects help and error text through a compound field row", () => {
+    render(
+      <Field
+        id="compound-input"
+        label="APIキー"
+        helpText="安全に保存されます"
+        error="APIキーが必要です"
+      >
+        <FieldRow>
+          <TextInput id="compound-input" type="password" value="" readOnly />
+          <Button aria-label="表示">表示</Button>
+        </FieldRow>
+      </Field>,
+    );
+
+    expect(screen.getByLabelText("APIキー")).toHaveAttribute(
+      "aria-describedby",
+      "compound-input-error compound-input-help",
     );
   });
 });

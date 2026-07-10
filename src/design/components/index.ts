@@ -1,6 +1,7 @@
 export { Button } from "./Button";
 export { ErrorMessage } from "./ErrorMessage";
 export { FeatureCard } from "./FeatureCard";
+export { FeatureSettingsHeader } from "./FeatureSettingsHeader";
 export { Field } from "./Field";
 export { FieldRow } from "./FieldRow";
 export { Panel } from "./Panel";

@@ -16,16 +16,19 @@
         "title": "mint",
         "width": 900,
         "height": 650,
+        "minWidth": 760,
+        "minHeight": 560,
         "decorations": false,
         "transparent": false,
         "shadow": true,
-        "maximizable": false
+        "maximizable": false,
+        "resizable": true
       },
       {
         "label": "clock",
         "title": "Clock Overlay",
-        "width": 300,
-        "height": 110,
+        "width": 420,
+        "height": 168,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,

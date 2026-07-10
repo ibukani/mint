@@ -106,6 +106,7 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
   };
 
   const displayValue = value || "なし";
+  const shortcutParts = value ? value.split("+") : [];
 
   const classes = [
     "design-control",
@@ -118,6 +119,24 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
 
   return (
     <div className="shortcut-input-wrapper">
+      <span
+        className={`shortcut-input-display ${isRecording ? "shortcut-input-display--recording" : ""}`}
+        aria-hidden="true"
+      >
+        {isRecording ? (
+          <span className="shortcut-input-recording-label">
+            キーの組み合わせを入力
+          </span>
+        ) : shortcutParts.length > 0 ? (
+          shortcutParts.map((part) => (
+            <kbd className="shortcut-input-key" key={part}>
+              {part === "CommandOrControl" ? "⌘ / Ctrl" : part}
+            </kbd>
+          ))
+        ) : (
+          <span className="shortcut-input-empty">なし</span>
+        )}
+      </span>
       <input
         type="text"
         id={id}

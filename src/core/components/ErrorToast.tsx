@@ -1,3 +1,4 @@
+import { CircleAlert, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -83,6 +84,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
         }
       }}
     >
+      <CircleAlert className="error-toast__icon" size={18} aria-hidden="true" />
       <div className="error-toast-body">
         <span className="error-toast-message">{message}</span>
         <span className="error-toast-hint">Esc でも閉じられます。</span>
@@ -94,7 +96,7 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
         aria-label="エラー通知を閉じる"
         onClick={onDismiss}
       >
-        ×
+        <X size={15} aria-hidden="true" />
       </button>
     </div>
   );

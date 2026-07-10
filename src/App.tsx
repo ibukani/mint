@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Check, CircleAlert, LoaderCircle } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { ErrorToast } from "./core/components/ErrorToast";
@@ -14,6 +15,7 @@ import {
   type SettingsTabId,
 } from "./core/navigation/settingsTabs";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
+import { Button } from "./design/components";
 import { AppShell } from "./design/layout";
 
 const saveStatusLabels: Record<SaveStatus, string> = {
@@ -27,95 +29,63 @@ const saveStatusLabels: Record<SaveStatus, string> = {
 const saveStatusIcons: Record<SaveStatus, React.ReactNode> = {
   idle: null,
   pending: (
-    <svg
-      className="spinner-icon"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        strokeDasharray="60"
-        strokeDashoffset="20"
-      />
-    </svg>
+    <LoaderCircle className="spinner-icon" size={14} aria-hidden="true" />
   ),
   saving: (
-    <svg
-      className="spinner-icon"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="10"
-        strokeDasharray="60"
-        strokeDashoffset="20"
-      />
-    </svg>
+    <LoaderCircle className="spinner-icon" size={14} aria-hidden="true" />
   ),
-  saved: (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  ),
-  error: (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ marginRight: "4px" }}
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" x2="12" y1="8" y2="12" />
-      <line x1="12" x2="12.01" y1="16" y2="16" />
-    </svg>
-  ),
+  saved: <Check size={14} aria-hidden="true" />,
+  error: <CircleAlert size={14} aria-hidden="true" />,
+};
+
+const saveSidebarLabels: Record<SaveStatus, string> = {
+  idle: "設定は自動保存されます",
+  pending: "変更を保存待ち",
+  saving: "変更を保存中",
+  saved: "変更を保存しました",
+  error: "保存に失敗しました",
+};
+
+const saveSidebarTones: Record<
+  SaveStatus,
+  "neutral" | "pending" | "success" | "error"
+> = {
+  idle: "neutral",
+  pending: "pending",
+  saving: "pending",
+  saved: "success",
+  error: "error",
 };
 
 const overlayWindowTitles: Record<string, string> = {
   clock: "時計オーバーレイ",
 };
 
+const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
+
+const getInitialSettingsTab = (): SettingsTabId => {
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  if (SETTINGS_TABS.some((tab) => tab.id === requestedTab)) {
+    return requestedTab as SettingsTabId;
+  }
+
+  try {
+    const storedTab = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    return SETTINGS_TABS.some((tab) => tab.id === storedTab)
+      ? (storedTab as SettingsTabId)
+      : "general";
+  } catch {
+    return "general";
+  }
+};
+
 const AppContent: React.FC = () => {
-  const { settings, loading, error, saveStatus, clearError } = useAppSettings();
+  const { settings, loading, error, saveStatus, clearError, reloadSettings } =
+    useAppSettings();
   const [label, setLabel] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(
+    getInitialSettingsTab,
+  );
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);
@@ -126,6 +96,14 @@ const AppContent: React.FC = () => {
       document.documentElement.dataset.theme = settings.theme;
     }
   }, [settings]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    } catch {
+      // Ignore storage failures so settings navigation remains usable.
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const tabLabel =
@@ -152,7 +130,22 @@ const AppContent: React.FC = () => {
   }, [activeTab]);
 
   if (loading) {
-    return <div className="app-loading">設定を読み込み中...</div>;
+    return (
+      <div
+        className="app-loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div className="app-loading__visual" aria-hidden="true">
+          <LoaderCircle className="spinner-icon" size={20} />
+        </div>
+        <p className="app-loading__message">
+          <strong>mintを準備しています</strong>
+          <span>設定を読み込み中...</span>
+        </p>
+      </div>
+    );
   }
 
   // Overlay window routing via lookup table
@@ -164,6 +157,7 @@ const AppContent: React.FC = () => {
   // Main settings window
   const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab];
   const saveStatusLabel = saveStatusLabels[saveStatus];
+  const settingsLoadError = !settings && error;
 
   return (
     <>
@@ -174,9 +168,14 @@ const AppContent: React.FC = () => {
       >
         <AppShell
           title="mint"
+          contextLabel={
+            SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定"
+          }
           tabs={SETTINGS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          statusLabel={saveSidebarLabels[saveStatus]}
+          statusTone={saveSidebarTones[saveStatus]}
         >
           <div
             className={`settings-save-status settings-save-status--${saveStatus}`}
@@ -186,7 +185,21 @@ const AppContent: React.FC = () => {
             {saveStatusIcons[saveStatus]}
             <span>{saveStatusLabel}</span>
           </div>
-          <ActiveTabComponent />
+          {settingsLoadError ? (
+            <section
+              className="app-error-state"
+              aria-labelledby="app-error-title"
+            >
+              <div className="app-error-state__icon" aria-hidden="true">
+                <CircleAlert size={20} />
+              </div>
+              <h2 id="app-error-title">設定を読み込めませんでした</h2>
+              <p>{error}</p>
+              <Button onClick={() => void reloadSettings()}>再読み込み</Button>
+            </section>
+          ) : (
+            <ActiveTabComponent />
+          )}
         </AppShell>
       </SettingsNavigationProvider>
     </>

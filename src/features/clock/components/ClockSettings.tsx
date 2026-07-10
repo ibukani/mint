@@ -1,8 +1,10 @@
+import { Minus, Palette, Plus, TimerReset } from "lucide-react";
 import type React from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
   Button,
+  FeatureSettingsHeader,
   Field,
   FieldRow,
   Select,
@@ -17,15 +19,15 @@ import {
   CLOCK_AUTO_HIDE_MIN_SECONDS,
   normalizeAutoHideSeconds,
 } from "../settings";
-import { TickingClock } from "./ClockOverlay";
+import { getClockDimensions, TickingClock } from "./ClockOverlay";
 
 const PRESET_COLORS = [
-  { value: "#818cf8", label: "インディゴ (Indigo)" },
-  { value: "#c084fc", label: "バイオレット (Violet)" },
-  { value: "#38bdf8", label: "シアン (Cyan)" },
-  { value: "#34d399", label: "エメラルド (Emerald)" },
-  { value: "#f43f5e", label: "ローズ (Rose)" },
-  { value: "#ffffff", label: "ホワイト (White)" },
+  { value: "#818cf8", label: "インディゴ" },
+  { value: "#38bdf8", label: "スカイ" },
+  { value: "#34d399", label: "ミント" },
+  { value: "#fbbf24", label: "アンバー" },
+  { value: "#fb7185", label: "ローズ" },
+  { value: "#f8fafc", label: "ホワイト" },
 ] as const;
 
 export const ClockSettings: React.FC = () => {
@@ -38,18 +40,11 @@ export const ClockSettings: React.FC = () => {
   if (!clock) return null;
 
   const resetClockSettings = () => {
-    handleChange("enabled", defaultAppSettings.clock.enabled);
-    handleChange("shortcut", defaultAppSettings.clock.shortcut);
-    handleChange("autoHideSeconds", defaultAppSettings.clock.autoHideSeconds);
-    handleChange("fontSize", defaultAppSettings.clock.fontSize);
-    handleChange("showDate", defaultAppSettings.clock.showDate);
-    handleChange("showSeconds", defaultAppSettings.clock.showSeconds);
-    handleChange("clockColor", defaultAppSettings.clock.clockColor);
-    handleChange("blinkColon", defaultAppSettings.clock.blinkColon);
-    handleChange("sizePercent", defaultAppSettings.clock.sizePercent);
-    handleChange("displayMode", defaultAppSettings.clock.displayMode);
-    handleChange("hourFormat", defaultAppSettings.clock.hourFormat);
-    handleChange("glowEffect", defaultAppSettings.clock.glowEffect);
+    for (const key of Object.keys(defaultAppSettings.clock) as Array<
+      keyof typeof defaultAppSettings.clock
+    >) {
+      handleChange(key, defaultAppSettings.clock[key]);
+    }
     const shortcutInput = document.getElementById(
       "clock-shortcut-input",
     ) as HTMLInputElement | null;
@@ -65,273 +60,333 @@ export const ClockSettings: React.FC = () => {
         Math.min(CLOCK_AUTO_HIDE_MAX_SECONDS, clock.autoHideSeconds + delta),
       ),
     );
-    const autoHideSecondsInput = document.getElementById(
+    const input = document.getElementById(
       "clock-hide-seconds-input",
     ) as HTMLInputElement | null;
-    autoHideSecondsInput?.focus();
-    autoHideSecondsInput?.select();
+    input?.focus();
+    input?.select();
   };
+
+  const previewDimensions = getClockDimensions(
+    clock.displayMode,
+    clock.showDate,
+  );
 
   return (
     <SettingsSection
       title="時計オーバーレイ設定"
-      description="ショートカットキーを押した際に画面上に表示される時計のカスタマイズを行います。"
+      description="呼び出した瞬間に時刻を確認できる、軽量なデスクトップ時計です。"
     >
-      <div className="feature-settings-toolbar">
-        <div className="feature-settings-actions">
-          <Button variant="ghost" onClick={resetClockSettings}>
-            デフォルトに戻す
-          </Button>
-        </div>
-      </div>
+      <FeatureSettingsHeader
+        switchId="clock-enabled-checkbox"
+        label="時計オーバーレイ"
+        enabled={clock.enabled}
+        onChange={(event) => handleChange("enabled", event.target.checked)}
+        onReset={resetClockSettings}
+        ariaLabel="時計オーバーレイを有効にする"
+      />
 
-      <Field
-        id="clock-enabled-checkbox"
-        label="この機能を有効にする (Enable Feature)"
-        orientation="inline"
-      >
-        <Switch
-          id="clock-enabled-checkbox"
-          checked={clock.enabled}
-          onChange={(e) => handleChange("enabled", e.target.checked)}
-        />
-      </Field>
-
-      <Field
-        id="clock-shortcut-input"
-        label="起動ショートカットキー"
-        error={shortcutError}
-        helpText="入力欄をクリックしてキーを押すことでショートカットキーを変更できます。"
-      >
-        <ShortcutInput
-          id="clock-shortcut-input"
-          invalid={Boolean(shortcutError)}
-          value={clock.shortcut}
-          onChange={(value) => handleChange("shortcut", value)}
-          placeholderText="例: Ctrl+Alt+C"
-        />
-      </Field>
-
-      <Field
-        id="clock-hide-seconds-input"
-        label="表示秒数 (0でトグル表示)"
-        helpText="時計が表示されてから自動で消えるまでの秒数です。0に設定すると再度ショートカットを押すまで常時表示されます。"
-      >
-        <FieldRow>
-          <TextInput
-            id="clock-hide-seconds-input"
-            type="number"
-            min={String(CLOCK_AUTO_HIDE_MIN_SECONDS)}
-            max={String(CLOCK_AUTO_HIDE_MAX_SECONDS)}
-            controlSize="number"
-            value={clock.autoHideSeconds}
-            onChange={(e) =>
-              handleChange(
-                "autoHideSeconds",
-                normalizeAutoHideSeconds(e.target.value),
-              )
-            }
-          />
-          <Button
-            variant="ghost"
-            onClick={() => changeAutoHideSeconds(-1)}
-            disabled={clock.autoHideSeconds <= CLOCK_AUTO_HIDE_MIN_SECONDS}
-            aria-label="表示秒数を1秒減らす"
+      <div className="clock-settings-workspace">
+        <div className="clock-settings-controls">
+          <section
+            className="clock-control-group"
+            aria-labelledby="clock-behavior-title"
           >
-            -
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => changeAutoHideSeconds(1)}
-            disabled={clock.autoHideSeconds >= CLOCK_AUTO_HIDE_MAX_SECONDS}
-            aria-label="表示秒数を1秒増やす"
-          >
-            +
-          </Button>
-          <UnitLabel>秒</UnitLabel>
-        </FieldRow>
-      </Field>
-
-      <Field id="clock-font-size-select" label="フォントサイズ">
-        <Select
-          id="clock-font-size-select"
-          value={clock.fontSize}
-          onChange={(e) => handleChange("fontSize", e.target.value)}
-        >
-          <option value="1.2rem">小 (1.2rem)</option>
-          <option value="1.5rem">中 (1.5rem)</option>
-          <option value="2rem">大 (2rem)</option>
-          <option value="2.5rem">特大 (2.5rem)</option>
-        </Select>
-      </Field>
-
-      <Field id="clock-display-mode-select" label="表示モード">
-        <Select
-          id="clock-display-mode-select"
-          value={clock.displayMode}
-          onChange={(e) =>
-            handleChange("displayMode", e.target.value as "digital" | "analog")
-          }
-        >
-          <option value="digital">デジタル (Digital)</option>
-          <option value="analog">アナログ (Analog)</option>
-        </Select>
-      </Field>
-
-      {clock.displayMode === "digital" && (
-        <Field id="clock-hour-format-select" label="時間表記 (デジタル時のみ)">
-          <Select
-            id="clock-hour-format-select"
-            value={clock.hourFormat}
-            onChange={(e) =>
-              handleChange("hourFormat", e.target.value as "12h" | "24h")
-            }
-          >
-            <option value="24h">24時間表記</option>
-            <option value="12h">12時間表記 (AM/PM)</option>
-          </Select>
-        </Field>
-      )}
-
-      <Field
-        id="clock-glow-effect-checkbox"
-        label="ネオングロー効果を有効にする"
-        orientation="inline"
-        helpText="時計の文字や針に発光効果（Glow）を適用します。"
-      >
-        <Switch
-          id="clock-glow-effect-checkbox"
-          checked={clock.glowEffect}
-          onChange={(e) => handleChange("glowEffect", e.target.checked)}
-        />
-      </Field>
-
-      <Field
-        id="clock-show-date-checkbox"
-        label="年月日と曜日を表示する"
-        orientation="inline"
-        helpText="時計の下に年月日と曜日を表示します。"
-      >
-        <Switch
-          id="clock-show-date-checkbox"
-          checked={clock.showDate}
-          onChange={(e) => handleChange("showDate", e.target.checked)}
-        />
-      </Field>
-
-      <Field
-        id="clock-show-seconds-checkbox"
-        label="秒数を表示する"
-        orientation="inline"
-        helpText="時刻表示に秒数を含めます。"
-      >
-        <Switch
-          id="clock-show-seconds-checkbox"
-          checked={clock.showSeconds}
-          onChange={(e) => handleChange("showSeconds", e.target.checked)}
-        />
-      </Field>
-
-      <Field
-        id="clock-blink-colon-checkbox"
-        label="コロンを点滅させる"
-        orientation="inline"
-        helpText="時間と分の間のコロン「:」を1秒おきに点滅させます。"
-      >
-        <Switch
-          id="clock-blink-colon-checkbox"
-          checked={clock.blinkColon}
-          onChange={(e) => handleChange("blinkColon", e.target.checked)}
-        />
-      </Field>
-
-      <Field
-        id="clock-size-percent-input"
-        label="時計のサイズ倍率"
-        helpText="時計オーバーレイの表示倍率（50% 〜 250%、推奨: 100%）を指定します。倍率に応じて文字の大きさも自動的にスケールします。"
-      >
-        <FieldRow>
-          <TextInput
-            id="clock-size-percent-input"
-            type="number"
-            min="50"
-            max="250"
-            controlSize="number"
-            value={clock.sizePercent}
-            onChange={(e) =>
-              handleChange(
-                "sizePercent",
-                Math.max(
-                  50,
-                  Math.min(250, Number.parseInt(e.target.value, 10) || 100),
-                ),
-              )
-            }
-          />
-          <UnitLabel>%</UnitLabel>
-          <input
-            type="range"
-            min="50"
-            max="250"
-            step="5"
-            value={clock.sizePercent}
-            onChange={(e) =>
-              handleChange("sizePercent", Number.parseInt(e.target.value, 10))
-            }
-            style={{ flex: 1, margin: "0 var(--space-3)" }}
-          />
-        </FieldRow>
-      </Field>
-
-      <Field id="clock-color-picker" label="時計のテーマカラー">
-        <div className="color-picker-palette">
-          {PRESET_COLORS.map((color) => (
-            <button
-              key={color.value}
-              type="button"
-              className={`color-picker-badge ${
-                clock.clockColor === color.value ? "is-active" : ""
-              }`}
-              style={{ backgroundColor: color.value }}
-              title={color.label}
-              onClick={() => handleChange("clockColor", color.value)}
-              aria-label={color.label}
-            />
-          ))}
-        </div>
-      </Field>
-
-      <div className="clock-preview-section">
-        <h3 className="clock-preview-title">ライブプレビュー (Live Preview)</h3>
-        <div className="clock-preview-card-wrapper">
-          <div
-            className="overlay-card is-visible"
-            style={
-              {
-                position: "relative",
-                width: `${(clock.displayMode === "analog" ? 240 : 300) * (clock.sizePercent / 100)}px`,
-                height: `${(clock.displayMode === "analog" ? (clock.showDate ? 250 : 190) : 110) * (clock.sizePercent / 100)}px`,
-                margin: 0,
-                "--overlay-font-size": clock.fontSize,
-                "--clock-accent-color": clock.clockColor,
-                "--clock-size-scale": clock.sizePercent / 100,
-                transition: "width 0.3s ease, height 0.3s ease",
-              } as React.CSSProperties
-            }
-          >
-            <div className="overlay-clock-content">
-              <TickingClock
-                showDate={clock.showDate}
-                showSeconds={clock.showSeconds}
-                blinkColon={clock.blinkColon}
-                displayMode={clock.displayMode}
-                hourFormat={clock.hourFormat}
-                glowEffect={clock.glowEffect}
-                clockColor={clock.clockColor}
+            <div className="clock-control-group__heading">
+              <TimerReset size={17} aria-hidden="true" />
+              <div>
+                <h3 id="clock-behavior-title">呼び出し</h3>
+                <p>表示するキーと閉じるタイミング</p>
+              </div>
+            </div>
+            <Field
+              id="clock-shortcut-input"
+              label="起動ショートカットキー"
+              error={shortcutError}
+              helpText="入力欄を選択して、使いたいキーの組み合わせを押します。"
+            >
+              <ShortcutInput
+                id="clock-shortcut-input"
+                invalid={Boolean(shortcutError)}
+                value={clock.shortcut}
+                onChange={(value) => handleChange("shortcut", value)}
+                placeholderText="例: Ctrl+Alt+C"
               />
+            </Field>
+            <Field
+              id="clock-hide-seconds-input"
+              label="表示秒数 (0でトグル表示)"
+              helpText="0秒では、もう一度ショートカットを押すまで表示します。"
+            >
+              <FieldRow>
+                <Button
+                  variant="ghost"
+                  className="clock-step-button"
+                  onClick={() => changeAutoHideSeconds(-1)}
+                  disabled={
+                    clock.autoHideSeconds <= CLOCK_AUTO_HIDE_MIN_SECONDS
+                  }
+                  aria-label="表示秒数を1秒減らす"
+                >
+                  <Minus size={16} aria-hidden="true" />
+                </Button>
+                <TextInput
+                  id="clock-hide-seconds-input"
+                  type="number"
+                  min={String(CLOCK_AUTO_HIDE_MIN_SECONDS)}
+                  max={String(CLOCK_AUTO_HIDE_MAX_SECONDS)}
+                  controlSize="number"
+                  value={clock.autoHideSeconds}
+                  onChange={(event) =>
+                    handleChange(
+                      "autoHideSeconds",
+                      normalizeAutoHideSeconds(event.target.value),
+                    )
+                  }
+                />
+                <UnitLabel>秒</UnitLabel>
+                <Button
+                  variant="ghost"
+                  className="clock-step-button"
+                  onClick={() => changeAutoHideSeconds(1)}
+                  disabled={
+                    clock.autoHideSeconds >= CLOCK_AUTO_HIDE_MAX_SECONDS
+                  }
+                  aria-label="表示秒数を1秒増やす"
+                >
+                  <Plus size={16} aria-hidden="true" />
+                </Button>
+              </FieldRow>
+            </Field>
+          </section>
+
+          <section
+            className="clock-control-group"
+            aria-labelledby="clock-style-title"
+          >
+            <div className="clock-control-group__heading">
+              <Palette size={17} aria-hidden="true" />
+              <div>
+                <h3 id="clock-style-title">表示スタイル</h3>
+                <p>文字盤、サイズ、アクセントカラー</p>
+              </div>
+            </div>
+            <div className="clock-field-grid">
+              <Field id="clock-display-mode-select" label="表示モード">
+                <Select
+                  id="clock-display-mode-select"
+                  value={clock.displayMode}
+                  onChange={(event) =>
+                    handleChange(
+                      "displayMode",
+                      event.target.value as "digital" | "analog",
+                    )
+                  }
+                >
+                  <option value="digital">デジタル</option>
+                  <option value="analog">アナログ</option>
+                </Select>
+              </Field>
+              <Field id="clock-font-size-select" label="フォントサイズ">
+                <Select
+                  id="clock-font-size-select"
+                  value={clock.fontSize}
+                  onChange={(event) =>
+                    handleChange("fontSize", event.target.value)
+                  }
+                >
+                  <option value="1.2rem">小</option>
+                  <option value="1.5rem">標準</option>
+                  <option value="2rem">大</option>
+                  <option value="2.5rem">特大</option>
+                </Select>
+              </Field>
+              {clock.displayMode === "digital" && (
+                <Field
+                  id="clock-hour-format-select"
+                  label="時間表記 (デジタル時のみ)"
+                >
+                  <Select
+                    id="clock-hour-format-select"
+                    value={clock.hourFormat}
+                    onChange={(event) =>
+                      handleChange(
+                        "hourFormat",
+                        event.target.value as "12h" | "24h",
+                      )
+                    }
+                  >
+                    <option value="24h">24時間</option>
+                    <option value="12h">12時間（AM / PM）</option>
+                  </Select>
+                </Field>
+              )}
+            </div>
+
+            <Field id="clock-size-percent-input" label="時計のサイズ倍率">
+              <div className="clock-range-control">
+                <input
+                  className="clock-range"
+                  type="range"
+                  min="50"
+                  max="250"
+                  step="5"
+                  value={clock.sizePercent}
+                  onChange={(event) =>
+                    handleChange(
+                      "sizePercent",
+                      Number.parseInt(event.target.value, 10),
+                    )
+                  }
+                  aria-label="時計サイズスライダー"
+                />
+                <TextInput
+                  id="clock-size-percent-input"
+                  type="number"
+                  min="50"
+                  max="250"
+                  controlSize="number"
+                  value={clock.sizePercent}
+                  onChange={(event) =>
+                    handleChange(
+                      "sizePercent",
+                      Math.max(
+                        50,
+                        Math.min(
+                          250,
+                          Number.parseInt(event.target.value, 10) || 100,
+                        ),
+                      ),
+                    )
+                  }
+                />
+                <UnitLabel>%</UnitLabel>
+              </div>
+            </Field>
+
+            <Field id="clock-color-picker" label="時計のテーマカラー">
+              <div className="color-picker-palette">
+                {PRESET_COLORS.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    className={`color-picker-badge ${
+                      clock.clockColor === color.value ? "is-active" : ""
+                    }`}
+                    style={
+                      { "--swatch-color": color.value } as React.CSSProperties
+                    }
+                    title={color.label}
+                    onClick={() => handleChange("clockColor", color.value)}
+                    aria-label={color.label}
+                    aria-pressed={clock.clockColor === color.value}
+                  />
+                ))}
+              </div>
+            </Field>
+
+            <div className="clock-toggle-grid">
+              <Field
+                id="clock-show-date-checkbox"
+                label="年月日と曜日を表示する"
+                orientation="inline"
+              >
+                <Switch
+                  id="clock-show-date-checkbox"
+                  checked={clock.showDate}
+                  onChange={(event) =>
+                    handleChange("showDate", event.target.checked)
+                  }
+                />
+              </Field>
+              <Field
+                id="clock-show-seconds-checkbox"
+                label="秒数を表示する"
+                orientation="inline"
+              >
+                <Switch
+                  id="clock-show-seconds-checkbox"
+                  checked={clock.showSeconds}
+                  onChange={(event) =>
+                    handleChange("showSeconds", event.target.checked)
+                  }
+                />
+              </Field>
+              <Field
+                id="clock-blink-colon-checkbox"
+                label="コロンを点滅させる"
+                orientation="inline"
+              >
+                <Switch
+                  id="clock-blink-colon-checkbox"
+                  checked={clock.blinkColon}
+                  onChange={(event) =>
+                    handleChange("blinkColon", event.target.checked)
+                  }
+                />
+              </Field>
+              <Field
+                id="clock-glow-effect-checkbox"
+                label="ネオングロー効果を有効にする"
+                orientation="inline"
+              >
+                <Switch
+                  id="clock-glow-effect-checkbox"
+                  checked={clock.glowEffect}
+                  onChange={(event) =>
+                    handleChange("glowEffect", event.target.checked)
+                  }
+                />
+              </Field>
+            </div>
+          </section>
+        </div>
+
+        <aside
+          className="clock-preview-panel"
+          aria-label="時計のライブプレビュー"
+        >
+          <div className="clock-preview-header">
+            <div>
+              <span className="clock-preview-kicker">ライブプレビュー</span>
+              <h3>
+                {clock.displayMode === "digital"
+                  ? "デジタル時計"
+                  : "アナログ時計"}
+              </h3>
+            </div>
+            <span className="clock-preview-scale">{clock.sizePercent}%</span>
+          </div>
+          <div className="clock-preview-stage">
+            <div
+              className={`overlay-card clock-preview-card overlay-card--${clock.displayMode} is-visible`}
+              style={
+                {
+                  "--preview-width": `${previewDimensions.width}px`,
+                  "--preview-height": `${previewDimensions.height}px`,
+                  "--overlay-font-size": clock.fontSize,
+                  "--clock-accent-color": clock.clockColor,
+                  "--clock-size-scale": Math.min(clock.sizePercent / 100, 1.15),
+                } as React.CSSProperties
+              }
+            >
+              <div className="overlay-clock-content">
+                <TickingClock
+                  showDate={clock.showDate}
+                  showSeconds={clock.showSeconds}
+                  blinkColon={clock.blinkColon}
+                  displayMode={clock.displayMode}
+                  hourFormat={clock.hourFormat}
+                  glowEffect={clock.glowEffect}
+                  clockColor={clock.clockColor}
+                />
+              </div>
             </div>
           </div>
-        </div>
+          <p className="clock-preview-note">
+            変更は即座に反映され、自動で保存されます。
+          </p>
+        </aside>
       </div>
     </SettingsSection>
   );

@@ -28,6 +28,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 describe("App Window Routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     vi.mocked(getCurrentWindow).mockReturnValue({
       label: "main",
       hide: vi.fn().mockResolvedValue(undefined),
@@ -71,12 +72,47 @@ describe("App Window Routing", () => {
       "aria-current",
       "page",
     );
+    expect(
+      screen.getByRole("button", { name: "一般設定" }),
+    ).toHaveAccessibleDescription("テーマと起動操作");
     expect(screen.getAllByText("一般設定").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("heading", { name: "一般設定" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "機能管理" })).toBeNull();
     expect(document.querySelector(".settings-save-status")).toBeInTheDocument();
+  });
+
+  it("announces the loading state while settings are being fetched", () => {
+    vi.mocked(invoke).mockReturnValue(new Promise(() => {}) as never);
+
+    render(<App />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("設定を読み込み中...");
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("lets the user retry when settings loading fails", async () => {
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke)
+      .mockRejectedValueOnce(new Error("settings unavailable"))
+      .mockResolvedValue(mockSettings as unknown as ReturnType<typeof invoke>);
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "設定を読み込めませんでした",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("設定の読み込みに失敗しました")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "再読み込み" }));
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    expect(
+      screen.queryByRole("heading", { name: "設定を読み込めませんでした" }),
+    ).toBeNull();
   });
 
   it("renders ClockOverlay when label=clock", async () => {
@@ -109,7 +145,9 @@ describe("App Window Routing", () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText("2026年7月9日")).toBeInTheDocument();
+      expect(document.querySelector(".digital-clock__date")).toHaveTextContent(
+        "2026年7月9日",
+      );
       expect(screen.getByText("木曜日")).toBeInTheDocument();
       expect(screen.getByText(/:/)).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();
@@ -191,5 +229,38 @@ describe("App Window Routing", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();
     });
+  });
+
+  it("restores the last selected settings tab", async () => {
+    window.localStorage.setItem("mint.active-settings-tab", "clock");
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "時計オーバーレイ設定" });
+
+    expect(
+      screen.getByRole("button", { name: "時計オーバーレイ" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("prefers an explicit tab query over the restored tab", async () => {
+    window.localStorage.setItem("mint.active-settings-tab", "clock");
+    window.history.pushState({}, "", "?tab=voiceToText");
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "音声入力設定" });
+
+    expect(screen.getByRole("button", { name: "音声入力" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    window.history.pushState({}, "", "/");
   });
 });

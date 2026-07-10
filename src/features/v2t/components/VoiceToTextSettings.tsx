@@ -1,4 +1,17 @@
 import { invoke } from "@tauri-apps/api/core";
+import {
+  AudioLines,
+  Check,
+  ClipboardCopy,
+  ClipboardPaste,
+  Eye,
+  EyeOff,
+  FileAudio,
+  LoaderCircle,
+  Mic2,
+  Server,
+  Trash2,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
@@ -6,11 +19,11 @@ import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
   Button,
   ErrorMessage,
+  FeatureSettingsHeader,
   Field,
   FieldRow,
   SettingsSection,
   ShortcutInput,
-  Switch,
   TextArea,
   TextInput,
 } from "../../../design/components";
@@ -18,18 +31,25 @@ import {
   normalizeBaseUrl,
   normalizeLanguageCode,
   normalizeModelName,
+  validateBaseUrl,
+  validateLanguageCode,
+  validateModelName,
 } from "../settings";
 import type { TranscriptionResult } from "../types";
 
 const PASTE_STATUS_VISIBLE_MS = 2000;
+const API_KEY_SAVE_STATUS_VISIBLE_MS = 2000;
 const COPY_ERROR_VISIBLE_MS = 5000;
 const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
+const CLIPBOARD_READ_ERROR_STATUS =
+  "クリップボードから貼り付けられませんでした";
 
 const getStatusLabelClass = (status: string) => {
   const isError =
     status.includes("失敗") ||
     status.includes("ありません") ||
-    status.includes("エラー");
+    status.includes("エラー") ||
+    status.includes("ませんでした");
   return `status-toast-label ${isError ? "status-toast-label--error" : ""}`;
 };
 
@@ -41,6 +61,11 @@ export const VoiceToTextSettings: React.FC = () => {
   } = useFeatureSettings("voiceToText");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyLoaded, setApiKeyLoaded] = useState(false);
+  const [apiKeySaveError, setApiKeySaveError] = useState("");
+  const [apiKeySaveStatus, setApiKeySaveStatus] = useState("");
+  const [baseUrlError, setBaseUrlError] = useState("");
+  const [modelError, setModelError] = useState("");
+  const [languageError, setLanguageError] = useState("");
   const [audioFilePath, setAudioFilePath] = useState("");
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
@@ -50,6 +75,9 @@ export const VoiceToTextSettings: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const apiKeySaveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const apiKeyPasteStatusTimerRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
@@ -64,7 +92,7 @@ export const VoiceToTextSettings: React.FC = () => {
         const key = await invoke<string>("load_api_key", {
           service: "voice_to_text",
         });
-        setApiKey(key);
+        setApiKey(typeof key === "string" ? key : "");
       } catch (err) {
         console.error("Failed to load API key:", err);
       } finally {
@@ -76,10 +104,18 @@ export const VoiceToTextSettings: React.FC = () => {
 
   // Save API key to OS keychain (debounced by blur event)
   const saveApiKey = useCallback(async () => {
+    setApiKeyPasteStatus("");
+    setApiKeySaveStatus("");
     try {
       await invoke("save_api_key", { service: "voice_to_text", key: apiKey });
+      setApiKeySaveError("");
+      setApiKeySaveStatus("APIキーを保存しました");
     } catch (err) {
       console.error("Failed to save API key:", err);
+      setApiKeySaveError(
+        "APIキーの保存に失敗しました。もう一度お試しください。",
+      );
+      setApiKeySaveStatus("");
     }
   }, [apiKey]);
 
@@ -93,10 +129,13 @@ export const VoiceToTextSettings: React.FC = () => {
         return;
       }
       setApiKey(value);
+      setApiKeySaveStatus("");
       setApiKeyPasteStatus("API キーを貼り付けました");
       setAudioFilePasteStatus("");
     } catch (err) {
       console.error("Failed to paste API key:", err);
+      setApiKeyPasteStatus(CLIPBOARD_READ_ERROR_STATUS);
+      setAudioFilePasteStatus("");
     } finally {
       const apiKeyInput = document.getElementById(
         "v2t-api-key-input",
@@ -189,6 +228,27 @@ export const VoiceToTextSettings: React.FC = () => {
   }, [audioFilePasteStatus]);
 
   useEffect(() => {
+    if (apiKeySaveStatusTimerRef.current) {
+      clearTimeout(apiKeySaveStatusTimerRef.current);
+      apiKeySaveStatusTimerRef.current = null;
+    }
+
+    if (!apiKeySaveStatus) return undefined;
+
+    apiKeySaveStatusTimerRef.current = setTimeout(() => {
+      setApiKeySaveStatus("");
+      apiKeySaveStatusTimerRef.current = null;
+    }, API_KEY_SAVE_STATUS_VISIBLE_MS);
+
+    return () => {
+      if (apiKeySaveStatusTimerRef.current) {
+        clearTimeout(apiKeySaveStatusTimerRef.current);
+        apiKeySaveStatusTimerRef.current = null;
+      }
+    };
+  }, [apiKeySaveStatus]);
+
+  useEffect(() => {
     if (copyStatusTimerRef.current) {
       clearTimeout(copyStatusTimerRef.current);
       copyStatusTimerRef.current = null;
@@ -221,6 +281,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    setApiKeySaveStatus("");
     setApiKeyPasteStatus("");
     setAudioFilePasteStatus("");
 
@@ -298,6 +359,8 @@ export const VoiceToTextSettings: React.FC = () => {
       setApiKeyPasteStatus("");
     } catch (err) {
       console.error("Failed to paste audio file path:", err);
+      setAudioFilePasteStatus(CLIPBOARD_READ_ERROR_STATUS);
+      setApiKeyPasteStatus("");
     } finally {
       const audioFileInput = document.getElementById(
         "v2t-audio-file-input",
@@ -327,6 +390,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    setApiKeySaveStatus("");
     setApiKeyPasteStatus("");
     setAudioFilePasteStatus("");
     setShowApiKey(false);
@@ -360,278 +424,405 @@ export const VoiceToTextSettings: React.FC = () => {
     return undefined;
   })();
 
+  const setupSteps = [
+    {
+      label: "機能",
+      complete: voiceToText.enabled,
+      detail: voiceToText.enabled ? "有効" : "有効化が必要",
+    },
+    {
+      label: "APIキー",
+      complete: apiKeyLoaded && Boolean(apiKey.trim()),
+      detail: !apiKeyLoaded
+        ? "読み込み中"
+        : apiKey.trim()
+          ? "設定済み"
+          : "入力が必要",
+    },
+    {
+      label: "音声ファイル",
+      complete: Boolean(audioFilePath.trim()),
+      detail: audioFilePath.trim() ? "指定済み" : "パスが必要",
+    },
+  ];
+
   return (
     <SettingsSection
-      title="音声入力 (Voice to Text) 設定"
-      description="OpenAI互換の音声認識APIを使って音声ファイルを文字起こしします。"
+      title="音声入力設定"
+      description="音声認識APIへの接続と、音声ファイルの文字起こしを管理します。"
     >
-      <div className="feature-settings-toolbar">
-        <div className="feature-settings-actions">
-          <Button variant="ghost" onClick={resetVoiceToTextSettings}>
-            デフォルトに戻す
-          </Button>
-        </div>
-      </div>
+      <FeatureSettingsHeader
+        switchId="v2t-enabled-checkbox"
+        label="音声入力"
+        enabled={voiceToText.enabled}
+        onChange={(event) => handleChange("enabled", event.target.checked)}
+        onReset={resetVoiceToTextSettings}
+        ariaLabel="音声入力を有効にする"
+      />
 
-      <Field
-        id="v2t-enabled-checkbox"
-        label="この機能を有効にする (Enable Feature)"
-        orientation="inline"
-      >
-        <Switch
-          id="v2t-enabled-checkbox"
-          checked={voiceToText.enabled}
-          onChange={(e) => handleChange("enabled", e.target.checked)}
-        />
-      </Field>
-
-      <Field
-        id="v2t-shortcut-input"
-        label="起動/録音ショートカットキー"
-        error={shortcutError}
-        helpText="入力欄をクリックしてキーを押すことでショートカットキーを変更できます。"
-      >
-        <ShortcutInput
-          id="v2t-shortcut-input"
-          invalid={Boolean(shortcutError)}
-          value={voiceToText.shortcut}
-          onChange={(value) => handleChange("shortcut", value)}
-          placeholderText="例: Ctrl+Alt+V"
-        />
-      </Field>
-
-      <Field
-        id="v2t-base-url-input"
-        label="API エンドポイント (Base URL)"
-        helpText={
-          <>
-            OpenAI互換の音声認識APIエンドポイント。OpenAIの場合は{" "}
-            <code>https://api.openai.com/v1</code>、Groqの場合は{" "}
-            <code>https://api.groq.com/openai/v1</code> 等を指定します。
-          </>
-        }
-      >
-        <TextInput
-          id="v2t-base-url-input"
-          type="text"
-          value={voiceToText.baseUrl}
-          onChange={(e) => {
-            clearTranscriptionOutput();
-            handleChange("baseUrl", e.target.value);
-          }}
-          onBlur={(e) =>
-            handleChange("baseUrl", normalizeBaseUrl(e.target.value))
-          }
-          placeholder="例: https://api.openai.com/v1"
-        />
-      </Field>
-
-      <Field
-        id="v2t-api-key-input"
-        label="API キー"
-        helpText="音声認識APIの認証キーです。キーはOSのセキュアストレージ（Windows 資格情報マネージャー）に安全に保存されます。"
-      >
-        <FieldRow>
-          <TextInput
-            id="v2t-api-key-input"
-            type={showApiKey ? "text" : "password"}
-            value={apiKeyLoaded ? apiKey : ""}
-            onChange={(e) => {
-              clearTranscriptionOutput();
-              setApiKey(e.target.value);
-              setApiKeyPasteStatus("");
-            }}
-            onBlur={saveApiKey}
-            placeholder={apiKeyLoaded ? "APIキーを入力" : "読み込み中..."}
-            disabled={!apiKeyLoaded}
-          />
-          <Button
-            variant="ghost"
-            disabled={!apiKeyLoaded}
-            aria-label="API キーを貼り付け"
-            onClick={pasteApiKey}
+      <div className="v2t-workspace">
+        <div className="v2t-settings-column">
+          <section
+            className="settings-group"
+            aria-labelledby="v2t-launch-title"
           >
-            貼り付け
-          </Button>
-          <Button
-            variant="ghost"
-            aria-pressed={showApiKey}
-            disabled={!apiKeyLoaded}
-            onClick={() => setShowApiKey((current) => !current)}
-          >
-            {showApiKey ? "隠す" : "表示"}
-          </Button>
-          {apiKeyPasteStatus && (
-            <span
-              className={getStatusLabelClass(apiKeyPasteStatus)}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
+            <div className="settings-group__heading">
+              <Mic2 size={18} aria-hidden="true" />
+              <div>
+                <h3 id="v2t-launch-title">起動</h3>
+                <p>録音を開始するグローバルショートカット</p>
+              </div>
+            </div>
+            <Field
+              id="v2t-shortcut-input"
+              label="起動/録音ショートカットキー"
+              error={shortcutError}
+              helpText="入力欄をクリックしてキーを押すことでショートカットキーを変更できます。"
             >
-              {apiKeyPasteStatus}
-            </span>
-          )}
-        </FieldRow>
-      </Field>
+              <ShortcutInput
+                id="v2t-shortcut-input"
+                invalid={Boolean(shortcutError)}
+                value={voiceToText.shortcut}
+                onChange={(value) => handleChange("shortcut", value)}
+                placeholderText="例: Ctrl+Alt+V"
+              />
+            </Field>
+          </section>
+          <section className="settings-group" aria-labelledby="v2t-api-title">
+            <div className="settings-group__heading">
+              <Server size={18} aria-hidden="true" />
+              <div>
+                <h3 id="v2t-api-title">API 接続</h3>
+                <p>OpenAI互換エンドポイントと認証情報</p>
+              </div>
+            </div>
 
-      <Field
-        id="v2t-model-input"
-        label="モデル名"
-        helpText={
-          <>
-            APIで使用する音声認識モデル名。OpenAIの場合は <code>whisper-1</code>{" "}
-            、Groqの場合は <code>whisper-large-v3</code> などを入力します。
-          </>
-        }
-      >
-        <TextInput
-          id="v2t-model-input"
-          type="text"
-          value={voiceToText.model}
-          onChange={(e) => {
-            clearTranscriptionOutput();
-            handleChange("model", e.target.value);
-          }}
-          onBlur={(e) =>
-            handleChange("model", normalizeModelName(e.target.value))
-          }
-          placeholder="例: whisper-1"
-        />
-      </Field>
-
-      <Field
-        id="v2t-language-input"
-        label="言語コード (Language)"
-        helpText={
-          <>
-            音声認識時の入力言語（ISO 639-1コード）。日本語の場合は{" "}
-            <code>ja</code>、英語の場合は <code>en</code> を指定します。
-          </>
-        }
-      >
-        <TextInput
-          id="v2t-language-input"
-          type="text"
-          value={voiceToText.language}
-          onChange={(e) => {
-            clearTranscriptionOutput();
-            handleChange("language", e.target.value);
-          }}
-          onBlur={(e) =>
-            handleChange("language", normalizeLanguageCode(e.target.value))
-          }
-          placeholder="例: ja"
-        />
-      </Field>
-
-      <Field
-        id="v2t-audio-file-input"
-        label="音声ファイルパス"
-        helpText="wav、mp3、m4a など、利用する音声認識APIが対応する音声ファイルを指定します。Enter でも文字起こしを開始できます。"
-      >
-        <FieldRow>
-          <TextInput
-            id="v2t-audio-file-input"
-            type="text"
-            value={audioFilePath}
-            onChange={(e) => {
-              updateAudioFilePath(e.target.value);
-            }}
-            onBlur={(e) => normalizeAudioFilePath(e.target.value)}
-            onKeyDown={handleAudioFilePathKeyDown}
-            placeholder="例: /Users/me/audio.wav"
-          />
-          <Button
-            variant="ghost"
-            aria-label="音声ファイルパスを貼り付け"
-            onClick={pasteAudioFilePath}
-          >
-            貼り付け
-          </Button>
-          <Button variant="ghost" onClick={clearAudioFilePath}>
-            クリア
-          </Button>
-          {audioFilePasteStatus && (
-            <span
-              className={getStatusLabelClass(audioFilePasteStatus)}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
+            <Field
+              id="v2t-base-url-input"
+              label="API エンドポイント (Base URL)"
+              error={baseUrlError}
+              helpText={
+                <>
+                  OpenAI互換の音声認識APIエンドポイント。OpenAIの場合は{" "}
+                  <code>https://api.openai.com/v1</code>、Groqの場合は{" "}
+                  <code>https://api.groq.com/openai/v1</code> 等を指定します。
+                </>
+              }
             >
-              {audioFilePasteStatus}
-            </span>
-          )}
-        </FieldRow>
-      </Field>
+              <TextInput
+                id="v2t-base-url-input"
+                type="text"
+                value={voiceToText.baseUrl}
+                onChange={(e) => {
+                  clearTranscriptionOutput();
+                  setBaseUrlError("");
+                  handleChange("baseUrl", e.target.value);
+                }}
+                onBlur={(e) => {
+                  const normalized = normalizeBaseUrl(e.target.value);
+                  setBaseUrlError(validateBaseUrl(normalized) ?? "");
+                  handleChange("baseUrl", normalized);
+                }}
+                invalid={Boolean(baseUrlError)}
+                inputMode="url"
+                placeholder="例: https://api.openai.com/v1"
+              />
+            </Field>
 
-      <Field id="v2t-transcribe-button" helpText={transcribeHelpText}>
-        <Button onClick={transcribeAudioFile} disabled={!canTranscribe}>
-          {transcribing ? (
-            <>
-              <svg
-                className="spinner-icon"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  strokeDasharray="60"
-                  strokeDashoffset="20"
+            <Field
+              id="v2t-api-key-input"
+              label="API キー"
+              helpText="音声認識APIの認証キーです。キーはOSのセキュアストレージ（Windows 資格情報マネージャー）に安全に保存されます。"
+            >
+              <FieldRow>
+                <TextInput
+                  id="v2t-api-key-input"
+                  className="v2t-row-input"
+                  type={showApiKey ? "text" : "password"}
+                  value={apiKeyLoaded ? apiKey : ""}
+                  onChange={(e) => {
+                    clearTranscriptionOutput();
+                    setApiKey(e.target.value);
+                    setApiKeySaveError("");
+                    setApiKeySaveStatus("");
+                    setApiKeyPasteStatus("");
+                  }}
+                  onBlur={saveApiKey}
+                  placeholder={apiKeyLoaded ? "APIキーを入力" : "読み込み中..."}
+                  disabled={!apiKeyLoaded}
                 />
-              </svg>
-              文字起こし中...
-            </>
-          ) : (
-            "文字起こしを実行"
-          )}
-        </Button>
-      </Field>
+                <Button
+                  variant="ghost"
+                  className="v2t-icon-button"
+                  disabled={!apiKeyLoaded}
+                  aria-label="API キーを貼り付け"
+                  title="貼り付け"
+                  onClick={pasteApiKey}
+                >
+                  <ClipboardPaste size={16} aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="v2t-icon-button"
+                  aria-label={showApiKey ? "隠す" : "表示"}
+                  title={showApiKey ? "APIキーを隠す" : "APIキーを表示"}
+                  aria-pressed={showApiKey}
+                  disabled={!apiKeyLoaded}
+                  onClick={() => setShowApiKey((current) => !current)}
+                >
+                  {showApiKey ? (
+                    <EyeOff size={16} aria-hidden="true" />
+                  ) : (
+                    <Eye size={16} aria-hidden="true" />
+                  )}
+                </Button>
+                {apiKeyPasteStatus && (
+                  <span
+                    className={getStatusLabelClass(apiKeyPasteStatus)}
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    {apiKeyPasteStatus}
+                  </span>
+                )}
+                {apiKeySaveStatus && (
+                  <span
+                    className={getStatusLabelClass(apiKeySaveStatus)}
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    {apiKeySaveStatus}
+                  </span>
+                )}
+              </FieldRow>
+              {apiKeySaveError && (
+                <ErrorMessage>{apiKeySaveError}</ErrorMessage>
+              )}
+            </Field>
 
-      {transcriptionError && (
-        <ErrorMessage autoFocus>{transcriptionError}</ErrorMessage>
-      )}
-
-      {transcriptionText && (
-        <Field id="v2t-transcription-result" label="文字起こし結果">
-          <div className="transcription-result-actions">
-            <Button
-              id="v2t-copy-result-button"
-              variant="ghost"
-              onClick={copyTranscriptionText}
-            >
-              結果をコピー
-            </Button>
-            <Button variant="ghost" onClick={clearTranscriptionText}>
-              結果をクリア
-            </Button>
-            {copyStatus && (
-              <span
-                className={getStatusLabelClass(copyStatus)}
-                role="status"
-                aria-live="polite"
-                aria-atomic="true"
+            <div className="v2t-model-grid">
+              <Field
+                id="v2t-model-input"
+                label="モデル名"
+                helpText={
+                  <>
+                    APIで使用する音声認識モデル名。OpenAIの場合は{" "}
+                    <code>whisper-1</code> 、Groqの場合は{" "}
+                    <code>whisper-large-v3</code> などを入力します。
+                  </>
+                }
               >
-                {copyStatus}
-              </span>
+                <TextInput
+                  id="v2t-model-input"
+                  type="text"
+                  value={voiceToText.model}
+                  onChange={(e) => {
+                    clearTranscriptionOutput();
+                    setModelError("");
+                    handleChange("model", e.target.value);
+                  }}
+                  onBlur={(e) => {
+                    const normalized = normalizeModelName(e.target.value);
+                    setModelError(validateModelName(normalized) ?? "");
+                    handleChange("model", normalized);
+                  }}
+                  invalid={Boolean(modelError)}
+                  placeholder="例: whisper-1"
+                />
+              </Field>
+
+              <Field
+                id="v2t-language-input"
+                label="言語コード (Language)"
+                helpText={
+                  <>
+                    音声認識時の入力言語（ISO 639-1コード）。日本語の場合は{" "}
+                    <code>ja</code>、英語の場合は <code>en</code> を指定します。
+                  </>
+                }
+              >
+                <TextInput
+                  id="v2t-language-input"
+                  type="text"
+                  value={voiceToText.language}
+                  onChange={(e) => {
+                    clearTranscriptionOutput();
+                    setLanguageError("");
+                    handleChange("language", e.target.value);
+                  }}
+                  onBlur={(e) => {
+                    const normalized = normalizeLanguageCode(e.target.value);
+                    setLanguageError(validateLanguageCode(normalized) ?? "");
+                    handleChange("language", normalized);
+                  }}
+                  invalid={Boolean(languageError)}
+                  inputMode="text"
+                  maxLength={3}
+                  autoCapitalize="none"
+                  placeholder="例: ja"
+                />
+              </Field>
+            </div>
+          </section>
+        </div>
+
+        <section
+          className="v2t-workbench"
+          aria-labelledby="v2t-workbench-title"
+          aria-busy={transcribing}
+        >
+          <div className="v2t-workbench__header">
+            <div>
+              <span className="v2t-workbench__kicker">ワークベンチ</span>
+              <h3 id="v2t-workbench-title">文字起こし</h3>
+            </div>
+            <span
+              className={`v2t-readiness ${canTranscribe ? "is-ready" : ""}`}
+              aria-live="polite"
+            >
+              {canTranscribe ? "実行可能" : "準備中"}
+            </span>
+          </div>
+          <div className="v2t-workbench__body">
+            <ol className="v2t-setup-steps" aria-label="文字起こしの準備状況">
+              {setupSteps.map((step, index) => {
+                const isCurrent =
+                  !step.complete &&
+                  (index === 0 || setupSteps[index - 1]?.complete === true);
+                return (
+                  <li
+                    key={step.label}
+                    className={`v2t-setup-step ${step.complete ? "is-complete" : ""} ${isCurrent ? "is-current" : ""}`}
+                  >
+                    <span className="v2t-setup-step__marker" aria-hidden="true">
+                      {step.complete ? <Check size={14} /> : index + 1}
+                    </span>
+                    <span className="v2t-setup-step__copy">
+                      <strong>{step.label}</strong>
+                      <span>{step.detail}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+            <Field
+              id="v2t-audio-file-input"
+              label="音声ファイルパス"
+              helpText="wav、mp3、m4a など、利用する音声認識APIが対応する音声ファイルを指定します。Enter でも文字起こしを開始できます。"
+            >
+              <FieldRow>
+                <TextInput
+                  id="v2t-audio-file-input"
+                  className="v2t-row-input"
+                  type="text"
+                  value={audioFilePath}
+                  onChange={(e) => {
+                    updateAudioFilePath(e.target.value);
+                  }}
+                  onBlur={(e) => normalizeAudioFilePath(e.target.value)}
+                  onKeyDown={handleAudioFilePathKeyDown}
+                  aria-keyshortcuts="Enter"
+                  placeholder="例: /Users/me/audio.wav"
+                />
+                <Button
+                  variant="ghost"
+                  className="v2t-icon-button"
+                  aria-label="音声ファイルパスを貼り付け"
+                  title="貼り付け"
+                  onClick={pasteAudioFilePath}
+                >
+                  <ClipboardPaste size={16} aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="v2t-icon-button"
+                  aria-label="クリア"
+                  title="クリア"
+                  onClick={clearAudioFilePath}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </Button>
+                {audioFilePasteStatus && (
+                  <span
+                    className={getStatusLabelClass(audioFilePasteStatus)}
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    {audioFilePasteStatus}
+                  </span>
+                )}
+              </FieldRow>
+            </Field>
+
+            <Field id="v2t-transcribe-button" helpText={transcribeHelpText}>
+              <Button
+                className="v2t-transcribe-button"
+                onClick={transcribeAudioFile}
+                disabled={!canTranscribe}
+              >
+                {transcribing ? (
+                  <LoaderCircle
+                    className="spinner-icon"
+                    size={16}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <AudioLines size={16} aria-hidden="true" />
+                )}
+                {transcribing ? "文字起こし中..." : "文字起こしを実行"}
+              </Button>
+            </Field>
+
+            {transcriptionError && (
+              <ErrorMessage autoFocus>{transcriptionError}</ErrorMessage>
+            )}
+
+            {transcriptionText && (
+              <Field id="v2t-transcription-result" label="文字起こし結果">
+                <div className="transcription-result-actions">
+                  <Button
+                    id="v2t-copy-result-button"
+                    variant="ghost"
+                    onClick={copyTranscriptionText}
+                  >
+                    <ClipboardCopy size={15} aria-hidden="true" />
+                    結果をコピー
+                  </Button>
+                  <Button variant="ghost" onClick={clearTranscriptionText}>
+                    <Trash2 size={15} aria-hidden="true" />
+                    結果をクリア
+                  </Button>
+                  {copyStatus && (
+                    <span
+                      className={getStatusLabelClass(copyStatus)}
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
+                    >
+                      {copyStatus}
+                    </span>
+                  )}
+                </div>
+                <TextArea
+                  id="v2t-transcription-result"
+                  value={transcriptionText}
+                  readOnly
+                  rows={6}
+                />
+              </Field>
+            )}
+            {!transcriptionText && !transcriptionError && (
+              <div className="v2t-empty-state">
+                <FileAudio size={28} aria-hidden="true" />
+                <span>結果はここに表示されます</span>
+              </div>
             )}
           </div>
-          <TextArea
-            id="v2t-transcription-result"
-            value={transcriptionText}
-            readOnly
-            rows={6}
-          />
-        </Field>
-      )}
+        </section>
+      </div>
     </SettingsSection>
   );
 };
