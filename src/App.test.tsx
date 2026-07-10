@@ -22,7 +22,13 @@ vi.mock("@tauri-apps/api/window", () => ({
     label: "main",
     hide: vi.fn().mockResolvedValue(undefined),
     show: vi.fn().mockResolvedValue(undefined),
+    setSize: vi.fn().mockResolvedValue(undefined),
+    setPosition: vi.fn().mockResolvedValue(undefined),
   })),
+  currentMonitor: vi.fn().mockResolvedValue({
+    size: { width: 1920, height: 1080 },
+    scaleFactor: 1,
+  }),
 }));
 
 describe("App Window Routing", () => {
