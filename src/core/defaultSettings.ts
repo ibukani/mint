@@ -28,5 +28,6 @@ export const defaultAppSettings: AppSettings = {
   calendar: {
     enabled: true,
     shortcut: "Alt+Down",
+    createEventShortcut: "Alt+Up",
   },
 };

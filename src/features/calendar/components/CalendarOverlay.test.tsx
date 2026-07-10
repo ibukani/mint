@@ -10,6 +10,15 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
+  invoke: vi.fn(async (command: string) => {
+    if (command === "list_calendar_events") return [];
+    if (command === "get_next_calendar_event") return null;
+    return undefined;
+  }),
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: mocks.invoke,
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -61,6 +70,7 @@ describe("CalendarOverlay window coordination", () => {
     mocks.emitTo.mockClear();
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
+    mocks.invoke.mockClear();
   });
 
   afterEach(() => {
@@ -136,6 +146,20 @@ describe("CalendarOverlay window coordination", () => {
       width: number;
     };
     expect(size.width).toBe(436);
-    expect(size.height).toBe(415);
+    expect(size.height).toBe(400);
+  });
+
+  it("opens the event editor when quick entry is requested", async () => {
+    render(<CalendarOverlay />);
+    expect(mocks.listeners.has("calendar-create-requested")).toBe(true);
+
+    act(() => {
+      mocks.listeners.get("calendar-create-requested")?.({});
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "予定を追加" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("タイトル")).toHaveFocus();
   });
 });

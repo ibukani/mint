@@ -112,6 +112,7 @@ impl Default for VoiceToTextSettings {
 pub struct CalendarSettings {
     pub enabled: bool,
     pub shortcut: String,
+    pub create_event_shortcut: String,
 }
 
 impl Default for CalendarSettings {
@@ -119,6 +120,7 @@ impl Default for CalendarSettings {
         Self {
             enabled: true,
             shortcut: "Alt+Down".to_string(),
+            create_event_shortcut: "Alt+Up".to_string(),
         }
     }
 }
@@ -207,6 +209,10 @@ impl AppSettings {
         }
         if let Some(s) = self.calendar.shortcut() {
             list.push((self.calendar.feature_id(), s));
+        }
+        let create_event_shortcut = self.calendar.create_event_shortcut.trim();
+        if self.calendar.enabled && !create_event_shortcut.is_empty() {
+            list.push(("calendarCreateEvent", create_event_shortcut));
         }
         if let Some(s) = self.voice_to_text.shortcut() {
             list.push((self.voice_to_text.feature_id(), s));
@@ -467,6 +473,10 @@ mod tests {
         assert_eq!(settings.voice_to_text.language, "ja");
         assert!(settings.calendar.enabled);
         assert_eq!(settings.calendar.shortcut, "Alt+Down");
+        assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up");
+        assert!(settings
+            .active_shortcuts()
+            .contains(&("calendarCreateEvent", "Alt+Up")));
 
         // 一部だけ存在するJSONから復元
         let partial_json = r#"{"theme": "light", "clock": {"shortcut": "Ctrl+C"}}"#;
@@ -484,5 +494,6 @@ mod tests {
         assert!(settings.clock.glow_effect); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
         assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
+        assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
     }
 }

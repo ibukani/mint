@@ -118,6 +118,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (errorMessage.includes("重複")) {
         newErrors.clock = "ショートカットキーが重複しています";
         newErrors.calendar = "ショートカットキーが重複しています";
+        newErrors.calendarCreateEvent = "ショートカットキーが重複しています";
         newErrors.voiceToText = "ショートカットキーが重複しています";
       } else if (errorMessage.includes("時計")) {
         newErrors.clock = errorMessage;
@@ -256,6 +257,8 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         prev.clock.shortcut !== updated.clock.shortcut ||
         prev.calendar.enabled !== updated.calendar.enabled ||
         prev.calendar.shortcut !== updated.calendar.shortcut ||
+        prev.calendar.createEventShortcut !==
+          updated.calendar.createEventShortcut ||
         prev.voiceToText.enabled !== updated.voiceToText.enabled ||
         prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
 

@@ -5,6 +5,7 @@ const defaultMockSettings: AppSettings = {
   calendar: {
     enabled: defaultAppSettings.calendar.enabled,
     shortcut: defaultAppSettings.calendar.shortcut,
+    createEventShortcut: defaultAppSettings.calendar.createEventShortcut,
   },
 
   autostart: defaultAppSettings.autostart,

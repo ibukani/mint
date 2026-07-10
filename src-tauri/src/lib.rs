@@ -47,6 +47,9 @@ pub fn run() {
                                         }
                                         "clock" => features::clock::toggle_clock_overlay(app),
                                         "calendar" => features::calendar::toggle_calendar_overlay(app),
+                                        "calendarCreateEvent" => {
+                                            features::calendar::open_calendar_event_editor(app)
+                                        }
                                         "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                         _ => {}
                                     }
@@ -62,6 +65,9 @@ pub fn run() {
                                     }
                                     "clock" => features::clock::toggle_clock_overlay(app),
                                     "calendar" => features::calendar::toggle_calendar_overlay(app),
+                                    "calendarCreateEvent" => {
+                                        features::calendar::open_calendar_event_editor(app)
+                                    }
                                     "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                     _ => {}
                                 }
@@ -73,6 +79,9 @@ pub fn run() {
         )
         .manage(AppSettingsState(Mutex::new(None)))
         .setup(|app| {
+            let calendar_store = features::calendar::initialize_store(app.handle())?;
+            app.manage(calendar_store);
+
             // Initialize system tray
             core::tray::init_tray(app)?;
 
@@ -136,6 +145,11 @@ pub fn run() {
             core::settings::save_settings,
             core::settings::load_api_key,
             core::settings::save_api_key,
+            features::calendar::list_calendar_events,
+            features::calendar::get_next_calendar_event,
+            features::calendar::create_calendar_event,
+            features::calendar::update_calendar_event,
+            features::calendar::delete_calendar_event,
             features::v2t::transcribe_audio_file,
         ])
         .run(tauri::generate_context!())

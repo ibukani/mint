@@ -16,6 +16,9 @@ describe("CalendarSettings", () => {
     expect(screen.getByLabelText("起動ショートカットキー")).toHaveValue(
       "Alt+Down",
     );
+    expect(screen.getByLabelText("予定登録ショートカットキー")).toHaveValue(
+      "Alt+Up",
+    );
   });
 
   it("records an arrow shortcut and resets defaults", async () => {
@@ -28,10 +31,13 @@ describe("CalendarSettings", () => {
     await screen.findByRole("heading", { name: "カレンダー設定" });
     const shortcut = screen.getByLabelText("起動ショートカットキー");
     fireEvent.focus(shortcut);
-    fireEvent.keyDown(shortcut, { key: "ArrowUp", altKey: true });
-    expect(shortcut).toHaveValue("Alt+Up");
+    fireEvent.keyDown(shortcut, { key: "ArrowRight", altKey: true });
+    expect(shortcut).toHaveValue("Alt+Right");
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
     await waitFor(() => expect(shortcut).toHaveValue("Alt+Down"));
+    expect(screen.getByLabelText("予定登録ショートカットキー")).toHaveValue(
+      "Alt+Up",
+    );
   });
 });
