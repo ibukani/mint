@@ -88,16 +88,7 @@ const AppContent: React.FC = () => {
   );
 
   useEffect(() => {
-    const currentLabel = getCurrentWindow().label;
-    setLabel(currentLabel);
-    
-    if (currentLabel && currentLabel !== "main") {
-      document.body.classList.add("is-overlay");
-      document.documentElement.classList.add("is-overlay");
-    } else {
-      document.body.classList.remove("is-overlay");
-      document.documentElement.classList.remove("is-overlay");
-    }
+    setLabel(getCurrentWindow().label);
   }, []);
 
   useEffect(() => {

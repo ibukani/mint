@@ -276,6 +276,13 @@ export const ClockOverlay: React.FC = () => {
   useEffect(() => {
     setIsAnimateVisible(true);
     setIsHiding(false);
+    
+    document.body.classList.add("is-overlay");
+    document.documentElement.classList.add("is-overlay");
+    return () => {
+      document.body.classList.remove("is-overlay");
+      document.documentElement.classList.remove("is-overlay");
+    };
   }, []);
 
   const hideClock = useCallback(() => {
