@@ -118,7 +118,13 @@ const AppContent: React.FC = () => {
         aria-live="polite"
         aria-busy="true"
       >
-        設定を読み込み中...
+        <div className="app-loading__visual" aria-hidden="true">
+          <LoaderCircle className="spinner-icon" size={20} />
+        </div>
+        <p className="app-loading__message">
+          <strong>mintを準備しています</strong>
+          <span>設定を読み込み中...</span>
+        </p>
       </div>
     );
   }
@@ -160,6 +166,9 @@ const AppContent: React.FC = () => {
               className="app-error-state"
               aria-labelledby="app-error-title"
             >
+              <div className="app-error-state__icon" aria-hidden="true">
+                <CircleAlert size={20} />
+              </div>
               <h2 id="app-error-title">設定を読み込めませんでした</h2>
               <p>{error}</p>
               <Button onClick={() => void reloadSettings()}>再読み込み</Button>
