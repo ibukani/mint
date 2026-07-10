@@ -1,4 +1,5 @@
 import type React from "react";
+import { useEffect, useRef } from "react";
 
 export interface SidebarTab<TTabId extends string = string> {
   id: TTabId;
@@ -24,6 +25,25 @@ export const Sidebar = <TTabId extends string>({
   statusLabel = "設定は自動保存されます",
   statusTone = "neutral",
 }: SidebarProps<TTabId>) => {
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeTab changes which button receives the ref.
+  useEffect(() => {
+    const activeTabButton = activeTabRef.current;
+    if (
+      !activeTabButton ||
+      typeof activeTabButton.scrollIntoView !== "function"
+    ) {
+      return;
+    }
+
+    activeTabButton.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activeTab]);
+
   return (
     <nav className="app-sidebar" aria-label="設定カテゴリ">
       <div className="app-sidebar__brand">
@@ -44,6 +64,7 @@ export const Sidebar = <TTabId extends string>({
             className={`app-sidebar__button ${
               activeTab === tab.id ? "app-sidebar__button--active" : ""
             }`}
+            ref={activeTab === tab.id ? activeTabRef : undefined}
             aria-label={tab.label}
             aria-describedby={
               tab.description
