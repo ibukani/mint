@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Check, CircleAlert, LoaderCircle } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ErrorToast } from "./core/components/ErrorToast";
 import {
   AppSettingsProvider,
@@ -79,6 +79,23 @@ const getInitialSettingsTab = (): SettingsTabId => {
   }
 };
 
+const AutoFocusTrigger: React.FC = () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const contentEl = document.querySelector(".app-content");
+      if (contentEl) {
+        const focusable = contentEl.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([type="checkbox"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])',
+        );
+        focusable?.focus();
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return null;
+};
+
 const AppContent: React.FC = () => {
   const { settings, loading, error, saveStatus, clearError, reloadSettings } =
     useAppSettings();
@@ -115,20 +132,6 @@ const AppContent: React.FC = () => {
     document.title = `mint - ${currentLabel}`;
   }, [activeTab, label]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: activeTab is used as a trigger for focusing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const contentEl = document.querySelector(".app-content");
-      if (contentEl) {
-        const focusable = contentEl.querySelector<HTMLElement>(
-          'input:not([type="hidden"]):not([type="checkbox"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])',
-        );
-        focusable?.focus();
-      }
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
-
   if (loading) {
     return (
       <div
@@ -151,7 +154,11 @@ const AppContent: React.FC = () => {
   // Overlay window routing via lookup table
   if (label && label in WINDOW_ROUTES) {
     const OverlayComponent = WINDOW_ROUTES[label];
-    return <OverlayComponent />;
+    return (
+      <Suspense>
+        <OverlayComponent />
+      </Suspense>
+    );
   }
 
   // Main settings window
@@ -198,7 +205,18 @@ const AppContent: React.FC = () => {
               <Button onClick={() => void reloadSettings()}>再読み込み</Button>
             </section>
           ) : (
-            <ActiveTabComponent />
+            <Suspense
+              fallback={
+                <div className="app-loading" role="status" aria-busy="true">
+                  <div className="app-loading__visual" aria-hidden="true">
+                    <LoaderCircle className="spinner-icon" size={20} />
+                  </div>
+                </div>
+              }
+            >
+              <ActiveTabComponent />
+              <AutoFocusTrigger key={activeTab} />
+            </Suspense>
           )}
         </AppShell>
       </SettingsNavigationProvider>

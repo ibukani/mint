@@ -47,9 +47,12 @@ export const Sidebar = <TTabId extends string>({
   return (
     <nav className="app-sidebar" aria-label="設定カテゴリ">
       <div className="app-sidebar__brand">
-        <span className="app-sidebar__brand-mark" aria-hidden="true">
-          m
-        </span>
+        <img
+          src="/mint.svg"
+          alt="mint logo"
+          className="app-sidebar__brand-mark"
+          aria-hidden="true"
+        />
         <div>
           <h1 className="app-sidebar__title">{title}</h1>
           <p className="app-sidebar__subtitle">デスクトップツール</p>

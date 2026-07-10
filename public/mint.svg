@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="title desc"
+     shape-rendering="geometricPrecision">
+  <title id="title">Mint fluent leaf symbol</title>
+  <desc id="desc">A polished modular mint leaf with subtle gradients and restrained depth on a transparent background.</desc>
+
+  <defs>
+    <!-- Fluent-style light direction: subtle 120-degree ramps -->
+    <linearGradient id="tileGradient" x1="0.08" y1="0.05" x2="0.92" y2="0.96">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F1F7F4"/>
+    </linearGradient>
+
+    <linearGradient id="limeGradient" x1="0.12" y1="0.06" x2="0.88" y2="0.94">
+      <stop offset="0" stop-color="#C8F45C"/>
+      <stop offset="1" stop-color="#82C93B"/>
+    </linearGradient>
+
+    <linearGradient id="greenGradient" x1="0.12" y1="0.05" x2="0.88" y2="0.95">
+      <stop offset="0" stop-color="#43D88A"/>
+      <stop offset="1" stop-color="#18A868"/>
+    </linearGradient>
+
+    <linearGradient id="tealGradient" x1="0.12" y1="0.05" x2="0.88" y2="0.95">
+      <stop offset="0" stop-color="#43D7C8"/>
+      <stop offset="1" stop-color="#10A79C"/>
+    </linearGradient>
+
+    <linearGradient id="deepGradient" x1="0.10" y1="0.04" x2="0.90" y2="0.96">
+      <stop offset="0" stop-color="#19AA8B"/>
+      <stop offset="1" stop-color="#08725E"/>
+    </linearGradient>
+
+    <linearGradient id="softHighlight" x1="0.12" y1="0.02" x2="0.78" y2="0.90">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/>
+      <stop offset="0.72" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="tileShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22"
+                    flood-color="#0C4D3D" flood-opacity="0.14"/>
+    </filter>
+
+    <filter id="leafShadow" x="-20%" y="-20%" width="145%" height="150%">
+      <feDropShadow dx="0" dy="13" stdDeviation="15"
+                    flood-color="#064E3B" flood-opacity="0.18"/>
+      <feDropShadow dx="-3" dy="-3" stdDeviation="5"
+                    flood-color="#FFFFFF" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+
+  <g id="leaf-mark" filter="url(#leafShadow)">
+    <path d="
+      M 434 232
+      C 558 156, 696 112, 842 104
+      C 866 208, 872 326, 838 412
+      C 808 486, 740 510, 650 534
+      C 574 554, 518 582, 474 620
+      C 478 518, 452 404, 408 322
+      C 392 292, 400 260, 434 232
+      Z"
+      fill="url(#limeGradient)"/>
+
+    <path d="
+      M 370 288
+      C 298 350, 240 440, 216 546
+      C 186 674, 206 806, 292 910
+      C 338 846, 376 788, 414 730
+      C 454 670, 468 602, 454 524
+      C 440 438, 406 356, 370 288
+      Z"
+      fill="url(#greenGradient)"/>
+
+    <path d="
+      M 496 652
+      C 552 594, 622 562, 700 540
+      C 762 522, 812 500, 850 468
+      C 844 554, 816 626, 754 670
+      C 686 716, 602 704, 526 728
+      C 500 738, 478 748, 458 760
+      C 466 718, 478 680, 496 652
+      Z"
+      fill="url(#tealGradient)"/>
+
+    <path d="
+      M 438 804
+      C 504 756, 584 742, 660 742
+      C 728 742, 788 724, 832 696
+      C 816 790, 766 862, 690 914
+      C 620 962, 532 980, 420 968
+      C 410 906, 416 850, 438 804
+      Z"
+      fill="url(#deepGradient)"/>
+
+    <!-- restrained ambient highlight, clipped to the mark -->
+    <path d="
+      M 432 231
+      C 554 158, 690 115, 837 107
+      C 728 151, 613 211, 522 295
+      C 478 336, 448 372, 425 411
+      C 413 362, 393 316, 377 286
+      C 393 263, 411 245, 432 231 Z"
+      fill="url(#softHighlight)"
+      opacity="0.34"/>
+  </g>
+
+</svg>

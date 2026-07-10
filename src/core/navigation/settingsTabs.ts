@@ -1,8 +1,23 @@
 import { Clock3, Mic2, SlidersHorizontal } from "lucide-react";
-import React from "react";
-import { ClockSettings } from "../../features/clock/components/ClockSettings";
-import { VoiceToTextSettings } from "../../features/v2t/components/VoiceToTextSettings";
-import { GeneralSettings } from "../components/settings/GeneralSettings";
+import React, { lazy } from "react";
+
+const GeneralSettings = lazy(() =>
+  import("../components/settings/GeneralSettings").then((m) => ({
+    default: m.GeneralSettings,
+  })),
+);
+
+const ClockSettings = lazy(() =>
+  import("../../features/clock/components/ClockSettings").then((m) => ({
+    default: m.ClockSettings,
+  })),
+);
+
+const VoiceToTextSettings = lazy(() =>
+  import("../../features/v2t/components/VoiceToTextSettings").then((m) => ({
+    default: m.VoiceToTextSettings,
+  })),
+);
 
 export const SETTINGS_TABS = [
   {
@@ -30,7 +45,10 @@ export const SETTINGS_TABS = [
 
 export type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
 
-export const SETTINGS_TAB_COMPONENTS: Record<SettingsTabId, React.FC> = {
+export const SETTINGS_TAB_COMPONENTS: Record<
+  SettingsTabId,
+  React.LazyExoticComponent<React.FC>
+> = {
   general: GeneralSettings,
   clock: ClockSettings,
   voiceToText: VoiceToTextSettings,

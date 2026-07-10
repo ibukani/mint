@@ -25,8 +25,10 @@ export const Switch: React.FC<SwitchProps> = ({
     >
       <input
         type="checkbox"
+        role="switch"
         id={id}
         checked={checked}
+        aria-checked={checked}
         onChange={onChange}
         className={classes}
         disabled={disabled}

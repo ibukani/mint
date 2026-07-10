@@ -294,20 +294,18 @@ const settingsTabsPath = path.join(
 if (fs.existsSync(settingsTabsPath)) {
   let content = fs.readFileSync(settingsTabsPath, "utf-8");
   if (!content.includes(`features/${featureName}/components/`)) {
-    // 9.1 Add Import
-    const importRegex = /(import\s+.*from\s+["'].*["'];)/;
-    const importLine = `import { ${pascalName}Settings } from "../../features/${featureName}/components/${pascalName}Settings";\n`;
-    content = content.replace(importRegex, `${importLine}$1`);
+    // 9.1 Add lazy import
+    const componentDef = `const ${pascalName}Settings = lazy(() =>\n  import("../../features/${featureName}/components/${pascalName}Settings").then((m) => ({ default: m.${pascalName}Settings }))\n);\n\n`;
 
     // 9.2 Add tab to SETTINGS_TABS
     content = content.replace(
       /(export\s+const\s+SETTINGS_TABS\s*=\s*\[)/,
-      `$1\n  { id: "${camelName}", label: "${pascalName} 設定" },`,
+      `${componentDef}$1\n  { id: "${camelName}", label: "${pascalName} 設定" },`,
     );
 
     // 9.3 Add component to SETTINGS_TAB_COMPONENTS
     content = content.replace(
-      /(export\s+const\s+SETTINGS_TAB_COMPONENTS:\s*Record<SettingsTabId,\s*React\.FC>\s*=\s*\{)/,
+      /(export\s+const\s+SETTINGS_TAB_COMPONENTS[\s\S]*?=\s*\{)/,
       `$1\n  ${camelName}: ${pascalName}Settings,`,
     );
 

@@ -1,6 +1,15 @@
 import type React from "react";
-import { ClockOverlay } from "../features/clock/components/ClockOverlay";
+import { lazy } from "react";
 
-export const WINDOW_ROUTES: Record<string, React.FC> = {
+const ClockOverlay = lazy(() =>
+  import("../features/clock/components/ClockOverlay").then((m) => ({
+    default: m.ClockOverlay,
+  })),
+);
+
+export const WINDOW_ROUTES: Record<
+  string,
+  React.LazyExoticComponent<React.FC>
+> = {
   clock: ClockOverlay,
 };

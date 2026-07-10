@@ -13,6 +13,7 @@ import type { ClockSettings } from "../../features/clock/types";
 import type { VoiceToTextSettings } from "../../features/v2t/types";
 
 export interface AppSettings {
+  autostart: boolean;
   theme: "dark" | "light";
   settingsShortcut: string;
   clock: ClockSettings;
@@ -243,6 +244,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // 2. Determine if we need an immediate save
       const isImportant =
+        prev.autostart !== updated.autostart ||
         prev.theme !== updated.theme ||
         prev.settingsShortcut !== updated.settingsShortcut ||
         prev.clock.enabled !== updated.clock.enabled ||

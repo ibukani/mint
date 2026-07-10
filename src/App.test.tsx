@@ -83,7 +83,7 @@ describe("App Window Routing", () => {
     ).toHaveAccessibleDescription("テーマと起動操作");
     expect(screen.getAllByText("一般設定").length).toBeGreaterThan(0);
     expect(
-      screen.getByRole("heading", { name: "一般設定" }),
+      await screen.findByRole("heading", { name: "一般設定" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "機能管理" })).toBeNull();
     expect(document.querySelector(".settings-save-status")).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe("App Window Routing", () => {
   });
 
   it("renders ClockOverlay when label=clock", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
     try {
       vi.setSystemTime(new Date("2026-07-09T12:34:56+09:00"));
       vi.mocked(getCurrentWindow).mockReturnValue({
@@ -151,9 +151,11 @@ describe("App Window Routing", () => {
         await Promise.resolve();
       });
 
-      expect(document.querySelector(".digital-clock__date")).toHaveTextContent(
-        "2026年7月9日",
-      );
+      await waitFor(() => {
+        expect(
+          document.querySelector(".digital-clock__date"),
+        ).toHaveTextContent("2026年7月9日");
+      });
       expect(screen.getByText("木曜日")).toBeInTheDocument();
       expect(screen.getByText(/:/)).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();
@@ -181,9 +183,10 @@ describe("App Window Routing", () => {
       await Promise.resolve();
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "時計オーバーレイを閉じる" }),
-    );
+    const closeBtn = await screen.findByRole("button", {
+      name: "時計オーバーレイを閉じる",
+    });
+    fireEvent.click(closeBtn);
 
     await waitFor(() => {
       expect(hide).toHaveBeenCalledTimes(1);
@@ -287,7 +290,9 @@ describe("App Window Routing", () => {
       await Promise.resolve();
     });
 
-    expect(document.body.classList.contains("is-overlay")).toBe(true);
+    await waitFor(() => {
+      expect(document.body.classList.contains("is-overlay")).toBe(true);
+    });
     expect(document.documentElement.classList.contains("is-overlay")).toBe(
       true,
     );

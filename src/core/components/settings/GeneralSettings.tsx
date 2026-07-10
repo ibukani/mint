@@ -1,9 +1,10 @@
-import { Check, Keyboard, MonitorCog, Moon, Sun } from "lucide-react";
+import { Check, Keyboard, MonitorCog, Moon, Power, Sun } from "lucide-react";
 import type React from "react";
 import {
   Field,
   SettingsSection,
   ShortcutInput,
+  Switch,
 } from "../../../design/components";
 import { useAppSettings } from "../../context/AppSettings";
 
@@ -108,6 +109,27 @@ export const GeneralSettings: React.FC = () => {
               value={settings.settingsShortcut}
               invalid={!!shortcutErrors.settings}
               onChange={(val) => updateSettings({ settingsShortcut: val })}
+            />
+          </Field>
+        </section>
+
+        <section className="settings-group" aria-labelledby="system-title">
+          <div className="settings-group__heading">
+            <Power size={18} aria-hidden="true" />
+            <div>
+              <h3 id="system-title">システム</h3>
+              <p>OS連携に関する設定を行います。</p>
+            </div>
+          </div>
+          <Field
+            id="general-autostart-input"
+            label="PC起動時に自動で起動する"
+            helpText="アプリのウィンドウはバックグラウンドで待機します。"
+          >
+            <Switch
+              id="general-autostart-input"
+              checked={settings.autostart}
+              onChange={(e) => updateSettings({ autostart: e.target.checked })}
             />
           </Field>
         </section>
