@@ -2265,3 +2265,277 @@ body {
     padding: var(--space-4);
   }
 }
+
+/* Product polish: a calm, layered workspace with deliberate focus states. */
+:root {
+  background: var(--surface-page);
+}
+
+body {
+  background:
+    radial-gradient(
+      circle at 85% -10%,
+      var(--page-accent-top),
+      transparent 34rem
+    ),
+    radial-gradient(
+      circle at 5% 110%,
+      var(--page-accent-bottom),
+      transparent 30rem
+    ),
+    var(--surface-page);
+}
+
+button,
+:where(input, select, textarea) {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.design-panel {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.app-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-titlebar {
+  height: 40px;
+  padding: 0 var(--space-4);
+  background: color-mix(in srgb, var(--surface-root) 88%, transparent);
+  border-bottom-color: var(--border-subtle);
+}
+
+.app-titlebar__text {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.app-titlebar__button {
+  width: 44px;
+  height: 40px;
+}
+
+.app-sidebar {
+  flex-basis: var(--size-sidebar-width);
+  width: var(--size-sidebar-width);
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  background: color-mix(in srgb, var(--surface-root) 92%, transparent);
+  border-right-color: var(--border-subtle);
+}
+
+.app-sidebar__brand {
+  padding: 0 var(--space-2) var(--space-6);
+}
+
+.app-sidebar__brand-mark {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px
+    color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.app-sidebar__title {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.app-sidebar__button {
+  min-height: 56px;
+  border-radius: 10px;
+}
+
+.app-sidebar__button:hover {
+  background: var(--surface-control-hover);
+}
+
+.app-sidebar__button--active {
+  background: var(--surface-accent);
+  box-shadow: var(--shadow-active);
+}
+
+.app-sidebar__button-copy small {
+  line-height: 1.35;
+}
+
+.app-sidebar__footer {
+  padding: var(--space-3) var(--space-2);
+}
+
+.app-content {
+  gap: var(--space-6);
+  padding: clamp(32px, 5vw, 56px) clamp(28px, 5vw, 64px) 72px;
+  background: transparent;
+}
+
+.design-settings-section {
+  max-width: 1080px;
+  gap: var(--space-2);
+}
+
+.design-settings-section__title {
+  font-size: clamp(1.35rem, 1.8vw, 1.65rem);
+  letter-spacing: -0.025em;
+}
+
+.design-settings-section__description {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}
+
+.settings-group,
+.clock-control-group,
+.clock-preview-panel,
+.v2t-workbench {
+  border-color: var(--border-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 8%);
+}
+
+.settings-group,
+.clock-control-group {
+  background: color-mix(in srgb, var(--surface-root) 86%, var(--surface-panel));
+}
+
+.settings-group__heading,
+.clock-control-group__heading {
+  padding-bottom: var(--space-1);
+}
+
+.settings-group__heading svg,
+.clock-control-group__heading svg {
+  flex: 0 0 auto;
+  stroke-width: 1.8;
+}
+
+.design-field__label {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.design-field__help {
+  line-height: 1.55;
+}
+
+.design-control {
+  background: var(--surface-control);
+  border-color: var(--border-control);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+}
+
+.design-control:hover:not(:disabled) {
+  border-color: color-mix(
+    in srgb,
+    var(--border-control-focus) 55%,
+    var(--border-control)
+  );
+}
+
+.design-control:focus {
+  background: var(--surface-control-hover);
+  border-color: var(--border-control-focus);
+}
+
+.design-button {
+  border-radius: 10px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.design-button--primary {
+  background: var(--surface-accent-action);
+  border-color: var(--border-action);
+}
+
+.design-button--primary:hover:not(:disabled) {
+  background: var(--surface-accent-action-hover);
+  border-color: var(--border-action-hover);
+}
+
+.theme-preview__tile {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-control) 45%, transparent);
+}
+
+.theme-preview__tile.is-active {
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.clock-settings-header,
+.v2t-settings-header {
+  margin-top: var(--space-5);
+  padding: var(--space-4) 0;
+}
+
+.clock-preview-panel,
+.v2t-workbench {
+  background: color-mix(in srgb, var(--surface-root) 88%, var(--surface-panel));
+}
+
+.clock-preview-stage {
+  min-height: 340px;
+  background-color: color-mix(in srgb, var(--surface-page) 82%, #000);
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--color-text-primary) 4%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-text-primary) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 28px 28px;
+}
+
+.clock-preview-card {
+  box-shadow:
+    0 20px 44px rgb(0 0 0 / 30%),
+    0 0 24px
+    color-mix(
+      in srgb,
+      var(--clock-accent-color, var(--color-accent)) 18%,
+      transparent
+    );
+}
+
+.v2t-workbench__body {
+  min-height: 380px;
+}
+
+.settings-save-status {
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+
+@media (max-width: 860px) {
+  .app-content {
+    padding: var(--space-6) var(--space-5) 64px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-content {
+    padding: var(--space-5) var(--space-4) 56px;
+  }
+
+  .app-sidebar {
+    padding: var(--space-3) var(--space-4);
+  }
+}
