@@ -1,4 +1,5 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
+import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import "@testing-library/jest-dom";
 
 // テスト環境でTauriのウィンドウ管理をモック
@@ -37,6 +38,23 @@ mockIPC(async (cmd, args) => {
         text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,
       };
     }
+    case "plugin:updater|check":
+      return null;
+    case "plugin:updater|download_and_install": {
+      const channel = typedArgs?.onEvent as
+        | { onmessage?: (event: DownloadEvent) => void }
+        | undefined;
+      channel?.onmessage?.({
+        event: "Started",
+        data: { contentLength: 100 },
+      });
+      channel?.onmessage?.({ event: "Progress", data: { chunkLength: 100 } });
+      channel?.onmessage?.({ event: "Finished" });
+      return;
+    }
+    case "plugin:process|restart":
+    case "plugin:resources|close":
+      return;
     default:
       return null;
   }
