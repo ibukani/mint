@@ -38,6 +38,25 @@ const saveStatusIcons: Record<SaveStatus, React.ReactNode> = {
   error: <CircleAlert size={14} aria-hidden="true" />,
 };
 
+const saveSidebarLabels: Record<SaveStatus, string> = {
+  idle: "設定は自動保存されます",
+  pending: "変更を保存待ち",
+  saving: "変更を保存中",
+  saved: "変更を保存しました",
+  error: "保存に失敗しました",
+};
+
+const saveSidebarTones: Record<
+  SaveStatus,
+  "neutral" | "pending" | "success" | "error"
+> = {
+  idle: "neutral",
+  pending: "pending",
+  saving: "pending",
+  saved: "success",
+  error: "error",
+};
+
 const overlayWindowTitles: Record<string, string> = {
   clock: "時計オーバーレイ",
 };
@@ -152,6 +171,8 @@ const AppContent: React.FC = () => {
           tabs={SETTINGS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          statusLabel={saveSidebarLabels[saveStatus]}
+          statusTone={saveSidebarTones[saveStatus]}
         >
           <div
             className={`settings-save-status settings-save-status--${saveStatus}`}

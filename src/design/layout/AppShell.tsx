@@ -9,6 +9,8 @@ interface AppShellProps<TTabId extends string> {
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
   onTabChange: (tabId: TTabId) => void;
+  statusLabel?: string;
+  statusTone?: "neutral" | "pending" | "success" | "error";
   children: React.ReactNode;
 }
 
@@ -17,6 +19,8 @@ export const AppShell = <TTabId extends string>({
   tabs,
   activeTab,
   onTabChange,
+  statusLabel,
+  statusTone,
   children,
 }: AppShellProps<TTabId>) => {
   return (
@@ -28,6 +32,8 @@ export const AppShell = <TTabId extends string>({
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={onTabChange}
+          statusLabel={statusLabel}
+          statusTone={statusTone}
         />
         <ContentArea>{children}</ContentArea>
       </div>

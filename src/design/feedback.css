@@ -158,6 +158,28 @@
   color: var(--color-accent);
 }
 
+.app-sidebar__status-dot--pending {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--surface-accent);
+  animation: sidebar-status-pulse 1.6s ease-in-out infinite;
+}
+
+.app-sidebar__status-dot--success {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px var(--surface-success);
+}
+
+.app-sidebar__status-dot--error {
+  background: var(--color-error);
+  box-shadow: 0 0 0 3px var(--surface-error);
+}
+
+@keyframes sidebar-status-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
 @media (max-width: 640px) {
   .error-toast {
     top: var(--space-3);

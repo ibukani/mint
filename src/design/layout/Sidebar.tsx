@@ -12,6 +12,8 @@ interface SidebarProps<TTabId extends string> {
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
   onTabChange: (tabId: TTabId) => void;
+  statusLabel?: string;
+  statusTone?: "neutral" | "pending" | "success" | "error";
 }
 
 export const Sidebar = <TTabId extends string>({
@@ -19,6 +21,8 @@ export const Sidebar = <TTabId extends string>({
   tabs,
   activeTab,
   onTabChange,
+  statusLabel = "設定は自動保存されます",
+  statusTone = "neutral",
 }: SidebarProps<TTabId>) => {
   return (
     <nav className="app-sidebar" aria-label="設定カテゴリ">
@@ -64,8 +68,11 @@ export const Sidebar = <TTabId extends string>({
         ))}
       </div>
       <div className="app-sidebar__footer">
-        <span className="app-sidebar__status-dot" />
-        設定は自動保存されます
+        <span
+          className={`app-sidebar__status-dot app-sidebar__status-dot--${statusTone}`}
+          aria-hidden="true"
+        />
+        <span>{statusLabel}</span>
       </div>
     </nav>
   );
