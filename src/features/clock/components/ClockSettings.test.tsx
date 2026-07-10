@@ -79,9 +79,6 @@ describe("ClockSettings component", () => {
     const secondsInput = screen.getByLabelText(
       "表示秒数 (0でトグル表示)",
     ) as HTMLInputElement;
-    const fontSizeSelect = screen.getByLabelText(
-      "フォントサイズ",
-    ) as HTMLSelectElement;
     const showDateCheckbox = screen.getByLabelText(
       "年月日と曜日を表示する",
     ) as HTMLInputElement;
@@ -107,7 +104,6 @@ describe("ClockSettings component", () => {
     fireEvent.click(enabledCheckbox); // 有効をオフにする
     fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
     fireEvent.change(secondsInput, { target: { value: "12" } });
-    fireEvent.change(fontSizeSelect, { target: { value: "2.5rem" } });
     fireEvent.click(showDateCheckbox);
     fireEvent.click(showSecondsCheckbox);
     fireEvent.click(blinkColonCheckbox);
@@ -120,7 +116,6 @@ describe("ClockSettings component", () => {
     expect(enabledCheckbox.checked).toBe(true);
     expect(shortcutInput.value).toBe("Ctrl+Alt+C");
     expect(secondsInput.value).toBe("3");
-    expect(fontSizeSelect.value).toBe("1.5rem");
     expect(showDateCheckbox.checked).toBe(true);
     expect(showSecondsCheckbox.checked).toBe(true);
     expect(blinkColonCheckbox.checked).toBe(true);

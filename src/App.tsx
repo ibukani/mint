@@ -121,7 +121,7 @@ const AppContent: React.FC = () => {
       const contentEl = document.querySelector(".app-content");
       if (contentEl) {
         const focusable = contentEl.querySelector<HTMLElement>(
-          'input:not([type="hidden"]):not([type="checkbox"]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+          'input:not([type="hidden"]):not([type="checkbox"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])',
         );
         focusable?.focus();
       }

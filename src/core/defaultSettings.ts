@@ -7,7 +7,6 @@ export const defaultAppSettings: AppSettings = {
     enabled: true,
     shortcut: "Ctrl+Alt+C",
     autoHideSeconds: 3,
-    fontSize: "1.5rem",
     showDate: true,
     showSeconds: true,
     clockColor: "#818cf8",
