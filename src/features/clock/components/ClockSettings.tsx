@@ -1,9 +1,10 @@
-import { Minus, Palette, Plus, RotateCcw, TimerReset } from "lucide-react";
+import { Minus, Palette, Plus, TimerReset } from "lucide-react";
 import type React from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
   Button,
+  FeatureSettingsHeader,
   Field,
   FieldRow,
   Select,
@@ -76,28 +77,13 @@ export const ClockSettings: React.FC = () => {
       title="時計オーバーレイ設定"
       description="呼び出した瞬間に時刻を確認できる、軽量なデスクトップ時計です。"
     >
-      <div className="clock-settings-header">
-        <div className="clock-feature-state">
-          <Switch
-            id="clock-enabled-checkbox"
-            checked={clock.enabled}
-            onChange={(event) => handleChange("enabled", event.target.checked)}
-            aria-label="この機能を有効にする (Enable Feature)"
-          />
-          <div>
-            <label htmlFor="clock-enabled-checkbox">時計オーバーレイ</label>
-            <span>{clock.enabled ? "有効" : "無効"}</span>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          className="clock-reset-button"
-          onClick={resetClockSettings}
-        >
-          <RotateCcw size={15} aria-hidden="true" />
-          デフォルトに戻す
-        </Button>
-      </div>
+      <FeatureSettingsHeader
+        switchId="clock-enabled-checkbox"
+        label="時計オーバーレイ"
+        enabled={clock.enabled}
+        onChange={(event) => handleChange("enabled", event.target.checked)}
+        onReset={resetClockSettings}
+      />
 
       <div className="clock-settings-workspace">
         <div className="clock-settings-controls">

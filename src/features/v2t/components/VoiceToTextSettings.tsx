@@ -9,7 +9,6 @@ import {
   FileAudio,
   LoaderCircle,
   Mic2,
-  RotateCcw,
   Server,
   Trash2,
 } from "lucide-react";
@@ -20,11 +19,11 @@ import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
   Button,
   ErrorMessage,
+  FeatureSettingsHeader,
   Field,
   FieldRow,
   SettingsSection,
   ShortcutInput,
-  Switch,
   TextArea,
   TextInput,
 } from "../../../design/components";
@@ -413,24 +412,13 @@ export const VoiceToTextSettings: React.FC = () => {
       title="音声入力設定"
       description="音声認識APIへの接続と、音声ファイルの文字起こしを管理します。"
     >
-      <div className="v2t-settings-header">
-        <div className="v2t-feature-state">
-          <Switch
-            id="v2t-enabled-checkbox"
-            checked={voiceToText.enabled}
-            onChange={(event) => handleChange("enabled", event.target.checked)}
-            aria-label="この機能を有効にする (Enable Feature)"
-          />
-          <div>
-            <label htmlFor="v2t-enabled-checkbox">音声入力</label>
-            <span>{voiceToText.enabled ? "有効" : "無効"}</span>
-          </div>
-        </div>
-        <Button variant="ghost" onClick={resetVoiceToTextSettings}>
-          <RotateCcw size={15} aria-hidden="true" />
-          デフォルトに戻す
-        </Button>
-      </div>
+      <FeatureSettingsHeader
+        switchId="v2t-enabled-checkbox"
+        label="音声入力"
+        enabled={voiceToText.enabled}
+        onChange={(event) => handleChange("enabled", event.target.checked)}
+        onReset={resetVoiceToTextSettings}
+      />
 
       <div className="v2t-workspace">
         <div className="v2t-settings-column">
