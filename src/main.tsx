@@ -2,6 +2,7 @@ import "./core/mocks/tauriMock";
 import "./index.css";
 import "./design/feedback.css";
 import "./design/workspaces.css";
+import "./design/clock.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";

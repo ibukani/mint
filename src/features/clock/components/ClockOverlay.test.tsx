@@ -72,4 +72,23 @@ describe("digital clock presentation", () => {
       container.querySelector(".digital-clock__progress"),
     ).not.toBeInTheDocument();
   });
+
+  it("gives the analog clock a readable accessible label", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-10T20:42:18+09:00"));
+
+    render(
+      <TickingClock
+        showDate={false}
+        showSeconds
+        blinkColon={false}
+        displayMode="analog"
+        hourFormat="24h"
+        glowEffect={false}
+        clockColor="#38bdf8"
+      />,
+    );
+
+    expect(screen.getByRole("img")).toHaveAccessibleName("現在時刻 20時42分");
+  });
 });

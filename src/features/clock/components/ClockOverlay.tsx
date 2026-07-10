@@ -2,7 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { X } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 
@@ -80,7 +80,11 @@ const AnalogClock: React.FC<{
     : undefined;
 
   return (
-    <div className={`analog-clock-container ${glowEffect ? "glow" : ""}`}>
+    <div
+      className={`analog-clock-container ${glowEffect ? "glow" : ""}`}
+      role="img"
+      aria-label={`現在時刻 ${String(time.getHours()).padStart(2, "0")}時${String(time.getMinutes()).padStart(2, "0")}分`}
+    >
       <svg viewBox="0 0 200 200" className="analog-clock">
         {/* Face */}
         <circle cx="100" cy="100" r="90" className="analog-clock-face" />
@@ -267,6 +271,7 @@ export const ClockOverlay: React.FC = () => {
   const [isAnimateVisible, setIsAnimateVisible] = useState(false);
   const [isHiding, setIsHiding] = useState(false);
   const [trigger, setTrigger] = useState(0);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setIsAnimateVisible(true);
@@ -277,17 +282,31 @@ export const ClockOverlay: React.FC = () => {
     setIsAnimateVisible(false);
     setIsHiding(true);
 
-    setTimeout(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+
+    hideTimerRef.current = setTimeout(() => {
       getCurrentWindow()
         .hide()
         .then(() => {
           setIsHiding(false);
+          hideTimerRef.current = null;
         })
         .catch((e) => {
           console.error("Failed to hide clock window:", e);
           setIsHiding(false);
+          hideTimerRef.current = null;
         });
     }, 280);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -371,6 +390,8 @@ export const ClockOverlay: React.FC = () => {
     <OverlayFrame>
       <OverlayCard
         className={`${animationClass} overlay-card--${settings?.clock.displayMode ?? "digital"}`}
+        role="dialog"
+        aria-label="時計オーバーレイ"
         style={
           {
             "--overlay-font-size": settings?.clock.fontSize,
@@ -385,6 +406,8 @@ export const ClockOverlay: React.FC = () => {
           type="button"
           className="overlay-close-button"
           aria-label="時計オーバーレイを閉じる"
+          aria-keyshortcuts="Escape"
+          title="閉じる（Esc）"
           onClick={hideClock}
         >
           <X size={15} aria-hidden="true" />
