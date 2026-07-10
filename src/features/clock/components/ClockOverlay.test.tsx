@@ -2,6 +2,16 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getClockDimensions, TickingClock } from "./ClockOverlay";
 
+const WEEKDAY_LABELS = [
+  "日曜日",
+  "月曜日",
+  "火曜日",
+  "水曜日",
+  "木曜日",
+  "金曜日",
+  "土曜日",
+] as const;
+
 describe("digital clock presentation", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -24,7 +34,11 @@ describe("digital clock presentation", () => {
 
   it("renders date, weekday, seconds and progress in the default layout", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-07-10T08:42:18+09:00"));
+    // Use local Date constructor to avoid timezone-dependent failures in CI
+    vi.setSystemTime(new Date(2026, 6, 10, 8, 42, 18));
+
+    const localDate = new Date(2026, 6, 10, 8, 42, 18);
+    const expectedWeekday = WEEKDAY_LABELS[localDate.getDay()] as string;
 
     const { container } = render(
       <TickingClock
@@ -41,7 +55,7 @@ describe("digital clock presentation", () => {
     expect(container.querySelector(".digital-clock__date")).toHaveTextContent(
       "2026年7月10日",
     );
-    expect(screen.getByText("金曜日")).toBeInTheDocument();
+    expect(screen.getByText(expectedWeekday)).toBeInTheDocument();
     expect(screen.getByText("18")).toBeInTheDocument();
     expect(
       container.querySelector(".digital-clock__progress"),
@@ -50,7 +64,8 @@ describe("digital clock presentation", () => {
 
   it("removes optional regions cleanly in compact 12-hour mode", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-07-10T20:42:18+09:00"));
+    // Use local Date constructor to avoid timezone-dependent failures in CI
+    vi.setSystemTime(new Date(2026, 6, 10, 20, 42, 18));
 
     const { container } = render(
       <TickingClock
@@ -75,7 +90,8 @@ describe("digital clock presentation", () => {
 
   it("gives the analog clock a readable accessible label", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-07-10T20:42:18+09:00"));
+    // Use local Date constructor to avoid timezone-dependent failures in CI
+    vi.setSystemTime(new Date(2026, 6, 10, 20, 42, 18));
 
     render(
       <TickingClock
