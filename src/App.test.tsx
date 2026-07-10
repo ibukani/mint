@@ -282,6 +282,8 @@ describe("App Window Routing", () => {
     });
 
     expect(document.body.classList.contains("is-overlay")).toBe(true);
-    expect(document.documentElement.classList.contains("is-overlay")).toBe(true);
+    expect(document.documentElement.classList.contains("is-overlay")).toBe(
+      true,
+    );
   });
 });

@@ -17,9 +17,23 @@ pub fn toggle_clock_overlay(app: &AppHandle) {
         } else {
             let percent = settings.clock.size_percent as f64 / 100.0;
             let (base_w, base_h) = if settings.clock.display_mode == "analog" {
-                (240.0, if settings.clock.show_date { 250.0 } else { 190.0 })
+                (
+                    240.0,
+                    if settings.clock.show_date {
+                        250.0
+                    } else {
+                        190.0
+                    },
+                )
             } else {
-                (420.0, if settings.clock.show_date { 168.0 } else { 132.0 })
+                (
+                    420.0,
+                    if settings.clock.show_date {
+                        168.0
+                    } else {
+                        132.0
+                    },
+                )
             };
             let w = base_w * percent;
             let h = base_h * percent;

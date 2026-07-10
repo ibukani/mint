@@ -61,7 +61,9 @@ body {
 
 html.is-overlay,
 body.is-overlay {
+  /* biome-ignore lint/complexity/noImportantStyles: overlay windows must have a transparent background */
   background: transparent !important;
+  /* biome-ignore lint/complexity/noImportantStyles: overlay windows must have a transparent background */
   background-color: transparent !important;
 }
 
