@@ -45,7 +45,7 @@
   --color-text-primary: #17201e;
   --color-text-secondary: #42534d;
   --color-text-muted: #687a73;
-  --color-text-subtle: #84948d;
+  --color-text-subtle: #75867f;
   --color-placeholder: #98a39f;
   --color-accent: #087f6b;
   --color-accent-strong: #c45d38;
@@ -77,6 +77,6 @@
   --border-success: rgb(22 124 80 / 35%);
   --border-warning: rgb(150 107 19 / 35%);
   --border-overlay: rgb(23 32 30 / 12%);
-  --page-accent-top: transparent;
-  --page-accent-bottom: transparent;
+  --page-accent-top: rgb(8 127 107 / 5%);
+  --page-accent-bottom: rgb(196 93 56 / 3%);
 }

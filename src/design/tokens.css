@@ -45,7 +45,7 @@
 
   --shadow-panel: 0 24px 64px rgb(0 0 0 / 24%);
   --shadow-active: inset 3px 0 0 var(--color-accent);
-  --shadow-focus: 0 0 0 3px rgb(79 209 181 / 20%);
+  --shadow-focus: 0 0 0 3px rgb(99 216 190 / 20%);
   --shadow-glow: none;
   --shadow-glow-active:
     0 0 25px rgb(99 102 241 / 40%), 0 0 10px rgb(192 132 252 / 20%);
