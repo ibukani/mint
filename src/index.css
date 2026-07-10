@@ -37,7 +37,7 @@
   line-height: 1.5;
   font-weight: var(--font-weight-regular);
   color: var(--color-text-primary);
-  background-color: var(--surface-root);
+  background-color: transparent;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -54,7 +54,7 @@ body {
   justify-content: center;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--surface-page);
+  background: transparent;
   overflow: hidden;
   transition: background var(--transition-base);
 }
@@ -1971,12 +1971,11 @@ body.is-overlay {
   }
 }
 
-/* Product polish: a calm, layered workspace with deliberate focus states. */
-:root {
+:root:not(.is-overlay) {
   background: var(--surface-page);
 }
 
-body {
+body:not(.is-overlay) {
   background:
     radial-gradient(
       circle at 85% -10%,

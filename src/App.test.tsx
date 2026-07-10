@@ -263,4 +263,25 @@ describe("App Window Routing", () => {
     );
     window.history.pushState({}, "", "/");
   });
+
+  it("adds is-overlay class to body and html elements when clock overlay is rendered", async () => {
+    vi.mocked(getCurrentWindow).mockReturnValue({
+      label: "clock",
+      hide: vi.fn().mockResolvedValue(undefined),
+      show: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof getCurrentWindow>);
+
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(document.body.classList.contains("is-overlay")).toBe(true);
+    expect(document.documentElement.classList.contains("is-overlay")).toBe(true);
+  });
 });
