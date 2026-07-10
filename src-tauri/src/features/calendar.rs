@@ -1,7 +1,6 @@
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
-const CALENDAR_WIDTH: f64 = 420.0;
 const CALENDAR_HEIGHT: f64 = 384.0;
 const WINDOW_MARGIN: f64 = 20.0;
 const OVERLAY_PADDING: f64 = 8.0;
@@ -13,15 +12,18 @@ struct CalendarShownPayload {
     docked: bool,
 }
 
-fn position_calendar(app: &AppHandle, docked: bool) {
+fn position_calendar(app: &AppHandle, docked: bool, settings: &crate::core::settings::AppSettings) {
     let Some(calendar) = app.get_webview_window("calendar") else {
         return;
     };
 
-    let _ = calendar.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
-        CALENDAR_WIDTH,
-        CALENDAR_HEIGHT,
-    )));
+    let percent = settings.clock.size_percent as f64 / 100.0;
+    let base_w = if settings.clock.display_mode == "analog" {
+        240.0
+    } else {
+        420.0
+    };
+    let calendar_width_logical = base_w * percent;
 
     if docked {
         if let Some(clock) = app.get_webview_window("clock") {
@@ -31,17 +33,28 @@ fn position_calendar(app: &AppHandle, docked: bool) {
                 clock.current_monitor(),
             ) {
                 let scale = monitor.scale_factor();
-                let calendar_width = (CALENDAR_WIDTH * scale).round() as i32;
+                // Same formula as clock.rs: (width * scale) as u32
+                let physical_width = (calendar_width_logical * scale) as u32;
+                let calendar_h = (CALENDAR_HEIGHT * scale).round() as u32;
+                let margin = (WINDOW_MARGIN * scale) as u32;
+
+                let _ = calendar.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+                    physical_width,
+                    calendar_h,
+                )));
+
                 let padding = (OVERLAY_PADDING * 2.0 * scale).round() as i32;
-                let x = clock_position.x + clock_size.width as i32 - calendar_width;
                 let y = clock_position.y + clock_size.height as i32 - padding;
-                let _ =
-                    calendar.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));
+                let x = monitor.size().width.saturating_sub(physical_width + margin);
+                let _ = calendar.set_position(tauri::Position::Physical(
+                    PhysicalPosition::new(x as i32, y),
+                ));
                 return;
             }
         }
     }
 
+    // Fallback: non-docked or clock not available
     let monitor = calendar
         .current_monitor()
         .ok()
@@ -49,9 +62,17 @@ fn position_calendar(app: &AppHandle, docked: bool) {
         .or_else(|| app.primary_monitor().ok().flatten());
     if let Some(monitor) = monitor {
         let scale = monitor.scale_factor();
-        let calendar_width = (CALENDAR_WIDTH * scale).round() as u32;
-        let margin = (WINDOW_MARGIN * scale).round() as u32;
-        let x = monitor.size().width.saturating_sub(calendar_width + margin);
+        // Same conversion as clock.rs: (width * scale) as u32
+        let physical_width = (calendar_width_logical * scale) as u32;
+        let calendar_h = (CALENDAR_HEIGHT * scale).round() as u32;
+        let margin = (WINDOW_MARGIN * scale) as u32;
+
+        let _ = calendar.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+            physical_width,
+            calendar_h,
+        )));
+
+        let x = monitor.size().width.saturating_sub(physical_width + margin);
         let y = margin;
         let _ = calendar.set_position(tauri::Position::Physical(PhysicalPosition::new(
             x as i32, y as i32,
@@ -88,7 +109,7 @@ pub fn toggle_calendar_overlay(app: &AppHandle) {
             .get_webview_window("clock")
             .and_then(|clock| clock.is_visible().ok())
             .unwrap_or(false);
-    position_calendar(app, docked);
+    position_calendar(app, docked, &settings);
 
     let _ = calendar.show();
     let _ = calendar.set_always_on_top(true);
