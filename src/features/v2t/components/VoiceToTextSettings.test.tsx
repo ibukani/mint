@@ -1256,9 +1256,7 @@ describe("VoiceToTextSettings", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
-    expect(
-      screen.getByLabelText("この機能を有効にする (Enable Feature)"),
-    ).not.toBeChecked();
+    expect(screen.getByLabelText("音声入力を有効にする")).not.toBeChecked();
     expect(screen.getByLabelText("起動/録音ショートカットキー")).toHaveValue(
       "Ctrl+Alt+V",
     );

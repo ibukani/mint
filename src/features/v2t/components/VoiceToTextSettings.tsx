@@ -418,6 +418,7 @@ export const VoiceToTextSettings: React.FC = () => {
         enabled={voiceToText.enabled}
         onChange={(event) => handleChange("enabled", event.target.checked)}
         onReset={resetVoiceToTextSettings}
+        ariaLabel="音声入力を有効にする"
       />
 
       <div className="v2t-workspace">

@@ -9,6 +9,7 @@ interface FeatureSettingsHeaderProps {
   enabled: boolean;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onReset: () => void;
+  ariaLabel?: string;
 }
 
 export const FeatureSettingsHeader: React.FC<FeatureSettingsHeaderProps> = ({
@@ -17,6 +18,7 @@ export const FeatureSettingsHeader: React.FC<FeatureSettingsHeaderProps> = ({
   enabled,
   onChange,
   onReset,
+  ariaLabel = "この機能を有効にする (Enable Feature)",
 }) => {
   return (
     <div className="feature-settings-header">
@@ -25,7 +27,7 @@ export const FeatureSettingsHeader: React.FC<FeatureSettingsHeaderProps> = ({
           id={switchId}
           checked={enabled}
           onChange={onChange}
-          aria-label="この機能を有効にする (Enable Feature)"
+          aria-label={ariaLabel}
         />
         <div>
           <label htmlFor={switchId}>{label}</label>

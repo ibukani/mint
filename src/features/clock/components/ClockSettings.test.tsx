@@ -18,7 +18,7 @@ describe("ClockSettings component", () => {
 
     // 有効化チェックボックス検証
     const enabledCheckbox = screen.getByLabelText(
-      "この機能を有効にする (Enable Feature)",
+      "時計オーバーレイを有効にする",
     ) as HTMLInputElement;
     expect(enabledCheckbox.checked).toBe(true);
 
@@ -71,7 +71,7 @@ describe("ClockSettings component", () => {
     });
 
     const enabledCheckbox = screen.getByLabelText(
-      "この機能を有効にする (Enable Feature)",
+      "時計オーバーレイを有効にする",
     ) as HTMLInputElement;
     const shortcutInput = screen.getByLabelText(
       "起動ショートカットキー",

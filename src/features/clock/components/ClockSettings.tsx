@@ -83,6 +83,7 @@ export const ClockSettings: React.FC = () => {
         enabled={clock.enabled}
         onChange={(event) => handleChange("enabled", event.target.checked)}
         onReset={resetClockSettings}
+        ariaLabel="時計オーバーレイを有効にする"
       />
 
       <div className="clock-settings-workspace">
