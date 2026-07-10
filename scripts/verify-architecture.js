@@ -18,6 +18,7 @@ const SETTINGS_TABS_PATH = path.join(
 const WINDOW_ROUTES_PATH = path.join(ROOT_DIR, "src/core/windowRoutes.ts");
 const TAURI_CONF_PATH = path.join(ROOT_DIR, "src-tauri/tauri.conf.json");
 const RS_LIB_PATH = path.join(ROOT_DIR, "src-tauri/src/lib.rs");
+const INDEX_CSS_PATH = path.join(ROOT_DIR, "src/index.css");
 
 const verbose =
   process.argv.includes("--verbose") ||
@@ -663,14 +664,14 @@ const disallowedGlobalClasses = [
 ];
 
 const designBoundaryAllowlist = new Map([
-  // Clock overlay forwards user-configured font size and color through a CSS custom property.
+  // Clock overlay and preview forward user-configured values through CSS custom properties.
+  ["src/features/clock/components/ClockOverlay.tsx", new Set(["inline-style"])],
+  ["src/features/clock/components/ClockPreview.tsx", new Set(["inline-style"])],
+  // Analog hands and progress indicators require runtime-calculated SVG/CSS values.
+  ["src/features/clock/components/ClockDisplay.tsx", new Set(["inline-style"])],
+  // Preset colors are clock feature data and are passed to CSS as a swatch variable.
   [
-    "src/features/clock/components/ClockOverlay.tsx",
-    new Set(["inline-style", "color-literal"]),
-  ],
-  // Clock settings needs preset color values for palette and inline styles for preview card.
-  [
-    "src/features/clock/components/ClockSettings.tsx",
+    "src/features/clock/components/ClockAppearanceSettings.tsx",
     new Set(["inline-style", "color-literal"]),
   ],
 ]);
@@ -724,6 +725,175 @@ for (const sourceFile of listFilesRecursive(FEATURES_DIR, {
       );
     }
   }
+}
+
+// 13. Enforce CSS ownership and keep the global entry point declarative.
+const SRC_DIR = path.join(ROOT_DIR, "src");
+const DESIGN_DIR = path.join(SRC_DIR, "design");
+const CORE_DIR = path.join(SRC_DIR, "core");
+const DESIGN_FEATURES_DIR = path.join(DESIGN_DIR, "features");
+const referencedCssFiles = new Set();
+
+function toPosixRelative(filePath) {
+  return path.relative(ROOT_DIR, filePath).replace(/\\/g, "/");
+}
+
+function isPathInside(parentPath, childPath) {
+  const relativePath = path.relative(parentPath, childPath);
+  return (
+    relativePath === "" ||
+    (!relativePath.startsWith(`..${path.sep}`) && relativePath !== "..")
+  );
+}
+
+function resolveCssImport(importerPath, importPath) {
+  if (!importPath.startsWith(".")) return null;
+  return path.resolve(path.dirname(importerPath), importPath);
+}
+
+if (fs.existsSync(DESIGN_FEATURES_DIR)) {
+  reportError(
+    `CSS architecture: ${toPosixRelative(DESIGN_FEATURES_DIR)} must not exist. Keep feature-owned CSS under src/features/<feature>/.`,
+  );
+} else {
+  reportSuccess(
+    "CSS architecture: feature-owned CSS is not stored in src/design/features/.",
+  );
+}
+
+if (!fs.existsSync(INDEX_CSS_PATH)) {
+  reportError(`Global stylesheet entry point not found: ${INDEX_CSS_PATH}`);
+} else {
+  const indexCssContent = fs.readFileSync(INDEX_CSS_PATH, "utf-8");
+  const indexCssWithoutComments = indexCssContent.replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+  const indexCssStatements = indexCssWithoutComments
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const importStatementRegex = /^@import\s+["']([^"']+)["'];$/;
+  const invalidStatement = indexCssStatements.find(
+    (line) => !importStatementRegex.test(line),
+  );
+
+  if (invalidStatement) {
+    reportError(
+      `CSS architecture: src/index.css must contain imports only. Move style rules to their owning module. Invalid statement: "${invalidStatement}"`,
+    );
+  } else {
+    reportSuccess(
+      "CSS architecture: src/index.css is an import-only stylesheet entry point.",
+    );
+  }
+
+  for (const statement of indexCssStatements) {
+    const importMatch = statement.match(importStatementRegex);
+    if (!importMatch) continue;
+    const importPath = importMatch[1];
+    const resolvedPath = resolveCssImport(INDEX_CSS_PATH, importPath);
+
+    if (!importPath.startsWith("./design/") || !resolvedPath) {
+      reportError(
+        `CSS architecture: src/index.css may import only src/design/ stylesheets. Invalid import: "${importPath}"`,
+      );
+      continue;
+    }
+    if (!resolvedPath.endsWith(".css") || !fs.existsSync(resolvedPath)) {
+      reportError(
+        `CSS architecture: src/index.css import does not resolve to an existing CSS file: "${importPath}"`,
+      );
+      continue;
+    }
+    if (!isPathInside(DESIGN_DIR, resolvedPath)) {
+      reportError(
+        `CSS architecture: src/index.css import escapes src/design/: "${importPath}"`,
+      );
+      continue;
+    }
+    referencedCssFiles.add(path.normalize(resolvedPath));
+  }
+}
+
+const cssImporters = listFilesRecursive(SRC_DIR, {
+  extensions: [".ts", ".tsx", ".css"],
+  ignoredDirs: new Set(["node_modules", "dist"]),
+});
+
+for (const importerPath of cssImporters) {
+  if (path.normalize(importerPath) === path.normalize(INDEX_CSS_PATH)) continue;
+  const content = fs.readFileSync(importerPath, "utf-8");
+  const importPaths = [];
+
+  if (importerPath.endsWith(".css")) {
+    const cssImportRegex = /@import\s+["']([^"']+\.css)["'];/g;
+    let cssImportMatch = cssImportRegex.exec(content);
+    while (cssImportMatch !== null) {
+      importPaths.push(cssImportMatch[1]);
+      cssImportMatch = cssImportRegex.exec(content);
+    }
+  } else {
+    const moduleCssImportRegex = /import\s+["']([^"']+\.css)["'];/g;
+    let moduleImportMatch = moduleCssImportRegex.exec(content);
+    while (moduleImportMatch !== null) {
+      importPaths.push(moduleImportMatch[1]);
+      moduleImportMatch = moduleCssImportRegex.exec(content);
+    }
+  }
+
+  for (const importPath of importPaths) {
+    const resolvedPath = resolveCssImport(importerPath, importPath);
+    const importerRelative = toPosixRelative(importerPath);
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+      reportError(
+        `CSS architecture: "${importerRelative}" imports a missing stylesheet: "${importPath}"`,
+      );
+      continue;
+    }
+    if (path.normalize(resolvedPath) !== path.normalize(INDEX_CSS_PATH)) {
+      referencedCssFiles.add(path.normalize(resolvedPath));
+    }
+
+    if (isPathInside(FEATURES_DIR, importerPath)) {
+      const relativeFeaturePath = path.relative(FEATURES_DIR, importerPath);
+      const [featureName] = relativeFeaturePath.split(path.sep);
+      const featureRoot = path.join(FEATURES_DIR, featureName);
+      if (!isPathInside(featureRoot, resolvedPath)) {
+        reportError(
+          `CSS architecture: feature importer "${importerRelative}" must keep component-owned CSS inside src/features/${featureName}/.`,
+        );
+      }
+    }
+
+    if (
+      isPathInside(CORE_DIR, importerPath) &&
+      !isPathInside(CORE_DIR, resolvedPath)
+    ) {
+      reportError(
+        `CSS architecture: core importer "${importerRelative}" must keep component-owned CSS inside src/core/.`,
+      );
+    }
+  }
+}
+
+for (const cssFile of listFilesRecursive(SRC_DIR, { extensions: [".css"] })) {
+  if (path.normalize(cssFile) === path.normalize(INDEX_CSS_PATH)) continue;
+  if (!referencedCssFiles.has(path.normalize(cssFile))) {
+    reportError(
+      `CSS architecture: orphan stylesheet is not imported by src/index.css or an owning module: "${toPosixRelative(cssFile)}"`,
+    );
+  }
+}
+
+if (
+  listFilesRecursive(SRC_DIR, { extensions: [".css"] }).length - 1 ===
+  referencedCssFiles.size
+) {
+  reportSuccess(
+    "CSS architecture: all stylesheets have an explicit owner/import path.",
+  );
 }
 
 if (errorsCount > 0) {

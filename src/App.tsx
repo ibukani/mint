@@ -1,42 +1,23 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Check, CircleAlert, LoaderCircle } from "lucide-react";
 import type React from "react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
+import { AppErrorState } from "./core/components/AppErrorState";
+import { AppLoading } from "./core/components/AppLoading";
+import { AutoFocusTrigger } from "./core/components/AutoFocusTrigger";
 import { ErrorToast } from "./core/components/ErrorToast";
+import { SettingsSaveStatus } from "./core/components/SettingsSaveStatus";
 import {
   AppSettingsProvider,
   type SaveStatus,
   useAppSettings,
 } from "./core/context/AppSettings";
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
+import { useSettingsWindow } from "./core/hooks/useSettingsWindow";
 import {
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
-  type SettingsTabId,
 } from "./core/navigation/settingsTabs";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
-import { Button } from "./design/components";
 import { AppShell } from "./design/layout";
-
-const saveStatusLabels: Record<SaveStatus, string> = {
-  idle: "",
-  pending: "保存待ち...",
-  saving: "保存中...",
-  saved: "保存完了",
-  error: "保存失敗",
-};
-
-const saveStatusIcons: Record<SaveStatus, React.ReactNode> = {
-  idle: null,
-  pending: (
-    <LoaderCircle className="spinner-icon" size={14} aria-hidden="true" />
-  ),
-  saving: (
-    <LoaderCircle className="spinner-icon" size={14} aria-hidden="true" />
-  ),
-  saved: <Check size={14} aria-hidden="true" />,
-  error: <CircleAlert size={14} aria-hidden="true" />,
-};
 
 const saveSidebarLabels: Record<SaveStatus, string> = {
   idle: "設定は自動保存されます",
@@ -57,101 +38,13 @@ const saveSidebarTones: Record<
   error: "error",
 };
 
-const overlayWindowTitles: Record<string, string> = {
-  clock: "時計オーバーレイ",
-};
-
-const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
-
-const getInitialSettingsTab = (): SettingsTabId => {
-  const requestedTab = new URLSearchParams(window.location.search).get("tab");
-  if (SETTINGS_TABS.some((tab) => tab.id === requestedTab)) {
-    return requestedTab as SettingsTabId;
-  }
-
-  try {
-    const storedTab = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
-    return SETTINGS_TABS.some((tab) => tab.id === storedTab)
-      ? (storedTab as SettingsTabId)
-      : "general";
-  } catch {
-    return "general";
-  }
-};
-
-const AutoFocusTrigger: React.FC = () => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const contentEl = document.querySelector(".app-content");
-      if (contentEl) {
-        const focusable = contentEl.querySelector<HTMLElement>(
-          'input:not([type="hidden"]):not([type="checkbox"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])',
-        );
-        focusable?.focus();
-      }
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
-
-  return null;
-};
-
 const AppContent: React.FC = () => {
   const { settings, loading, error, saveStatus, clearError, reloadSettings } =
     useAppSettings();
-  const [label, setLabel] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTabId>(
-    getInitialSettingsTab,
-  );
+  const { label, activeTab, setActiveTab } = useSettingsWindow(settings?.theme);
 
-  useEffect(() => {
-    setLabel(getCurrentWindow().label);
-  }, []);
+  if (loading) return <AppLoading />;
 
-  useEffect(() => {
-    if (settings) {
-      document.documentElement.dataset.theme = settings.theme;
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
-    } catch {
-      // Ignore storage failures so settings navigation remains usable.
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    const tabLabel =
-      SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "一般設定";
-    const currentLabel =
-      label && label !== "main"
-        ? (overlayWindowTitles[label] ?? label)
-        : tabLabel;
-    document.title = `mint - ${currentLabel}`;
-  }, [activeTab, label]);
-
-  if (loading) {
-    return (
-      <div
-        className="app-loading"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <div className="app-loading__visual" aria-hidden="true">
-          <LoaderCircle className="spinner-icon" size={20} />
-        </div>
-        <p className="app-loading__message">
-          <strong>mintを準備しています</strong>
-          <span>設定を読み込み中...</span>
-        </p>
-      </div>
-    );
-  }
-
-  // Overlay window routing via lookup table
   if (label && label in WINDOW_ROUTES) {
     const OverlayComponent = WINDOW_ROUTES[label];
     return (
@@ -161,10 +54,10 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Main settings window
   const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab];
-  const saveStatusLabel = saveStatusLabels[saveStatus];
-  const settingsLoadError = !settings && error;
+  const activeTabLabel =
+    SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定";
+  const settingsLoadError = !settings ? error : null;
 
   return (
     <>
@@ -175,45 +68,21 @@ const AppContent: React.FC = () => {
       >
         <AppShell
           title="mint"
-          contextLabel={
-            SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定"
-          }
+          contextLabel={activeTabLabel}
           tabs={SETTINGS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           statusLabel={saveSidebarLabels[saveStatus]}
           statusTone={saveSidebarTones[saveStatus]}
         >
-          <div
-            className={`settings-save-status settings-save-status--${saveStatus}`}
-            role={saveStatus === "idle" ? undefined : "status"}
-            aria-hidden={saveStatus === "idle"}
-          >
-            {saveStatusIcons[saveStatus]}
-            <span>{saveStatusLabel}</span>
-          </div>
+          <SettingsSaveStatus status={saveStatus} />
           {settingsLoadError ? (
-            <section
-              className="app-error-state"
-              aria-labelledby="app-error-title"
-            >
-              <div className="app-error-state__icon" aria-hidden="true">
-                <CircleAlert size={20} />
-              </div>
-              <h2 id="app-error-title">設定を読み込めませんでした</h2>
-              <p>{error}</p>
-              <Button onClick={() => void reloadSettings()}>再読み込み</Button>
-            </section>
+            <AppErrorState
+              message={settingsLoadError}
+              onRetry={() => void reloadSettings()}
+            />
           ) : (
-            <Suspense
-              fallback={
-                <div className="app-loading" role="status" aria-busy="true">
-                  <div className="app-loading__visual" aria-hidden="true">
-                    <LoaderCircle className="spinner-icon" size={20} />
-                  </div>
-                </div>
-              }
-            >
+            <Suspense fallback={<AppLoading compact />}>
               <ActiveTabComponent />
               <AutoFocusTrigger key={activeTab} />
             </Suspense>
