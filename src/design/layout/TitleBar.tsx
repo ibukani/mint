@@ -58,6 +58,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       onMouseDown={handleMouseDown}
     >
       <div className="app-titlebar__logo" data-tauri-drag-region>
+        <img
+          src="/mint.svg"
+          alt=""
+          className="app-titlebar__icon"
+          data-tauri-drag-region
+          aria-hidden="true"
+        />
         <span className="app-titlebar__text" data-tauri-drag-region>
           {title}
         </span>

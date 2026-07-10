@@ -137,7 +137,9 @@ body.is-overlay {
 }
 
 .app-titlebar__icon {
-  font-size: var(--font-size-md);
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 .app-titlebar__text {
@@ -1138,16 +1140,11 @@ body.is-overlay {
 }
 
 .app-sidebar__brand-mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 34px;
   height: 34px;
   flex: 0 0 34px;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: #08221d;
-  font-size: 1.15rem;
-  font-weight: var(--font-weight-bold);
+  object-fit: contain;
 }
 
 .app-sidebar__title {
@@ -2050,9 +2047,6 @@ textarea:focus-visible {
   width: 36px;
   height: 36px;
   flex-basis: 36px;
-  border-radius: 10px;
-  box-shadow: 0 8px 20px
-    color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .app-sidebar__title {

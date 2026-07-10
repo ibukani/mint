@@ -29,4 +29,24 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  // Build optimizations for startup speed
+  build: {
+    // Tauri webview supports modern JS — skip unnecessary transpilation
+    target: "esnext",
+    // Split vendor dependencies into separate cacheable chunks
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-tauri": [
+            "@tauri-apps/api",
+            "@tauri-apps/plugin-global-shortcut",
+            "@tauri-apps/plugin-opener",
+          ],
+          "vendor-icons": ["lucide-react"],
+        },
+      },
+    },
+  },
 }));

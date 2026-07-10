@@ -1,7 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
+
+/// Tauri-managed state that caches `AppSettings` in memory.
+/// The inner `Mutex<Option<…>>` starts as `None` and is populated on first
+/// load, then kept in sync by `save_settings`.
+pub struct AppSettingsState(pub Mutex<Option<AppSettings>>);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
@@ -213,12 +219,26 @@ pub fn load_settings_internal(app: &AppHandle) -> Result<AppSettings, String> {
 }
 
 #[tauri::command]
-pub fn load_settings(app: AppHandle) -> Result<AppSettings, String> {
-    load_settings_internal(&app)
+pub fn load_settings(
+    app: AppHandle,
+    state: tauri::State<'_, AppSettingsState>,
+) -> Result<AppSettings, String> {
+    // Try returning from the in-memory cache first
+    if let Some(cached) = state.0.lock().unwrap().clone() {
+        return Ok(cached);
+    }
+    // Cache miss – read from disk and populate the cache
+    let settings = load_settings_internal(&app)?;
+    *state.0.lock().unwrap() = Some(settings.clone());
+    Ok(settings)
 }
 
 #[tauri::command]
-pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String> {
+pub fn save_settings(
+    app: AppHandle,
+    settings: AppSettings,
+    state: tauri::State<'_, AppSettingsState>,
+) -> Result<(), String> {
     let new_shortcuts = settings.active_shortcuts();
 
     // 1. ショートカットの重複チェック
@@ -309,6 +329,9 @@ pub fn save_settings(app: AppHandle, settings: AppSettings) -> Result<(), String
         }
         .to_string()
     })?;
+
+    // Update the in-memory cache so subsequent reads are instant
+    *state.0.lock().unwrap() = Some(settings);
 
     let _ = tauri::Emitter::emit(&app, "settings-changed", ());
 

@@ -1,3 +1,4 @@
+import "../../../design/clock.css";
 import { listen } from "@tauri-apps/api/event";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { X } from "lucide-react";
