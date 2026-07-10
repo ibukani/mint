@@ -1,12 +1,26 @@
-import { Keyboard, MonitorCog, Moon, Sun } from "lucide-react";
+import { Check, Keyboard, MonitorCog, Moon, Sun } from "lucide-react";
 import type React from "react";
 import {
   Field,
-  Select,
   SettingsSection,
   ShortcutInput,
 } from "../../../design/components";
 import { useAppSettings } from "../../context/AppSettings";
+
+const themeOptions = [
+  {
+    value: "dark",
+    label: "ダーク",
+    description: "目にやさしい暗色テーマ",
+    icon: Moon,
+  },
+  {
+    value: "light",
+    label: "ライト",
+    description: "明るく見やすいテーマ",
+    icon: Sun,
+  },
+] as const;
 
 export const GeneralSettings: React.FC = () => {
   const { settings, updateSettings, shortcutErrors } = useAppSettings();
@@ -27,33 +41,52 @@ export const GeneralSettings: React.FC = () => {
               <p>作業環境に合う表示テーマを選択します。</p>
             </div>
           </div>
-          <Field id="theme-select" label="テーマ設定">
-            <Select
-              id="theme-select"
-              value={settings.theme}
-              autoFocus
-              onChange={(e) =>
-                updateSettings({ theme: e.target.value as "dark" | "light" })
-              }
+          <Field label="テーマ設定">
+            <div
+              className="theme-choice-grid"
+              role="radiogroup"
+              aria-label="テーマ設定"
             >
-              <option value="dark">ダーク</option>
-              <option value="light">ライト</option>
-            </Select>
+              {themeOptions.map(({ value, label, description, icon: Icon }) => {
+                const isActive = settings.theme === value;
+                return (
+                  <label
+                    key={value}
+                    className={`theme-choice-card ${isActive ? "is-active" : ""}`}
+                  >
+                    <input
+                      className="theme-choice-card__input"
+                      type="radio"
+                      name="theme"
+                      value={value}
+                      checked={isActive}
+                      aria-label={label}
+                      onChange={() => updateSettings({ theme: value })}
+                    />
+                    <span
+                      className={`theme-choice-card__preview theme-choice-card__preview--${value}`}
+                    >
+                      <span />
+                    </span>
+                    <span className="theme-choice-card__content">
+                      <span className="theme-choice-card__label">
+                        <Icon size={16} aria-hidden="true" />
+                        {label}
+                      </span>
+                      <span className="theme-choice-card__description">
+                        {description}
+                      </span>
+                    </span>
+                    <Check
+                      className="theme-choice-card__check"
+                      size={16}
+                      aria-hidden="true"
+                    />
+                  </label>
+                );
+              })}
+            </div>
           </Field>
-          <div className="theme-preview" aria-hidden="true">
-            <div
-              className={`theme-preview__tile ${settings.theme === "dark" ? "is-active" : ""}`}
-            >
-              <Moon size={18} />
-              <span>ダーク</span>
-            </div>
-            <div
-              className={`theme-preview__tile ${settings.theme === "light" ? "is-active" : ""}`}
-            >
-              <Sun size={18} />
-              <span>ライト</span>
-            </div>
-          </div>
         </section>
 
         <section className="settings-group" aria-labelledby="shortcut-title">
