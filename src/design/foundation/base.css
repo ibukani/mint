@@ -1,4 +1,5 @@
 * {
+  box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: var(--border-accent) transparent;
 }
@@ -40,6 +41,11 @@
   transition:
     color var(--transition-base),
     background-color var(--transition-base);
+}
+
+::selection {
+  background: var(--surface-selection);
+  color: var(--color-text-primary);
 }
 
 body {
@@ -107,6 +113,10 @@ body:not(.is-overlay) {
 button,
 :where(input, select, textarea) {
   font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:focus-visible,

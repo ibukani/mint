@@ -1,5 +1,7 @@
+import { LogicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import {
+  currentMonitor,
   getCurrentWindow,
   Window,
 } from "@tauri-apps/api/window";
@@ -7,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 
 const ANIMATION_MS = 240;
+const WINDOW_MARGIN = 20;
 
 interface CalendarShownPayload {
   closeClockOnToggle: boolean;
@@ -112,22 +115,83 @@ export const useCalendarOverlay = () => {
     }
   }, [settings, closeCalendar]);
 
-  // Update docked state from settings
+  // Resize and position the window from the frontend
   useEffect(() => {
-    if (!settings) return;
+    if (!settings || !isVisible) return;
 
-    Window.getByLabel("clock")
-      .then(async (clockWindow) => {
+    const percent = settings.clock.sizePercent / 100;
+    const baseW = settings.clock.displayMode === "analog" ? 240 : 420;
+    const width = Math.round(baseW * percent) + 16;
+    const scale = width / 420;
+    const height = Math.round(400 * scale);
+
+    const window = getCurrentWindow();
+
+    currentMonitor()
+      .then(async (monitor) => {
+        if (!monitor) return;
+
+        // 1. Resize the window first
+        if (typeof window.setSize === "function") {
+          await window
+            .setSize(new LogicalSize(width, height))
+            .catch((error) => {
+              console.error("Failed to resize calendar window:", error);
+            });
+        }
+
+        // 2. Position the window
+        const clockWindow = await Window.getByLabel("clock");
         const isClockVisible =
           clockWindow && typeof clockWindow.isVisible === "function"
             ? await clockWindow.isVisible()
             : false;
-        setIsDocked(settings.clock.enabled && isClockVisible);
+        const docked = settings.clock.enabled && isClockVisible;
+        setIsDocked(docked);
+
+        if (docked && clockWindow) {
+          const clockPosition = await clockWindow.outerPosition();
+          const clockSize = await clockWindow.outerSize();
+          const scaleFactor = monitor.scaleFactor;
+
+          const calendarWidthPhysical = Math.round(width * scaleFactor);
+          // OVERLAY_PADDING = 8.0
+          const padding = Math.round(8.0 * 2.0 * scaleFactor);
+
+          const x = clockPosition.x + clockSize.width - calendarWidthPhysical;
+          const y = clockPosition.y + clockSize.height - padding;
+
+          await window
+            .setPosition(new PhysicalPosition(x, y))
+            .catch((error) => {
+              console.error(
+                "Failed to position calendar window (docked):",
+                error,
+              );
+            });
+        } else {
+          // Not docked, position at top-right
+          const scaleFactor = monitor.scaleFactor;
+          const calendarWidthPhysical = Math.round(width * scaleFactor);
+          const margin = Math.round(WINDOW_MARGIN * scaleFactor);
+
+          const x = monitor.size.width - calendarWidthPhysical - margin;
+          const y = margin;
+
+          await window
+            .setPosition(new PhysicalPosition(x, y))
+            .catch((error) => {
+              console.error(
+                "Failed to position calendar window (undocked):",
+                error,
+              );
+            });
+        }
       })
       .catch((error) => {
-        console.error("Failed to check clock visibility for docked state:", error);
+        console.error("Failed to load monitor details:", error);
       });
-  }, [settings]);
+  }, [settings, isVisible]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

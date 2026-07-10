@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
-const CALENDAR_HEIGHT: f64 = 384.0;
+const CALENDAR_HEIGHT: f64 = 400.0;
 const WINDOW_MARGIN: f64 = 20.0;
 const OVERLAY_PADDING: f64 = 8.0;
 
@@ -46,9 +46,9 @@ pub fn position_calendar(app: &AppHandle, docked: bool, settings: &crate::core::
                 let padding = (OVERLAY_PADDING * 2.0 * scale).round() as i32;
                 let y = clock_position.y + clock_size.height as i32 - padding;
                 let x = monitor.size().width.saturating_sub(physical_width + margin);
-                let _ = calendar.set_position(tauri::Position::Physical(
-                    PhysicalPosition::new(x as i32, y),
-                ));
+                let _ = calendar.set_position(tauri::Position::Physical(PhysicalPosition::new(
+                    x as i32, y,
+                )));
                 return;
             }
         }

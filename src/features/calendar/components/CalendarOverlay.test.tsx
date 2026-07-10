@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   hideCalendar: vi.fn().mockResolvedValue(undefined),
   hideClock: vi.fn().mockResolvedValue(undefined),
   emitTo: vi.fn().mockResolvedValue(undefined),
+  setCalendarPosition: vi.fn().mockResolvedValue(undefined),
+  setCalendarSize: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -27,7 +29,8 @@ vi.mock("@tauri-apps/api/window", () => ({
   }),
   getCurrentWindow: vi.fn(() => ({
     hide: mocks.hideCalendar,
-    setPosition: vi.fn().mockResolvedValue(undefined),
+    setPosition: mocks.setCalendarPosition,
+    setSize: mocks.setCalendarSize,
   })),
   LogicalPosition: class LogicalPosition {
     constructor(
@@ -36,7 +39,12 @@ vi.mock("@tauri-apps/api/window", () => ({
     ) {}
   },
   Window: {
-    getByLabel: vi.fn().mockResolvedValue({ hide: mocks.hideClock }),
+    getByLabel: vi.fn().mockResolvedValue({
+      hide: mocks.hideClock,
+      isVisible: vi.fn().mockResolvedValue(true),
+      outerPosition: vi.fn().mockResolvedValue({ x: 1500, y: 20 }),
+      outerSize: vi.fn().mockResolvedValue({ width: 420, height: 168 }),
+    }),
   },
 }));
 
@@ -51,6 +59,8 @@ describe("CalendarOverlay window coordination", () => {
     mocks.hideCalendar.mockClear();
     mocks.hideClock.mockClear();
     mocks.emitTo.mockClear();
+    mocks.setCalendarPosition.mockClear();
+    mocks.setCalendarSize.mockClear();
   });
 
   afterEach(() => {
@@ -106,5 +116,26 @@ describe("CalendarOverlay window coordination", () => {
 
     expect(mocks.hideCalendar).toHaveBeenCalledOnce();
     expect(mocks.hideClock).toHaveBeenCalledOnce();
+  });
+
+  it("resizes the default calendar with the taller base height", async () => {
+    render(<CalendarOverlay />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.setCalendarSize).toHaveBeenCalled();
+
+    const lastCall =
+      mocks.setCalendarSize.mock.calls[
+        mocks.setCalendarSize.mock.calls.length - 1
+      ];
+    const size = lastCall?.[0] as {
+      height: number;
+      width: number;
+    };
+    expect(size.width).toBe(436);
+    expect(size.height).toBe(415);
   });
 });

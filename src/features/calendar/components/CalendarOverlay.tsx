@@ -12,7 +12,9 @@ export const CalendarOverlay: React.FC = () => {
 
   // Clear any residual CSS zoom left by previous code versions (HMR / cached WebView state)
   useEffect(() => {
-    (document.documentElement.style as CSSStyleDeclaration & { zoom: string }).zoom = "";
+    (
+      document.documentElement.style as CSSStyleDeclaration & { zoom: string }
+    ).zoom = "";
   }, []);
 
   return (

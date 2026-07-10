@@ -49,23 +49,25 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       onKeyDown={handleKeyDown}
     >
       <header className="month-calendar__header">
-        <button
-          type="button"
-          className="month-calendar__nav-button"
-          aria-label="前の月"
-          onClick={() => moveMonth(-1)}
-        >
-          <ChevronLeft size={18} aria-hidden="true" />
-        </button>
-        <h2 aria-live="polite">{monthLabel}</h2>
-        <button
-          type="button"
-          className="month-calendar__nav-button"
-          aria-label="次の月"
-          onClick={() => moveMonth(1)}
-        >
-          <ChevronRight size={18} aria-hidden="true" />
-        </button>
+        <div className="month-calendar__switcher">
+          <button
+            type="button"
+            className="month-calendar__nav-button"
+            aria-label="前の月"
+            onClick={() => moveMonth(-1)}
+          >
+            <ChevronLeft size={18} aria-hidden="true" />
+          </button>
+          <h2 aria-live="polite">{monthLabel}</h2>
+          <button
+            type="button"
+            className="month-calendar__nav-button"
+            aria-label="次の月"
+            onClick={() => moveMonth(1)}
+          >
+            <ChevronRight size={18} aria-hidden="true" />
+          </button>
+        </div>
       </header>
 
       <div className="month-calendar__weekdays" aria-hidden="true">
