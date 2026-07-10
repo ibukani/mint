@@ -13,6 +13,7 @@ export const useClockOverlay = () => {
   const { settings } = useAppSettings();
   const [isAnimateVisible, setIsAnimateVisible] = useState(false);
   const [isHiding, setIsHiding] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [showSequence, setShowSequence] = useState(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -108,21 +109,32 @@ export const useClockOverlay = () => {
     const unlistenPromise = listen("clock-shown", () => {
       setIsAnimateVisible(true);
       setIsHiding(false);
+      setIsCalendarOpen(false);
+      setShowSequence((current) => current + 1);
+    });
+    const calendarOpenedPromise = listen("calendar-opened", () => {
+      setIsCalendarOpen(true);
+    });
+    const calendarClosedPromise = listen("calendar-closed", () => {
+      setIsCalendarOpen(false);
       setShowSequence((current) => current + 1);
     });
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());
+      void calendarOpenedPromise.then((unlisten) => unlisten());
+      void calendarClosedPromise.then((unlisten) => unlisten());
     };
   }, []);
 
   useEffect(() => {
     if (!settings) return undefined;
     void showSequence;
+    if (isCalendarOpen) return undefined;
     if (settings.clock.autoHideSeconds <= 0) return undefined;
 
     const timer = setTimeout(hideClock, settings.clock.autoHideSeconds * 1000);
     return () => clearTimeout(timer);
-  }, [settings, showSequence, hideClock]);
+  }, [settings, showSequence, isCalendarOpen, hideClock]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

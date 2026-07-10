@@ -1,4 +1,4 @@
-import { Clock3, Mic2, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, Clock3, Mic2, SlidersHorizontal } from "lucide-react";
 import React, { lazy } from "react";
 
 const GeneralSettings = lazy(() =>
@@ -19,6 +19,12 @@ const VoiceToTextSettings = lazy(() =>
   })),
 );
 
+const CalendarSettings = lazy(() =>
+  import("../../features/calendar/components/CalendarSettings").then((m) => ({
+    default: m.CalendarSettings,
+  })),
+);
+
 export const SETTINGS_TABS = [
   {
     id: "general",
@@ -36,6 +42,12 @@ export const SETTINGS_TABS = [
     icon: React.createElement(Clock3, { size: 18, "aria-hidden": true }),
   },
   {
+    id: "calendar",
+    label: "カレンダー",
+    description: "月表示と呼び出し操作",
+    icon: React.createElement(CalendarDays, { size: 18, "aria-hidden": true }),
+  },
+  {
     id: "voiceToText",
     label: "音声入力",
     description: "音声の文字起こし",
@@ -49,6 +61,7 @@ export const SETTINGS_TAB_COMPONENTS: Record<
   SettingsTabId,
   React.LazyExoticComponent<React.FC>
 > = {
+  calendar: CalendarSettings,
   general: GeneralSettings,
   clock: ClockSettings,
   voiceToText: VoiceToTextSettings,

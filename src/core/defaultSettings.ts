@@ -25,4 +25,8 @@ export const defaultAppSettings: AppSettings = {
     language: "ja",
     status: "available",
   },
+  calendar: {
+    enabled: true,
+    shortcut: "Alt+Down",
+  },
 };

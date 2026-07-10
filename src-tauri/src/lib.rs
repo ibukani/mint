@@ -46,6 +46,7 @@ pub fn run() {
                                             }
                                         }
                                         "clock" => features::clock::toggle_clock_overlay(app),
+                                        "calendar" => features::calendar::toggle_calendar_overlay(app),
                                         "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                         _ => {}
                                     }
@@ -60,6 +61,7 @@ pub fn run() {
                                         }
                                     }
                                     "clock" => features::clock::toggle_clock_overlay(app),
+                                    "calendar" => features::calendar::toggle_calendar_overlay(app),
                                     "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                     _ => {}
                                 }

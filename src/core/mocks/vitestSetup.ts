@@ -3,7 +3,7 @@ import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import "@testing-library/jest-dom";
 
 // テスト環境でTauriのウィンドウ管理をモック
-mockWindows("main", "clock");
+mockWindows("main", "clock", "calendar");
 
 import { createMockSettings } from "./mockSettings";
 

@@ -2,6 +2,11 @@ import type { AppSettings } from "../context/AppSettings";
 import { defaultAppSettings } from "../defaultSettings";
 
 const defaultMockSettings: AppSettings = {
+  calendar: {
+    enabled: defaultAppSettings.calendar.enabled,
+    shortcut: defaultAppSettings.calendar.shortcut,
+  },
+
   autostart: defaultAppSettings.autostart,
   theme: defaultAppSettings.theme,
   settingsShortcut: defaultAppSettings.settingsShortcut,

@@ -23,7 +23,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
 
   // 利用するウィンドウラベルをモック登録
-  mockWindows(currentLabel, "main", "clock");
+  mockWindows(currentLabel, "main", "clock", "calendar");
 
   // ローカルストレージキー
   const STORAGE_KEY = "mint_mock_settings";

@@ -7,9 +7,16 @@ const ClockOverlay = lazy(() =>
   })),
 );
 
+const CalendarOverlay = lazy(() =>
+  import("../features/calendar/components/CalendarOverlay").then((m) => ({
+    default: m.CalendarOverlay,
+  })),
+);
+
 export const WINDOW_ROUTES: Record<
   string,
   React.LazyExoticComponent<React.FC>
 > = {
   clock: ClockOverlay,
+  calendar: CalendarOverlay,
 };

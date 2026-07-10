@@ -18,6 +18,9 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 // Mock getCurrentWindow
 vi.mock("@tauri-apps/api/window", () => ({
+  Window: {
+    getByLabel: vi.fn().mockResolvedValue(null),
+  },
   getCurrentWindow: vi.fn(() => ({
     label: "main",
     hide: vi.fn().mockResolvedValue(undefined),
@@ -160,6 +163,35 @@ describe("App Window Routing", () => {
       expect(screen.getByText(/:/)).toBeInTheDocument();
       expect(screen.queryByText("mint")).not.toBeInTheDocument();
       expect(document.title).toBe("mint - 時計オーバーレイ");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("renders CalendarOverlay when label=calendar", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(2026, 6, 10, 9, 0, 0));
+      vi.mocked(getCurrentWindow).mockReturnValue({
+        label: "calendar",
+        hide: vi.fn().mockResolvedValue(undefined),
+        show: vi.fn().mockResolvedValue(undefined),
+      } as unknown as ReturnType<typeof getCurrentWindow>);
+      vi.mocked(invoke).mockResolvedValue(
+        createMockSettings() as unknown as ReturnType<typeof invoke>,
+      );
+
+      render(<App />);
+
+      expect(
+        await screen.findByRole("dialog", {
+          name: "カレンダーオーバーレイ",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "2026年 7月" }),
+      ).toBeInTheDocument();
+      expect(document.title).toBe("mint - カレンダーオーバーレイ");
     } finally {
       vi.useRealTimers();
     }

@@ -6,6 +6,7 @@ const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
 
 const overlayWindowTitles: Record<string, string> = {
   clock: "時計オーバーレイ",
+  calendar: "カレンダーオーバーレイ",
 };
 
 const isSettingsTabId = (value: string | null): value is SettingsTabId =>

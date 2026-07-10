@@ -9,10 +9,12 @@ import {
   useRef,
   useState,
 } from "react";
+import type { CalendarSettings } from "../../features/calendar/types";
 import type { ClockSettings } from "../../features/clock/types";
 import type { VoiceToTextSettings } from "../../features/v2t/types";
 
 export interface AppSettings {
+  calendar: CalendarSettings;
   autostart: boolean;
   theme: "dark" | "light";
   settingsShortcut: string;
@@ -115,11 +117,14 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       // Fallback for old hardcoded strings
       if (errorMessage.includes("重複")) {
         newErrors.clock = "ショートカットキーが重複しています";
+        newErrors.calendar = "ショートカットキーが重複しています";
         newErrors.voiceToText = "ショートカットキーが重複しています";
       } else if (errorMessage.includes("時計")) {
         newErrors.clock = errorMessage;
       } else if (errorMessage.includes("音声入力")) {
         newErrors.voiceToText = errorMessage;
+      } else if (errorMessage.includes("カレンダー")) {
+        newErrors.calendar = errorMessage;
       }
     }
     setShortcutErrors(newErrors);
@@ -249,6 +254,8 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         prev.settingsShortcut !== updated.settingsShortcut ||
         prev.clock.enabled !== updated.clock.enabled ||
         prev.clock.shortcut !== updated.clock.shortcut ||
+        prev.calendar.enabled !== updated.calendar.enabled ||
+        prev.calendar.shortcut !== updated.calendar.shortcut ||
         prev.voiceToText.enabled !== updated.voiceToText.enabled ||
         prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
 

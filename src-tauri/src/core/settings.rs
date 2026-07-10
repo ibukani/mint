@@ -109,7 +109,24 @@ impl Default for VoiceToTextSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
+pub struct CalendarSettings {
+    pub enabled: bool,
+    pub shortcut: String,
+}
+
+impl Default for CalendarSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            shortcut: "Alt+Down".to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub calendar: CalendarSettings,
     pub autostart: bool,
     pub theme: String,
     pub settings_shortcut: String,
@@ -120,6 +137,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            calendar: CalendarSettings::default(),
             autostart: false,
             theme: "dark".to_string(),
             settings_shortcut: "Ctrl+Alt+S".to_string(),
@@ -162,6 +180,21 @@ impl ShortcutProvider for VoiceToTextSettings {
     }
 }
 
+impl ShortcutProvider for CalendarSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let shortcut = self.shortcut.trim();
+        if !self.enabled || shortcut.is_empty() {
+            None
+        } else {
+            Some(shortcut)
+        }
+    }
+
+    fn feature_id(&self) -> &str {
+        "calendar"
+    }
+}
+
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
@@ -171,6 +204,9 @@ impl AppSettings {
         }
         if let Some(s) = self.clock.shortcut() {
             list.push((self.clock.feature_id(), s));
+        }
+        if let Some(s) = self.calendar.shortcut() {
+            list.push((self.calendar.feature_id(), s));
         }
         if let Some(s) = self.voice_to_text.shortcut() {
             list.push((self.voice_to_text.feature_id(), s));
@@ -411,6 +447,8 @@ mod tests {
         assert!(settings.clock.glow_effect);
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End");
         assert_eq!(settings.voice_to_text.language, "ja");
+        assert!(settings.calendar.enabled);
+        assert_eq!(settings.calendar.shortcut, "Alt+Down");
 
         // 一部だけ存在するJSONから復元
         let partial_json = r#"{"theme": "light", "clock": {"shortcut": "Ctrl+C"}}"#;
@@ -427,5 +465,6 @@ mod tests {
         assert_eq!(settings.clock.hour_format, "24h"); // デフォルト補完
         assert!(settings.clock.glow_effect); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
+        assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
     }
 }
