@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -336,16 +336,30 @@ export const ClockOverlay: React.FC = () => {
     const h = Math.round(dimensions.height * scale) + 16;
 
     const win = getCurrentWindow();
-    import("@tauri-apps/api/dpi")
-      .then(({ LogicalSize }) => {
+    Promise.all([import("@tauri-apps/api/dpi"), currentMonitor()])
+      .then(([{ LogicalSize, LogicalPosition }, monitor]) => {
         if (typeof win.setSize === "function") {
           win.setSize(new LogicalSize(w, h)).catch((err) => {
             console.error("Failed to resize clock window:", err);
           });
         }
+        if (monitor && typeof win.setPosition === "function") {
+          const scaleFactor = monitor.scaleFactor;
+          const monitorWidthLogical = monitor.size.width / scaleFactor;
+          // 右上のマージン20px (Rust側の実装と統一)
+          const margin = 20;
+          const x = monitorWidthLogical - w - margin;
+          const y = margin;
+          win.setPosition(new LogicalPosition(x, y)).catch((err) => {
+            console.error("Failed to reposition clock window:", err);
+          });
+        }
       })
       .catch((err) => {
-        console.error("Failed to load Tauri DPI module:", err);
+        console.error(
+          "Failed to load Tauri DPI module or monitor details:",
+          err,
+        );
       });
   }, [settings]);
 
