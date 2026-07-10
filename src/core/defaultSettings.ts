@@ -6,7 +6,7 @@ export const defaultAppSettings: AppSettings = {
   settingsShortcut: "Ctrl+Alt+S",
   clock: {
     enabled: true,
-    shortcut: "Ctrl+Alt+C",
+    shortcut: "Alt+Left",
     autoHideSeconds: 3,
     showDate: true,
     showSeconds: true,
@@ -19,7 +19,7 @@ export const defaultAppSettings: AppSettings = {
   },
   voiceToText: {
     enabled: false,
-    shortcut: "Ctrl+Alt+V",
+    shortcut: "Alt+End",
     baseUrl: "https://api.openai.com/v1",
     model: "whisper-1",
     language: "ja",

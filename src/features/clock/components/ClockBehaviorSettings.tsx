@@ -44,7 +44,7 @@ export const ClockBehaviorSettings: React.FC<{
           invalid={Boolean(shortcutError)}
           value={clock.shortcut}
           onChange={(value) => handleChange("shortcut", value)}
-          placeholderText="例: Ctrl+Alt+C"
+          placeholderText="例: Alt+Left"
         />
       </Field>
       <Field

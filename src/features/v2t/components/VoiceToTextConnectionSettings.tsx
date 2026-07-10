@@ -69,7 +69,7 @@ export const VoiceToTextConnectionSettings: React.FC<{
             invalid={Boolean(shortcutError)}
             value={voiceToText.shortcut}
             onChange={(value) => handleChange("shortcut", value)}
-            placeholderText="例: Ctrl+Alt+V"
+            placeholderText="例: Alt+End"
           />
         </Field>
       </section>

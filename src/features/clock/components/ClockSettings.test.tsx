@@ -25,7 +25,7 @@ describe("ClockSettings component", () => {
     // 起動ショートカットキーの入力フィールド検証
     const inputs = screen.getAllByRole("textbox");
     const shortcutInput = inputs[0] as HTMLInputElement;
-    expect(shortcutInput.value).toBe("Ctrl+Alt+C");
+    expect(shortcutInput.value).toBe("Alt+Left");
 
     // 表示秒数の入力フィールド検証
     const secondsInput = screen.getByLabelText(
@@ -114,7 +114,7 @@ describe("ClockSettings component", () => {
     fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
 
     expect(enabledCheckbox.checked).toBe(true);
-    expect(shortcutInput.value).toBe("Ctrl+Alt+C");
+    expect(shortcutInput.value).toBe("Alt+Left");
     expect(secondsInput.value).toBe("3");
     expect(showDateCheckbox.checked).toBe(true);
     expect(showSecondsCheckbox.checked).toBe(true);
