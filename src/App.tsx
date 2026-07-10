@@ -168,6 +168,9 @@ const AppContent: React.FC = () => {
       >
         <AppShell
           title="mint"
+          contextLabel={
+            SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定"
+          }
           tabs={SETTINGS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}

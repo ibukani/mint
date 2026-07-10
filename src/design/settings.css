@@ -1,5 +1,23 @@
 /* Shared feature headers and responsive settings primitives. */
 
+.app-titlebar__logo {
+  min-width: 0;
+}
+
+.app-titlebar__separator {
+  margin: 0 6px;
+  color: var(--color-text-subtle);
+  font-size: 0.68rem;
+}
+
+.app-titlebar__context {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .feature-settings-header {
   display: flex;
   align-items: center;

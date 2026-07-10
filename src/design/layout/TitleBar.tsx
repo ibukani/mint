@@ -4,9 +4,13 @@ import type React from "react";
 
 interface TitleBarProps {
   title?: string;
+  contextLabel?: string;
 }
 
-export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
+export const TitleBar: React.FC<TitleBarProps> = ({
+  title = "mint",
+  contextLabel = "設定",
+}) => {
   const handleMinimize = async () => {
     try {
       const win = getCurrentWindow();
@@ -55,7 +59,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
     >
       <div className="app-titlebar__logo" data-tauri-drag-region>
         <span className="app-titlebar__text" data-tauri-drag-region>
-          {title} settings
+          {title}
+        </span>
+        <span className="app-titlebar__separator" aria-hidden="true">
+          /
+        </span>
+        <span className="app-titlebar__context" data-tauri-drag-region>
+          {contextLabel}
         </span>
       </div>
       <div className="app-titlebar__controls">
@@ -64,6 +74,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
           className="app-titlebar__button app-titlebar__button--minimize"
           onClick={handleMinimize}
           aria-label="最小化"
+          title="最小化"
         >
           <Minus size={14} aria-hidden="true" />
         </button>
@@ -72,6 +83,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ title = "mint" }) => {
           className="app-titlebar__button app-titlebar__button--close"
           onClick={handleClose}
           aria-label="閉じる"
+          title="閉じる"
         >
           <X size={14} aria-hidden="true" />
         </button>
