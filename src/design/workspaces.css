@@ -83,6 +83,19 @@
   white-space: nowrap;
 }
 
+/* The default Tauri window is 900px wide; account for the sidebar before
+   choosing a two-column clock workspace. */
+@media (max-width: 1040px) {
+  .clock-settings-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .clock-preview-panel {
+    position: static;
+    grid-row: 1;
+  }
+}
+
 @media (max-width: 640px) {
   .v2t-setup-steps {
     grid-template-columns: 1fr;
