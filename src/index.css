@@ -59,8 +59,10 @@ body {
   transition: background var(--transition-base);
 }
 
+html.is-overlay,
 body.is-overlay {
   background: transparent;
+  background-color: transparent;
 }
 
 #root {

@@ -93,8 +93,10 @@ const AppContent: React.FC = () => {
     
     if (currentLabel && currentLabel !== "main") {
       document.body.classList.add("is-overlay");
+      document.documentElement.classList.add("is-overlay");
     } else {
       document.body.classList.remove("is-overlay");
+      document.documentElement.classList.remove("is-overlay");
     }
   }, []);
 
