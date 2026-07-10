@@ -1,0 +1,7 @@
+/* Responsive settings primitives. */
+
+@media (max-width: 1040px) {
+  .theme-choice-grid {
+    grid-template-columns: 1fr;
+  }
+}
