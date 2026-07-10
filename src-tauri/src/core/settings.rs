@@ -110,6 +110,7 @@ impl Default for VoiceToTextSettings {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub autostart: bool,
     pub theme: String,
     pub settings_shortcut: String,
     pub clock: ClockSettings,
@@ -119,6 +120,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            autostart: false,
             theme: "dark".to_string(),
             settings_shortcut: "Ctrl+Alt+S".to_string(),
             clock: ClockSettings::default(),
@@ -329,6 +331,14 @@ pub fn save_settings(
         }
         .to_string()
     })?;
+
+    // Sync autostart setting
+    use tauri_plugin_autostart::ManagerExt;
+    if settings.autostart {
+        let _ = app.autolaunch().enable();
+    } else {
+        let _ = app.autolaunch().disable();
+    }
 
     // Update the in-memory cache so subsequent reads are instant
     *state.0.lock().unwrap() = Some(settings);

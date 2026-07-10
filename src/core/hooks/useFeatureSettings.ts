@@ -1,7 +1,10 @@
 import { type AppSettings, useAppSettings } from "../context/AppSettings";
 
 export function useFeatureSettings<
-  K extends Exclude<keyof AppSettings, "theme" | "settingsShortcut">,
+  K extends Exclude<
+    keyof AppSettings,
+    "theme" | "settingsShortcut" | "autostart"
+  >,
 >(featureKey: K) {
   const { settings, updateSettings, shortcutErrors } = useAppSettings();
   const featureSettings = settings ? settings[featureKey] : null;

@@ -353,6 +353,7 @@ if (fs.existsSync(RS_SETTINGS_PATH)) {
       if (
         fieldName !== "theme" && // Base property
         fieldName !== "settings_shortcut" && // Base property
+        fieldName !== "autostart" && // Base property
         !validationState.rustSettingsFields.has(fieldName)
       ) {
         reportError(

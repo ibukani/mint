@@ -38,4 +38,24 @@ describe("GeneralSettings", () => {
     expect(lightTheme).toBeChecked();
     expect(darkTheme).not.toBeChecked();
   });
+
+  it("lets users toggle the autostart setting", async () => {
+    render(
+      <AppSettingsProvider>
+        <GeneralSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const autostartToggle = screen.getByRole("switch", {
+      name: "PC起動時に自動で起動する",
+    });
+    expect(autostartToggle).not.toBeChecked();
+
+    fireEvent.click(autostartToggle);
+    expect(autostartToggle).toBeChecked();
+  });
 });

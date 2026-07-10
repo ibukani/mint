@@ -1,6 +1,7 @@
 import type { AppSettings } from "./context/AppSettings";
 
 export const defaultAppSettings: AppSettings = {
+  autostart: false,
   theme: "dark",
   settingsShortcut: "Ctrl+Alt+S",
   clock: {
@@ -23,5 +24,9 @@ export const defaultAppSettings: AppSettings = {
     model: "whisper-1",
     language: "ja",
     status: "available",
+  },
+  testFeature: {
+    enabled: false,
+    shortcut: "Ctrl+Alt+T",
   },
 };
