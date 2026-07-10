@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   AudioLines,
+  Check,
   ClipboardCopy,
   ClipboardPaste,
   Eye,
@@ -81,7 +82,7 @@ export const VoiceToTextSettings: React.FC = () => {
         const key = await invoke<string>("load_api_key", {
           service: "voice_to_text",
         });
-        setApiKey(key);
+        setApiKey(typeof key === "string" ? key : "");
       } catch (err) {
         console.error("Failed to load API key:", err);
       } finally {
@@ -385,6 +386,28 @@ export const VoiceToTextSettings: React.FC = () => {
     return undefined;
   })();
 
+  const setupSteps = [
+    {
+      label: "機能",
+      complete: voiceToText.enabled,
+      detail: voiceToText.enabled ? "有効" : "有効化が必要",
+    },
+    {
+      label: "APIキー",
+      complete: apiKeyLoaded && Boolean(apiKey.trim()),
+      detail: !apiKeyLoaded
+        ? "読み込み中"
+        : apiKey.trim()
+          ? "設定済み"
+          : "入力が必要",
+    },
+    {
+      label: "音声ファイル",
+      complete: Boolean(audioFilePath.trim()),
+      detail: audioFilePath.trim() ? "指定済み" : "パスが必要",
+    },
+  ];
+
   return (
     <SettingsSection
       title="音声入力設定"
@@ -610,6 +633,27 @@ export const VoiceToTextSettings: React.FC = () => {
             </span>
           </div>
           <div className="v2t-workbench__body">
+            <ol className="v2t-setup-steps" aria-label="文字起こしの準備状況">
+              {setupSteps.map((step, index) => {
+                const isCurrent =
+                  !step.complete &&
+                  (index === 0 || setupSteps[index - 1]?.complete === true);
+                return (
+                  <li
+                    key={step.label}
+                    className={`v2t-setup-step ${step.complete ? "is-complete" : ""} ${isCurrent ? "is-current" : ""}`}
+                  >
+                    <span className="v2t-setup-step__marker" aria-hidden="true">
+                      {step.complete ? <Check size={14} /> : index + 1}
+                    </span>
+                    <span className="v2t-setup-step__copy">
+                      <strong>{step.label}</strong>
+                      <span>{step.detail}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
             <Field
               id="v2t-audio-file-input"
               label="音声ファイルパス"

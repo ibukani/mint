@@ -1,0 +1,99 @@
+/* Shared workspace patterns used by feature workbenches. */
+
+.v2t-setup-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  list-style: none;
+}
+
+.v2t-setup-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--color-text-subtle);
+}
+
+.v2t-setup-step__marker {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+}
+
+.v2t-setup-step__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.v2t-setup-step__copy strong {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2t-setup-step__copy span {
+  overflow: hidden;
+  color: var(--color-text-subtle);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2t-setup-step.is-complete .v2t-setup-step__marker {
+  border-color: var(--border-success);
+  background: var(--surface-success);
+  color: var(--color-success);
+}
+
+.v2t-setup-step.is-complete .v2t-setup-step__copy strong {
+  color: var(--color-text-primary);
+}
+
+.v2t-setup-step.is-current .v2t-setup-step__marker {
+  border-color: var(--border-accent);
+  background: var(--surface-accent);
+  color: var(--color-accent);
+}
+
+.v2t-setup-step.is-current .v2t-setup-step__copy strong {
+  color: var(--color-accent);
+}
+
+.v2t-workbench__header {
+  align-items: center;
+}
+
+.v2t-readiness {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .v2t-setup-steps {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .v2t-setup-step {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .v2t-setup-step__copy span {
+    white-space: normal;
+  }
+}
