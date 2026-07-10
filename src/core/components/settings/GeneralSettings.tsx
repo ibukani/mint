@@ -7,6 +7,7 @@ import {
   Switch,
 } from "../../../design/components";
 import { useAppSettings } from "../../context/AppSettings";
+import { UpdaterSettings } from "./UpdaterSettings";
 
 const themeOptions = [
   {
@@ -133,6 +134,8 @@ export const GeneralSettings: React.FC = () => {
             />
           </Field>
         </section>
+
+        <UpdaterSettings />
       </div>
     </SettingsSection>
   );

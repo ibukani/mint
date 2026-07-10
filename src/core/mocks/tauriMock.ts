@@ -1,4 +1,5 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
+import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import { createMockSettings } from "./mockSettings";
 
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
@@ -19,6 +20,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   // クエリパラメータからウィンドウラベルを取得（例: ?label=clock）、指定がなければ "main"
   const params = new URLSearchParams(window.location.search);
   const currentLabel = params.get("label") || "main";
+  const mockUpdateAvailable = params.get("mockUpdate") === "available";
 
   // 利用するウィンドウラベルをモック登録
   mockWindows(currentLabel, "main", "clock");
@@ -102,6 +104,40 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,
         };
       }
+      case "plugin:updater|check":
+        return mockUpdateAvailable
+          ? {
+              rid: 1,
+              currentVersion: "0.1.0",
+              version: "0.2.0",
+              date: "2026-07-10T00:00:00Z",
+              body: "ブラウザ確認用のモックアップデートです。\n更新フローと進捗表示を確認できます。",
+              rawJson: {},
+            }
+          : null;
+      case "plugin:updater|download_and_install": {
+        const channel = typedArgs?.onEvent as
+          | { onmessage?: (event: DownloadEvent) => void }
+          | undefined;
+        channel?.onmessage?.({
+          event: "Started",
+          data: { contentLength: 100 },
+        });
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        channel?.onmessage?.({ event: "Progress", data: { chunkLength: 60 } });
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        channel?.onmessage?.({ event: "Progress", data: { chunkLength: 40 } });
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        channel?.onmessage?.({ event: "Finished" });
+        return;
+      }
+      case "plugin:process|restart":
+        console.log(
+          "[Tauri Mock] アップデート後の再起動をシミュレートしました。",
+        );
+        return;
+      case "plugin:resources|close":
+        return;
       default:
         console.warn(
           `[Tauri Mock] 未定義のIPCコマンド呼び出しを受信しました: ${cmd}`,

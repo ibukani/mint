@@ -45,6 +45,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -53,5 +54,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVFQTU1RTQzMDE2NUU1QjYKUldTMjVXVUJRMTZsN2hqUzF1UTc2UHB1ZW5Wb1U4WldBanBZUkRadmV2WER4L3lOVlhSaXgwMlUK",
+      "endpoints": [
+        "https://github.com/ibukani/mint/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
