@@ -83,6 +83,19 @@
   white-space: nowrap;
 }
 
+.v2t-transcribe-button:disabled {
+  border-color: var(--border-control);
+  background: var(--surface-control);
+  box-shadow: none;
+  color: var(--color-text-subtle);
+  opacity: 1;
+}
+
+.v2t-transcribe-button:not(:disabled) {
+  box-shadow: 0 8px 18px
+    color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
 /* The default Tauri window is 900px wide; account for the sidebar before
    choosing a two-column clock workspace. */
 @media (max-width: 1040px) {
