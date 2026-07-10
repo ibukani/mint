@@ -24,7 +24,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "w",
         language: "ja",
@@ -87,7 +87,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "w",
         language: "ja",
@@ -129,7 +129,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "w",
         language: "ja",
@@ -176,7 +176,7 @@ describe("VoiceToTextSettings", () => {
       const mockSettings = createMockSettings({
         voiceToText: {
           enabled: true,
-          shortcut: "Ctrl+Alt+V",
+          shortcut: "Alt+End",
           baseUrl: "http://api",
           model: "w",
           language: "ja",
@@ -245,7 +245,7 @@ describe("VoiceToTextSettings", () => {
       const mockSettings = createMockSettings({
         voiceToText: {
           enabled: true,
-          shortcut: "Ctrl+Alt+V",
+          shortcut: "Alt+End",
           baseUrl: "http://api",
           model: "w",
           language: "ja",
@@ -309,7 +309,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "w",
         language: "ja",
@@ -359,7 +359,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -420,7 +420,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -469,7 +469,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -513,7 +513,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -555,7 +555,7 @@ describe("VoiceToTextSettings", () => {
       const mockSettings = createMockSettings({
         voiceToText: {
           enabled: true,
-          shortcut: "Ctrl+Alt+V",
+          shortcut: "Alt+End",
           baseUrl: "http://api",
           model: "whisper-1",
           language: "ja",
@@ -625,7 +625,7 @@ describe("VoiceToTextSettings", () => {
       const mockSettings = createMockSettings({
         voiceToText: {
           enabled: true,
-          shortcut: "Ctrl+Alt+V",
+          shortcut: "Alt+End",
           baseUrl: "http://api",
           model: "whisper-1",
           language: "ja",
@@ -695,7 +695,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -748,7 +748,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -803,7 +803,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -844,7 +844,7 @@ describe("VoiceToTextSettings", () => {
       const mockSettings = createMockSettings({
         voiceToText: {
           enabled: true,
-          shortcut: "Ctrl+Alt+V",
+          shortcut: "Alt+End",
           baseUrl: "http://api",
           model: "whisper-1",
           language: "ja",
@@ -915,7 +915,7 @@ describe("VoiceToTextSettings", () => {
       const mockSettings = createMockSettings({
         voiceToText: {
           enabled: true,
-          shortcut: "Ctrl+Alt+V",
+          shortcut: "Alt+End",
           baseUrl: "http://api",
           model: "whisper-1",
           language: "ja",
@@ -982,7 +982,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -1032,7 +1032,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -1072,7 +1072,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -1125,7 +1125,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -1178,7 +1178,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -1261,7 +1261,7 @@ describe("VoiceToTextSettings", () => {
 
     expect(screen.getByLabelText("音声入力を有効にする")).not.toBeChecked();
     expect(screen.getByLabelText("起動/録音ショートカットキー")).toHaveValue(
-      "Ctrl+Alt+V",
+      "Alt+End",
     );
     expect(screen.getByLabelText("API エンドポイント (Base URL)")).toHaveValue(
       "https://api.openai.com/v1",
@@ -1275,7 +1275,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -1315,7 +1315,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "whisper-1",
         language: "ja",
@@ -1359,7 +1359,7 @@ describe("VoiceToTextSettings", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "https://api.openai.com/v1",
         model: "whisper-1",
         language: "ja",

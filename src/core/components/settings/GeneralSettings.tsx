@@ -1,4 +1,5 @@
 import { Check, Keyboard, MonitorCog, Moon, Power, Sun } from "lucide-react";
+import "./GeneralSettings.css";
 import type React from "react";
 import {
   Field,

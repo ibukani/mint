@@ -69,7 +69,7 @@ impl Default for ClockSettings {
     fn default() -> Self {
         Self {
             enabled: true,
-            shortcut: "Ctrl+Alt+C".to_string(),
+            shortcut: "Alt+Left".to_string(),
             auto_hide_seconds: 3,
             show_date: true,
             show_seconds: true,
@@ -98,7 +98,7 @@ impl Default for VoiceToTextSettings {
     fn default() -> Self {
         Self {
             enabled: false,
-            shortcut: "Ctrl+Alt+V".to_string(),
+            shortcut: "Alt+End".to_string(),
             base_url: "https://api.openai.com/v1".to_string(),
             model: "whisper-1".to_string(),
             language: "ja".to_string(),
@@ -399,7 +399,7 @@ mod tests {
         let empty_json = "{}";
         let settings: AppSettings = serde_json::from_str(empty_json).unwrap();
         assert_eq!(settings.theme, "dark");
-        assert_eq!(settings.clock.shortcut, "Ctrl+Alt+C");
+        assert_eq!(settings.clock.shortcut, "Alt+Left");
         assert_eq!(settings.clock.auto_hide_seconds, 3);
         assert!(settings.clock.show_date);
         assert!(settings.clock.show_seconds);
@@ -409,7 +409,7 @@ mod tests {
         assert_eq!(settings.clock.display_mode, "digital");
         assert_eq!(settings.clock.hour_format, "24h");
         assert!(settings.clock.glow_effect);
-        assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V");
+        assert_eq!(settings.voice_to_text.shortcut, "Alt+End");
         assert_eq!(settings.voice_to_text.language, "ja");
 
         // 一部だけ存在するJSONから復元
@@ -426,6 +426,6 @@ mod tests {
         assert_eq!(settings.clock.display_mode, "digital"); // デフォルト補完
         assert_eq!(settings.clock.hour_format, "24h"); // デフォルト補完
         assert!(settings.clock.glow_effect); // デフォルト補完
-        assert_eq!(settings.voice_to_text.shortcut, "Ctrl+Alt+V"); // デフォルト補完
+        assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
     }
 }

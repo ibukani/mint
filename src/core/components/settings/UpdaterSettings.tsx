@@ -5,6 +5,7 @@ import {
   LoaderCircle,
   RefreshCw,
 } from "lucide-react";
+import "./UpdaterSettings.css";
 import type React from "react";
 import { Button, StatusBadge } from "../../../design/components";
 import { useUpdater } from "../../hooks/useUpdater";

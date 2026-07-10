@@ -25,3 +25,4 @@ dist-ssr
 
 # Build and script outputs for Biome ignore
 
+tmp/

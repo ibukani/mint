@@ -1,4 +1,5 @@
 import { CircleAlert, X } from "lucide-react";
+import "./ErrorToast.css";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 

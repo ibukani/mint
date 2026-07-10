@@ -52,7 +52,7 @@ describe("App Window Routing", () => {
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: false,
-        shortcut: "Ctrl+Alt+V",
+        shortcut: "Alt+End",
         baseUrl: "http://api",
         model: "w",
         language: "ja",
@@ -134,7 +134,7 @@ describe("App Window Routing", () => {
       const mockSettings = createMockSettings({
         voiceToText: {
           enabled: false,
-          shortcut: "Ctrl+Alt+V",
+          shortcut: "Alt+End",
           baseUrl: "http://api",
           model: "w",
           language: "ja",
