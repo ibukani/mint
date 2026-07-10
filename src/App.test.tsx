@@ -227,7 +227,7 @@ describe("App Window Routing", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText("起動ショートカットキー")).toHaveFocus();
+      expect(screen.getByLabelText("表示秒数 (0でトグル表示)")).toHaveFocus();
     });
   });
 

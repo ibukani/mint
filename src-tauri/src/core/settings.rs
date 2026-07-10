@@ -9,7 +9,6 @@ pub struct ClockSettings {
     pub enabled: bool,
     pub shortcut: String,
     pub auto_hide_seconds: u32,
-    pub font_size: String,
     #[serde(default = "default_show_date")]
     pub show_date: bool,
     #[serde(default = "default_show_seconds")]
@@ -66,7 +65,6 @@ impl Default for ClockSettings {
             enabled: true,
             shortcut: "Ctrl+Alt+C".to_string(),
             auto_hide_seconds: 3,
-            font_size: "1.5rem".to_string(),
             show_date: true,
             show_seconds: true,
             clock_color: "#818cf8".to_string(),
@@ -370,7 +368,6 @@ mod tests {
         assert_eq!(settings.theme, "dark");
         assert_eq!(settings.clock.shortcut, "Ctrl+Alt+C");
         assert_eq!(settings.clock.auto_hide_seconds, 3);
-        assert_eq!(settings.clock.font_size, "1.5rem");
         assert!(settings.clock.show_date);
         assert!(settings.clock.show_seconds);
         assert_eq!(settings.clock.clock_color, "#818cf8");

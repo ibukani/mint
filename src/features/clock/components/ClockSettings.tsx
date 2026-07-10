@@ -1,4 +1,4 @@
-import { Minus, Palette, Plus, TimerReset } from "lucide-react";
+import { Minus, Palette, Plus, TimerReset, X } from "lucide-react";
 import type React from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
@@ -187,20 +187,6 @@ export const ClockSettings: React.FC = () => {
                   <option value="analog">アナログ</option>
                 </Select>
               </Field>
-              <Field id="clock-font-size-select" label="フォントサイズ">
-                <Select
-                  id="clock-font-size-select"
-                  value={clock.fontSize}
-                  onChange={(event) =>
-                    handleChange("fontSize", event.target.value)
-                  }
-                >
-                  <option value="1.2rem">小</option>
-                  <option value="1.5rem">標準</option>
-                  <option value="2rem">大</option>
-                  <option value="2.5rem">特大</option>
-                </Select>
-              </Field>
               {clock.displayMode === "digital" && (
                 <Field
                   id="clock-hour-format-select"
@@ -364,12 +350,21 @@ export const ClockSettings: React.FC = () => {
                 {
                   "--preview-width": `${previewDimensions.width}px`,
                   "--preview-height": `${previewDimensions.height}px`,
-                  "--overlay-font-size": clock.fontSize,
                   "--clock-accent-color": clock.clockColor,
                   "--clock-size-scale": Math.min(clock.sizePercent / 100, 1.15),
                 } as React.CSSProperties
               }
             >
+              <button
+                type="button"
+                className="overlay-close-button"
+                aria-label="時計オーバーレイを閉じる（プレビュー）"
+                title="閉じる（Esc）"
+                tabIndex={-1}
+                onClick={(e) => e.preventDefault()}
+              >
+                <X size={15} aria-hidden="true" />
+              </button>
               <div className="overlay-clock-content">
                 <TickingClock
                   showDate={clock.showDate}

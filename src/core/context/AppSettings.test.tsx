@@ -24,7 +24,6 @@ const TestComponent: React.FC = () => {
     <div>
       <div data-testid="theme">{settings.theme}</div>
       <div data-testid="clock-shortcut">{settings.clock.shortcut}</div>
-      <div data-testid="clock-fontsize">{settings.clock.fontSize}</div>
       <div data-testid="clock-showdate">{String(settings.clock.showDate)}</div>
       <div data-testid="error">{error || "no-error"}</div>
       <div data-testid="save-status">{saveStatus}</div>
@@ -50,18 +49,7 @@ const TestComponent: React.FC = () => {
       >
         Change Shortcut
       </button>
-      <button
-        type="button"
-        onClick={() =>
-          updateSettings((prev) => ({
-            ...prev,
-            clock: { ...prev.clock, fontSize: "2.5rem" },
-          }))
-        }
-        data-testid="btn-fontsize"
-      >
-        Change FontSize
-      </button>
+
       <button
         type="button"
         onClick={() =>
@@ -123,12 +111,12 @@ describe("AppSettingsProvider", () => {
     });
 
     // Change normal setting
-    const btn = screen.getByTestId("btn-fontsize");
+    const btn = screen.getByTestId("btn-showdate");
     act(() => {
       fireEvent.click(btn);
     });
 
-    expect(screen.getByTestId("clock-fontsize")).toHaveTextContent("2.5rem");
+    expect(screen.getByTestId("clock-showdate")).toHaveTextContent("false");
     expect(screen.getByTestId("save-status")).toHaveTextContent("pending");
     // save_settings should not be called immediately due to debounce
     expect(invoke).not.toHaveBeenCalledWith(
@@ -357,7 +345,7 @@ describe("AppSettingsProvider", () => {
     );
 
     act(() => {
-      fireEvent.click(screen.getByTestId("btn-fontsize"));
+      fireEvent.click(screen.getByTestId("btn-showdate"));
     });
 
     expect(screen.getByTestId("error")).toHaveTextContent("no-error");

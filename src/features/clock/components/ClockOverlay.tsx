@@ -325,8 +325,8 @@ export const ClockOverlay: React.FC = () => {
       settings.clock.displayMode,
       settings.clock.showDate,
     );
-    const w = Math.round(dimensions.width * scale);
-    const h = Math.round(dimensions.height * scale);
+    const w = Math.round(dimensions.width * scale) + 16;
+    const h = Math.round(dimensions.height * scale) + 16;
 
     const win = getCurrentWindow();
     import("@tauri-apps/api/dpi")
@@ -394,7 +394,6 @@ export const ClockOverlay: React.FC = () => {
         aria-label="時計オーバーレイ"
         style={
           {
-            "--overlay-font-size": settings?.clock.fontSize,
             "--clock-accent-color": clockColor,
             "--clock-size-scale": settings
               ? settings.clock.sizePercent / 100

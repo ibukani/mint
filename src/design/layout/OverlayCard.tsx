@@ -12,7 +12,7 @@ export const OverlayCard: React.FC<OverlayCardProps> = ({
   const classes = ["overlay-card", className].filter(Boolean).join(" ");
 
   return (
-    <div className={classes} {...props}>
+    <div className={classes} data-tauri-drag-region {...props}>
       {children}
     </div>
   );

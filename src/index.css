@@ -1409,7 +1409,7 @@ body {
 
 .clock-range-control {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 82px auto;
+  grid-template-columns: minmax(120px, 1fr) var(--size-number-input-width) auto;
   align-items: center;
   gap: var(--space-2);
 }

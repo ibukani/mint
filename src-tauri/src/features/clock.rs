@@ -16,15 +16,22 @@ pub fn toggle_clock_overlay(app: &AppHandle) {
             let _ = window.hide();
         } else {
             let percent = settings.clock.size_percent as f64 / 100.0;
-            let w = (300.0 * percent) as u32;
-            let h = (110.0 * percent) as u32;
-            let size = tauri::PhysicalSize::new(w, h);
-            let _ = window.set_size(tauri::Size::Physical(size));
+            let (base_w, base_h) = if settings.clock.display_mode == "analog" {
+                (240.0, if settings.clock.show_date { 250.0 } else { 190.0 })
+            } else {
+                (420.0, if settings.clock.show_date { 168.0 } else { 132.0 })
+            };
+            let w = base_w * percent;
+            let h = base_h * percent;
+            let size = tauri::LogicalSize::new(w, h);
+            let _ = window.set_size(tauri::Size::Logical(size));
 
             if let Ok(Some(monitor)) = window.current_monitor() {
                 let monitor_size = monitor.size();
-                let margin = 20;
-                let x = monitor_size.width.saturating_sub(w + margin);
+                let scale_factor = monitor.scale_factor();
+                let physical_w = (w * scale_factor) as u32;
+                let margin = (20.0 * scale_factor) as u32;
+                let x = monitor_size.width.saturating_sub(physical_w + margin);
                 let y = margin;
                 let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(
                     x as i32, y as i32,
