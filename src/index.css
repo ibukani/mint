@@ -59,6 +59,10 @@ body {
   transition: background var(--transition-base);
 }
 
+body.is-overlay {
+  background: transparent;
+}
+
 #root {
   width: 100%;
   height: 100vh;
