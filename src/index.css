@@ -2671,6 +2671,8 @@ textarea:focus-visible {
   }
 
   .app-sidebar {
+    flex-basis: auto;
+    height: auto;
     padding: var(--space-3) var(--space-4);
   }
 
