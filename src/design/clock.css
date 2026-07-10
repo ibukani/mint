@@ -75,7 +75,7 @@
   width: 30px;
   height: 30px;
   min-height: 30px;
-  border-radius: 9px;
+  border-radius: 50%;
   background: color-mix(in srgb, var(--surface-control) 45%, transparent);
   border-color: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
 }

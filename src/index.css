@@ -1554,7 +1554,7 @@ body.is-overlay {
 .overlay-card .overlay-close-button {
   top: 10px;
   right: 10px;
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
 }
 
 @media (max-width: 860px) {
