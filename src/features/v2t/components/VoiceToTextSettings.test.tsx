@@ -78,6 +78,9 @@ describe("VoiceToTextSettings", () => {
       service: "voice_to_text",
       key: "new-api-key",
     });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "APIキーを保存しました",
+    );
   });
 
   it("shows an error when saving the API key fails", async () => {

@@ -38,6 +38,7 @@ import {
 import type { TranscriptionResult } from "../types";
 
 const PASTE_STATUS_VISIBLE_MS = 2000;
+const API_KEY_SAVE_STATUS_VISIBLE_MS = 2000;
 const COPY_ERROR_VISIBLE_MS = 5000;
 const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
 const CLIPBOARD_READ_ERROR_STATUS =
@@ -61,6 +62,7 @@ export const VoiceToTextSettings: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyLoaded, setApiKeyLoaded] = useState(false);
   const [apiKeySaveError, setApiKeySaveError] = useState("");
+  const [apiKeySaveStatus, setApiKeySaveStatus] = useState("");
   const [baseUrlError, setBaseUrlError] = useState("");
   const [modelError, setModelError] = useState("");
   const [languageError, setLanguageError] = useState("");
@@ -73,6 +75,9 @@ export const VoiceToTextSettings: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const apiKeySaveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const apiKeyPasteStatusTimerRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
@@ -99,14 +104,18 @@ export const VoiceToTextSettings: React.FC = () => {
 
   // Save API key to OS keychain (debounced by blur event)
   const saveApiKey = useCallback(async () => {
+    setApiKeyPasteStatus("");
+    setApiKeySaveStatus("");
     try {
       await invoke("save_api_key", { service: "voice_to_text", key: apiKey });
       setApiKeySaveError("");
+      setApiKeySaveStatus("APIキーを保存しました");
     } catch (err) {
       console.error("Failed to save API key:", err);
       setApiKeySaveError(
         "APIキーの保存に失敗しました。もう一度お試しください。",
       );
+      setApiKeySaveStatus("");
     }
   }, [apiKey]);
 
@@ -120,6 +129,7 @@ export const VoiceToTextSettings: React.FC = () => {
         return;
       }
       setApiKey(value);
+      setApiKeySaveStatus("");
       setApiKeyPasteStatus("API キーを貼り付けました");
       setAudioFilePasteStatus("");
     } catch (err) {
@@ -218,6 +228,27 @@ export const VoiceToTextSettings: React.FC = () => {
   }, [audioFilePasteStatus]);
 
   useEffect(() => {
+    if (apiKeySaveStatusTimerRef.current) {
+      clearTimeout(apiKeySaveStatusTimerRef.current);
+      apiKeySaveStatusTimerRef.current = null;
+    }
+
+    if (!apiKeySaveStatus) return undefined;
+
+    apiKeySaveStatusTimerRef.current = setTimeout(() => {
+      setApiKeySaveStatus("");
+      apiKeySaveStatusTimerRef.current = null;
+    }, API_KEY_SAVE_STATUS_VISIBLE_MS);
+
+    return () => {
+      if (apiKeySaveStatusTimerRef.current) {
+        clearTimeout(apiKeySaveStatusTimerRef.current);
+        apiKeySaveStatusTimerRef.current = null;
+      }
+    };
+  }, [apiKeySaveStatus]);
+
+  useEffect(() => {
     if (copyStatusTimerRef.current) {
       clearTimeout(copyStatusTimerRef.current);
       copyStatusTimerRef.current = null;
@@ -250,6 +281,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    setApiKeySaveStatus("");
     setApiKeyPasteStatus("");
     setAudioFilePasteStatus("");
 
@@ -358,6 +390,7 @@ export const VoiceToTextSettings: React.FC = () => {
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    setApiKeySaveStatus("");
     setApiKeyPasteStatus("");
     setAudioFilePasteStatus("");
     setShowApiKey(false);
@@ -511,6 +544,7 @@ export const VoiceToTextSettings: React.FC = () => {
                     clearTranscriptionOutput();
                     setApiKey(e.target.value);
                     setApiKeySaveError("");
+                    setApiKeySaveStatus("");
                     setApiKeyPasteStatus("");
                   }}
                   onBlur={saveApiKey}
@@ -550,6 +584,16 @@ export const VoiceToTextSettings: React.FC = () => {
                     aria-atomic="true"
                   >
                     {apiKeyPasteStatus}
+                  </span>
+                )}
+                {apiKeySaveStatus && (
+                  <span
+                    className={getStatusLabelClass(apiKeySaveStatus)}
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    {apiKeySaveStatus}
                   </span>
                 )}
               </FieldRow>
