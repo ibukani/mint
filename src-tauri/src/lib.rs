@@ -184,6 +184,7 @@ pub fn run() {
             features::v2t::transcribe_audio_file,
             features::game_launcher::scan::list_installed_games,
             features::game_launcher::launch::launch_game,
+            features::game_launcher::launch::open_game_store_page,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

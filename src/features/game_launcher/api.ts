@@ -6,3 +6,6 @@ export const listInstalledGames = () =>
 
 export const launchGame = (request: LaunchGameRequest) =>
   invoke<void>("launch_game", { request });
+
+export const openGameStorePage = (request: LaunchGameRequest) =>
+  invoke<void>("open_game_store_page", { request });

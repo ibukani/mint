@@ -69,13 +69,16 @@ mockIPC(async (cmd, args) => {
             id: "730",
             title: "Counter-Strike 2",
             store: "steam",
-            imagePath: null,
+            imagePath:
+              "https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg",
+            fallbackImagePath: null,
           },
           {
             id: "valorant",
             title: "VALORANT",
             store: "riot",
             imagePath: null,
+            fallbackImagePath: null,
           },
         ],
         sources: [
@@ -85,6 +88,7 @@ mockIPC(async (cmd, args) => {
         ],
       };
     case "launch_game":
+    case "open_game_store_page":
       return;
     case "get_google_calendar_connection":
       return {

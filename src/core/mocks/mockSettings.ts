@@ -6,6 +6,8 @@ const defaultMockSettings: AppSettings = {
     enabled: defaultAppSettings.gameLauncher.enabled,
     shortcut: defaultAppSettings.gameLauncher.shortcut,
     themeColor: defaultAppSettings.gameLauncher.themeColor,
+    favoriteGameKeys: defaultAppSettings.gameLauncher.favoriteGameKeys,
+    lastPlayedAtByGame: defaultAppSettings.gameLauncher.lastPlayedAtByGame,
   },
 
   calendar: {

@@ -140,25 +140,30 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               id: "730",
               title: "Counter-Strike 2",
               store: "steam",
-              imagePath: null,
+              imagePath:
+                "https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg",
+              fallbackImagePath: null,
             },
             {
               id: "fn:catalog:Fortnite",
               title: "Fortnite",
               store: "epic",
               imagePath: null,
+              fallbackImagePath: null,
             },
             {
               id: "league_of_legends",
               title: "League of Legends",
               store: "riot",
               imagePath: null,
+              fallbackImagePath: null,
             },
             {
               id: "valorant",
               title: "VALORANT",
               store: "riot",
               imagePath: null,
+              fallbackImagePath: null,
             },
           ],
           sources: [
@@ -175,6 +180,17 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         }
         console.log(
           `[Tauri Mock] ゲーム ${request.id} の起動をシミュレートしました。`,
+        );
+        return;
+      }
+      case "open_game_store_page": {
+        const request = typedArgs?.request as { id?: string } | undefined;
+        if (!request?.id) throw new Error("Game id is required.");
+        if (request.id === "store-error") {
+          throw new Error("ゲームクライアントを起動できませんでした。");
+        }
+        console.log(
+          `[Tauri Mock] ゲーム ${request.id} の管理画面を開きました。`,
         );
         return;
       }
