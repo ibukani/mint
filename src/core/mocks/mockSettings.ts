@@ -10,6 +10,7 @@ const defaultMockSettings: AppSettings = {
       defaultAppSettings.calendar.selectedGoogleCalendarIds,
     defaultGoogleCalendarId:
       defaultAppSettings.calendar.defaultGoogleCalendarId,
+    themeColor: defaultAppSettings.calendar.themeColor,
   },
 
   autostart: defaultAppSettings.autostart,

@@ -115,6 +115,12 @@ pub struct CalendarSettings {
     pub create_event_shortcut: String,
     pub selected_google_calendar_ids: Vec<String>,
     pub default_google_calendar_id: String,
+    #[serde(default = "default_calendar_color")]
+    pub theme_color: String,
+}
+
+fn default_calendar_color() -> String {
+    "#818cf8".to_string()
 }
 
 impl Default for CalendarSettings {
@@ -125,6 +131,7 @@ impl Default for CalendarSettings {
             create_event_shortcut: "Alt+Up".to_string(),
             selected_google_calendar_ids: Vec::new(),
             default_google_calendar_id: String::new(),
+            theme_color: default_calendar_color(),
         }
     }
 }

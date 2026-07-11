@@ -12,6 +12,15 @@ import {
 import "./CalendarSettings.css";
 import { GoogleCalendarSettings } from "./GoogleCalendarSettings";
 
+const PRESET_COLORS = [
+  { value: "#818cf8", label: "インディゴ" },
+  { value: "#38bdf8", label: "スカイ" },
+  { value: "#34d399", label: "ミント" },
+  { value: "#fbbf24", label: "アンバー" },
+  { value: "#fb7185", label: "ローズ" },
+  { value: "#f8fafc", label: "ホワイト" },
+] as const;
+
 export const CalendarSettings: React.FC = () => {
   const { shortcutErrors } = useAppSettings();
   const {
@@ -31,6 +40,7 @@ export const CalendarSettings: React.FC = () => {
     );
     handleChange("selectedGoogleCalendarIds", []);
     handleChange("defaultGoogleCalendarId", "");
+    handleChange("themeColor", defaultAppSettings.calendar.themeColor);
   };
 
   return (
@@ -87,6 +97,27 @@ export const CalendarSettings: React.FC = () => {
               onChange={(value) => handleChange("createEventShortcut", value)}
               placeholderText="例: Alt+Up"
             />
+          </Field>
+          <Field
+            id="calendar-theme-color-picker"
+            label="カレンダーのテーマカラー"
+          >
+            <div className="color-picker-palette">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  className={`color-picker-badge ${calendar.themeColor === color.value ? "is-active" : ""}`}
+                  style={
+                    { "--swatch-color": color.value } as React.CSSProperties
+                  }
+                  title={color.label}
+                  onClick={() => handleChange("themeColor", color.value)}
+                  aria-label={color.label}
+                  aria-pressed={calendar.themeColor === color.value}
+                />
+              ))}
+            </div>
           </Field>
         </section>
 

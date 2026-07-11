@@ -4,6 +4,7 @@ export interface CalendarSettings {
   createEventShortcut: string;
   selectedGoogleCalendarIds: string[];
   defaultGoogleCalendarId: string;
+  themeColor: string;
 }
 
 export interface GoogleCalendarInfo {

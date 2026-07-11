@@ -27,8 +27,14 @@ export const CalendarOverlay: React.FC = () => {
     () => !dirtyRef.current || window.confirm("未保存の変更を破棄しますか？"),
     [],
   );
-  const { animationClass, closeCalendar, isDocked, openMode, showSequence } =
-    useCalendarOverlay(canClose);
+  const {
+    animationClass,
+    closeCalendar,
+    isDocked,
+    openMode,
+    showSequence,
+    themeColor,
+  } = useCalendarOverlay(canClose);
   const [today, setToday] = useState(() => new Date());
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [screen, setScreen] = useState<CalendarScreen>({ kind: "month" });
@@ -255,6 +261,7 @@ export const CalendarOverlay: React.FC = () => {
         className={`${animationClass} calendar-overlay-card${isDocked ? " is-docked" : ""}`}
         role="dialog"
         aria-label="カレンダーオーバーレイ"
+        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <button
           type="button"

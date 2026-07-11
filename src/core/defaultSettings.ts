@@ -31,5 +31,6 @@ export const defaultAppSettings: AppSettings = {
     createEventShortcut: "Alt+Up",
     selectedGoogleCalendarIds: [],
     defaultGoogleCalendarId: "",
+    themeColor: "#818cf8",
   },
 };

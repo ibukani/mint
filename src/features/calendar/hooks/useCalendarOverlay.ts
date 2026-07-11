@@ -7,6 +7,7 @@ import {
 } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import type { CalendarOpenMode } from "../types";
 
 const ANIMATION_MS = 240;
@@ -206,6 +207,8 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   }, [settings, isVisible]);
 
   const animationClass = isHiding ? "is-hiding" : isVisible ? "is-visible" : "";
+  const themeColor =
+    settings?.calendar.themeColor ?? defaultAppSettings.calendar.themeColor;
 
   return {
     animationClass,
@@ -213,5 +216,6 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     isDocked,
     openMode,
     showSequence,
+    themeColor,
   };
 };
