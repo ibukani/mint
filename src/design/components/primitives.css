@@ -564,3 +564,38 @@
     font-size: 0;
   }
 }
+
+.color-picker-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.color-picker-badge {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--surface-root);
+  border-radius: 50%;
+  background: var(--swatch-color);
+  box-shadow: 0 0 0 1px var(--border-control);
+  cursor: pointer;
+  transition:
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.color-picker-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px var(--border-control);
+}
+
+.color-picker-badge.is-active {
+  box-shadow:
+    0 0 0 2px var(--surface-root),
+    0 0 0 4px var(--swatch-color);
+}

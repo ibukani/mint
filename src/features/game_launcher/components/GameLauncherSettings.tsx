@@ -76,9 +76,7 @@ export const GameLauncherSettings: React.FC = () => {
                 key={color.value}
                 type="button"
                 className={`color-picker-badge ${settings.themeColor === color.value ? "is-active" : ""}`}
-                style={
-                  { "--swatch-color": color.value } as React.CSSProperties
-                }
+                style={{ "--swatch-color": color.value } as React.CSSProperties}
                 title={color.label}
                 onClick={() => handleChange("themeColor", color.value)}
                 aria-label={color.label}
