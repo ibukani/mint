@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import type { InstalledGame } from "../types";
 import { useGameLauncher } from "./useGameLauncher";
 
@@ -60,7 +61,9 @@ describe("useGameLauncher lifecycle", () => {
   });
 
   it("閉じる処理とフォーカス喪失が重なってもhideを一度だけ実行する", async () => {
-    const { result } = renderHook(() => useGameLauncher());
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
     act(() => {
       result.current.close();
       mocks.focusChanged?.({ payload: false });
@@ -71,7 +74,9 @@ describe("useGameLauncher lifecycle", () => {
   });
 
   it("閉じた後のshownイベントで古いtimerを破棄して再び操作できる", async () => {
-    const { result } = renderHook(() => useGameLauncher());
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
     const initialSequence = result.current.showSequence;
     act(() => {
       result.current.close();
@@ -85,7 +90,9 @@ describe("useGameLauncher lifecycle", () => {
   });
 
   it("起動要求を処理中は重複起動を拒否する", async () => {
-    const { result } = renderHook(() => useGameLauncher());
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
     await act(async () => {
       await Promise.all([
         result.current.startGame(game),

@@ -6,13 +6,18 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { GameArtwork, GameLauncherOverlay } from "./GameLauncherOverlay";
 
 describe("GameLauncherOverlay", () => {
   afterEach(cleanup);
 
   it("検索してキーボードでゲームを選べる", async () => {
-    render(<GameLauncherOverlay />);
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
 
     expect(
       (await screen.findAllByText("Counter-Strike 2")).length,
@@ -30,14 +35,22 @@ describe("GameLauncherOverlay", () => {
   });
 
   it("一致しない検索には空状態を表示する", async () => {
-    render(<GameLauncherOverlay />);
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
     const search = await screen.findByRole("textbox", { name: "ゲームを検索" });
     fireEvent.change(search, { target: { value: "missing-game" } });
     expect(screen.getByText("一致するゲームがありません")).toBeInTheDocument();
   });
 
   it("表示中のAlt+1でゲームを起動せず閉じる", async () => {
-    render(<GameLauncherOverlay />);
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
     const search = await screen.findByRole("textbox", { name: "ゲームを検索" });
     fireEvent.keyDown(search, { key: "1", altKey: true });
     expect(

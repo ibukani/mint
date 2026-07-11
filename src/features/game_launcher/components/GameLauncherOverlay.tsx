@@ -1,3 +1,4 @@
+import Fuse from "fuse.js";
 import { Gamepad2, RefreshCw, Search, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +12,14 @@ const storeLabel: Record<GameStore, string> = {
   epic: "Epic Games",
   riot: "Riot Games",
 };
+
+function getAcronym(title: string): string {
+  const words = title.split(/[^a-zA-Z0-9]+/);
+  return words
+    .map((w) => w.charAt(0))
+    .join("")
+    .toLowerCase();
+}
 
 export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
   const [failed, setFailed] = useState(false);
@@ -53,13 +62,23 @@ export const GameLauncherOverlay: React.FC = () => {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const games = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    if (!normalized) return result?.games ?? [];
-    return (result?.games ?? []).filter((game) =>
-      `${game.title} ${storeLabel[game.store]}`
-        .toLocaleLowerCase()
-        .includes(normalized),
-    );
+    const rawGames = result?.games ?? [];
+    const normalized = query.trim();
+    if (!normalized) return rawGames;
+
+    const searchData = rawGames.map((game) => ({
+      ...game,
+      storeName: storeLabel[game.store],
+      acronym: getAcronym(game.title),
+    }));
+
+    const fuse = new Fuse(searchData, {
+      keys: ["title", "storeName", "acronym"],
+      threshold: 0.3,
+      ignoreLocation: true,
+    });
+
+    return fuse.search(normalized).map((result) => result.item);
   }, [query, result]);
 
   useEffect(() => {
