@@ -39,12 +39,6 @@ const GameLauncherSettings = lazy(() =>
 
 export const SETTINGS_TABS = [
   {
-    id: "gameLauncher",
-    label: "ゲームランチャー",
-    description: "ゲームの検出と起動",
-    icon: React.createElement(Gamepad2, { size: 18, "aria-hidden": true }),
-  },
-  {
     id: "general",
     label: "一般設定",
     description: "テーマと起動操作",
@@ -52,6 +46,12 @@ export const SETTINGS_TABS = [
       size: 18,
       "aria-hidden": true,
     }),
+  },
+  {
+    id: "gameLauncher",
+    label: "ゲームランチャー",
+    description: "ゲームの検出と起動",
+    icon: React.createElement(Gamepad2, { size: 18, "aria-hidden": true }),
   },
   {
     id: "clock",
