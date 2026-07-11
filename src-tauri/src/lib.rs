@@ -48,6 +48,7 @@ pub fn run() {
                                         }
                                         "clock" => features::clock::toggle_clock_overlay(app),
                                         "calendar" => features::calendar::toggle_calendar_overlay(app),
+                                        "gameLauncher" => features::game_launcher::toggle_game_launcher_overlay(app),
                                         "calendarCreateEvent" => {
                                             features::calendar::open_calendar_event_editor(app)
                                         }
@@ -66,6 +67,7 @@ pub fn run() {
                                     }
                                     "clock" => features::clock::toggle_clock_overlay(app),
                                     "calendar" => features::calendar::toggle_calendar_overlay(app),
+                                    "gameLauncher" => features::game_launcher::toggle_game_launcher_overlay(app),
                                     "calendarCreateEvent" => {
                                         features::calendar::open_calendar_event_editor(app)
                                     }
@@ -158,6 +160,8 @@ pub fn run() {
             features::google_calendar::sync_google_calendars,
             features::google_calendar::disconnect_google_calendar,
             features::v2t::transcribe_audio_file,
+            features::game_launcher::list_installed_games,
+            features::game_launcher::launch_game,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

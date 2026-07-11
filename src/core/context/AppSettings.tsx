@@ -10,10 +10,12 @@ import {
 } from "react";
 import type { CalendarSettings } from "../../features/calendar/types";
 import type { ClockSettings } from "../../features/clock/types";
+import type { GameLauncherSettings } from "../../features/game_launcher/types";
 import type { VoiceToTextSettings } from "../../features/v2t/types";
 import { loadSettings, saveSettings } from "../settings";
 
 export interface AppSettings {
+  gameLauncher: GameLauncherSettings;
   calendar: CalendarSettings;
   autostart: boolean;
   theme: "dark" | "light";
@@ -247,6 +249,8 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         prev.calendar.shortcut !== updated.calendar.shortcut ||
         prev.calendar.createEventShortcut !==
           updated.calendar.createEventShortcut ||
+        prev.gameLauncher.enabled !== updated.gameLauncher.enabled ||
+        prev.gameLauncher.shortcut !== updated.gameLauncher.shortcut ||
         prev.voiceToText.enabled !== updated.voiceToText.enabled ||
         prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
 

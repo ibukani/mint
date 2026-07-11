@@ -36,7 +36,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const mockAudioPath = params.get("mockAudioPath");
 
   // 利用するウィンドウラベルをモック登録
-  mockWindows(currentLabel, "main", "clock", "calendar");
+  mockWindows(currentLabel, "main", "clock", "calendar", "gameLauncher");
 
   // ローカルストレージキー
   const STORAGE_KEY = "mint_mock_settings";
@@ -63,6 +63,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               calendar: {
                 ...defaultSettings.calendar,
                 ...(parsed.calendar ?? {}),
+              },
+              gameLauncher: {
+                ...defaultSettings.gameLauncher,
+                ...(parsed.gameLauncher ?? {}),
               },
             };
           } catch (e) {
@@ -114,6 +118,51 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         const id = typedArgs?.id as string | undefined;
         if (!id) throw new Error("Calendar event id is required.");
         mockDeleteCalendarEvent(id);
+        return;
+      }
+      case "list_installed_games":
+        return {
+          games: [
+            {
+              id: "730",
+              title: "Counter-Strike 2",
+              store: "steam",
+              imagePath: null,
+            },
+            {
+              id: "fn:catalog:Fortnite",
+              title: "Fortnite",
+              store: "epic",
+              imagePath: null,
+            },
+            {
+              id: "league_of_legends",
+              title: "League of Legends",
+              store: "riot",
+              imagePath: null,
+            },
+            {
+              id: "valorant",
+              title: "VALORANT",
+              store: "riot",
+              imagePath: null,
+            },
+          ],
+          sources: [
+            { store: "steam", detected: true, warning: null },
+            { store: "epic", detected: true, warning: null },
+            { store: "riot", detected: true, warning: null },
+          ],
+        };
+      case "launch_game": {
+        const request = typedArgs?.request as { id?: string } | undefined;
+        if (!request?.id) throw new Error("Game id is required.");
+        if (request.id === "launch-error") {
+          throw new Error("ゲームクライアントを起動できませんでした。");
+        }
+        console.log(
+          `[Tauri Mock] ゲーム ${request.id} の起動をシミュレートしました。`,
+        );
         return;
       }
       case "get_google_calendar_connection":

@@ -33,4 +33,8 @@ export const defaultAppSettings: AppSettings = {
     defaultGoogleCalendarId: "",
     themeColor: "#818cf8",
   },
+  gameLauncher: {
+    enabled: true,
+    shortcut: "Alt+1",
+  },
 };

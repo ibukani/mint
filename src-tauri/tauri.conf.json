@@ -51,6 +51,20 @@
         "skipTaskbar": true,
         "resizable": false,
         "focusable": true
+      },
+      {
+        "label": "gameLauncher",
+        "title": "Game Launcher",
+        "width": 760,
+        "height": 520,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focusable": true
       }
     ],
     "security": {

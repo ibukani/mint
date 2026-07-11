@@ -1,4 +1,10 @@
-import { CalendarDays, Clock3, Mic2, SlidersHorizontal } from "lucide-react";
+import {
+  CalendarDays,
+  Clock3,
+  Gamepad2,
+  Mic2,
+  SlidersHorizontal,
+} from "lucide-react";
 import React, { lazy } from "react";
 
 const GeneralSettings = lazy(() =>
@@ -25,7 +31,19 @@ const CalendarSettings = lazy(() =>
   })),
 );
 
+const GameLauncherSettings = lazy(() =>
+  import("../../features/game_launcher/components/GameLauncherSettings").then(
+    (m) => ({ default: m.GameLauncherSettings }),
+  ),
+);
+
 export const SETTINGS_TABS = [
+  {
+    id: "gameLauncher",
+    label: "ゲームランチャー",
+    description: "ゲームの検出と起動",
+    icon: React.createElement(Gamepad2, { size: 18, "aria-hidden": true }),
+  },
   {
     id: "general",
     label: "一般設定",
@@ -62,6 +80,7 @@ export const SETTINGS_TAB_COMPONENTS: Record<
   SettingsTabId,
   React.LazyExoticComponent<React.FC>
 > = {
+  gameLauncher: GameLauncherSettings,
   calendar: CalendarSettings,
   general: GeneralSettings,
   clock: ClockSettings,

@@ -13,10 +13,19 @@ const CalendarOverlay = lazy(() =>
   })),
 );
 
+const GameLauncherOverlay = lazy(() =>
+  import("../features/game_launcher/components/GameLauncherOverlay").then(
+    (m) => ({
+      default: m.GameLauncherOverlay,
+    }),
+  ),
+);
+
 export const WINDOW_ROUTES: Record<
   string,
   React.LazyExoticComponent<React.FC>
 > = {
   clock: ClockOverlay,
   calendar: CalendarOverlay,
+  gameLauncher: GameLauncherOverlay,
 };

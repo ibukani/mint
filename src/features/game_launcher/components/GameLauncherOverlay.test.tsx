@@ -1,0 +1,38 @@
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { GameLauncherOverlay } from "./GameLauncherOverlay";
+
+describe("GameLauncherOverlay", () => {
+  afterEach(cleanup);
+
+  it("検索してキーボードでゲームを選べる", async () => {
+    render(<GameLauncherOverlay />);
+
+    expect(
+      (await screen.findAllByText("Counter-Strike 2")).length,
+    ).toBeGreaterThan(0);
+    const search = screen.getByRole("textbox", { name: "ゲームを検索" });
+    fireEvent.change(search, { target: { value: "valorant" } });
+
+    expect(screen.queryByText("Counter-Strike 2")).not.toBeInTheDocument();
+    expect(screen.getAllByText("VALORANT").length).toBeGreaterThan(0);
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(screen.queryByText("起動中…")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("一致しない検索には空状態を表示する", async () => {
+    render(<GameLauncherOverlay />);
+    const search = await screen.findByRole("textbox", { name: "ゲームを検索" });
+    fireEvent.change(search, { target: { value: "missing-game" } });
+    expect(screen.getByText("一致するゲームがありません")).toBeInTheDocument();
+  });
+});
