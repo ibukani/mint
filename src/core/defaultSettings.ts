@@ -1,4 +1,4 @@
-import type { AppSettings } from "./context/AppSettings";
+import type { AppSettings } from "./settingsModel";
 
 export const defaultAppSettings: AppSettings = {
   autostart: false,

@@ -2,10 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const ROOT_DIR = process.cwd();
-const TS_SETTINGS_PATH = path.join(
-  ROOT_DIR,
-  "src/core/context/AppSettings.tsx",
-);
+const TS_SETTINGS_PATH = path.join(ROOT_DIR, "src/core/settingsModel.ts");
 const RS_SETTINGS_PATH = path.join(ROOT_DIR, "src-tauri/src/core/settings.rs");
 const FEATURES_DIR = path.join(ROOT_DIR, "src/features");
 const TAURI_MOCK_PATH = path.join(ROOT_DIR, "src/core/mocks/tauriMock.ts");
@@ -95,15 +92,15 @@ if (verbose) {
   );
 }
 
-// 2. Load AppSettings.tsx
+// 2. Load the TypeScript settings model
 if (!fs.existsSync(TS_SETTINGS_PATH)) {
-  reportError(`AppSettings.tsx not found at: ${TS_SETTINGS_PATH}`);
+  reportError(`TypeScript settings model not found at: ${TS_SETTINGS_PATH}`);
   process.exit(1);
 }
 const tsSettingsContent = fs.readFileSync(TS_SETTINGS_PATH, "utf-8");
 
 const importRegex =
-  /import\s+(?:type\s+)?\{\s*(\w+)\s*\}\s+from\s+["']\.\.\/\.\.\/features\/([^/]+)\/types["']/g;
+  /import\s+(?:type\s+)?\{\s*(\w+)\s*\}\s+from\s+["']\.\.\/features\/([^/]+)\/types["']/g;
 const importedSettings = new Map(); // folder => typeName
 let match = importRegex.exec(tsSettingsContent);
 while (match !== null) {
@@ -148,15 +145,38 @@ for (const folder of featureFolders) {
 
   if (!importedSettings.has(folder)) {
     reportError(
-      `Feature "${folder}" types are not imported in AppSettings.tsx`,
+      `Feature "${folder}" types are not imported in settingsModel.ts`,
     );
   } else {
     reportSuccess(
-      `Feature "${folder}" types are registered in AppSettings.tsx`,
+      `Feature "${folder}" types are registered in settingsModel.ts`,
     );
   }
 
-  // Check Rust module registration
+  // Check Rust module source and registration. Rust supports either
+  // `features/<feature>.rs` or `features/<feature>/mod.rs` for the same module.
+  const rustFeatureFile = path.join(
+    ROOT_DIR,
+    "src-tauri/src/features",
+    `${folder}.rs`,
+  );
+  const rustFeatureDirectoryModule = path.join(
+    ROOT_DIR,
+    "src-tauri/src/features",
+    folder,
+    "mod.rs",
+  );
+  if (
+    !fs.existsSync(rustFeatureFile) &&
+    !fs.existsSync(rustFeatureDirectoryModule)
+  ) {
+    reportError(
+      `Feature "${folder}" has no Rust module source (${rustFeatureFile} or ${rustFeatureDirectoryModule})`,
+    );
+  } else {
+    reportSuccess(`Feature "${folder}" has a Rust module source`);
+  }
+
   const rustModRegex = new RegExp(`pub\\s+mod\\s+${folder}\\s*;`);
   if (!rustModRegex.test(rustModContent)) {
     reportError(
@@ -177,7 +197,7 @@ const appSettingsInterfaceMatch = /interface\s+AppSettings\s*\{([^}]+)\}/s.exec(
 const featureProperties = [];
 
 if (!appSettingsInterfaceMatch) {
-  reportError(`Could not find "interface AppSettings" in AppSettings.tsx`);
+  reportError(`Could not find "interface AppSettings" in settingsModel.ts`);
 } else {
   const interfaceBody = appSettingsInterfaceMatch[1];
 

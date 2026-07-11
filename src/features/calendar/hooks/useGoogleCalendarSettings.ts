@@ -10,8 +10,11 @@ import {
 import type { GoogleCalendarConnection, GoogleCalendarInfo } from "../types";
 
 export const useGoogleCalendarSettings = () => {
-  const { featureSettings: calendar, handleChange } =
-    useFeatureSettings("calendar");
+  const {
+    featureSettings: calendar,
+    handleChange,
+    updateFeatureSettings,
+  } = useFeatureSettings("calendar");
   const [connection, setConnection] = useState<GoogleCalendarConnection | null>(
     null,
   );
@@ -60,10 +63,12 @@ export const useGoogleCalendarSettings = () => {
     () =>
       run(async () => {
         await disconnectGoogleCalendar();
-        handleChange("selectedGoogleCalendarIds", []);
-        handleChange("defaultGoogleCalendarId", "");
+        updateFeatureSettings({
+          selectedGoogleCalendarIds: [],
+          defaultGoogleCalendarId: "",
+        });
       }),
-    [handleChange, run],
+    [run, updateFeatureSettings],
   );
 
   const toggleCalendar = useCallback(
@@ -72,12 +77,14 @@ export const useGoogleCalendarSettings = () => {
       const selected = checked
         ? [...calendar.selectedGoogleCalendarIds, id]
         : calendar.selectedGoogleCalendarIds.filter((value) => value !== id);
-      handleChange("selectedGoogleCalendarIds", [...new Set(selected)]);
-      if (!checked && calendar.defaultGoogleCalendarId === id) {
-        handleChange("defaultGoogleCalendarId", "");
-      }
+      updateFeatureSettings({
+        selectedGoogleCalendarIds: [...new Set(selected)],
+        ...(!checked && calendar.defaultGoogleCalendarId === id
+          ? { defaultGoogleCalendarId: "" }
+          : {}),
+      });
     },
-    [calendar, handleChange],
+    [calendar, updateFeatureSettings],
   );
 
   const setDefaultCalendar = useCallback(

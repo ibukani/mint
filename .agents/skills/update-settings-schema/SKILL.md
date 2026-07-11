@@ -5,7 +5,7 @@ description: Safely add, rename, migrate, or remove Mint AppSettings fields acro
 
 # Update the settings schema
 
-1. Run `npm run ai:context` and locate the feature type, `AppSettings.tsx`, `defaultSettings.ts`, Rust `settings.rs`, `mockSettings.ts`, and consumers.
+1. Run `npm run ai:context` and locate the feature type, `settingsModel.ts`, `defaultSettings.ts`, Rust `settings.rs`, `mockSettings.ts`, and consumers.
 2. Define the desired serialized JSON shape first. Use camelCase JSON, camelCase TypeScript, and snake_case Rust with serde mapping.
 3. Update TypeScript types/defaults, Rust structs/defaults, and the shared mock factory together. Do not use `any` or casts to suppress drift.
 4. Preserve old persisted settings when renaming or changing meaning: add serde aliases/defaults or an explicit migration and test old input. A type-compatible rename alone is not a migration.

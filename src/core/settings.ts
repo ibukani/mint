@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppSettings } from "./context/AppSettings";
+import type { AppSettings } from "./settingsModel";
 
 export const loadSettings = () => invoke<AppSettings>("load_settings");
 

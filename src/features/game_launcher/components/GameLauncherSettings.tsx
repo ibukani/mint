@@ -22,6 +22,7 @@ export const GameLauncherSettings: React.FC = () => {
   const {
     featureSettings: settings,
     handleChange,
+    updateFeatureSettings,
     shortcutError,
   } = useFeatureSettings("gameLauncher");
 
@@ -41,14 +42,7 @@ export const GameLauncherSettings: React.FC = () => {
           label="ゲームランチャー"
           enabled={settings.enabled}
           onChange={(event) => handleChange("enabled", event.target.checked)}
-          onReset={() => {
-            handleChange("enabled", defaultAppSettings.gameLauncher.enabled);
-            handleChange("shortcut", defaultAppSettings.gameLauncher.shortcut);
-            handleChange(
-              "themeColor",
-              defaultAppSettings.gameLauncher.themeColor,
-            );
-          }}
+          onReset={() => updateFeatureSettings(defaultAppSettings.gameLauncher)}
           ariaLabel="ゲームランチャーを有効にする"
         />
         <section

@@ -18,17 +18,14 @@ export const useClockSettingsController = () => {
   const {
     featureSettings: clock,
     handleChange,
+    updateFeatureSettings,
     shortcutError,
   } = useFeatureSettings("clock");
 
   if (!clock) return null;
 
   const resetClockSettings = () => {
-    for (const key of Object.keys(defaultAppSettings.clock) as Array<
-      keyof typeof defaultAppSettings.clock
-    >) {
-      handleChange(key, defaultAppSettings.clock[key]);
-    }
+    updateFeatureSettings(defaultAppSettings.clock);
     focusAndSelect("clock-shortcut-input");
   };
 
@@ -46,6 +43,7 @@ export const useClockSettingsController = () => {
   return {
     clock,
     handleChange,
+    updateFeatureSettings,
     shortcutError,
     resetClockSettings,
     changeAutoHideSeconds,

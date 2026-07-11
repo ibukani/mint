@@ -1,22 +1,33 @@
 import { useCallback } from "react";
-import { type AppSettings, useAppSettings } from "../context/AppSettings";
+import { useAppSettings } from "../context/AppSettings";
+import type { AppSettings, FeatureSettingsKey } from "../settingsModel";
 
-export function useFeatureSettings<
-  K extends Exclude<
-    keyof AppSettings,
-    "theme" | "settingsShortcut" | "autostart"
-  >,
->(featureKey: K) {
+export function useFeatureSettings<K extends FeatureSettingsKey>(
+  featureKey: K,
+) {
   const { settings, updateSettings, shortcutErrors } = useAppSettings();
   const featureSettings = settings ? settings[featureKey] : null;
   const shortcutError = shortcutErrors[featureKey] || "";
 
+  const updateFeatureSettings = useCallback(
+    (patch: Partial<AppSettings[K]>) => {
+      updateSettings((previous) => ({
+        ...previous,
+        [featureKey]: {
+          ...previous[featureKey],
+          ...patch,
+        },
+      }));
+    },
+    [featureKey, updateSettings],
+  );
+
   const handleChange = useCallback(
     <P extends keyof AppSettings[K]>(key: P, value: AppSettings[K][P]) => {
-      updateSettings((prev) => ({
-        ...prev,
+      updateSettings((previous) => ({
+        ...previous,
         [featureKey]: {
-          ...prev[featureKey],
+          ...previous[featureKey],
           [key]: value,
         },
       }));
@@ -24,5 +35,10 @@ export function useFeatureSettings<
     [featureKey, updateSettings],
   );
 
-  return { featureSettings, handleChange, shortcutError };
+  return {
+    featureSettings,
+    handleChange,
+    updateFeatureSettings,
+    shortcutError,
+  };
 }

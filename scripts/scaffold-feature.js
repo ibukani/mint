@@ -179,14 +179,14 @@ if (fs.existsSync(rustModPath)) {
   }
 }
 
-// 6. Auto-Register in AppSettings.tsx
-const appSettingsPath = path.join(ROOT_DIR, "src/core/context/AppSettings.tsx");
+// 6. Auto-register in the TypeScript settings model
+const appSettingsPath = path.join(ROOT_DIR, "src/core/settingsModel.ts");
 if (fs.existsSync(appSettingsPath)) {
   let content = fs.readFileSync(appSettingsPath, "utf-8");
   if (!content.includes(`features/${featureName}/types`)) {
     // 6.1 Add Import (find first import statement)
     const importRegex = /(import\s+.*from\s+["'].*["'];)/;
-    const importLine = `import type { ${pascalName}Settings } from "../../features/${featureName}/types";\n`;
+    const importLine = `import type { ${pascalName}Settings } from "../features/${featureName}/types";\n`;
     content = content.replace(importRegex, `${importLine}$1`);
 
     // 6.2 Add Property to AppSettings
@@ -195,7 +195,7 @@ if (fs.existsSync(appSettingsPath)) {
       `$1\n  ${camelName}: ${pascalName}Settings;`,
     );
     fs.writeFileSync(appSettingsPath, content, "utf-8");
-    recordAction("[AUTO-REGISTERED] AppSettings.tsx に型定義を登録しました。");
+    recordAction("[AUTO-REGISTERED] settingsModel.ts に型定義を登録しました。");
   }
 }
 

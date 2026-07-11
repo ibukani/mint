@@ -8,5 +8,9 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/core/mocks/vitestSetup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    reporters: ["dot"],
+    pool: "threads",
+    maxWorkers: 1,
+    fileParallelism: false,
   },
 });

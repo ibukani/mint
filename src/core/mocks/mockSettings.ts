@@ -1,5 +1,5 @@
-import type { AppSettings } from "../context/AppSettings";
 import { defaultAppSettings } from "../defaultSettings";
+import type { AppSettings } from "../settingsModel";
 
 const defaultMockSettings: AppSettings = {
   gameLauncher: {

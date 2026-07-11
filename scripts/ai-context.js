@@ -44,7 +44,7 @@ function listFilesRecursive(relativePath, predicate) {
 }
 
 function extractAppSettings() {
-  const content = readText("src/core/context/AppSettings.tsx");
+  const content = readText("src/core/settingsModel.ts");
   const match = /export\s+interface\s+AppSettings\s*\{([\s\S]*?)\n\}/.exec(
     content,
   );
@@ -115,9 +115,14 @@ export function buildAiContext() {
     formatSection(
       "Features",
       listDirs("src/features").map((feature) => {
-        const hasBackend = fs.existsSync(
-          path.join(ROOT_DIR, "src-tauri/src/features", `${feature}.rs`),
+        const backendPath = path.join(
+          ROOT_DIR,
+          "src-tauri/src/features",
+          feature,
         );
+        const hasBackend =
+          fs.existsSync(`${backendPath}.rs`) ||
+          fs.existsSync(path.join(backendPath, "mod.rs"));
         return `${feature}${hasBackend ? " (frontend + backend module)" : " (frontend only)"}`;
       }),
     ),

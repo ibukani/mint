@@ -22,7 +22,7 @@ Use the package scripts in `package.json`:
 - `npm run preview` serves the built frontend locally.
 - `npm run tauri -- dev` runs the full Tauri desktop app in development.
 - `npm run tauri -- build` builds the distributable desktop app.
-- `npm run test` runs frontend Vitest tests.
+- `npm run test` runs the frontend Vitest suite in a deterministic single-worker thread pool.
 - `npm run check:quick` runs TypeScript, Biome, script syntax checks, and architecture validation without tests or bundling. Use it for fast feedback while iterating, then run the full checks before completion.
 - `npm run check:ai-foundation` verifies the AI development foundation itself: required scripts, Node version alignment, core AI docs, CI gates, and PR template checklists.
 - `npm run check:all` runs the full local release gate: frontend checks, scaffold smoke test, and Rust/Tauri checks.
@@ -37,6 +37,8 @@ UI design responsibilities are separated into `src/design/`. Feature modules dec
 
 ### Module Structure
 All new features (tools) must be organized as follows:
+
+Application settings types are defined in `src/core/settingsModel.ts`. React context only exposes the settings controller and must not own the schema itself. This keeps persistence, mocks, validators, and non-React helpers independent from the Provider implementation.
 
 1. **Frontend (`src/features/<feature_name>/`)**:
    - `components/`: Contains settings, main widget, or overlay UI.
@@ -57,6 +59,9 @@ All new features (tools) must be organized as follows:
 2. **Backend (`src-tauri/src/features/<feature_name>.rs`)**:
    - Write standard Tauri commands with typed arguments (e.g. `pub fn my_command(settings: MyToolSettings) -> Result<String, String>`).
    - Register them in `src-tauri/src/lib.rs` inside `tauri::generate_handler!`.
+   - Start with a single file. When persistence, validation, or OS integration becomes substantial,
+     replace it with `<feature_name>/mod.rs` as a facade and keep implementation modules private.
+     Re-export only the typed commands and types that callers already depend on.
 
 ## 4. Extension Guidelines (How to add a new tool)
 
@@ -70,6 +75,8 @@ The scaffolder creates the frontend feature module, Rust feature module, AppSett
 
 1. Implement feature-specific UI and behavior inside `src/features/new_tool/`.
 2. Add typed Rust commands in `src-tauri/src/features/new_tool.rs` only when backend behavior is needed.
+   A mature feature may be converted to `src-tauri/src/features/new_tool/mod.rs` plus private,
+   responsibility-focused modules without changing `pub mod new_tool;` or command registration.
 3. Register any new Rust command in `src-tauri/src/lib.rs` and add the matching browser/Vitest mock case.
 4. If the tool needs an overlay window, add the window in `src-tauri/tauri.conf.json` and route the label in `src/core/windowRoutes.ts`.
 5. Run `npm run check:quick`; before PR or handoff, run `npm run check:all` when the Rust/Tauri environment is available.

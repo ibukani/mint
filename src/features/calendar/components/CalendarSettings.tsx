@@ -26,21 +26,14 @@ export const CalendarSettings: React.FC = () => {
   const {
     featureSettings: calendar,
     handleChange,
+    updateFeatureSettings,
     shortcutError,
   } = useFeatureSettings("calendar");
 
   if (!calendar) return null;
 
   const resetCalendarSettings = () => {
-    handleChange("enabled", defaultAppSettings.calendar.enabled);
-    handleChange("shortcut", defaultAppSettings.calendar.shortcut);
-    handleChange(
-      "createEventShortcut",
-      defaultAppSettings.calendar.createEventShortcut,
-    );
-    handleChange("selectedGoogleCalendarIds", []);
-    handleChange("defaultGoogleCalendarId", "");
-    handleChange("themeColor", defaultAppSettings.calendar.themeColor);
+    updateFeatureSettings(defaultAppSettings.calendar);
   };
 
   return (

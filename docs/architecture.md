@@ -17,12 +17,16 @@ Mint は、機能追加の安全性・拡張性・保守性を高めるため、
 - `hooks/`: その機能専用のローカルステートやサイドエフェクト管理。
 - `types.ts`: その機能専用の設定インターフェース定義 (`AppSettings` に結合される)。
 
-### バックエンド (`src-tauri/src/features/<feature>.rs`)
-- その機能専用の Tauri コマンド (IPC) の実装。
-- ここに定義されたコマンドは、`src-tauri/src/lib.rs` 内で明示的に登録する必要があります。
+### バックエンド (`src-tauri/src/features/<feature>.rs` または `<feature>/`)
+- 小規模な機能は `<feature>.rs` から開始し、責務が増えた機能は
+  `<feature>/mod.rs` を facade として、永続化・検証・OS連携などを内部モジュールへ分割します。
+- facade は外部へ公開する型付き Tauri コマンドだけを再公開し、内部実装を
+  `src-tauri/src/lib.rs` や他機能へ漏らしません。
+- 公開コマンドは構成にかかわらず、`src-tauri/src/lib.rs` 内で明示的に登録する必要があります。
 
 ### 機能管理ダッシュボードと共通設定 (`AppSettings`)
-- `src/core/context/AppSettings.tsx` (TypeScript)
+- `src/core/settingsModel.ts` (TypeScript): 設定スキーマの単一ソース
+- `src/core/context/AppSettings.tsx` (TypeScript): Provider と購読 API
 - `src-tauri/src/core/settings.rs` (Rust)
 - すべての機能の設定や有効状態はここで一元管理され、ローカルファイルにシリアライズされて保存されます。
 - `theme` などの共通設定と、機能ごとの個別設定 (`clock`, `voiceToText` 等) が混在します。

@@ -1,6 +1,6 @@
 import { Check, CircleAlert, LoaderCircle } from "lucide-react";
 import type React from "react";
-import type { SaveStatus } from "../context/AppSettings";
+import type { SaveStatus } from "../settingsModel";
 import "./AppFeedback.css";
 
 const labels: Record<SaveStatus, string> = {
