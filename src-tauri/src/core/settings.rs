@@ -138,7 +138,31 @@ impl Default for CalendarSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
+pub struct GameLauncherSettings {
+    pub enabled: bool,
+    pub shortcut: String,
+    #[serde(default = "default_game_launcher_color")]
+    pub theme_color: String,
+}
+
+fn default_game_launcher_color() -> String {
+    "#818cf8".to_string()
+}
+
+impl Default for GameLauncherSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            shortcut: "Alt+1".to_string(),
+            theme_color: default_game_launcher_color(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub game_launcher: GameLauncherSettings,
     pub calendar: CalendarSettings,
     pub autostart: bool,
     pub theme: String,
@@ -150,6 +174,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            game_launcher: GameLauncherSettings::default(),
             calendar: CalendarSettings::default(),
             autostart: false,
             theme: "dark".to_string(),
@@ -208,6 +233,21 @@ impl ShortcutProvider for CalendarSettings {
     }
 }
 
+impl ShortcutProvider for GameLauncherSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let shortcut = self.shortcut.trim();
+        if !self.enabled || shortcut.is_empty() {
+            None
+        } else {
+            Some(shortcut)
+        }
+    }
+
+    fn feature_id(&self) -> &str {
+        "gameLauncher"
+    }
+}
+
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
@@ -220,6 +260,9 @@ impl AppSettings {
         }
         if let Some(s) = self.calendar.shortcut() {
             list.push((self.calendar.feature_id(), s));
+        }
+        if let Some(s) = self.game_launcher.shortcut() {
+            list.push((self.game_launcher.feature_id(), s));
         }
         let create_event_shortcut = self.calendar.create_event_shortcut.trim();
         if self.calendar.enabled && !create_event_shortcut.is_empty() {
@@ -485,6 +528,11 @@ mod tests {
         assert!(settings.calendar.enabled);
         assert_eq!(settings.calendar.shortcut, "Alt+Down");
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up");
+        assert!(settings.game_launcher.enabled);
+        assert_eq!(settings.game_launcher.shortcut, "Alt+1");
+        assert!(settings
+            .active_shortcuts()
+            .contains(&("gameLauncher", "Alt+1")));
         assert!(settings
             .active_shortcuts()
             .contains(&("calendarCreateEvent", "Alt+Up")));

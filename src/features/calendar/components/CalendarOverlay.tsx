@@ -258,7 +258,7 @@ export const CalendarOverlay: React.FC = () => {
   return (
     <OverlayFrame>
       <OverlayCard
-        className={`${animationClass} calendar-overlay-card${isDocked ? " is-docked" : ""}`}
+        className={`${animationClass} calendar-overlay-card theme-accent-scope${isDocked ? " is-docked" : ""}`}
         role="dialog"
         aria-label="カレンダーオーバーレイ"
         style={{ "--color-accent": themeColor } as React.CSSProperties}

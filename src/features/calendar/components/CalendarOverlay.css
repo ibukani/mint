@@ -215,7 +215,7 @@
 
 .month-calendar__day.is-selected:not(.is-today) {
   border-color: var(--border-control-focus);
-  background: color-mix(in srgb, var(--surface-control-hover) 78%, transparent);
+  background: var(--surface-accent);
   color: var(--color-text-primary);
 }
 
@@ -354,7 +354,7 @@ button.month-calendar__next-event {
 .month-calendar__add-button:hover,
 .month-calendar__next-event:hover {
   border-color: var(--border-control-focus);
-  background: var(--surface-control-hover);
+  background: var(--surface-accent-action);
   color: var(--color-text-primary);
 }
 

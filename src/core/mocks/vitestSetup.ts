@@ -15,7 +15,7 @@ import {
 } from "./calendarEventMock";
 
 // テスト環境でTauriのウィンドウ管理をモック
-mockWindows("main", "clock", "calendar");
+mockWindows("main", "clock", "calendar", "gameLauncher");
 
 import { createMockSettings } from "./mockSettings";
 
@@ -56,6 +56,30 @@ mockIPC(async (cmd, args) => {
       mockDeleteCalendarEvent(id);
       return;
     }
+    case "list_installed_games":
+      return {
+        games: [
+          {
+            id: "730",
+            title: "Counter-Strike 2",
+            store: "steam",
+            imagePath: null,
+          },
+          {
+            id: "valorant",
+            title: "VALORANT",
+            store: "riot",
+            imagePath: null,
+          },
+        ],
+        sources: [
+          { store: "steam", detected: true, warning: null },
+          { store: "epic", detected: false, warning: null },
+          { store: "riot", detected: true, warning: null },
+        ],
+      };
+    case "launch_game":
+      return;
     case "get_google_calendar_connection":
       return {
         connected: false,
