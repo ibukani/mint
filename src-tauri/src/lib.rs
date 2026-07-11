@@ -2,7 +2,7 @@ mod core;
 mod features;
 
 use std::sync::Mutex;
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Listener, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 use core::settings::AppSettingsState;
@@ -86,6 +86,20 @@ pub fn run() {
             app.manage(calendar_store);
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
+            // Add ready event listener for calendar editor window to resolve timing issues
+            let handle_for_ready = app.handle().clone();
+            app.listen("calendar-editor-ready", move |_event| {
+                if let Some(editor) = handle_for_ready.get_webview_window("calendarEditor") {
+                    if let Some(state) = handle_for_ready.try_state::<features::calendar::window::CalendarEditorState>() {
+                        if let Ok(guard) = state.0.lock() {
+                            if let Some(payload) = guard.as_ref() {
+                                let _ = editor.emit("calendar-editor-shown", payload.clone());
+                            }
+                        }
+                    }
+                }
+            });
+
             // Initialize system tray
             core::tray::init_tray(app)?;
 
@@ -149,6 +163,7 @@ pub fn run() {
                 }
             }
         })
+        .manage(features::calendar::window::CalendarEditorState::default())
         .invoke_handler(tauri::generate_handler![
             core::settings::load_settings,
             core::settings::save_settings,
@@ -159,6 +174,8 @@ pub fn run() {
             features::calendar::repository::create_calendar_event,
             features::calendar::repository::update_calendar_event,
             features::calendar::repository::delete_calendar_event,
+            features::calendar::window::open_calendar_editor_window,
+            features::calendar::window::get_calendar_editor_payload,
             features::google_calendar::auth::get_google_calendar_connection,
             features::google_calendar::auth::connect_google_calendar,
             features::google_calendar::auth::list_google_calendars,

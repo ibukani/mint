@@ -70,15 +70,6 @@ p {
   text-wrap: pretty;
 }
 
-html.is-overlay,
-body.is-overlay {
-  /* biome-ignore lint/complexity/noImportantStyles: overlay windows must have a transparent background */
-  background: transparent !important;
-
-  /* biome-ignore lint/complexity/noImportantStyles: overlay windows must have a transparent background */
-  background-color: transparent !important;
-}
-
 #root {
   width: 100%;
   height: 100vh;
@@ -99,25 +90,6 @@ body.is-overlay {
     animation-duration: 0.01ms;
     transition-duration: 0.01ms;
   }
-}
-
-:root:not(.is-overlay) {
-  background: var(--surface-page);
-}
-
-body:not(.is-overlay) {
-  background:
-    radial-gradient(
-      circle at 85% -10%,
-      var(--page-accent-top),
-      transparent 34rem
-    ),
-    radial-gradient(
-      circle at 5% 110%,
-      var(--page-accent-bottom),
-      transparent 30rem
-    ),
-    var(--surface-page);
 }
 
 button,

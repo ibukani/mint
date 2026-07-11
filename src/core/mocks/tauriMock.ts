@@ -36,7 +36,14 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const mockAudioPath = params.get("mockAudioPath");
 
   // 利用するウィンドウラベルをモック登録
-  mockWindows(currentLabel, "main", "clock", "calendar", "gameLauncher");
+  mockWindows(
+    "calendarEditor",
+    currentLabel,
+    "main",
+    "clock",
+    "calendar",
+    "gameLauncher",
+  );
 
   // ローカルストレージキー
   const STORAGE_KEY = "mint_mock_settings";
@@ -102,6 +109,12 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         const cursor = typedArgs?.cursor as CalendarEventCursor | undefined;
         if (!cursor) throw new Error("Calendar event cursor is required.");
         return mockGetNextCalendarEvent(cursor);
+      }
+      case "open_calendar_editor_window": {
+        return;
+      }
+      case "get_calendar_editor_payload": {
+        return null;
       }
       case "create_calendar_event": {
         const input = typedArgs?.input as CalendarEventInput | undefined;

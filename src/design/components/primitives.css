@@ -105,7 +105,7 @@
 
 .design-control:focus {
   border-color: var(--border-control-focus);
-  background: var(--surface-control-hover);
+  background: var(--surface-control);
   box-shadow: var(--shadow-focus);
 }
 

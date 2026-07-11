@@ -16,7 +16,6 @@ struct CalendarShownPayload {
 #[serde(rename_all = "camelCase")]
 enum CalendarOpenMode {
     Month,
-    CreateEvent,
 }
 
 pub fn position_calendar(
@@ -108,22 +107,75 @@ pub fn toggle_calendar_overlay(app: &AppHandle) {
     show_calendar_overlay(app, &settings, CalendarOpenMode::Month);
 }
 
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalendarEditorPayload {
+    pub mode: String,
+    pub date: Option<String>,
+    pub event: Option<serde_json::Value>,
+    pub template: Option<serde_json::Value>,
+}
+
+#[derive(Default)]
+pub struct CalendarEditorState(pub std::sync::Mutex<Option<CalendarEditorPayload>>);
+
 pub fn open_calendar_event_editor(app: &AppHandle) {
-    let settings = match crate::core::settings::load_settings_internal(app) {
-        Ok(settings) if settings.calendar.enabled => settings,
+    match crate::core::settings::load_settings_internal(app) {
+        Ok(settings) if settings.calendar.enabled => {}
         _ => return,
     };
-    let Some(calendar) = app.get_webview_window("calendar") else {
+
+    // Use the command to open it with default empty payload (needs State inside Tauri, so we retrieve it or pass None)
+    if let Some(state) = app.try_state::<CalendarEditorState>() {
+        open_calendar_editor_window(app.clone(), state, None);
+    }
+}
+
+#[tauri::command]
+pub fn get_calendar_editor_payload(
+    state: tauri::State<'_, CalendarEditorState>,
+) -> Option<CalendarEditorPayload> {
+    state.0.lock().ok().and_then(|guard| guard.clone())
+}
+
+#[tauri::command]
+pub fn open_calendar_editor_window(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, CalendarEditorState>,
+    payload: Option<CalendarEditorPayload>,
+) {
+    let Some(editor) = app.get_webview_window("calendarEditor") else {
         return;
     };
 
-    if calendar.is_visible().unwrap_or(false) {
-        let _ = calendar.emit("calendar-create-requested", ());
-        let _ = calendar.set_focus();
-        return;
+    let payload = payload.unwrap_or_else(|| CalendarEditorPayload {
+        mode: "create".to_string(),
+        date: None,
+        event: None,
+        template: None,
+    });
+
+    if let Ok(mut guard) = state.0.lock() {
+        *guard = Some(payload.clone());
     }
 
-    show_calendar_overlay(app, &settings, CalendarOpenMode::CreateEvent);
+    if let Ok(Some(monitor)) = editor.current_monitor().or_else(|_| app.primary_monitor()) {
+        let scale = monitor.scale_factor();
+        let physical_width = (420.0 * scale) as u32;
+        let physical_height = (640.0 * scale) as u32;
+        let _ = editor.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+            physical_width,
+            physical_height,
+        )));
+        let _ = editor.center();
+    }
+
+    let _ = editor.show();
+    let _ = editor.set_always_on_top(true);
+    let _ = editor.unminimize();
+    let _ = editor.set_focus();
+
+    let _ = editor.emit("calendar-editor-shown", payload);
 }
 
 fn show_calendar_overlay(

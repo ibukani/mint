@@ -703,6 +703,10 @@ const designBoundaryAllowlist = new Map([
     new Set(["inline-style", "color-literal"]),
   ],
   [
+    "src/features/calendar/components/CalendarEditorOverlay.tsx",
+    new Set(["inline-style", "color-literal"]),
+  ],
+  [
     "src/features/game_launcher/components/GameLauncherOverlay.tsx",
     new Set(["inline-style"]),
   ],

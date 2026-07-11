@@ -181,6 +181,20 @@ export const eventToDraft = (event: CalendarEvent): CalendarEventDraft => {
   };
 };
 
+export const openCalendarEditor = async (payload: {
+  mode: "create" | "edit" | "duplicate";
+  date?: string;
+  event?: CalendarEvent;
+  template?: CalendarEvent;
+}) => {
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("open_calendar_editor_window", { payload });
+  } catch (error) {
+    console.error("Failed to open calendar editor window:", error);
+  }
+};
+
 export const draftToEventInput = (
   draft: CalendarEventDraft,
 ): CalendarEventInput => {
