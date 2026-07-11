@@ -65,6 +65,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceRef = useRef<number>(0);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const reloadSettings = useCallback(async () => {
     setLoading(true);
@@ -85,8 +86,15 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     void reloadSettings();
 
     const unlistenPromise = listen("settings-changed", async () => {
+      const sequenceAtEvent = sequenceRef.current;
       try {
         const loaded = await loadSettings();
+        if (
+          sequenceRef.current !== sequenceAtEvent ||
+          pendingSaveRef.current !== null
+        ) {
+          return;
+        }
         setSettings((prev) => {
           if (JSON.stringify(prev) !== JSON.stringify(loaded)) {
             settingsRef.current = loaded;
@@ -134,28 +142,34 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const commitSettings = useCallback(
-    async (toSave: AppSettings, seq: number) => {
-      setSaveStatus("saving");
-      try {
-        await saveSettings(toSave);
-        // Only clear errors if this is still the latest save request
-        if (sequenceRef.current === seq) {
-          failedSaveRef.current = null;
-          setError(null);
-          setShortcutErrors({});
-          setSaveStatus("saved");
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("Failed to save settings:", err);
-        // Only apply error states if this request is still the latest
-        if (sequenceRef.current === seq) {
-          failedSaveRef.current = toSave;
-          setError("設定の保存に失敗しました");
-          setSaveStatus("error");
-          parseAndSetErrors(msg);
-        }
-      }
+    (toSave: AppSettings, seq: number) => {
+      const queuedSave = saveQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          if (sequenceRef.current === seq) setSaveStatus("saving");
+          try {
+            await saveSettings(toSave);
+            // Only clear errors if this is still the latest save request
+            if (sequenceRef.current === seq) {
+              failedSaveRef.current = null;
+              setError(null);
+              setShortcutErrors({});
+              setSaveStatus("saved");
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("Failed to save settings:", err);
+            // Only apply error states if this request is still the latest
+            if (sequenceRef.current === seq) {
+              failedSaveRef.current = toSave;
+              setError("設定の保存に失敗しました");
+              setSaveStatus("error");
+              parseAndSetErrors(msg);
+            }
+          }
+        });
+      saveQueueRef.current = queuedSave;
+      return queuedSave;
     },
     [parseAndSetErrors],
   );

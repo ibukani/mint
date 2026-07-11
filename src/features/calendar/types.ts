@@ -85,6 +85,7 @@ export interface CalendarEventCursor {
 export interface CalendarEventDraft {
   title: string;
   date: string;
+  allDayDurationDays: number;
   startTime: string;
   endTime: string;
   allDay: boolean;

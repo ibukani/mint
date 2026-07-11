@@ -13,6 +13,14 @@ const parseMachineDate = (value: string) => {
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
 };
 
+const machineDateDistance = (start: string, endExclusive: string) => {
+  const [startYear, startMonth, startDay] = start.split("-").map(Number);
+  const [endYear, endMonth, endDay] = endExclusive.split("-").map(Number);
+  const startUtc = Date.UTC(startYear, startMonth - 1, startDay);
+  const endUtc = Date.UTC(endYear, endMonth - 1, endDay);
+  return Math.round((endUtc - startUtc) / (24 * 60 * 60 * 1000));
+};
+
 export const addDays = (value: string, days: number) => {
   const date = parseMachineDate(value);
   date.setDate(date.getDate() + days);
@@ -133,6 +141,7 @@ export const createDefaultEventDraft = (
   return {
     title: "",
     date,
+    allDayDurationDays: 1,
     startTime: formatTimeInput(start),
     endTime: formatTimeInput(end),
     allDay: false,
@@ -145,6 +154,13 @@ export const eventToDraft = (event: CalendarEvent): CalendarEventDraft => {
     return {
       title: event.title,
       date: event.schedule.startDate,
+      allDayDurationDays: Math.max(
+        1,
+        machineDateDistance(
+          event.schedule.startDate,
+          event.schedule.endDateExclusive,
+        ),
+      ),
       startTime: "09:00",
       endTime: "10:00",
       allDay: true,
@@ -157,6 +173,7 @@ export const eventToDraft = (event: CalendarEvent): CalendarEventDraft => {
   return {
     title: event.title,
     date: toMachineDate(start),
+    allDayDurationDays: 1,
     startTime: formatTimeInput(start),
     endTime: formatTimeInput(end),
     allDay: false,
@@ -188,7 +205,10 @@ export const draftToEventInput = (
       schedule: {
         kind: "allDay",
         startDate: draft.date,
-        endDateExclusive: addDays(draft.date, 1),
+        endDateExclusive: addDays(
+          draft.date,
+          Math.max(1, draft.allDayDurationDays),
+        ),
       },
     };
   }

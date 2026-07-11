@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 const CALENDAR_HEIGHT: f64 = 384.0;
 const WINDOW_MARGIN: f64 = 20.0;
-const CALENDAR_DB_VERSION: i64 = 2;
+const CALENDAR_DB_VERSION: i64 = 3;
 
 pub struct CalendarStoreState {
     path: PathBuf,
@@ -178,7 +178,7 @@ fn migrate_store(connection: &Connection) -> Result<(), String> {
                    attempts INTEGER NOT NULL DEFAULT 0,
                    last_error TEXT
                  );
-                 PRAGMA user_version = 2;
+                 PRAGMA user_version = 3;
                  COMMIT;",
             )
             .map_err(|error| error.to_string()),
@@ -205,7 +205,19 @@ fn migrate_store(connection: &Connection) -> Result<(), String> {
                  CREATE UNIQUE INDEX calendar_events_google_identity ON calendar_events(source_calendar_id,source_event_id) WHERE source_kind='google';
                  CREATE TABLE google_calendar_sync (calendar_id TEXT PRIMARY KEY NOT NULL, sync_token TEXT, last_synced_at TEXT, last_error TEXT);
                  CREATE TABLE calendar_outbox (id INTEGER PRIMARY KEY AUTOINCREMENT,event_id TEXT NOT NULL,calendar_id TEXT NOT NULL,operation TEXT NOT NULL CHECK(operation IN ('create','update','delete')),payload TEXT,local_updated_at TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,last_error TEXT);
-                 PRAGMA user_version = 2;
+                 PRAGMA user_version = 3;
+                 COMMIT;",
+            )
+            .map_err(|error| error.to_string()),
+        2 => connection
+            .execute_batch(
+                "BEGIN;
+                 UPDATE calendar_events SET
+                   starts_at = COALESCE(strftime('%Y-%m-%dT%H:%M:%fZ', starts_at), starts_at),
+                   ends_at = COALESCE(strftime('%Y-%m-%dT%H:%M:%fZ', ends_at), ends_at),
+                   created_at = COALESCE(strftime('%Y-%m-%dT%H:%M:%fZ', created_at), created_at),
+                   updated_at = COALESCE(strftime('%Y-%m-%dT%H:%M:%fZ', updated_at), updated_at);
+                 PRAGMA user_version = 3;
                  COMMIT;",
             )
             .map_err(|error| error.to_string()),
@@ -450,8 +462,17 @@ fn get_next_calendar_event_from_store(
         .map_err(|error| error.to_string())
 }
 
+#[cfg(test)]
 fn create_calendar_event_in_store(
     path: &Path,
+    input: CalendarEventInput,
+) -> Result<CalendarEvent, String> {
+    let connection = open_store(path)?;
+    create_calendar_event_in_connection(&connection, input)
+}
+
+fn create_calendar_event_in_connection(
+    connection: &Connection,
     input: CalendarEventInput,
 ) -> Result<CalendarEvent, String> {
     let input = validate_input(input)?;
@@ -467,7 +488,6 @@ fn create_calendar_event_in_store(
     };
     let (kind, start_date, end_date, starts_at, ends_at, time_zone) =
         schedule_columns(&event.schedule);
-    let connection = open_store(path)?;
     connection
         .execute(
             "INSERT INTO calendar_events (
@@ -492,16 +512,25 @@ fn create_calendar_event_in_store(
     Ok(event)
 }
 
+#[cfg(test)]
 fn update_calendar_event_in_store(
     path: &Path,
     id: String,
+    input: CalendarEventInput,
+) -> Result<CalendarEvent, String> {
+    let connection = open_store(path)?;
+    update_calendar_event_in_connection(&connection, &id, input)
+}
+
+fn update_calendar_event_in_connection(
+    connection: &Connection,
+    id: &str,
     input: CalendarEventInput,
 ) -> Result<CalendarEvent, String> {
     let input = validate_input(input)?;
     let (kind, start_date, end_date, starts_at, ends_at, time_zone) =
         schedule_columns(&input.schedule);
     let updated_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    let connection = open_store(path)?;
     let changed = connection
         .execute(
             "UPDATE calendar_events SET
@@ -526,11 +555,16 @@ fn update_calendar_event_in_store(
     if changed == 0 {
         return Err("Calendar event was not found.".to_string());
     }
-    load_event(&connection, &id)
+    load_event(connection, id)
 }
 
+#[cfg(test)]
 fn delete_calendar_event_in_store(path: &Path, id: String) -> Result<(), String> {
     let connection = open_store(path)?;
+    delete_calendar_event_in_connection(&connection, &id)
+}
+
+fn delete_calendar_event_in_connection(connection: &Connection, id: &str) -> Result<(), String> {
     let changed = connection
         .execute("DELETE FROM calendar_events WHERE id = ?1", params![id])
         .map_err(|error| error.to_string())?;
@@ -540,14 +574,24 @@ fn delete_calendar_event_in_store(path: &Path, id: String) -> Result<(), String>
     Ok(())
 }
 
+#[cfg(test)]
 fn queue_google_operation(
     path: &Path,
     calendar_id: &str,
     event: &CalendarEvent,
     operation: &str,
 ) -> Result<(), String> {
-    let payload = serde_json::to_string(event).map_err(|error| error.to_string())?;
     let connection = open_store(path)?;
+    queue_google_operation_in_connection(&connection, calendar_id, event, operation)
+}
+
+fn queue_google_operation_in_connection(
+    connection: &Connection,
+    calendar_id: &str,
+    event: &CalendarEvent,
+    operation: &str,
+) -> Result<(), String> {
+    let payload = serde_json::to_string(event).map_err(|error| error.to_string())?;
     connection
         .execute(
             "DELETE FROM calendar_outbox WHERE event_id=?1 AND operation!='delete'",
@@ -561,6 +605,96 @@ fn queue_google_operation(
         )
         .map_err(|error| error.to_string())?;
     Ok(())
+}
+
+fn pending_create_calendar_id(
+    connection: &Connection,
+    event_id: &str,
+) -> Result<Option<String>, String> {
+    connection
+        .query_row(
+            "SELECT calendar_id FROM calendar_outbox WHERE event_id=?1 AND operation='create' ORDER BY id DESC LIMIT 1",
+            [event_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())
+}
+
+fn create_calendar_event_with_sync_target(
+    path: &Path,
+    input: CalendarEventInput,
+    calendar_id: Option<&str>,
+) -> Result<CalendarEvent, String> {
+    let mut connection = open_store(path)?;
+    let transaction = connection.transaction().map_err(|error| error.to_string())?;
+    let event = create_calendar_event_in_connection(&transaction, input)?;
+    if let Some(calendar_id) = calendar_id.map(str::trim).filter(|value| !value.is_empty()) {
+        queue_google_operation_in_connection(&transaction, calendar_id, &event, "create")?;
+    }
+    transaction.commit().map_err(|error| error.to_string())?;
+    Ok(event)
+}
+
+fn update_calendar_event_with_sync(
+    path: &Path,
+    id: String,
+    input: CalendarEventInput,
+) -> Result<CalendarEvent, String> {
+    let mut connection = open_store(path)?;
+    let transaction = connection.transaction().map_err(|error| error.to_string())?;
+    let existing = load_event(&transaction, &id)?;
+    if matches!(
+        &existing.source,
+        CalendarEventSource::Google { access_role, .. } if !matches!(access_role.as_str(), "writer" | "owner")
+    ) {
+        return Err("This Google Calendar is read-only.".to_string());
+    }
+
+    let event = update_calendar_event_in_connection(&transaction, &id, input)?;
+    match &event.source {
+        CalendarEventSource::Google { calendar_id, .. } => {
+            queue_google_operation_in_connection(&transaction, calendar_id, &event, "update")?;
+        }
+        CalendarEventSource::Local => {
+            if let Some(calendar_id) = pending_create_calendar_id(&transaction, &event.id)? {
+                queue_google_operation_in_connection(
+                    &transaction,
+                    &calendar_id,
+                    &event,
+                    "create",
+                )?;
+            }
+        }
+    }
+
+    transaction.commit().map_err(|error| error.to_string())?;
+    Ok(event)
+}
+
+fn delete_calendar_event_with_sync(path: &Path, id: String) -> Result<(), String> {
+    let mut connection = open_store(path)?;
+    let transaction = connection.transaction().map_err(|error| error.to_string())?;
+    let event = load_event(&transaction, &id)?;
+    if matches!(
+        &event.source,
+        CalendarEventSource::Google { access_role, .. } if !matches!(access_role.as_str(), "writer" | "owner")
+    ) {
+        return Err("This Google Calendar is read-only.".to_string());
+    }
+
+    match &event.source {
+        CalendarEventSource::Google { calendar_id, .. } => {
+            queue_google_operation_in_connection(&transaction, calendar_id, &event, "delete")?;
+        }
+        CalendarEventSource::Local => {
+            transaction
+                .execute("DELETE FROM calendar_outbox WHERE event_id=?1", [&event.id])
+                .map_err(|error| error.to_string())?;
+        }
+    }
+    delete_calendar_event_in_connection(&transaction, &id)?;
+    transaction.commit().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -585,17 +719,12 @@ pub fn create_calendar_event(
     input: CalendarEventInput,
     state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<CalendarEvent, String> {
-    let event = create_calendar_event_in_store(&state.path, input)?;
     let settings = crate::core::settings::load_settings_internal(&app)?;
-    if !settings.calendar.default_google_calendar_id.is_empty() {
-        queue_google_operation(
-            &state.path,
-            &settings.calendar.default_google_calendar_id,
-            &event,
-            "create",
-        )?;
-    }
-    Ok(event)
+    create_calendar_event_with_sync_target(
+        &state.path,
+        input,
+        Some(settings.calendar.default_google_calendar_id.as_str()),
+    )
 }
 
 #[tauri::command]
@@ -604,20 +733,7 @@ pub fn update_calendar_event(
     input: CalendarEventInput,
     state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<CalendarEvent, String> {
-    let connection = open_store(&state.path)?;
-    let existing = load_event(&connection, &id)?;
-    if matches!(
-        &existing.source,
-        CalendarEventSource::Google { access_role, .. } if !matches!(access_role.as_str(), "writer" | "owner")
-    ) {
-        return Err("This Google Calendar is read-only.".to_string());
-    }
-    drop(connection);
-    let event = update_calendar_event_in_store(&state.path, id, input)?;
-    if let CalendarEventSource::Google { calendar_id, .. } = &event.source {
-        queue_google_operation(&state.path, calendar_id, &event, "update")?;
-    }
-    Ok(event)
+    update_calendar_event_with_sync(&state.path, id, input)
 }
 
 #[tauri::command]
@@ -625,19 +741,7 @@ pub fn delete_calendar_event(
     id: String,
     state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<(), String> {
-    let connection = open_store(&state.path)?;
-    let event = load_event(&connection, &id)?;
-    if matches!(
-        &event.source,
-        CalendarEventSource::Google { access_role, .. } if !matches!(access_role.as_str(), "writer" | "owner")
-    ) {
-        return Err("This Google Calendar is read-only.".to_string());
-    }
-    drop(connection);
-    if let CalendarEventSource::Google { calendar_id, .. } = &event.source {
-        queue_google_operation(&state.path, calendar_id, &event, "delete")?;
-    }
-    delete_calendar_event_in_store(&state.path, id)
+    delete_calendar_event_with_sync(&state.path, id)
 }
 
 #[derive(Clone, Serialize)]
@@ -968,7 +1072,7 @@ mod tests {
             migrated
                 .query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))
                 .unwrap(),
-            2
+            CALENDAR_DB_VERSION
         );
         drop(migrated);
         fs::remove_file(path).unwrap();
@@ -1001,6 +1105,153 @@ mod tests {
             .unwrap();
         assert_eq!(count, 1);
         assert!(payload.contains("同期後"));
+        drop(connection);
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn migrates_v2_timestamps_to_canonical_utc() {
+        let path = test_store_path();
+        let connection = Connection::open(&path).unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE calendar_events (
+                   id TEXT PRIMARY KEY NOT NULL,
+                   title TEXT NOT NULL,
+                   notes TEXT NOT NULL,
+                   schedule_kind TEXT NOT NULL,
+                   start_date TEXT,
+                   end_date_exclusive TEXT,
+                   starts_at TEXT,
+                   ends_at TEXT,
+                   time_zone TEXT,
+                   source_kind TEXT NOT NULL,
+                   source_calendar_id TEXT,
+                   source_event_id TEXT,
+                   source_etag TEXT,
+                   source_access_role TEXT,
+                   recurring_event_id TEXT,
+                   original_start_time TEXT,
+                   created_at TEXT NOT NULL,
+                   updated_at TEXT NOT NULL
+                 );
+                 CREATE TABLE google_calendar_sync (
+                   calendar_id TEXT PRIMARY KEY NOT NULL,
+                   sync_token TEXT,
+                   last_synced_at TEXT,
+                   last_error TEXT
+                 );
+                 CREATE TABLE calendar_outbox (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   event_id TEXT NOT NULL,
+                   calendar_id TEXT NOT NULL,
+                   operation TEXT NOT NULL,
+                   payload TEXT,
+                   local_updated_at TEXT NOT NULL,
+                   attempts INTEGER NOT NULL DEFAULT 0,
+                   last_error TEXT
+                 );
+                 INSERT INTO calendar_events (
+                   id,title,notes,schedule_kind,starts_at,ends_at,time_zone,source_kind,
+                   source_calendar_id,source_event_id,source_etag,source_access_role,
+                   created_at,updated_at
+                 ) VALUES (
+                   'google:primary:event','会議','','timed',
+                   '2026-07-11T09:00:00+09:00','2026-07-11T10:00:00+09:00',
+                   'Asia/Tokyo','google','primary','event','etag','writer',
+                   '2026-07-10T18:00:00-07:00','2026-07-10T18:30:00-07:00'
+                 );
+                 PRAGMA user_version = 2;",
+            )
+            .unwrap();
+        drop(connection);
+
+        let connection = open_store(&path).unwrap();
+        let stored: (String, String, String, String) = connection
+            .query_row(
+                "SELECT starts_at,ends_at,created_at,updated_at FROM calendar_events WHERE id='google:primary:event'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+        let version: i64 = connection
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, CALENDAR_DB_VERSION);
+        assert_eq!(stored.0, "2026-07-11T00:00:00.000Z");
+        assert_eq!(stored.1, "2026-07-11T01:00:00.000Z");
+        assert_eq!(stored.2, "2026-07-11T01:00:00.000Z");
+        assert_eq!(stored.3, "2026-07-11T01:30:00.000Z");
+        drop(connection);
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn updating_pending_google_create_replaces_the_outbox_payload() {
+        let path = test_store_path();
+        let event = create_calendar_event_with_sync_target(
+            &path,
+            timed_input("同期前", "2026-07-11T05:00:00Z", "2026-07-11T06:00:00Z"),
+            Some("primary"),
+        )
+        .unwrap();
+
+        let updated = update_calendar_event_with_sync(
+            &path,
+            event.id,
+            timed_input("同期後", "2026-07-11T05:30:00Z", "2026-07-11T06:30:00Z"),
+        )
+        .unwrap();
+
+        let connection = open_store(&path).unwrap();
+        let (count, operation, payload): (i64, String, String) = connection
+            .query_row(
+                "SELECT COUNT(*),operation,payload FROM calendar_outbox WHERE event_id=?1",
+                [&updated.id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(operation, "create");
+        assert!(payload.contains("同期後"));
+        assert!(!payload.contains("同期前"));
+        drop(connection);
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn deleting_pending_google_create_removes_the_outbox_entry() {
+        let path = test_store_path();
+        let event = create_calendar_event_with_sync_target(
+            &path,
+            timed_input(
+                "削除予定",
+                "2026-07-11T05:00:00Z",
+                "2026-07-11T06:00:00Z",
+            ),
+            Some("primary"),
+        )
+        .unwrap();
+
+        delete_calendar_event_with_sync(&path, event.id.clone()).unwrap();
+
+        let connection = open_store(&path).unwrap();
+        let event_count: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM calendar_events WHERE id=?1",
+                [&event.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let outbox_count: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM calendar_outbox WHERE event_id=?1",
+                [&event.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(event_count, 0);
+        assert_eq!(outbox_count, 0);
         drop(connection);
         fs::remove_file(path).unwrap();
     }

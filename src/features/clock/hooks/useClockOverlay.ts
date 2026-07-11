@@ -63,6 +63,10 @@ export const useClockOverlay = () => {
 
   useEffect(() => {
     const unlistenPromise = listen("clock-shown", () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
       setIsAnimateVisible(true);
       setIsHiding(false);
       setIsCalendarOpen(false);

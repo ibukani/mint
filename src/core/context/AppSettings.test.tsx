@@ -16,6 +16,17 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
+const eventMocks = vi.hoisted(() => ({
+  listeners: new Map<string, () => void | Promise<void>>(),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (event: string, handler: () => void | Promise<void>) => {
+    eventMocks.listeners.set(event, handler);
+    return () => eventMocks.listeners.delete(event);
+  }),
+}));
+
 const TestComponent: React.FC = () => {
   const {
     settings,
@@ -78,6 +89,7 @@ const TestComponent: React.FC = () => {
 describe("AppSettingsProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    eventMocks.listeners.clear();
   });
 
   afterEach(() => {
@@ -177,6 +189,57 @@ describe("AppSettingsProvider", () => {
           clock: expect.objectContaining({
             showDate: false,
           }),
+        }),
+      }),
+    );
+  });
+
+  it("serializes immediate saves so an older request cannot finish last", async () => {
+    const mockSettings = createMockSettings();
+    let resolveFirstSave: (() => void) | undefined;
+    const firstSave = new Promise<void>((resolve) => {
+      resolveFirstSave = resolve;
+    });
+    let saveCalls = 0;
+    vi.mocked(invoke).mockImplementation((cmd: string) => {
+      if (cmd === "load_settings") return Promise.resolve(mockSettings);
+      if (cmd === "save_settings") {
+        saveCalls += 1;
+        return saveCalls === 1 ? firstSave : Promise.resolve();
+      }
+      return Promise.resolve(undefined);
+    });
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => Promise.resolve());
+
+    fireEvent.click(screen.getByTestId("btn-theme"));
+    fireEvent.click(screen.getByTestId("btn-shortcut"));
+
+    await waitFor(() => expect(saveCalls).toBe(1));
+    expect(invoke).toHaveBeenCalledWith(
+      "save_settings",
+      expect.objectContaining({
+        settings: expect.objectContaining({ theme: "light" }),
+      }),
+    );
+
+    await act(async () => {
+      resolveFirstSave?.();
+      await firstSave;
+    });
+
+    await waitFor(() => expect(saveCalls).toBe(2));
+    expect(invoke).toHaveBeenLastCalledWith(
+      "save_settings",
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          theme: "light",
+          clock: expect.objectContaining({ shortcut: "Ctrl+Alt+X" }),
         }),
       }),
     );
@@ -407,5 +470,47 @@ describe("AppSettingsProvider", () => {
     });
 
     expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
+  });
+
+  it("does not overwrite a pending local edit with a stale settings-changed reload", async () => {
+    vi.useFakeTimers();
+    const initial = createMockSettings();
+    const stale = createMockSettings();
+    let loadCount = 0;
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "load_settings") {
+        loadCount += 1;
+        return loadCount === 1 ? initial : stale;
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => Promise.resolve());
+
+    fireEvent.click(screen.getByTestId("btn-showdate"));
+    expect(screen.getByTestId("clock-showdate")).toHaveTextContent("false");
+
+    await act(async () => {
+      await eventMocks.listeners.get("settings-changed")?.();
+    });
+
+    expect(screen.getByTestId("clock-showdate")).toHaveTextContent("false");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(invoke).toHaveBeenCalledWith(
+      "save_settings",
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          clock: expect.objectContaining({ showDate: false }),
+        }),
+      }),
+    );
   });
 });

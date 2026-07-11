@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use chrono::{SecondsFormat, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use reqwest::blocking::Client;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -302,10 +302,16 @@ fn flush_outbox(client: &Client, token: &str, connection: &Connection) -> Result
                 .map_err(|error| error.to_string())?
                 .json::<GoogleEvent>()
                 .map_err(|error| error.to_string())?;
-            if remote
+            let remote_updated = remote
                 .updated
                 .as_deref()
-                .is_some_and(|updated| updated > event.updated_at.as_str())
+                .map(|value| normalize_google_instant(value, "updated timestamp"))
+                .transpose()?;
+            let local_updated =
+                normalize_google_instant(&event.updated_at, "local updated timestamp")?;
+            if remote_updated
+                .as_deref()
+                .is_some_and(|updated| updated > local_updated.as_str())
             {
                 upsert_event(connection, &calendar_id, "writer", &remote)?;
                 connection
@@ -404,6 +410,16 @@ fn pending_count(store: &CalendarStoreState) -> Result<u32, String> {
         .map_err(|error| error.to_string())?
         .query_row("SELECT COUNT(*) FROM calendar_outbox", [], |row| row.get(0))
         .map_err(|error| error.to_string())
+}
+
+fn normalize_google_instant(value: &str, label: &str) -> Result<String, String> {
+    DateTime::parse_from_rfc3339(value)
+        .map(|instant| {
+            instant
+                .with_timezone(&Utc)
+                .to_rfc3339_opts(SecondsFormat::Millis, true)
+        })
+        .map_err(|_| format!("Google Calendar returned an invalid {label}."))
 }
 
 #[tauri::command]
@@ -602,8 +618,8 @@ fn upsert_event(
         if let (Some(start_date), Some(end_date)) = (&start.date, &end.date) {
             (
                 "allDay",
-                Some(start_date.as_str()),
-                Some(end_date.as_str()),
+                Some(start_date.clone()),
+                Some(end_date.clone()),
                 None,
                 None,
                 None,
@@ -613,27 +629,33 @@ fn upsert_event(
                 "timed",
                 None,
                 None,
-                Some(starts_at.as_str()),
-                Some(ends_at.as_str()),
-                Some(start.time_zone.as_deref().unwrap_or("UTC")),
+                Some(normalize_google_instant(starts_at, "event start")?),
+                Some(normalize_google_instant(ends_at, "event end")?),
+                Some(start.time_zone.clone().unwrap_or_else(|| "UTC".to_string())),
             )
         } else {
             return Ok(false);
         };
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    let updated = event.updated.as_deref().unwrap_or(&now);
-    let created = event.created.as_deref().unwrap_or(updated);
+    let updated = match event.updated.as_deref() {
+        Some(value) => normalize_google_instant(value, "updated timestamp")?,
+        None => now.clone(),
+    };
+    let created = match event.created.as_deref() {
+        Some(value) => normalize_google_instant(value, "created timestamp")?,
+        None => updated.clone(),
+    };
     let existing_updated: Option<String> = connection.query_row("SELECT updated_at FROM calendar_events WHERE source_calendar_id=?1 AND source_event_id=?2", params![calendar_id, event.id], |row| row.get(0)).optional().map_err(|error| error.to_string())?;
-    if existing_updated
-        .as_deref()
-        .is_some_and(|local| local > updated)
-    {
-        return Ok(false);
+    if let Some(local) = existing_updated.as_deref() {
+        let normalized_local = normalize_google_instant(local, "stored updated timestamp")?;
+        if normalized_local > updated {
+            return Ok(false);
+        }
     }
     connection.execute(
-        "INSERT INTO calendar_events (id,title,notes,schedule_kind,start_date,end_date_exclusive,starts_at,ends_at,time_zone,source_kind,source_calendar_id,source_event_id,source_etag,source_access_role,recurring_event_id,original_start_time,created_at,updated_at)
+         "INSERT INTO calendar_events (id,title,notes,schedule_kind,start_date,end_date_exclusive,starts_at,ends_at,time_zone,source_kind,source_calendar_id,source_event_id,source_etag,source_access_role,recurring_event_id,original_start_time,created_at,updated_at)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,'google',?10,?11,?12,?13,?14,?15,?16,?17)
-         ON CONFLICT(source_calendar_id,source_event_id) DO UPDATE SET title=excluded.title,notes=excluded.notes,schedule_kind=excluded.schedule_kind,start_date=excluded.start_date,end_date_exclusive=excluded.end_date_exclusive,starts_at=excluded.starts_at,ends_at=excluded.ends_at,time_zone=excluded.time_zone,source_etag=excluded.source_etag,source_access_role=excluded.source_access_role,recurring_event_id=excluded.recurring_event_id,original_start_time=excluded.original_start_time,updated_at=excluded.updated_at",
+         ON CONFLICT(source_calendar_id,source_event_id) WHERE source_kind='google' DO UPDATE SET title=excluded.title,notes=excluded.notes,schedule_kind=excluded.schedule_kind,start_date=excluded.start_date,end_date_exclusive=excluded.end_date_exclusive,starts_at=excluded.starts_at,ends_at=excluded.ends_at,time_zone=excluded.time_zone,source_etag=excluded.source_etag,source_access_role=excluded.source_access_role,recurring_event_id=excluded.recurring_event_id,original_start_time=excluded.original_start_time,updated_at=excluded.updated_at",
         params![format!("google:{calendar_id}:{}", event.id), event.summary, event.description, kind, start_date, end_date, starts_at, ends_at, time_zone, calendar_id, event.id, event.etag, access_role, event.recurring_event_id, event.original_start_time.as_ref().and_then(|value| value.date_time.as_ref().or(value.date.as_ref())), created, updated]
     ).map(|count| count > 0).map_err(|error| error.to_string())
 }
@@ -681,7 +703,7 @@ pub fn sync_google_calendars(
     }
     let mut changed = 0_u32;
     for calendar_id in &calendar_ids {
-        let sync_token: Option<String> = connection
+        let mut sync_token: Option<String> = connection
             .query_row(
                 "SELECT sync_token FROM google_calendar_sync WHERE calendar_id=?1",
                 [calendar_id],
@@ -690,59 +712,69 @@ pub fn sync_google_calendars(
             .optional()
             .map_err(|error| error.to_string())?
             .flatten();
-        let mut page_token: Option<String> = None;
-        let next_sync_token = loop {
-            let mut request = client
-                .get(format!(
-                    "{API_ROOT}/calendars/{}/events",
-                    url::form_urlencoded::byte_serialize(calendar_id.as_bytes())
-                        .collect::<String>()
-                ))
-                .bearer_auth(&token)
-                .query(&[("singleEvents", "true"), ("showDeleted", "true")]);
-            if let Some(value) = &sync_token {
-                request = request.query(&[("syncToken", value)]);
-            }
-            if let Some(value) = &page_token {
-                request = request.query(&[("pageToken", value)]);
-            }
-            let response = request.send().map_err(|error| error.to_string())?;
-            if response.status().as_u16() == 410 {
-                connection
-                    .execute(
-                        "DELETE FROM calendar_events WHERE source_calendar_id=?1",
-                        [calendar_id],
-                    )
-                    .map_err(|error| error.to_string())?;
-                connection
-                    .execute(
-                        "DELETE FROM google_calendar_sync WHERE calendar_id=?1",
-                        [calendar_id],
-                    )
-                    .map_err(|error| error.to_string())?;
-                return sync_google_calendars(calendar_ids, state, store);
-            }
-            let page = response
-                .error_for_status()
-                .map_err(|error| error.to_string())?
-                .json::<EventListResponse>()
-                .map_err(|error| error.to_string())?;
-            for event in &page.items {
-                if upsert_event(
-                    &connection,
-                    calendar_id,
-                    roles
-                        .get(calendar_id)
-                        .map(String::as_str)
-                        .unwrap_or("reader"),
-                    event,
-                )? {
-                    changed += 1;
+        let mut reset_attempted = false;
+        let next_sync_token = 'retry_sync: loop {
+            let mut page_token: Option<String> = None;
+            loop {
+                let mut request = client
+                    .get(format!(
+                        "{API_ROOT}/calendars/{}/events",
+                        url::form_urlencoded::byte_serialize(calendar_id.as_bytes())
+                            .collect::<String>()
+                    ))
+                    .bearer_auth(&token)
+                    .query(&[("singleEvents", "true"), ("showDeleted", "true")]);
+                if let Some(value) = &sync_token {
+                    request = request.query(&[("syncToken", value)]);
                 }
-            }
-            page_token = page.next_page_token;
-            if page_token.is_none() {
-                break page.next_sync_token;
+                if let Some(value) = &page_token {
+                    request = request.query(&[("pageToken", value)]);
+                }
+                let response = request.send().map_err(|error| error.to_string())?;
+                if response.status().as_u16() == 410 {
+                    if sync_token.is_none() || reset_attempted {
+                        return Err(
+                            "Google Calendar sync token reset failed repeatedly.".to_string(),
+                        );
+                    }
+                    connection
+                        .execute(
+                            "DELETE FROM calendar_events WHERE source_calendar_id=?1",
+                            [calendar_id],
+                        )
+                        .map_err(|error| error.to_string())?;
+                    connection
+                        .execute(
+                            "DELETE FROM google_calendar_sync WHERE calendar_id=?1",
+                            [calendar_id],
+                        )
+                        .map_err(|error| error.to_string())?;
+                    sync_token = None;
+                    reset_attempted = true;
+                    continue 'retry_sync;
+                }
+                let page = response
+                    .error_for_status()
+                    .map_err(|error| error.to_string())?
+                    .json::<EventListResponse>()
+                    .map_err(|error| error.to_string())?;
+                for event in &page.items {
+                    if upsert_event(
+                        &connection,
+                        calendar_id,
+                        roles
+                            .get(calendar_id)
+                            .map(String::as_str)
+                            .unwrap_or("reader"),
+                        event,
+                    )? {
+                        changed += 1;
+                    }
+                }
+                page_token = page.next_page_token;
+                if page_token.is_none() {
+                    break 'retry_sync page.next_sync_token;
+                }
             }
         };
         let synced_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
@@ -789,4 +821,81 @@ pub fn disconnect_google_calendar(
         .execute("DELETE FROM google_calendar_sync", [])
         .map_err(|error| error.to_string())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_connection() -> Connection {
+        let connection = Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE calendar_events (
+                   id TEXT PRIMARY KEY NOT NULL,
+                   title TEXT NOT NULL,
+                   notes TEXT NOT NULL,
+                   schedule_kind TEXT NOT NULL,
+                   start_date TEXT,
+                   end_date_exclusive TEXT,
+                   starts_at TEXT,
+                   ends_at TEXT,
+                   time_zone TEXT,
+                   source_kind TEXT NOT NULL,
+                   source_calendar_id TEXT,
+                   source_event_id TEXT,
+                   source_etag TEXT,
+                   source_access_role TEXT,
+                   recurring_event_id TEXT,
+                   original_start_time TEXT,
+                   created_at TEXT NOT NULL,
+                   updated_at TEXT NOT NULL
+                 );
+                 CREATE UNIQUE INDEX calendar_events_google_identity
+                   ON calendar_events(source_calendar_id, source_event_id)
+                   WHERE source_kind = 'google';",
+            )
+            .unwrap();
+        connection
+    }
+
+    #[test]
+    fn normalizes_google_event_instants_before_persisting() {
+        let connection = test_connection();
+        let event = GoogleEvent {
+            id: "remote-event".to_string(),
+            etag: "etag".to_string(),
+            status: "confirmed".to_string(),
+            summary: "会議".to_string(),
+            description: String::new(),
+            created: Some("2026-07-10T18:00:00-07:00".to_string()),
+            updated: Some("2026-07-10T18:30:00-07:00".to_string()),
+            start: Some(EventDateTime {
+                date: None,
+                date_time: Some("2026-07-11T09:00:00+09:00".to_string()),
+                time_zone: Some("Asia/Tokyo".to_string()),
+            }),
+            end: Some(EventDateTime {
+                date: None,
+                date_time: Some("2026-07-11T10:00:00+09:00".to_string()),
+                time_zone: Some("Asia/Tokyo".to_string()),
+            }),
+            recurring_event_id: None,
+            original_start_time: None,
+        };
+
+        assert!(upsert_event(&connection, "primary", "writer", &event).unwrap());
+
+        let stored: (String, String, String, String) = connection
+            .query_row(
+                "SELECT starts_at,ends_at,created_at,updated_at FROM calendar_events WHERE source_event_id=?1",
+                [&event.id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(stored.0, "2026-07-11T00:00:00.000Z");
+        assert_eq!(stored.1, "2026-07-11T01:00:00.000Z");
+        assert_eq!(stored.2, "2026-07-11T01:00:00.000Z");
+        assert_eq!(stored.3, "2026-07-11T01:30:00.000Z");
+    }
 }

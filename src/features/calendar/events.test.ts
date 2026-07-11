@@ -5,6 +5,7 @@ import {
   createDefaultEventDraft,
   draftToEventInput,
   eventOccursOnDate,
+  eventToDraft,
 } from "./events";
 import type { CalendarEvent } from "./types";
 
@@ -31,6 +32,7 @@ describe("calendar event helpers", () => {
 
     expect(createDefaultEventDraft()).toMatchObject({
       date: "2026-07-10",
+      allDayDurationDays: 1,
       startTime: "10:30",
       endTime: "11:30",
       allDay: false,
@@ -42,6 +44,7 @@ describe("calendar event helpers", () => {
       draftToEventInput({
         title: " 休暇 ",
         date: "2026-07-11",
+        allDayDurationDays: 1,
         startTime: "09:00",
         endTime: "10:00",
         allDay: true,
@@ -63,6 +66,7 @@ describe("calendar event helpers", () => {
       draftToEventInput({
         title: " ",
         date: "2026-07-11",
+        allDayDurationDays: 1,
         startTime: "09:00",
         endTime: "10:00",
         allDay: false,
@@ -73,6 +77,7 @@ describe("calendar event helpers", () => {
       draftToEventInput({
         title: "予定",
         date: "2026-07-11",
+        allDayDurationDays: 1,
         startTime: "10:00",
         endTime: "09:00",
         allDay: false,
@@ -99,6 +104,7 @@ describe("calendar event helpers", () => {
       draftToEventInput({
         title: "予定",
         date: "2026-07-11",
+        allDayDurationDays: 1,
         startTime: "10:00",
         endTime: "09:00",
         allDay: false,
@@ -115,5 +121,15 @@ describe("calendar event helpers", () => {
     expect(eventOccursOnDate(allDayEvent, "2026-07-11")).toBe(true);
     expect(eventOccursOnDate(allDayEvent, "2026-07-12")).toBe(true);
     expect(eventOccursOnDate(allDayEvent, "2026-07-13")).toBe(false);
+  });
+
+  it("preserves the duration of multi-day all-day events when editing", () => {
+    const draft = eventToDraft(allDayEvent);
+    expect(draft.allDayDurationDays).toBe(2);
+    expect(draftToEventInput(draft).schedule).toEqual({
+      kind: "allDay",
+      startDate: "2026-07-11",
+      endDateExclusive: "2026-07-13",
+    });
   });
 });

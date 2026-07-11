@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
   connectGoogleCalendar,
@@ -18,11 +18,15 @@ export const useGoogleCalendarSettings = () => {
   const [calendars, setCalendars] = useState<GoogleCalendarInfo[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const reloadSequenceRef = useRef(0);
 
   const reload = useCallback(async () => {
+    const sequence = ++reloadSequenceRef.current;
     const next = await getGoogleCalendarConnection();
+    const nextCalendars = next.connected ? await listGoogleCalendars() : [];
+    if (sequence !== reloadSequenceRef.current) return;
     setConnection(next);
-    setCalendars(next.connected ? await listGoogleCalendars() : []);
+    setCalendars(nextCalendars);
   }, []);
 
   useEffect(() => {
