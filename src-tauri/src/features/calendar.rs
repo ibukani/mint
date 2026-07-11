@@ -657,7 +657,11 @@ enum CalendarOpenMode {
     CreateEvent,
 }
 
-pub fn position_calendar(app: &AppHandle, docked: bool, settings: &crate::core::settings::AppSettings) {
+pub fn position_calendar(
+    app: &AppHandle,
+    docked: bool,
+    settings: &crate::core::settings::AppSettings,
+) {
     let Some(calendar) = app.get_webview_window("calendar") else {
         return;
     };
