@@ -38,6 +38,9 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings:
+    "kern" 1,
+    "palt" 1;
   transition:
     color var(--transition-base),
     background-color var(--transition-base);
@@ -58,6 +61,13 @@ body {
   background: transparent;
   overflow: hidden;
   transition: background var(--transition-base);
+}
+
+h1,
+h2,
+h3,
+p {
+  text-wrap: pretty;
 }
 
 html.is-overlay,

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 export interface SidebarTab<TTabId extends string = string> {
   id: TTabId;
   label: string;
+  navigationLabel?: string;
   description?: string;
   icon?: React.ReactNode;
 }
@@ -31,7 +32,10 @@ export const Sidebar = <TTabId extends string>({
   useEffect(() => {
     const activeTabButton = activeTabRef.current;
     if (
-      !activeTabButton ||
+      !activeTabButton?.parentElement ||
+      (activeTabButton.parentElement.clientWidth > 0 &&
+        activeTabButton.parentElement.scrollWidth <=
+          activeTabButton.parentElement.clientWidth) ||
       typeof activeTabButton.scrollIntoView !== "function"
     ) {
       return;
@@ -82,7 +86,7 @@ export const Sidebar = <TTabId extends string>({
               {tab.icon}
             </span>
             <span className="app-sidebar__button-copy">
-              <span>{tab.label}</span>
+              <span>{tab.navigationLabel ?? tab.label}</span>
               {tab.description && (
                 <small id={`app-sidebar-tab-${tab.id}-description`}>
                   {tab.description}

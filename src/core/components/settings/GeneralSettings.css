@@ -45,7 +45,7 @@
   transform: scale(0.985);
 }
 
-.theme-choice-card:focus-within {
+.theme-choice-card:has(.theme-choice-card__input:focus-visible) {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }

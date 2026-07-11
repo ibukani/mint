@@ -1,22 +1,22 @@
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-text-primary: #f5faf8;
-  --color-text-secondary: #c3d0cb;
-  --color-text-muted: #8fa09a;
-  --color-text-subtle: #697a74;
+  --color-text-primary: #f4f7f6;
+  --color-text-secondary: #c1cac7;
+  --color-text-muted: #909b97;
+  --color-text-subtle: #687570;
   --color-placeholder: #596a64;
-  --color-accent: #68e1c2;
-  --color-accent-strong: #ffad83;
+  --color-accent: #59d7b6;
+  --color-accent-strong: #f5a87f;
   --color-error: #ff9b9b;
   --color-success: #70d6a5;
   --color-warning: #f1ca78;
-  --surface-page: #080d0c;
-  --surface-root: #0d1412;
-  --surface-panel: #111917;
-  --surface-elevated: #16201d;
-  --surface-control: #19231f;
-  --surface-control-hover: #202d28;
+  --surface-page: #090d0c;
+  --surface-root: #0d1211;
+  --surface-panel: #121817;
+  --surface-elevated: #171e1c;
+  --surface-control: #1a2220;
+  --surface-control-hover: #222c29;
   --surface-accent: rgb(99 216 190 / 12%);
   --surface-accent-action: rgb(99 216 190 / 16%);
   --surface-accent-action-hover: rgb(99 216 190 / 24%);
@@ -26,9 +26,9 @@
   --surface-overlay: rgb(12 16 15 / 94%);
   --surface-titlebar-btn-hover: rgb(255 255 255 / 6%);
   --surface-titlebar-btn-active: rgb(255 255 255 / 10%);
-  --border-panel: #2a3934;
-  --border-subtle: #1d2a26;
-  --border-control: #344640;
+  --border-panel: #29332f;
+  --border-subtle: #202825;
+  --border-control: #35423e;
   --border-control-focus: #63d8be;
   --border-accent: rgb(99 216 190 / 42%);
   --border-action: rgb(99 216 190 / 48%);
@@ -37,7 +37,7 @@
   --border-success: rgb(62 207 142 / 45%);
   --border-warning: rgb(241 202 120 / 45%);
   --border-overlay: rgb(255 255 255 / 10%);
-  --page-accent-top: rgb(104 225 194 / 10%);
+  --page-accent-top: rgb(89 215 182 / 9%);
   --page-accent-bottom: rgb(255 173 131 / 6%);
   --surface-selection: rgb(104 225 194 / 24%);
 }

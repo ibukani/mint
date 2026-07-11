@@ -38,6 +38,7 @@ export const SETTINGS_TABS = [
   {
     id: "clock",
     label: "時計オーバーレイ",
+    navigationLabel: "時計",
     description: "表示とスタイル",
     icon: React.createElement(Clock3, { size: 18, "aria-hidden": true }),
   },
