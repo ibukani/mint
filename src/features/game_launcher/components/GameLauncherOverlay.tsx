@@ -181,7 +181,11 @@ export const GameLauncherOverlay: React.FC = () => {
         </label>
 
         <div className="game-launcher__body">
-          <section className="game-launcher__list" aria-label="ゲーム一覧">
+          <section
+            className="game-launcher__list"
+            aria-label="ゲーム一覧"
+            data-window-drag-block
+          >
             {loading ? (
               <div className="game-launcher__state">
                 ゲームをスキャンしています…

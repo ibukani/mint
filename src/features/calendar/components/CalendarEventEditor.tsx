@@ -147,7 +147,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
         <span className="calendar-screen__header-spacer" aria-hidden="true" />
       </header>
 
-      <div className="calendar-event-editor__fields">
+      <div className="calendar-event-editor__fields" data-window-drag-block>
         <Field
           id="calendar-event-title"
           label="タイトル"

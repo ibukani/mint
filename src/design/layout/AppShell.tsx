@@ -3,6 +3,7 @@ import { Panel } from "../components/Panel";
 import { ContentArea } from "./ContentArea";
 import { Sidebar, type SidebarTab } from "./Sidebar";
 import { TitleBar } from "./TitleBar";
+import { useWindowDrag } from "./useWindowDrag";
 
 interface AppShellProps<TTabId extends string> {
   title: string;
@@ -25,8 +26,9 @@ export const AppShell = <TTabId extends string>({
   statusTone,
   children,
 }: AppShellProps<TTabId>) => {
+  const windowDragHandlers = useWindowDrag();
   return (
-    <Panel className="app-shell">
+    <Panel className="app-shell" {...windowDragHandlers}>
       <TitleBar title={title} contextLabel={contextLabel} />
       <div className="app-shell__body">
         <Sidebar

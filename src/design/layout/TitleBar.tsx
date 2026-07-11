@@ -33,47 +33,20 @@ export const TitleBar: React.FC<TitleBarProps> = ({
     }
   };
 
-  const handleMouseDown = async (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      const target = e.target as HTMLElement;
-      if (target.closest(".app-titlebar__controls")) {
-        return;
-      }
-      try {
-        const win = getCurrentWindow();
-        if (typeof win.startDragging === "function") {
-          await win.startDragging();
-        }
-      } catch (err) {
-        console.warn("Failed to start dragging window:", err);
-      }
-    }
-  };
-
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: window dragging area
-    <div
-      className="app-titlebar"
-      data-tauri-drag-region
-      onMouseDown={handleMouseDown}
-    >
-      <div className="app-titlebar__logo" data-tauri-drag-region>
+    <div className="app-titlebar">
+      <div className="app-titlebar__logo">
         <img
           src="/mint.svg"
           alt=""
           className="app-titlebar__icon"
-          data-tauri-drag-region
           aria-hidden="true"
         />
-        <span className="app-titlebar__text" data-tauri-drag-region>
-          {title}
-        </span>
+        <span className="app-titlebar__text">{title}</span>
         <span className="app-titlebar__separator" aria-hidden="true">
           /
         </span>
-        <span className="app-titlebar__context" data-tauri-drag-region>
-          {contextLabel}
-        </span>
+        <span className="app-titlebar__context">{contextLabel}</span>
       </div>
       <div className="app-titlebar__controls">
         <button
