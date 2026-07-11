@@ -28,8 +28,16 @@ function getAcronym(title: string): string {
     .toLowerCase();
 }
 
+function getArtworkLabel(title: string): string {
+  const acronym = getAcronym(title).toUpperCase();
+  return acronym.length > 1
+    ? acronym.slice(0, 3)
+    : title.trim().slice(0, 1).toUpperCase();
+}
+
 export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
   const [failedSource, setFailedSource] = useState<string | null>(null);
+  const [loadedSource, setLoadedSource] = useState<string | null>(null);
   const source =
     game.imagePath && failedSource !== game.imagePath
       ? game.imagePath
@@ -38,12 +46,21 @@ export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
         : null;
   if (source) {
     return (
-      <img
-        className="game-launcher__artwork"
-        src={source}
-        alt=""
-        onError={() => setFailedSource(source)}
-      />
+      <span
+        className={`game-launcher__artwork-shell is-${game.store}`}
+        aria-hidden="true"
+      >
+        <span className="game-launcher__artwork-initial">
+          {getArtworkLabel(game.title)}
+        </span>
+        <img
+          className={`game-launcher__artwork${loadedSource === source ? " is-loaded" : ""}`}
+          src={source}
+          alt=""
+          onLoad={() => setLoadedSource(source)}
+          onError={() => setFailedSource(source)}
+        />
+      </span>
     );
   }
   return (
@@ -51,7 +68,7 @@ export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
       className={`game-launcher__placeholder is-${game.store}`}
       aria-hidden="true"
     >
-      {game.title.slice(0, 1).toUpperCase()}
+      {getArtworkLabel(game.title)}
     </span>
   );
 };

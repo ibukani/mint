@@ -13,6 +13,7 @@ import {
   mockUpdateCalendarEvent,
 } from "./calendarEventMock";
 import { createMockSettings } from "./mockSettings";
+import { getMockWindowRegistration } from "./windowRegistration";
 
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
 const isTauri =
@@ -35,15 +36,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
   const mockAudioPath = params.get("mockAudioPath");
 
-  // 利用するウィンドウラベルをモック登録
-  mockWindows(
-    "calendarEditor",
-    currentLabel,
-    "main",
-    "clock",
-    "calendar",
-    "gameLauncher",
-  );
+  // mockWindows の第1引数が現在のウィンドウになるため、URLのlabelを先頭にする。
+  const [registeredCurrentLabel, ...additionalWindowLabels] =
+    getMockWindowRegistration(currentLabel);
+  mockWindows(registeredCurrentLabel, ...additionalWindowLabels);
 
   // ローカルストレージキー
   const STORAGE_KEY = "mint_mock_settings";

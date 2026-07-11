@@ -7,7 +7,9 @@ import {
   Field,
   SettingsSection,
   ShortcutInput,
+  StatusBadge,
 } from "../../../design/components";
+import "./GameLauncherSettings.css";
 
 const PRESET_COLORS = [
   { value: "#818cf8", label: "インディゴ" },
@@ -16,6 +18,24 @@ const PRESET_COLORS = [
   { value: "#fbbf24", label: "アンバー" },
   { value: "#fb7185", label: "ローズ" },
   { value: "#f8fafc", label: "ホワイト" },
+] as const;
+
+const SUPPORTED_LAUNCHERS = [
+  {
+    name: "Steam",
+    mark: "S",
+    description: "Steamライブラリとインストール済みタイトル",
+  },
+  {
+    name: "Epic Games",
+    mark: "E",
+    description: "Epic Games Launcherのローカルライブラリ",
+  },
+  {
+    name: "Riot Games",
+    mark: "R",
+    description: "Riot Clientで利用できるゲーム",
+  },
 ] as const;
 
 export const GameLauncherSettings: React.FC = () => {
@@ -97,6 +117,23 @@ export const GameLauncherSettings: React.FC = () => {
             <p>Steam・Epic Games・Riot Gamesをローカルで検出します。</p>
           </div>
         </div>
+        <div className="game-launcher-source-list">
+          {SUPPORTED_LAUNCHERS.map((launcher) => (
+            <article className="game-launcher-source" key={launcher.name}>
+              <span className="game-launcher-source__mark" aria-hidden="true">
+                {launcher.mark}
+              </span>
+              <div className="game-launcher-source__copy">
+                <h4>{launcher.name}</h4>
+                <p>{launcher.description}</p>
+              </div>
+              <StatusBadge tone="available">自動検出</StatusBadge>
+            </article>
+          ))}
+        </div>
+        <p className="game-launcher-source-note">
+          ライブラリ情報はこのPC上でのみ確認され、外部へ送信されません。
+        </p>
       </section>
     </SettingsSection>
   );

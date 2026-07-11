@@ -153,6 +153,30 @@
   font-size: var(--font-size-xs);
 }
 
+.app-loading--compact {
+  min-height: 260px;
+  flex: 1;
+  grid-template-columns: auto auto;
+  gap: var(--space-3);
+  background: transparent;
+}
+
+.app-loading--compact .app-loading__visual {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.app-loading--compact .app-loading__message {
+  text-align: left;
+}
+
+.app-loading--compact .app-loading__message strong {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
 .app-error-state {
   display: grid;
   align-content: center;

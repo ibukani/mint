@@ -87,9 +87,31 @@ describe("GameLauncherOverlay", () => {
         }}
       />,
     );
-    const image = screen.getByRole("presentation");
+    const image = document.querySelector(".game-launcher__artwork");
+    if (!image) throw new Error("game artwork was not rendered");
     fireEvent.error(image);
     expect(image).toHaveAttribute("src", "data:image/png;base64,aWNvbg==");
+  });
+
+  it("画像の読み込み中もゲームの頭文字を表示する", () => {
+    render(
+      <GameArtwork
+        game={{
+          id: "730",
+          title: "Counter-Strike 2",
+          store: "steam",
+          imagePath: "https://example.invalid/header.jpg",
+          fallbackImagePath: null,
+        }}
+      />,
+    );
+
+    expect(
+      document.querySelector(".game-launcher__artwork-initial"),
+    ).toHaveTextContent("CS2");
+    expect(document.querySelector(".game-launcher__artwork")).not.toHaveClass(
+      "is-loaded",
+    );
   });
 
   it("お気に入りを切り替えると一覧の先頭へ移動する", async () => {

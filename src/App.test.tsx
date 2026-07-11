@@ -250,7 +250,7 @@ describe("App Window Routing", () => {
     });
   });
 
-  it("focuses the first field when switching to a settings tab", async () => {
+  it("focuses the page heading when switching to a settings tab", async () => {
     vi.mocked(invoke).mockResolvedValue(
       createMockSettings() as unknown as ReturnType<typeof invoke>,
     );
@@ -268,7 +268,9 @@ describe("App Window Routing", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText("表示秒数 (0でトグル表示)")).toHaveFocus();
+      expect(
+        screen.getByRole("heading", { name: "時計オーバーレイ設定" }),
+      ).toHaveFocus();
     });
   });
 

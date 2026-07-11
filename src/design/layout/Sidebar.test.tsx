@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
 
@@ -49,5 +49,23 @@ describe("Sidebar", () => {
         Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
       }
     }
+  });
+
+  it("exposes the save state through matching text and visual tone", () => {
+    const { container } = render(
+      <Sidebar
+        title="mint"
+        tabs={[{ id: "general", label: "一般設定" }]}
+        activeTab="general"
+        onTabChange={() => undefined}
+        statusLabel="保存に失敗しました"
+        statusTone="error"
+      />,
+    );
+
+    expect(screen.getByText("保存に失敗しました")).toBeInTheDocument();
+    expect(
+      container.querySelector(".app-sidebar__status-dot--error"),
+    ).toBeInTheDocument();
   });
 });
