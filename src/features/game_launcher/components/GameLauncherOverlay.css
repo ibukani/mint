@@ -174,10 +174,14 @@
 }
 .game-launcher__preview .game-launcher__artwork,
 .game-launcher__preview .game-launcher__placeholder {
-  width: 100%;
+  align-self: stretch;
+  width: auto;
   height: 128px;
+  margin-top: calc(var(--space-4) * -1);
+  margin-left: calc(var(--space-4) * -1);
+  margin-right: calc(var(--space-4) * -1);
   margin-bottom: auto;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   font-size: var(--font-size-xl);
 }
 .game-launcher__preview > svg {
