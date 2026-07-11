@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mint Review修復"
+  short_description: "レビュー指摘と検証失敗を根本原因から修復する"
+  default_prompt: "Use $repair-after-review to resolve these Mint review findings completely."

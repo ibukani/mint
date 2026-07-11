@@ -1,5 +1,5 @@
 import type React from "react";
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { AppErrorState } from "./core/components/AppErrorState";
 import { AppLoading } from "./core/components/AppLoading";
 import { AutoFocusTrigger } from "./core/components/AutoFocusTrigger";
@@ -18,6 +18,7 @@ import {
 } from "./core/navigation/settingsTabs";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
+import { syncGoogleCalendars } from "./features/calendar/googleCalendar";
 
 const saveSidebarLabels: Record<SaveStatus, string> = {
   idle: "設定は自動保存されます",
@@ -39,9 +40,33 @@ const saveSidebarTones: Record<
 };
 
 const AppContent: React.FC = () => {
-  const { settings, loading, error, saveStatus, clearError, reloadSettings } =
-    useAppSettings();
+  const {
+    settings,
+    loading,
+    error,
+    saveStatus,
+    clearError,
+    reloadSettings,
+    retrySaveSettings,
+  } = useAppSettings();
   const { label, activeTab, setActiveTab } = useSettingsWindow(settings?.theme);
+  const startupSyncStarted = useRef(false);
+
+  useEffect(() => {
+    if (
+      label !== "main" ||
+      !settings ||
+      startupSyncStarted.current ||
+      settings.calendar.selectedGoogleCalendarIds.length === 0
+    ) {
+      return;
+    }
+    startupSyncStarted.current = true;
+    syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds).catch(
+      (syncError) =>
+        console.warn("Google Calendar startup sync was skipped:", syncError),
+    );
+  }, [label, settings]);
 
   if (loading) return <AppLoading />;
 
@@ -61,7 +86,11 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      <ErrorToast message={error} onDismiss={clearError} />
+      <ErrorToast
+        message={error}
+        onDismiss={clearError}
+        onRetry={saveStatus === "error" ? retrySaveSettings : undefined}
+      />
       <SettingsNavigationProvider
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -75,7 +104,7 @@ const AppContent: React.FC = () => {
           statusLabel={saveSidebarLabels[saveStatus]}
           statusTone={saveSidebarTones[saveStatus]}
         >
-          <SettingsSaveStatus status={saveStatus} />
+          <SettingsSaveStatus status={saveStatus} onRetry={retrySaveSettings} />
           {settingsLoadError ? (
             <AppErrorState
               message={settingsLoadError}

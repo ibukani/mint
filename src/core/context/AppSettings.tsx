@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type React from "react";
 import {
@@ -9,10 +8,13 @@ import {
   useRef,
   useState,
 } from "react";
+import type { CalendarSettings } from "../../features/calendar/types";
 import type { ClockSettings } from "../../features/clock/types";
 import type { VoiceToTextSettings } from "../../features/v2t/types";
+import { loadSettings, saveSettings } from "../settings";
 
 export interface AppSettings {
+  calendar: CalendarSettings;
   autostart: boolean;
   theme: "dark" | "light";
   settingsShortcut: string;
@@ -30,6 +32,7 @@ interface AppSettingsContextType {
   shortcutErrors: Record<string, string>;
   clearError: () => void;
   reloadSettings: () => Promise<void>;
+  retrySaveSettings: () => Promise<void>;
   updateSettings: (
     newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
   ) => void;
@@ -41,7 +44,6 @@ const AppSettingsContext = createContext<AppSettingsContextType | undefined>(
 
 const SAVE_DEBOUNCE_MS = 500;
 const SAVE_SUCCESS_VISIBLE_MS = 2000;
-const SAVE_ERROR_VISIBLE_MS = 5000;
 
 export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -57,16 +59,16 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   // Reference to the latest requested settings state
   const settingsRef = useRef<AppSettings | null>(null);
   const pendingSaveRef = useRef<AppSettings | null>(null);
+  const failedSaveRef = useRef<AppSettings | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceRef = useRef<number>(0);
 
   const reloadSettings = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const loaded = await invoke<AppSettings>("load_settings");
+      const loaded = await loadSettings();
       setSettings(loaded);
       settingsRef.current = loaded;
     } catch (err) {
@@ -82,7 +84,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const unlistenPromise = listen("settings-changed", async () => {
       try {
-        const loaded = await invoke<AppSettings>("load_settings");
+        const loaded = await loadSettings();
         setSettings((prev) => {
           if (JSON.stringify(prev) !== JSON.stringify(loaded)) {
             settingsRef.current = loaded;
@@ -115,11 +117,15 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       // Fallback for old hardcoded strings
       if (errorMessage.includes("重複")) {
         newErrors.clock = "ショートカットキーが重複しています";
+        newErrors.calendar = "ショートカットキーが重複しています";
+        newErrors.calendarCreateEvent = "ショートカットキーが重複しています";
         newErrors.voiceToText = "ショートカットキーが重複しています";
       } else if (errorMessage.includes("時計")) {
         newErrors.clock = errorMessage;
       } else if (errorMessage.includes("音声入力")) {
         newErrors.voiceToText = errorMessage;
+      } else if (errorMessage.includes("カレンダー")) {
+        newErrors.calendar = errorMessage;
       }
     }
     setShortcutErrors(newErrors);
@@ -129,9 +135,11 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     async (toSave: AppSettings, seq: number) => {
       setSaveStatus("saving");
       try {
-        await invoke("save_settings", { settings: toSave });
+        await saveSettings(toSave);
         // Only clear errors if this is still the latest save request
         if (sequenceRef.current === seq) {
+          failedSaveRef.current = null;
+          setError(null);
           setShortcutErrors({});
           setSaveStatus("saved");
         }
@@ -140,6 +148,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Failed to save settings:", err);
         // Only apply error states if this request is still the latest
         if (sequenceRef.current === seq) {
+          failedSaveRef.current = toSave;
           setError("設定の保存に失敗しました");
           setSaveStatus("error");
           parseAndSetErrors(msg);
@@ -176,11 +185,17 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const clearError = useCallback(() => {
     setError(null);
-    if (saveStatus === "error") {
-      setSaveStatus("idle");
-    }
-    setShortcutErrors({});
-  }, [saveStatus]);
+  }, []);
+
+  const retrySaveSettings = useCallback(async () => {
+    const failedSettings = failedSaveRef.current;
+    if (!failedSettings) return;
+
+    failedSaveRef.current = null;
+    setError(null);
+    sequenceRef.current += 1;
+    await commitSettings(failedSettings, sequenceRef.current);
+  }, [commitSettings]);
 
   useEffect(() => {
     if (saveStatusTimerRef.current) {
@@ -199,27 +214,6 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (saveStatusTimerRef.current) {
         clearTimeout(saveStatusTimerRef.current);
         saveStatusTimerRef.current = null;
-      }
-    };
-  }, [saveStatus]);
-
-  useEffect(() => {
-    if (saveErrorTimerRef.current) {
-      clearTimeout(saveErrorTimerRef.current);
-      saveErrorTimerRef.current = null;
-    }
-
-    if (saveStatus === "error") {
-      saveErrorTimerRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-        saveErrorTimerRef.current = null;
-      }, SAVE_ERROR_VISIBLE_MS);
-    }
-
-    return () => {
-      if (saveErrorTimerRef.current) {
-        clearTimeout(saveErrorTimerRef.current);
-        saveErrorTimerRef.current = null;
       }
     };
   }, [saveStatus]);
@@ -249,6 +243,10 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         prev.settingsShortcut !== updated.settingsShortcut ||
         prev.clock.enabled !== updated.clock.enabled ||
         prev.clock.shortcut !== updated.clock.shortcut ||
+        prev.calendar.enabled !== updated.calendar.enabled ||
+        prev.calendar.shortcut !== updated.calendar.shortcut ||
+        prev.calendar.createEventShortcut !==
+          updated.calendar.createEventShortcut ||
         prev.voiceToText.enabled !== updated.voiceToText.enabled ||
         prev.voiceToText.shortcut !== updated.voiceToText.shortcut;
 
@@ -263,6 +261,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       // 4. Increment sequence ID for race condition protection
       sequenceRef.current += 1;
       const currentSeq = sequenceRef.current;
+      failedSaveRef.current = null;
 
       // 5. Handle Side-Effects
       pendingSaveRef.current = updated;
@@ -300,6 +299,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         shortcutErrors,
         clearError,
         reloadSettings,
+        retrySaveSettings,
         updateSettings,
       }}
     >

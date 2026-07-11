@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 export interface SidebarTab<TTabId extends string = string> {
   id: TTabId;
   label: string;
+  navigationLabel?: string;
   description?: string;
   icon?: React.ReactNode;
 }
@@ -31,7 +32,10 @@ export const Sidebar = <TTabId extends string>({
   useEffect(() => {
     const activeTabButton = activeTabRef.current;
     if (
-      !activeTabButton ||
+      !activeTabButton?.parentElement ||
+      (activeTabButton.parentElement.clientWidth > 0 &&
+        activeTabButton.parentElement.scrollWidth <=
+          activeTabButton.parentElement.clientWidth) ||
       typeof activeTabButton.scrollIntoView !== "function"
     ) {
       return;
@@ -60,7 +64,7 @@ export const Sidebar = <TTabId extends string>({
       </div>
       <p className="app-sidebar__section-label">設定</p>
       <div className="app-sidebar__navigation">
-        {tabs.map((tab) => (
+        {tabs.map((tab, index) => (
           <button
             type="button"
             key={tab.id}
@@ -75,19 +79,21 @@ export const Sidebar = <TTabId extends string>({
                 : undefined
             }
             aria-current={activeTab === tab.id ? "page" : undefined}
+            aria-keyshortcuts={`Control+${index + 1} Meta+${index + 1}`}
             onClick={() => onTabChange(tab.id)}
           >
             <span className="app-sidebar__button-icon" aria-hidden="true">
               {tab.icon}
             </span>
             <span className="app-sidebar__button-copy">
-              <span>{tab.label}</span>
+              <span>{tab.navigationLabel ?? tab.label}</span>
               {tab.description && (
                 <small id={`app-sidebar-tab-${tab.id}-description`}>
                   {tab.description}
                 </small>
               )}
             </span>
+            <kbd className="app-sidebar__shortcut">Ctrl {index + 1}</kbd>
           </button>
         ))}
       </div>

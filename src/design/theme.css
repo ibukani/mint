@@ -2,20 +2,21 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-text-primary: #f4f7f6;
-  --color-text-secondary: #c3cfca;
-  --color-text-muted: #91a09a;
-  --color-text-subtle: #6e7e77;
-  --color-placeholder: #5f6d67;
-  --color-accent: #63d8be;
-  --color-accent-strong: #f59e7b;
+  --color-text-secondary: #c1cac7;
+  --color-text-muted: #909b97;
+  --color-text-subtle: #687570;
+  --color-placeholder: #596a64;
+  --color-accent: #59d7b6;
+  --color-accent-strong: #f5a87f;
   --color-error: #ff9b9b;
   --color-success: #70d6a5;
   --color-warning: #f1ca78;
-  --surface-page: #0b100f;
-  --surface-root: #101615;
-  --surface-panel: #141a18;
-  --surface-control: #1b2421;
-  --surface-control-hover: #222d29;
+  --surface-page: #090d0c;
+  --surface-root: #0d1211;
+  --surface-panel: #121817;
+  --surface-elevated: #171e1c;
+  --surface-control: #1a2220;
+  --surface-control-hover: #222c29;
   --surface-accent: rgb(99 216 190 / 12%);
   --surface-accent-action: rgb(99 216 190 / 16%);
   --surface-accent-action-hover: rgb(99 216 190 / 24%);
@@ -25,9 +26,9 @@
   --surface-overlay: rgb(12 16 15 / 94%);
   --surface-titlebar-btn-hover: rgb(255 255 255 / 6%);
   --surface-titlebar-btn-active: rgb(255 255 255 / 10%);
-  --border-panel: #293430;
-  --border-subtle: #202a26;
-  --border-control: #35423d;
+  --border-panel: #29332f;
+  --border-subtle: #202825;
+  --border-control: #35423e;
   --border-control-focus: #63d8be;
   --border-accent: rgb(99 216 190 / 42%);
   --border-action: rgb(99 216 190 / 48%);
@@ -36,8 +37,9 @@
   --border-success: rgb(62 207 142 / 45%);
   --border-warning: rgb(241 202 120 / 45%);
   --border-overlay: rgb(255 255 255 / 10%);
-  --page-accent-top: rgb(99 216 190 / 8%);
-  --page-accent-bottom: rgb(245 158 123 / 5%);
+  --page-accent-top: rgb(89 215 182 / 9%);
+  --page-accent-bottom: rgb(255 173 131 / 6%);
+  --surface-selection: rgb(104 225 194 / 24%);
 }
 
 :root[data-theme="light"] {
@@ -52,9 +54,10 @@
   --color-error: #c93737;
   --color-success: #167c50;
   --color-warning: #966b13;
-  --surface-page: #e8efec;
-  --surface-root: #f3f7f5;
-  --surface-panel: #f9fbfa;
+  --surface-page: #e7efeb;
+  --surface-root: #f1f6f3;
+  --surface-panel: #f8fbf9;
+  --surface-elevated: #ffffff;
   --surface-control: #ffffff;
   --surface-control-hover: #edf5f1;
   --surface-accent: rgb(8 127 107 / 9%);
@@ -79,4 +82,5 @@
   --border-overlay: rgb(23 32 30 / 12%);
   --page-accent-top: rgb(8 127 107 / 5%);
   --page-accent-bottom: rgb(196 93 56 / 3%);
+  --surface-selection: rgb(8 127 107 / 18%);
 }

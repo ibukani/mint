@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the windows",
-  "windows": ["main", "clock"],
+  "windows": ["main", "clock", "calendar"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -20,6 +20,7 @@
     "core:window:allow-start-dragging",
     "autostart:default",
     "process:default",
+    "dialog:allow-open",
     "updater:default"
   ]
 }

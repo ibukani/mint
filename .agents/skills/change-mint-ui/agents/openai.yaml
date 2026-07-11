@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mint UI変更"
+  short_description: "Design layerに沿ってMintのUIを安全に変更する"
+  default_prompt: "Use $change-mint-ui to implement a Mint UI change within the design architecture."

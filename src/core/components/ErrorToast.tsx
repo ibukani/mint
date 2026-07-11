@@ -6,14 +6,17 @@ import { useCallback, useEffect, useRef } from "react";
 interface ErrorToastProps {
   message: string | null;
   onDismiss: () => void;
+  onRetry?: () => void | Promise<void>;
 }
 
 export const ErrorToast: React.FC<ErrorToastProps> = ({
   message,
   onDismiss,
+  onRetry,
 }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const retryButtonRef = useRef<HTMLButtonElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   const clearTimer = useCallback(() => {
@@ -25,9 +28,9 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
 
   const startTimer = useCallback(() => {
     clearTimer();
-    if (!message) return;
+    if (!message || onRetry) return;
     timerRef.current = setTimeout(onDismiss, 5000);
-  }, [clearTimer, message, onDismiss]);
+  }, [clearTimer, message, onDismiss, onRetry]);
 
   useEffect(() => {
     if (!message) {
@@ -39,10 +42,10 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    closeButtonRef.current?.focus();
+    (onRetry ? retryButtonRef.current : closeButtonRef.current)?.focus();
     startTimer();
     return clearTimer;
-  }, [clearTimer, message, startTimer]);
+  }, [clearTimer, message, onRetry, startTimer]);
 
   useEffect(() => {
     if (!message) return undefined;
@@ -88,7 +91,21 @@ export const ErrorToast: React.FC<ErrorToastProps> = ({
       <CircleAlert className="error-toast__icon" size={18} aria-hidden="true" />
       <div className="error-toast-body">
         <span className="error-toast-message">{message}</span>
-        <span className="error-toast-hint">Esc でも閉じられます。</span>
+        <span className="error-toast-hint">
+          {onRetry
+            ? "再試行するまで未保存の変更を保持します。"
+            : "Esc でも閉じられます。"}
+        </span>
+        {onRetry && (
+          <button
+            ref={retryButtonRef}
+            type="button"
+            className="error-toast-retry"
+            onClick={() => void onRetry()}
+          >
+            もう一度保存
+          </button>
+        )}
       </div>
       <button
         ref={closeButtonRef}

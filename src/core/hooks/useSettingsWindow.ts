@@ -6,6 +6,7 @@ const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
 
 const overlayWindowTitles: Record<string, string> = {
   clock: "時計オーバーレイ",
+  calendar: "カレンダーオーバーレイ",
 };
 
 const isSettingsTabId = (value: string | null): value is SettingsTabId =>
@@ -54,6 +55,30 @@ export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
         : tabLabel;
     document.title = `mint - ${currentLabel}`;
   }, [activeTab, label]);
+
+  useEffect(() => {
+    if (label && label !== "main") return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        (!event.ctrlKey && !event.metaKey) ||
+        event.altKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+
+      const tabIndex = Number(event.key) - 1;
+      const tab = SETTINGS_TABS[tabIndex];
+      if (!tab) return;
+
+      event.preventDefault();
+      setActiveTab(tab.id);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [label]);
 
   return { label, activeTab, setActiveTab };
 };

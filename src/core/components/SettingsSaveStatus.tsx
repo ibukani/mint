@@ -23,8 +23,14 @@ const icons: Record<SaveStatus, React.ReactNode> = {
   error: <CircleAlert size={14} aria-hidden="true" />,
 };
 
-export const SettingsSaveStatus: React.FC<{ status: SaveStatus }> = ({
+interface SettingsSaveStatusProps {
+  status: SaveStatus;
+  onRetry?: () => void | Promise<void>;
+}
+
+export const SettingsSaveStatus: React.FC<SettingsSaveStatusProps> = ({
   status,
+  onRetry,
 }) => (
   <div
     className={`settings-save-status settings-save-status--${status}`}
@@ -33,5 +39,10 @@ export const SettingsSaveStatus: React.FC<{ status: SaveStatus }> = ({
   >
     {icons[status]}
     <span>{labels[status]}</span>
+    {status === "error" && onRetry && (
+      <button type="button" onClick={() => void onRetry()}>
+        再試行
+      </button>
+    )}
   </div>
 );

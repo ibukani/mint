@@ -61,7 +61,29 @@
   color: var(--color-error);
   box-shadow: 0 8px 32px rgb(239 68 68 / 15%);
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0) scale(1);
+}
+
+.settings-save-status button {
+  margin-left: var(--space-1);
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.settings-save-status button:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.settings-save-status button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
 .spinner-icon {

@@ -4,6 +4,7 @@ import {
   ClipboardCopy,
   ClipboardPaste,
   FileAudio,
+  FolderOpen,
   LoaderCircle,
   Trash2,
 } from "lucide-react";
@@ -38,6 +39,7 @@ export const TranscriptionWorkbench: React.FC<{
     updateAudioFilePath,
     clearAudioFilePath,
     pasteAudioFilePath,
+    selectAudioFile,
     handleAudioFilePathKeyDown,
     normalizeAudioFilePath,
   } = controller;
@@ -86,9 +88,9 @@ export const TranscriptionWorkbench: React.FC<{
         <Field
           id="v2t-audio-file-input"
           label="音声ファイルパス"
-          helpText="wav、mp3、m4a など、利用する音声認識APIが対応する音声ファイルを指定します。Enter でも文字起こしを開始できます。"
+          helpText="ボタンからファイルを選ぶか、パスを貼り付けて指定します。Enter でも文字起こしを開始できます。"
         >
-          <FieldRow>
+          <FieldRow className="v2t-file-row">
             <TextInput
               id="v2t-audio-file-input"
               className="v2t-row-input"
@@ -100,6 +102,15 @@ export const TranscriptionWorkbench: React.FC<{
               aria-keyshortcuts="Enter"
               placeholder="例: /Users/me/audio.wav"
             />
+            <Button
+              variant="ghost"
+              className="v2t-icon-button"
+              aria-label="音声ファイルを選択"
+              title="ファイルを選択"
+              onClick={() => void selectAudioFile()}
+            >
+              <FolderOpen size={16} aria-hidden="true" />
+            </Button>
             <Button
               variant="ghost"
               className="v2t-icon-button"
@@ -115,6 +126,7 @@ export const TranscriptionWorkbench: React.FC<{
               aria-label="クリア"
               title="クリア"
               onClick={clearAudioFilePath}
+              disabled={!audioFilePath}
             >
               <Trash2 size={16} aria-hidden="true" />
             </Button>

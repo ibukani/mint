@@ -12,6 +12,7 @@
 
 ### 現在の機能一覧
 - **時計オーバーレイ (Clock Overlay)**: **implemented**。ショートカットキーでのトレイ表示、自動非表示、フォントサイズ変更など。
+- **カレンダー (Calendar)**: **implemented**。ローカル予定の管理とGoogle Calendarの複数予定表・双方向同期に対応。
 - **音声入力 (Voice to Text)**: **placeholder**。設定UIやキー保存はありますが、録音・文字起こしの実処理は未実装です。
 
 ## 主な機能（開発基盤）
@@ -54,13 +55,19 @@ npm run scaffold:feature my_tool MyTool
 npm run check:quick
 ```
 
-詳細なAI向け手順は `docs/ai-development.md`、`docs/ai-quality-rubric.md`、`.agents/skills/create_static_feature/SKILL.md` を参照してください。
+詳細なAI向け手順は `docs/ai-development.md`、`docs/ai-quality-rubric.md`、`.agents/skills/create-static-feature/SKILL.md` を参照してください。
 
 ---
 
 ## 開発およびビルドコマンド
 
 パッケージのルートディレクトリで実行してください：
+
+Google Calendar連携を有効にするビルドでは、Google Cloud ConsoleでCalendar APIを有効化し、種類を「デスクトップアプリ」としたOAuthクライアントIDを指定します。クライアントシークレットは不要です。
+
+```bash
+export GOOGLE_CALENDAR_CLIENT_ID="<desktop OAuth client ID>"
+```
 
 ```bash
 # AI向けの低トークン概要を表示

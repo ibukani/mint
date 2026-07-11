@@ -18,6 +18,9 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 // Mock getCurrentWindow
 vi.mock("@tauri-apps/api/window", () => ({
+  Window: {
+    getByLabel: vi.fn().mockResolvedValue(null),
+  },
   getCurrentWindow: vi.fn(() => ({
     label: "main",
     hide: vi.fn().mockResolvedValue(undefined),
@@ -165,6 +168,35 @@ describe("App Window Routing", () => {
     }
   });
 
+  it("renders CalendarOverlay when label=calendar", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(2026, 6, 10, 9, 0, 0));
+      vi.mocked(getCurrentWindow).mockReturnValue({
+        label: "calendar",
+        hide: vi.fn().mockResolvedValue(undefined),
+        show: vi.fn().mockResolvedValue(undefined),
+      } as unknown as ReturnType<typeof getCurrentWindow>);
+      vi.mocked(invoke).mockResolvedValue(
+        createMockSettings() as unknown as ReturnType<typeof invoke>,
+      );
+
+      render(<App />);
+
+      expect(
+        await screen.findByRole("dialog", {
+          name: "カレンダーオーバーレイ",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "2026年 7月" }),
+      ).toBeInTheDocument();
+      expect(document.title).toBe("mint - カレンダーオーバーレイ");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("hides the clock overlay from the close button", async () => {
     const hide = vi.fn().mockResolvedValue(undefined);
     vi.mocked(getCurrentWindow).mockReturnValue({
@@ -238,6 +270,28 @@ describe("App Window Routing", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("表示秒数 (0でトグル表示)")).toHaveFocus();
     });
+  });
+
+  it("switches settings tabs with Ctrl+number shortcuts", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+
+    const calendarTab = screen.getByRole("button", { name: "カレンダー" });
+    const shortcut = calendarTab.getAttribute("aria-keyshortcuts") ?? "";
+    const shortcutNumber = shortcut.match(/Control\+(\d+)/)?.[1];
+    expect(shortcutNumber).toBeDefined();
+    if (!shortcutNumber) return;
+    fireEvent.keyDown(window, { key: shortcutNumber, ctrlKey: true });
+
+    expect(
+      await screen.findByRole("heading", { name: "カレンダー設定" }),
+    ).toBeInTheDocument();
+    expect(calendarTab).toHaveAttribute("aria-current", "page");
+    expect(shortcut).toContain(`Control+${shortcutNumber}`);
   });
 
   it("restores the last selected settings tab", async () => {

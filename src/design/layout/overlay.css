@@ -1,229 +1,152 @@
 .overlay-frame {
+  contain: layout paint;
+  display: flex;
   width: 100vw;
   height: 100vh;
-  display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   margin: 0;
   padding: 0;
-  overflow: hidden;
-  box-sizing: border-box;
   background: transparent;
+  overflow: hidden;
 }
 
 .overlay-card {
   position: relative;
-  width: calc(100% - 16px);
-  height: calc(100% - 16px);
+  isolation: isolate;
   display: flex;
-  justify-content: center;
+  width: 100%;
+  height: 100%;
   align-items: center;
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.88) 0%,
-    rgba(8, 9, 16, 0.96) 100%
-  );
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-xl);
-  box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.5),
-    0 0 25px
-    color-mix(in srgb, var(--clock-accent-color, #818cf8) 25%, transparent),
-    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid
+    color-mix(in srgb, var(--color-text-primary) 11%, transparent);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(
+      circle at 12% -24%,
+      color-mix(
+        in srgb,
+        var(--clock-accent-color, var(--color-accent)) 10%,
+        transparent
+      ),
+      transparent 48%
+    ),
+    linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--surface-overlay) 88%, var(--surface-elevated)),
+      var(--surface-overlay) 62%
+    );
+  backdrop-filter: blur(24px) saturate(1.16);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 9%, transparent);
+  color: var(--color-text-primary);
   font-size: calc(
     var(--overlay-font-size, 1.5rem) *
     var(--clock-size-scale, 1)
   );
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  letter-spacing: 0.02em;
-  margin: 8px;
-  padding: var(--space-4);
-  box-sizing: border-box;
-  transition:
-    opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   opacity: 0;
-  transform: scale(0.94) translateY(-8px);
-  filter: blur(4px);
+  overflow: hidden;
+  transform: scale(0.985) translateY(-4px);
+  transition:
+    opacity 180ms ease-out,
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.overlay-card::after {
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  border: 1px solid
+    color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+  border-radius: calc(var(--radius-lg) - 1px);
+  content: "";
+  pointer-events: none;
 }
 
 :root[data-theme="light"] .overlay-card {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.88) 0%,
-    rgba(241, 245, 249, 0.95) 100%
-  );
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    0 20px 40px rgba(15, 23, 42, 0.15),
-    0 0 20px
-    color-mix(in srgb, var(--clock-accent-color, #818cf8) 15%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 72%);
 }
 
 .overlay-card.is-visible {
   opacity: 1;
   transform: scale(1) translateY(0);
-  filter: blur(0);
 }
 
 .overlay-card.is-hiding {
   opacity: 0;
-  transform: scale(0.92) translateY(8px);
-  filter: blur(6px);
+  transform: scale(0.985) translateY(4px);
 }
 
 .overlay-card .overlay-close-button {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
   z-index: 10;
+  top: 8px;
+  right: 8px;
+  display: grid;
   width: 28px;
-  height: 28px;
   min-height: 28px;
+  height: 28px;
+  place-items: center;
   padding: 0;
+  border: 1px solid transparent;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: transparent;
   color: var(--color-text-muted);
-  transition: all var(--transition-fast);
   cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .overlay-card .overlay-close-button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  border-color: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+  background: color-mix(in srgb, var(--surface-control-hover) 70%, transparent);
   color: var(--color-text-primary);
-  border-color: rgba(255, 255, 255, 0.15);
-  transform: rotate(90deg);
 }
 
-:root[data-theme="light"] .overlay-card .overlay-close-button {
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-:root[data-theme="light"] .overlay-card .overlay-close-button:hover {
-  background: rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.12);
-}
-
-.overlay-card {
-  background: rgb(11 15 14 / 94%);
-  border-color: rgb(255 255 255 / 12%);
-  border-radius: var(--radius-md);
-  box-shadow:
-    0 2px 10px rgb(0 0 0 / 15%),
-    0 0 16px
-    color-mix(in srgb, var(--clock-accent-color, #4fd1b5) 12%, transparent);
-  letter-spacing: 0;
-}
-
-:root[data-theme="light"] .overlay-card {
-  background: rgb(250 252 251 / 96%);
-  border-color: rgb(23 32 30 / 14%);
-  box-shadow:
-    0 2px 10px rgb(23 32 30 / 8%),
-    0 0 14px
-    color-mix(in srgb, var(--clock-accent-color, #087f6b) 10%, transparent);
-}
-
-.overlay-card .overlay-close-button {
-  top: 10px;
-  right: 10px;
-  border-radius: 50%;
+.overlay-card .overlay-close-button:active {
+  transform: scale(0.94);
 }
 
 .overlay-card--digital {
-  --clock-render-color: var(--clock-accent-color, #4fd1b5);
+  --clock-render-color: var(--clock-accent-color, var(--color-accent));
 
   justify-content: stretch;
-  padding: calc(18px * var(--clock-size-scale, 1))
+  padding: calc(17px * var(--clock-size-scale, 1))
     calc(22px * var(--clock-size-scale, 1));
-  overflow: hidden;
 }
 
 .overlay-card--digital::before {
   position: absolute;
   top: 0;
   left: 50%;
-  width: calc(46px * var(--clock-size-scale, 1));
+  width: calc(36px * var(--clock-size-scale, 1));
   height: 2px;
+  border-radius: 999px;
   background: var(--clock-render-color);
+  box-shadow: 0 0 12px
+    color-mix(in srgb, var(--clock-render-color) 70%, transparent);
   content: "";
   transform: translateX(-50%);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .overlay-card {
+    background: var(--surface-overlay);
+  }
 }
 
 :root[data-theme="light"] .overlay-card--digital {
   --clock-render-color: color-mix(
     in srgb,
-    var(--clock-accent-color, #087f6b) 80%,
-    #17201e 20%
+    var(--clock-accent-color, var(--color-accent)) 82%,
+    var(--color-text-primary)
   );
-}
-
-.overlay-frame {
-  contain: layout paint;
-}
-
-.overlay-card {
-  isolation: isolate;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--surface-overlay) 94%, var(--surface-panel)) 0%,
-    var(--surface-overlay) 100%
-  );
-  box-shadow:
-    0 2px 10px rgb(0 0 0 / 12%),
-    0 0 16px
-    color-mix(
-      in srgb,
-      var(--clock-accent-color, var(--color-accent)) 12%,
-      transparent
-    ),
-    inset 0 1px 0 rgb(255 255 255 / 8%);
-}
-
-.overlay-card::after {
-  position: absolute;
-  inset: 1px;
-  z-index: -1;
-  border: 1px solid
-    color-mix(in srgb, var(--color-text-primary) 5%, transparent);
-  border-radius: calc(var(--radius-lg) - 1px);
-  content: "";
-  pointer-events: none;
-}
-
-.overlay-card--digital {
-  padding-block: calc(17px * var(--clock-size-scale, 1));
-}
-
-.overlay-card .overlay-close-button {
-  width: 30px;
-  height: 30px;
-  min-height: 30px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-control) 45%, transparent);
-  border-color: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
-}
-
-.overlay-card .overlay-close-button:hover {
-  transform: none;
-  background: var(--surface-control-hover);
-  border-color: var(--border-control-focus);
-  color: var(--color-text-primary);
-}
-
-.overlay-card .overlay-close-button:active {
-  transform: scale(0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {

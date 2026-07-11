@@ -12,6 +12,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -46,6 +47,10 @@ pub fn run() {
                                             }
                                         }
                                         "clock" => features::clock::toggle_clock_overlay(app),
+                                        "calendar" => features::calendar::toggle_calendar_overlay(app),
+                                        "calendarCreateEvent" => {
+                                            features::calendar::open_calendar_event_editor(app)
+                                        }
                                         "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                         _ => {}
                                     }
@@ -60,6 +65,10 @@ pub fn run() {
                                         }
                                     }
                                     "clock" => features::clock::toggle_clock_overlay(app),
+                                    "calendar" => features::calendar::toggle_calendar_overlay(app),
+                                    "calendarCreateEvent" => {
+                                        features::calendar::open_calendar_event_editor(app)
+                                    }
                                     "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                                     _ => {}
                                 }
@@ -71,6 +80,10 @@ pub fn run() {
         )
         .manage(AppSettingsState(Mutex::new(None)))
         .setup(|app| {
+            let calendar_store = features::calendar::initialize_store(app.handle())?;
+            app.manage(calendar_store);
+            app.manage(features::google_calendar::GoogleCalendarState::default());
+
             // Initialize system tray
             core::tray::init_tray(app)?;
 
@@ -134,6 +147,16 @@ pub fn run() {
             core::settings::save_settings,
             core::settings::load_api_key,
             core::settings::save_api_key,
+            features::calendar::list_calendar_events,
+            features::calendar::get_next_calendar_event,
+            features::calendar::create_calendar_event,
+            features::calendar::update_calendar_event,
+            features::calendar::delete_calendar_event,
+            features::google_calendar::get_google_calendar_connection,
+            features::google_calendar::connect_google_calendar,
+            features::google_calendar::list_google_calendars,
+            features::google_calendar::sync_google_calendars,
+            features::google_calendar::disconnect_google_calendar,
             features::v2t::transcribe_audio_file,
         ])
         .run(tauri::generate_context!())

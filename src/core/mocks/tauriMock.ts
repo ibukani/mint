@@ -1,5 +1,17 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
+import type {
+  CalendarEventCursor,
+  CalendarEventInput,
+  CalendarEventRange,
+} from "../../features/calendar/types";
+import {
+  mockCreateCalendarEvent,
+  mockDeleteCalendarEvent,
+  mockGetNextCalendarEvent,
+  mockListCalendarEvents,
+  mockUpdateCalendarEvent,
+} from "./calendarEventMock";
 import { createMockSettings } from "./mockSettings";
 
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
@@ -21,9 +33,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const params = new URLSearchParams(window.location.search);
   const currentLabel = params.get("label") || "main";
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
+  const mockAudioPath = params.get("mockAudioPath");
 
   // 利用するウィンドウラベルをモック登録
-  mockWindows(currentLabel, "main", "clock");
+  mockWindows(currentLabel, "main", "clock", "calendar");
 
   // ローカルストレージキー
   const STORAGE_KEY = "mint_mock_settings";
@@ -44,7 +57,14 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               "[Tauri Mock] load_settings: localStorageから読み込みました。",
               parsed,
             );
-            return parsed;
+            return {
+              ...defaultSettings,
+              ...parsed,
+              calendar: {
+                ...defaultSettings.calendar,
+                ...(parsed.calendar ?? {}),
+              },
+            };
           } catch (e) {
             console.error(
               "[Tauri Mock] load_settings: 設定データのパースに失敗しました。デフォルトを返します。",
@@ -69,6 +89,83 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         }
         return;
       }
+      case "list_calendar_events": {
+        const range = typedArgs?.range as CalendarEventRange | undefined;
+        if (!range) throw new Error("Calendar event range is required.");
+        return mockListCalendarEvents(range);
+      }
+      case "get_next_calendar_event": {
+        const cursor = typedArgs?.cursor as CalendarEventCursor | undefined;
+        if (!cursor) throw new Error("Calendar event cursor is required.");
+        return mockGetNextCalendarEvent(cursor);
+      }
+      case "create_calendar_event": {
+        const input = typedArgs?.input as CalendarEventInput | undefined;
+        if (!input) throw new Error("Calendar event input is required.");
+        return mockCreateCalendarEvent(input);
+      }
+      case "update_calendar_event": {
+        const id = typedArgs?.id as string | undefined;
+        const input = typedArgs?.input as CalendarEventInput | undefined;
+        if (!id || !input) throw new Error("Calendar event update is invalid.");
+        return mockUpdateCalendarEvent(id, input);
+      }
+      case "delete_calendar_event": {
+        const id = typedArgs?.id as string | undefined;
+        if (!id) throw new Error("Calendar event id is required.");
+        mockDeleteCalendarEvent(id);
+        return;
+      }
+      case "get_google_calendar_connection":
+        return {
+          connected:
+            localStorage.getItem("mint_mock_google_connected") === "true",
+          accountEmail: "demo@example.com",
+          lastSyncedAt: localStorage.getItem("mint_mock_google_last_sync"),
+          pendingOperations: 0,
+          error: null,
+        };
+      case "connect_google_calendar":
+        localStorage.setItem("mint_mock_google_connected", "true");
+        return {
+          connected: true,
+          accountEmail: "demo@example.com",
+          lastSyncedAt: null,
+          pendingOperations: 0,
+          error: null,
+        };
+      case "list_google_calendars":
+        return [
+          {
+            id: "primary",
+            name: "メイン",
+            primary: true,
+            accessRole: "owner",
+            backgroundColor: "#4285f4",
+          },
+          {
+            id: "team",
+            name: "チーム",
+            primary: false,
+            accessRole: "reader",
+            backgroundColor: "#33b679",
+          },
+        ];
+      case "sync_google_calendars": {
+        const syncedAt = new Date().toISOString();
+        localStorage.setItem("mint_mock_google_last_sync", syncedAt);
+        return {
+          syncedCalendars:
+            (typedArgs?.calendarIds as string[] | undefined)?.length ?? 0,
+          changedEvents: 0,
+          pendingOperations: 0,
+          syncedAt,
+        };
+      }
+      case "disconnect_google_calendar":
+        localStorage.removeItem("mint_mock_google_connected");
+        localStorage.removeItem("mint_mock_google_last_sync");
+        return;
       case "load_api_key": {
         const service = typedArgs?.service as string | undefined;
         const key =
@@ -115,6 +212,8 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               rawJson: {},
             }
           : null;
+      case "plugin:dialog|open":
+        return mockAudioPath;
       case "plugin:updater|download_and_install": {
         const channel = typedArgs?.onEvent as
           | { onmessage?: (event: DownloadEvent) => void }

@@ -9,6 +9,7 @@ const requiredSections = [
   "## Windows",
   "## Frontend invokes",
   "## Rust commands",
+  "## Repository skills",
   "## Useful scripts",
 ];
 
@@ -27,6 +28,8 @@ const requiredContent = [
   "docs/ai-quality-rubric.md - 100-point AI development quality bar",
   "check:ai-foundation:",
   "verify:architecture:",
+  ".agents/skills/create-static-feature/SKILL.md",
+  ".agents/skills/change-mint-ui/SKILL.md",
   "check:quick:",
   "check:",
   "check:all:",

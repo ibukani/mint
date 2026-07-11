@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mint Settings Schema更新"
+  short_description: "TS・Rust・永続化・mockの設定schemaを同期する"
+  default_prompt: "Use $update-settings-schema to change Mint settings without schema drift."

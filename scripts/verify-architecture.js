@@ -674,6 +674,14 @@ const designBoundaryAllowlist = new Map([
     "src/features/clock/components/ClockAppearanceSettings.tsx",
     new Set(["inline-style", "color-literal"]),
   ],
+  [
+    "src/features/calendar/components/CalendarOverlay.tsx",
+    new Set(["inline-style"]),
+  ],
+  [
+    "src/features/calendar/components/CalendarSettings.tsx",
+    new Set(["inline-style", "color-literal"]),
+  ],
 ]);
 
 function isDesignBoundaryAllowed(relativeFile, rule) {

@@ -1,3 +1,4 @@
+import "@fontsource-variable/noto-sans-jp";
 import "./core/mocks/tauriMock";
 import "./index.css";
 import React from "react";

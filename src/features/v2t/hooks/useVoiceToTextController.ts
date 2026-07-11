@@ -1,9 +1,15 @@
-import { invoke } from "@tauri-apps/api/core";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
-import type { TranscriptionResult } from "../types";
+import {
+  chooseAudioFile,
+  loadVoiceToTextApiKey,
+  saveVoiceToTextApiKey,
+  transcribeAudio,
+} from "../api";
+import { focusAndSelect } from "../focus";
+import { useTransientStatus } from "./useTransientStatus";
 
 const PASTE_STATUS_VISIBLE_MS = 2000;
 const API_KEY_SAVE_STATUS_VISIBLE_MS = 2000;
@@ -11,33 +17,7 @@ const COPY_ERROR_VISIBLE_MS = 5000;
 const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
 const CLIPBOARD_READ_ERROR_STATUS =
   "クリップボードから貼り付けられませんでした";
-
-const focusAndSelect = (id: string) => {
-  const element = document.getElementById(id);
-  if (
-    element instanceof HTMLInputElement ||
-    element instanceof HTMLTextAreaElement
-  ) {
-    element.focus();
-    element.select();
-  }
-};
-
-const useTransientStatus = (
-  visibleMs: number | ((status: string) => number),
-) => {
-  const [status, setStatus] = useState("");
-
-  useEffect(() => {
-    if (!status) return undefined;
-    const duration =
-      typeof visibleMs === "function" ? visibleMs(status) : visibleMs;
-    const timer = setTimeout(() => setStatus(""), duration);
-    return () => clearTimeout(timer);
-  }, [status, visibleMs]);
-
-  return [status, setStatus] as const;
-};
+const FILE_PICKER_ERROR_STATUS = "音声ファイルを選択できませんでした";
 
 const getCopyStatusDuration = (status: string) =>
   status === "コピーしました" ? PASTE_STATUS_VISIBLE_MS : COPY_ERROR_VISIBLE_MS;
@@ -73,9 +53,7 @@ export const useVoiceToTextController = () => {
   useEffect(() => {
     async function loadKey() {
       try {
-        const key = await invoke<string>("load_api_key", {
-          service: "voice_to_text",
-        });
+        const key = await loadVoiceToTextApiKey();
         setApiKey(typeof key === "string" ? key : "");
       } catch (error) {
         console.error("Failed to load API key:", error);
@@ -116,7 +94,7 @@ export const useVoiceToTextController = () => {
     setApiKeyPasteStatus("");
     setApiKeySaveStatus("");
     try {
-      await invoke("save_api_key", { service: "voice_to_text", key: apiKey });
+      await saveVoiceToTextApiKey(apiKey);
       setApiKeySaveError("");
       setApiKeySaveStatus("APIキーを保存しました");
     } catch (error) {
@@ -166,13 +144,7 @@ export const useVoiceToTextController = () => {
     setAudioFilePasteStatus("");
 
     try {
-      const result = await invoke<TranscriptionResult>(
-        "transcribe_audio_file",
-        {
-          settings: voiceToText,
-          audio_file_path: audioFilePath.trim(),
-        },
-      );
+      const result = await transcribeAudio(voiceToText, audioFilePath.trim());
       setTranscriptionText(result.text);
     } catch (error) {
       setTranscriptionError(
@@ -228,6 +200,23 @@ export const useVoiceToTextController = () => {
       console.error("Failed to paste audio file path:", error);
       setAudioFilePasteStatus(CLIPBOARD_READ_ERROR_STATUS);
       setApiKeyPasteStatus("");
+    } finally {
+      focusAndSelect("v2t-audio-file-input");
+    }
+  };
+
+  const selectAudioFile = async () => {
+    setAudioFilePasteStatus("");
+    setApiKeyPasteStatus("");
+    try {
+      const selected = await chooseAudioFile();
+      if (!selected) return;
+      setAudioFilePath(selected);
+      clearTranscriptionOutput();
+      setAudioFilePasteStatus("音声ファイルを選択しました");
+    } catch (error) {
+      console.error("Failed to select an audio file:", error);
+      setAudioFilePasteStatus(FILE_PICKER_ERROR_STATUS);
     } finally {
       focusAndSelect("v2t-audio-file-input");
     }
@@ -324,6 +313,7 @@ export const useVoiceToTextController = () => {
     updateAudioFilePath,
     clearAudioFilePath,
     pasteAudioFilePath,
+    selectAudioFile,
     handleAudioFilePathKeyDown,
     normalizeAudioFilePath: (value: string) => setAudioFilePath(value.trim()),
     resetVoiceToTextSettings,

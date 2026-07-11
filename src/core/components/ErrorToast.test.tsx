@@ -106,4 +106,30 @@ describe("ErrorToast", () => {
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps an actionable error visible and retries from the primary action", () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+    const onRetry = vi.fn();
+
+    render(
+      <ErrorToast
+        message="設定の保存に失敗しました"
+        onDismiss={onDismiss}
+        onRetry={onRetry}
+      />,
+    );
+
+    const retryButton = screen.getByRole("button", { name: "もう一度保存" });
+    expect(retryButton).toHaveFocus();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "再試行するまで未保存の変更を保持します。",
+    );
+
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    fireEvent.click(retryButton);
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
 });

@@ -109,7 +109,37 @@ impl Default for VoiceToTextSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
+pub struct CalendarSettings {
+    pub enabled: bool,
+    pub shortcut: String,
+    pub create_event_shortcut: String,
+    pub selected_google_calendar_ids: Vec<String>,
+    pub default_google_calendar_id: String,
+    #[serde(default = "default_calendar_color")]
+    pub theme_color: String,
+}
+
+fn default_calendar_color() -> String {
+    "#818cf8".to_string()
+}
+
+impl Default for CalendarSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            shortcut: "Alt+Down".to_string(),
+            create_event_shortcut: "Alt+Up".to_string(),
+            selected_google_calendar_ids: Vec::new(),
+            default_google_calendar_id: String::new(),
+            theme_color: default_calendar_color(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub calendar: CalendarSettings,
     pub autostart: bool,
     pub theme: String,
     pub settings_shortcut: String,
@@ -120,6 +150,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            calendar: CalendarSettings::default(),
             autostart: false,
             theme: "dark".to_string(),
             settings_shortcut: "Ctrl+Alt+S".to_string(),
@@ -162,6 +193,21 @@ impl ShortcutProvider for VoiceToTextSettings {
     }
 }
 
+impl ShortcutProvider for CalendarSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let shortcut = self.shortcut.trim();
+        if !self.enabled || shortcut.is_empty() {
+            None
+        } else {
+            Some(shortcut)
+        }
+    }
+
+    fn feature_id(&self) -> &str {
+        "calendar"
+    }
+}
+
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
@@ -171,6 +217,13 @@ impl AppSettings {
         }
         if let Some(s) = self.clock.shortcut() {
             list.push((self.clock.feature_id(), s));
+        }
+        if let Some(s) = self.calendar.shortcut() {
+            list.push((self.calendar.feature_id(), s));
+        }
+        let create_event_shortcut = self.calendar.create_event_shortcut.trim();
+        if self.calendar.enabled && !create_event_shortcut.is_empty() {
+            list.push(("calendarCreateEvent", create_event_shortcut));
         }
         if let Some(s) = self.voice_to_text.shortcut() {
             list.push((self.voice_to_text.feature_id(), s));
@@ -341,9 +394,27 @@ pub fn save_settings(
     }
 
     // Update the in-memory cache so subsequent reads are instant
-    *state.0.lock().unwrap() = Some(settings);
+    *state.0.lock().unwrap() = Some(settings.clone());
 
     let _ = tauri::Emitter::emit(&app, "settings-changed", ());
+
+    // Update window sizes and positions using the new settings
+    use tauri::Manager;
+    if let Some(clock_win) = app.get_webview_window("clock") {
+        if clock_win.is_visible().unwrap_or(false) {
+            crate::features::clock::show_clock_overlay(&app, &settings);
+        }
+    }
+    if let Some(calendar_win) = app.get_webview_window("calendar") {
+        if calendar_win.is_visible().unwrap_or(false) {
+            let clock_was_visible = app
+                .get_webview_window("clock")
+                .and_then(|clock| clock.is_visible().ok())
+                .unwrap_or(false);
+            let docked = settings.clock.enabled && clock_was_visible;
+            crate::features::calendar::position_calendar(&app, docked, &settings);
+        }
+    }
 
     Ok(())
 }
@@ -411,6 +482,12 @@ mod tests {
         assert!(settings.clock.glow_effect);
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End");
         assert_eq!(settings.voice_to_text.language, "ja");
+        assert!(settings.calendar.enabled);
+        assert_eq!(settings.calendar.shortcut, "Alt+Down");
+        assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up");
+        assert!(settings
+            .active_shortcuts()
+            .contains(&("calendarCreateEvent", "Alt+Up")));
 
         // 一部だけ存在するJSONから復元
         let partial_json = r#"{"theme": "light", "clock": {"shortcut": "Ctrl+C"}}"#;
@@ -427,5 +504,7 @@ mod tests {
         assert_eq!(settings.clock.hour_format, "24h"); // デフォルト補完
         assert!(settings.clock.glow_effect); // デフォルト補完
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
+        assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
+        assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
     }
 }

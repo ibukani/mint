@@ -25,4 +25,12 @@ export const defaultAppSettings: AppSettings = {
     language: "ja",
     status: "available",
   },
+  calendar: {
+    enabled: true,
+    shortcut: "Alt+Down",
+    createEventShortcut: "Alt+Up",
+    selectedGoogleCalendarIds: [],
+    defaultGoogleCalendarId: "",
+    themeColor: "#818cf8",
+  },
 };

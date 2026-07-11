@@ -58,68 +58,54 @@ const AnalogClock: React.FC<{
     return (
       <line
         key={tick}
+        className={`analog-clock__tick${isMain ? " is-major" : ""}`}
         x1={x1}
         y1={y1}
         x2={x2}
         y2={y2}
-        stroke={clockColor}
-        strokeWidth={isMain ? "2.5" : "1.2"}
-        opacity={isMain ? "0.85" : "0.4"}
       />
     );
   });
-
-  const glowStyle = glowEffect
-    ? {
-        filter: `drop-shadow(0 0 4px ${clockColor}) drop-shadow(0 0 8px ${clockColor}80)`,
-      }
-    : undefined;
 
   return (
     <div
       className={`analog-clock-container ${glowEffect ? "glow" : ""}`}
       role="img"
       aria-label={`現在時刻 ${String(time.getHours()).padStart(2, "0")}時${String(time.getMinutes()).padStart(2, "0")}分`}
+      style={
+        {
+          "--clock-dynamic-color": clockColor,
+        } as React.CSSProperties
+      }
     >
       <svg viewBox="0 0 200 200" className="analog-clock">
-        {/* Face */}
         <circle cx="100" cy="100" r="90" className="analog-clock-face" />
-
-        {/* Ticks */}
+        <circle cx="100" cy="100" r="82" className="analog-clock__inner" />
         {hourTicks}
-
-        {/* Hour Hand */}
         <line
           x1="100"
           y1="100"
           x2="100"
           y2="55"
           className="analog-hand analog-hour-hand"
-          style={{
-            transform: `rotate(${hrDeg}deg)`,
-            transformOrigin: "100px 100px",
-            stroke: "var(--color-text-primary)",
-            ...glowStyle,
-          }}
+          style={
+            {
+              "--hand-rotation": `${hrDeg}deg`,
+            } as React.CSSProperties
+          }
         />
-
-        {/* Minute Hand */}
         <line
           x1="100"
           y1="100"
           x2="100"
           y2="36"
           className="analog-hand analog-minute-hand"
-          style={{
-            transform: `rotate(${minDeg}deg)`,
-            transformOrigin: "100px 100px",
-            stroke: "var(--color-text-primary)",
-            opacity: 0.9,
-            ...glowStyle,
-          }}
+          style={
+            {
+              "--hand-rotation": `${minDeg}deg`,
+            } as React.CSSProperties
+          }
         />
-
-        {/* Second Hand */}
         {showSeconds && (
           <line
             x1="100"
@@ -127,18 +113,15 @@ const AnalogClock: React.FC<{
             x2="100"
             y2="28"
             className="analog-hand analog-second-hand"
-            style={{
-              transform: `rotate(${secDeg}deg)`,
-              transformOrigin: "100px 100px",
-              stroke: clockColor,
-              ...glowStyle,
-            }}
+            style={
+              {
+                "--hand-rotation": `${secDeg}deg`,
+              } as React.CSSProperties
+            }
           />
         )}
-
-        {/* Center Pin */}
-        <circle cx="100" cy="100" r="4.5" fill="var(--color-text-primary)" />
-        <circle cx="100" cy="100" r="2.2" fill={clockColor} />
+        <circle cx="100" cy="100" r="5" className="analog-clock__pin" />
+        <circle cx="100" cy="100" r="2.2" className="analog-clock__pin-core" />
       </svg>
     </div>
   );
@@ -157,13 +140,11 @@ export const TickingClock: React.FC<TickingClockProps> = ({
 
   useEffect(() => {
     if (displayMode === "analog") {
-      let animId: number;
-      const update = () => {
-        setTime(new Date());
-        animId = requestAnimationFrame(update);
-      };
-      animId = requestAnimationFrame(update);
-      return () => cancelAnimationFrame(animId);
+      const timer = setInterval(
+        () => setTime(new Date()),
+        showSeconds ? 100 : 1000,
+      );
+      return () => clearInterval(timer);
     } else {
       const intervalMs = showSeconds ? 200 : 1000;
       const timer = setInterval(() => setTime(new Date()), intervalMs);
@@ -209,10 +190,6 @@ export const TickingClock: React.FC<TickingClockProps> = ({
                   {time.getMonth() + 1}月{time.getDate()}日
                 </span>
               </time>
-              <span
-                className="digital-clock__date-divider"
-                aria-hidden="true"
-              />
               <span className="digital-clock__weekday">{weekday}</span>
             </div>
           )}
@@ -232,7 +209,7 @@ export const TickingClock: React.FC<TickingClockProps> = ({
             </time>
             {(showSeconds || is12h) && (
               <div className="digital-clock__meta">
-                <span className="clock-ampm">{is12h ? ampm : "秒"}</span>
+                <span className="clock-ampm">{is12h ? ampm : "SEC"}</span>
                 {showSeconds && (
                   <span className="clock-seconds">{seconds}</span>
                 )}
@@ -254,7 +231,9 @@ export const TickingClock: React.FC<TickingClockProps> = ({
       )}
       {showDate && displayMode === "analog" && (
         <div className="overlay-clock-date-container">
-          <span className="overlay-clock-date">{formattedDate}</span>
+          <time className="overlay-clock-date" dateTime={machineDate}>
+            {formattedDate}
+          </time>
           <span className="overlay-clock-weekday-badge">{weekday}</span>
         </div>
       )}

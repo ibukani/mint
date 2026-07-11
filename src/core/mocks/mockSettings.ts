@@ -2,6 +2,17 @@ import type { AppSettings } from "../context/AppSettings";
 import { defaultAppSettings } from "../defaultSettings";
 
 const defaultMockSettings: AppSettings = {
+  calendar: {
+    enabled: defaultAppSettings.calendar.enabled,
+    shortcut: defaultAppSettings.calendar.shortcut,
+    createEventShortcut: defaultAppSettings.calendar.createEventShortcut,
+    selectedGoogleCalendarIds:
+      defaultAppSettings.calendar.selectedGoogleCalendarIds,
+    defaultGoogleCalendarId:
+      defaultAppSettings.calendar.defaultGoogleCalendarId,
+    themeColor: defaultAppSettings.calendar.themeColor,
+  },
+
   autostart: defaultAppSettings.autostart,
   theme: defaultAppSettings.theme,
   settingsShortcut: defaultAppSettings.settingsShortcut,

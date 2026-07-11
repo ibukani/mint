@@ -37,6 +37,20 @@
         "skipTaskbar": true,
         "resizable": false,
         "focusable": false
+      },
+      {
+        "label": "calendar",
+        "title": "Calendar Overlay",
+        "width": 420,
+        "height": 384,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focusable": true
       }
     ],
     "security": {
