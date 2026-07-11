@@ -41,8 +41,8 @@
       {
         "label": "calendar",
         "title": "Calendar Overlay",
-        "width": 436,
-        "height": 400,
+        "width": 420,
+        "height": 384,
         "decorations": false,
         "transparent": true,
         "shadow": false,

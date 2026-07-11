@@ -9,10 +9,8 @@ use std::{
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 use uuid::Uuid;
 
-const CALENDAR_HEIGHT: f64 = 400.0;
+const CALENDAR_HEIGHT: f64 = 384.0;
 const WINDOW_MARGIN: f64 = 20.0;
-const OVERLAY_PADDING: f64 = 8.0;
-const WINDOW_PADDING: f64 = 16.0;
 const CALENDAR_DB_VERSION: i64 = 2;
 
 pub struct CalendarStoreState {
@@ -672,9 +670,9 @@ pub fn position_calendar(
     } else {
         420.0
     };
-    let content_width_logical = (base_w * percent).max(420.0);
-    let calendar_width_logical = content_width_logical + WINDOW_PADDING;
-    let calendar_height_logical = CALENDAR_HEIGHT * (content_width_logical / 420.0);
+    let content_width_logical = (base_w * percent).max(320.0);
+    let calendar_width_logical = content_width_logical;
+    let calendar_height_logical = CALENDAR_HEIGHT * (content_width_logical / 420.0).max(1.0);
 
     if docked {
         if let Some(clock) = app.get_webview_window("clock") {
@@ -693,8 +691,8 @@ pub fn position_calendar(
                     calendar_h,
                 )));
 
-                let padding = (OVERLAY_PADDING * 2.0 * scale).round() as i32;
-                let y = clock_position.y + clock_size.height as i32 - padding;
+                let overlap = 0;
+                let y = clock_position.y + clock_size.height as i32 - overlap;
                 let x = clock_position.x + clock_size.width as i32 - physical_width as i32;
                 let _ =
                     calendar.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));

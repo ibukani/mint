@@ -134,10 +134,9 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
 
     const percent = settings.clock.sizePercent / 100;
     const baseW = settings.clock.displayMode === "analog" ? 240 : 420;
-    const contentWidth = Math.max(Math.round(baseW * percent), 420);
-    const width = contentWidth + 16;
-    const scale = contentWidth / 420;
-    const height = Math.round(400 * scale);
+    const contentWidth = Math.max(Math.round(baseW * percent), 320);
+    const width = contentWidth;
+    const height = Math.round(384 * Math.max(contentWidth / 420, 1.0));
 
     const window = getCurrentWindow();
 
@@ -169,8 +168,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
           const scaleFactor = monitor.scaleFactor;
 
           const calendarWidthPhysical = Math.round(width * scaleFactor);
-          // OVERLAY_PADDING = 8.0
-          const padding = Math.round(8.0 * 2.0 * scaleFactor);
+          const padding = 0;
 
           const x = clockPosition.x + clockSize.width - calendarWidthPhysical;
           const y = clockPosition.y + clockSize.height - padding;
