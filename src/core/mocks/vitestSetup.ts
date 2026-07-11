@@ -56,6 +56,42 @@ mockIPC(async (cmd, args) => {
       mockDeleteCalendarEvent(id);
       return;
     }
+    case "get_google_calendar_connection":
+      return {
+        connected: false,
+        accountEmail: "",
+        lastSyncedAt: null,
+        pendingOperations: 0,
+        error: null,
+      };
+    case "connect_google_calendar":
+      return {
+        connected: true,
+        accountEmail: "demo@example.com",
+        lastSyncedAt: null,
+        pendingOperations: 0,
+        error: null,
+      };
+    case "list_google_calendars":
+      return [
+        {
+          id: "primary",
+          name: "メイン",
+          primary: true,
+          accessRole: "owner",
+          backgroundColor: "#4285f4",
+        },
+      ];
+    case "sync_google_calendars":
+      return {
+        syncedCalendars:
+          (typedArgs?.calendarIds as string[] | undefined)?.length ?? 0,
+        changedEvents: 0,
+        pendingOperations: 0,
+        syncedAt: new Date().toISOString(),
+      };
+    case "disconnect_google_calendar":
+      return;
     case "load_api_key":
       return "mock-api-key";
     case "save_api_key":

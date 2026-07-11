@@ -6,6 +6,10 @@ const defaultMockSettings: AppSettings = {
     enabled: defaultAppSettings.calendar.enabled,
     shortcut: defaultAppSettings.calendar.shortcut,
     createEventShortcut: defaultAppSettings.calendar.createEventShortcut,
+    selectedGoogleCalendarIds:
+      defaultAppSettings.calendar.selectedGoogleCalendarIds,
+    defaultGoogleCalendarId:
+      defaultAppSettings.calendar.defaultGoogleCalendarId,
   },
 
   autostart: defaultAppSettings.autostart,

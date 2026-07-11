@@ -29,5 +29,7 @@ export const defaultAppSettings: AppSettings = {
     enabled: true,
     shortcut: "Alt+Down",
     createEventShortcut: "Alt+Up",
+    selectedGoogleCalendarIds: [],
+    defaultGoogleCalendarId: "",
   },
 };

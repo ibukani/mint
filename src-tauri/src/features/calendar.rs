@@ -13,16 +13,35 @@ const CALENDAR_HEIGHT: f64 = 400.0;
 const WINDOW_MARGIN: f64 = 20.0;
 const OVERLAY_PADDING: f64 = 8.0;
 const WINDOW_PADDING: f64 = 16.0;
-const CALENDAR_DB_VERSION: i64 = 1;
+const CALENDAR_DB_VERSION: i64 = 2;
 
 pub struct CalendarStoreState {
     path: PathBuf,
+}
+
+impl CalendarStoreState {
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum CalendarEventSource {
     Local,
+    Google {
+        #[serde(rename = "calendarId")]
+        calendar_id: String,
+        #[serde(rename = "eventId")]
+        event_id: String,
+        etag: String,
+        #[serde(rename = "accessRole")]
+        access_role: String,
+        #[serde(rename = "recurringEventId")]
+        recurring_event_id: Option<String>,
+        #[serde(rename = "originalStartTime")]
+        original_start_time: Option<String>,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -121,7 +140,13 @@ fn migrate_store(connection: &Connection) -> Result<(), String> {
                    starts_at TEXT,
                    ends_at TEXT,
                    time_zone TEXT,
-                   source_kind TEXT NOT NULL CHECK(source_kind = 'local'),
+                   source_kind TEXT NOT NULL CHECK(source_kind IN ('local', 'google')),
+                   source_calendar_id TEXT,
+                   source_event_id TEXT,
+                   source_etag TEXT,
+                   source_access_role TEXT,
+                   recurring_event_id TEXT,
+                   original_start_time TEXT,
                    created_at TEXT NOT NULL,
                    updated_at TEXT NOT NULL,
                    CHECK(
@@ -136,7 +161,53 @@ fn migrate_store(connection: &Connection) -> Result<(), String> {
                  CREATE INDEX calendar_events_timed_range
                    ON calendar_events(starts_at, ends_at)
                    WHERE schedule_kind = 'timed';
-                 PRAGMA user_version = 1;
+                 CREATE UNIQUE INDEX calendar_events_google_identity
+                   ON calendar_events(source_calendar_id, source_event_id)
+                   WHERE source_kind = 'google';
+                 CREATE TABLE google_calendar_sync (
+                   calendar_id TEXT PRIMARY KEY NOT NULL,
+                   sync_token TEXT,
+                   last_synced_at TEXT,
+                   last_error TEXT
+                 );
+                 CREATE TABLE calendar_outbox (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   event_id TEXT NOT NULL,
+                   calendar_id TEXT NOT NULL,
+                   operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete')),
+                   payload TEXT,
+                   local_updated_at TEXT NOT NULL,
+                   attempts INTEGER NOT NULL DEFAULT 0,
+                   last_error TEXT
+                 );
+                 PRAGMA user_version = 2;
+                 COMMIT;",
+            )
+            .map_err(|error| error.to_string()),
+        1 => connection
+            .execute_batch(
+                "BEGIN;
+                 ALTER TABLE calendar_events RENAME TO calendar_events_v1;
+                 CREATE TABLE calendar_events (
+                   id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, notes TEXT NOT NULL,
+                   schedule_kind TEXT NOT NULL CHECK(schedule_kind IN ('allDay', 'timed')),
+                   start_date TEXT, end_date_exclusive TEXT, starts_at TEXT, ends_at TEXT,
+                   time_zone TEXT, source_kind TEXT NOT NULL CHECK(source_kind IN ('local', 'google')),
+                   source_calendar_id TEXT, source_event_id TEXT, source_etag TEXT,
+                   source_access_role TEXT, recurring_event_id TEXT, original_start_time TEXT,
+                   created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                   CHECK((schedule_kind = 'allDay' AND start_date IS NOT NULL AND end_date_exclusive IS NOT NULL AND starts_at IS NULL AND ends_at IS NULL AND time_zone IS NULL)
+                     OR (schedule_kind = 'timed' AND start_date IS NULL AND end_date_exclusive IS NULL AND starts_at IS NOT NULL AND ends_at IS NOT NULL AND time_zone IS NOT NULL))
+                 );
+                 INSERT INTO calendar_events (id,title,notes,schedule_kind,start_date,end_date_exclusive,starts_at,ends_at,time_zone,source_kind,created_at,updated_at)
+                   SELECT id,title,notes,schedule_kind,start_date,end_date_exclusive,starts_at,ends_at,time_zone,source_kind,created_at,updated_at FROM calendar_events_v1;
+                 DROP TABLE calendar_events_v1;
+                 CREATE INDEX calendar_events_all_day_range ON calendar_events(start_date,end_date_exclusive) WHERE schedule_kind='allDay';
+                 CREATE INDEX calendar_events_timed_range ON calendar_events(starts_at,ends_at) WHERE schedule_kind='timed';
+                 CREATE UNIQUE INDEX calendar_events_google_identity ON calendar_events(source_calendar_id,source_event_id) WHERE source_kind='google';
+                 CREATE TABLE google_calendar_sync (calendar_id TEXT PRIMARY KEY NOT NULL, sync_token TEXT, last_synced_at TEXT, last_error TEXT);
+                 CREATE TABLE calendar_outbox (id INTEGER PRIMARY KEY AUTOINCREMENT,event_id TEXT NOT NULL,calendar_id TEXT NOT NULL,operation TEXT NOT NULL CHECK(operation IN ('create','update','delete')),payload TEXT,local_updated_at TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,last_error TEXT);
+                 PRAGMA user_version = 2;
                  COMMIT;",
             )
             .map_err(|error| error.to_string()),
@@ -271,6 +342,14 @@ fn event_from_row(row: &Row<'_>) -> rusqlite::Result<CalendarEvent> {
     let source_kind: String = row.get(9)?;
     let source = match source_kind.as_str() {
         "local" => CalendarEventSource::Local,
+        "google" => CalendarEventSource::Google {
+            calendar_id: row.get(10)?,
+            event_id: row.get(11)?,
+            etag: row.get(12)?,
+            access_role: row.get(13)?,
+            recurring_event_id: row.get(14)?,
+            original_start_time: row.get(15)?,
+        },
         _ => return Err(invalid_row(9, "unknown source kind")),
     };
 
@@ -280,13 +359,13 @@ fn event_from_row(row: &Row<'_>) -> rusqlite::Result<CalendarEvent> {
         notes: row.get(2)?,
         schedule,
         source,
-        created_at: row.get(10)?,
-        updated_at: row.get(11)?,
+        created_at: row.get(16)?,
+        updated_at: row.get(17)?,
     })
 }
 
 const EVENT_SELECT: &str =
-    "SELECT id, title, notes, schedule_kind, start_date, end_date_exclusive, starts_at, ends_at, time_zone, source_kind, created_at, updated_at FROM calendar_events";
+    "SELECT id, title, notes, schedule_kind, start_date, end_date_exclusive, starts_at, ends_at, time_zone, source_kind, source_calendar_id, source_event_id, source_etag, source_access_role, recurring_event_id, original_start_time, created_at, updated_at FROM calendar_events";
 
 fn load_event(connection: &Connection, id: &str) -> Result<CalendarEvent, String> {
     connection
@@ -463,6 +542,29 @@ fn delete_calendar_event_in_store(path: &Path, id: String) -> Result<(), String>
     Ok(())
 }
 
+fn queue_google_operation(
+    path: &Path,
+    calendar_id: &str,
+    event: &CalendarEvent,
+    operation: &str,
+) -> Result<(), String> {
+    let payload = serde_json::to_string(event).map_err(|error| error.to_string())?;
+    let connection = open_store(path)?;
+    connection
+        .execute(
+            "DELETE FROM calendar_outbox WHERE event_id=?1 AND operation!='delete'",
+            [&event.id],
+        )
+        .map_err(|error| error.to_string())?;
+    connection
+        .execute(
+            "INSERT INTO calendar_outbox(event_id,calendar_id,operation,payload,local_updated_at) VALUES(?1,?2,?3,?4,?5)",
+            params![event.id, calendar_id, operation, payload, event.updated_at],
+        )
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn list_calendar_events(
     range: CalendarEventRange,
@@ -481,10 +583,21 @@ pub fn get_next_calendar_event(
 
 #[tauri::command]
 pub fn create_calendar_event(
+    app: AppHandle,
     input: CalendarEventInput,
     state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<CalendarEvent, String> {
-    create_calendar_event_in_store(&state.path, input)
+    let event = create_calendar_event_in_store(&state.path, input)?;
+    let settings = crate::core::settings::load_settings_internal(&app)?;
+    if !settings.calendar.default_google_calendar_id.is_empty() {
+        queue_google_operation(
+            &state.path,
+            &settings.calendar.default_google_calendar_id,
+            &event,
+            "create",
+        )?;
+    }
+    Ok(event)
 }
 
 #[tauri::command]
@@ -493,7 +606,20 @@ pub fn update_calendar_event(
     input: CalendarEventInput,
     state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<CalendarEvent, String> {
-    update_calendar_event_in_store(&state.path, id, input)
+    let connection = open_store(&state.path)?;
+    let existing = load_event(&connection, &id)?;
+    if matches!(
+        &existing.source,
+        CalendarEventSource::Google { access_role, .. } if !matches!(access_role.as_str(), "writer" | "owner")
+    ) {
+        return Err("This Google Calendar is read-only.".to_string());
+    }
+    drop(connection);
+    let event = update_calendar_event_in_store(&state.path, id, input)?;
+    if let CalendarEventSource::Google { calendar_id, .. } = &event.source {
+        queue_google_operation(&state.path, calendar_id, &event, "update")?;
+    }
+    Ok(event)
 }
 
 #[tauri::command]
@@ -501,6 +627,18 @@ pub fn delete_calendar_event(
     id: String,
     state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<(), String> {
+    let connection = open_store(&state.path)?;
+    let event = load_event(&connection, &id)?;
+    if matches!(
+        &event.source,
+        CalendarEventSource::Google { access_role, .. } if !matches!(access_role.as_str(), "writer" | "owner")
+    ) {
+        return Err("This Google Calendar is read-only.".to_string());
+    }
+    drop(connection);
+    if let CalendarEventSource::Google { calendar_id, .. } = &event.source {
+        queue_google_operation(&state.path, calendar_id, &event, "delete")?;
+    }
     delete_calendar_event_in_store(&state.path, id)
 }
 
@@ -797,5 +935,71 @@ mod tests {
             validate_input(invalid_range).unwrap_err(),
             "endsAt must be after startsAt."
         );
+    }
+
+    #[test]
+    fn migrates_v1_store_without_losing_local_events() {
+        let path = test_store_path();
+        let connection = Connection::open(&path).unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE calendar_events (
+               id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,notes TEXT NOT NULL,
+               schedule_kind TEXT NOT NULL,start_date TEXT,end_date_exclusive TEXT,
+               starts_at TEXT,ends_at TEXT,time_zone TEXT,source_kind TEXT NOT NULL,
+               created_at TEXT NOT NULL,updated_at TEXT NOT NULL
+             );
+             INSERT INTO calendar_events VALUES(
+               'legacy','以前の予定','','allDay','2026-07-11','2026-07-12',NULL,NULL,NULL,
+               'local','2026-07-01T00:00:00.000Z','2026-07-01T00:00:00.000Z'
+             );
+             PRAGMA user_version=1;",
+            )
+            .unwrap();
+        drop(connection);
+
+        let migrated = open_store(&path).unwrap();
+        let event = load_event(&migrated, "legacy").unwrap();
+        assert_eq!(event.title, "以前の予定");
+        assert_eq!(event.source, CalendarEventSource::Local);
+        assert_eq!(
+            migrated
+                .query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
+        drop(migrated);
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn replaces_pending_update_with_latest_payload() {
+        let path = test_store_path();
+        let event = create_calendar_event_in_store(
+            &path,
+            timed_input("同期前", "2026-07-11T05:00:00Z", "2026-07-11T06:00:00Z"),
+        )
+        .unwrap();
+        queue_google_operation(&path, "primary", &event, "create").unwrap();
+        let updated = update_calendar_event_in_store(
+            &path,
+            event.id,
+            timed_input("同期後", "2026-07-11T05:30:00Z", "2026-07-11T06:30:00Z"),
+        )
+        .unwrap();
+        queue_google_operation(&path, "primary", &updated, "create").unwrap();
+
+        let connection = open_store(&path).unwrap();
+        let (count, payload): (i64, String) = connection
+            .query_row(
+                "SELECT COUNT(*),payload FROM calendar_outbox WHERE event_id=?1",
+                [&updated.id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+        assert!(payload.contains("同期後"));
+        drop(connection);
+        fs::remove_file(path).unwrap();
     }
 }

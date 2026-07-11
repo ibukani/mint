@@ -116,6 +116,56 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         mockDeleteCalendarEvent(id);
         return;
       }
+      case "get_google_calendar_connection":
+        return {
+          connected:
+            localStorage.getItem("mint_mock_google_connected") === "true",
+          accountEmail: "demo@example.com",
+          lastSyncedAt: localStorage.getItem("mint_mock_google_last_sync"),
+          pendingOperations: 0,
+          error: null,
+        };
+      case "connect_google_calendar":
+        localStorage.setItem("mint_mock_google_connected", "true");
+        return {
+          connected: true,
+          accountEmail: "demo@example.com",
+          lastSyncedAt: null,
+          pendingOperations: 0,
+          error: null,
+        };
+      case "list_google_calendars":
+        return [
+          {
+            id: "primary",
+            name: "メイン",
+            primary: true,
+            accessRole: "owner",
+            backgroundColor: "#4285f4",
+          },
+          {
+            id: "team",
+            name: "チーム",
+            primary: false,
+            accessRole: "reader",
+            backgroundColor: "#33b679",
+          },
+        ];
+      case "sync_google_calendars": {
+        const syncedAt = new Date().toISOString();
+        localStorage.setItem("mint_mock_google_last_sync", syncedAt);
+        return {
+          syncedCalendars:
+            (typedArgs?.calendarIds as string[] | undefined)?.length ?? 0,
+          changedEvents: 0,
+          pendingOperations: 0,
+          syncedAt,
+        };
+      }
+      case "disconnect_google_calendar":
+        localStorage.removeItem("mint_mock_google_connected");
+        localStorage.removeItem("mint_mock_google_last_sync");
+        return;
       case "load_api_key": {
         const service = typedArgs?.service as string | undefined;
         const key =

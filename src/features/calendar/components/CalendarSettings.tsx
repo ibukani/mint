@@ -10,6 +10,7 @@ import {
   ShortcutInput,
 } from "../../../design/components";
 import "./CalendarSettings.css";
+import { GoogleCalendarSettings } from "./GoogleCalendarSettings";
 
 export const CalendarSettings: React.FC = () => {
   const { shortcutErrors } = useAppSettings();
@@ -28,6 +29,8 @@ export const CalendarSettings: React.FC = () => {
       "createEventShortcut",
       defaultAppSettings.calendar.createEventShortcut,
     );
+    handleChange("selectedGoogleCalendarIds", []);
+    handleChange("defaultGoogleCalendarId", "");
   };
 
   return (
@@ -45,6 +48,7 @@ export const CalendarSettings: React.FC = () => {
       />
 
       <div className="calendar-settings-grid">
+        <GoogleCalendarSettings />
         <section
           className="settings-group"
           aria-labelledby="calendar-shortcut-title"

@@ -1,10 +1,16 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AppSettings } from "../../../core/context/AppSettings";
 import {
   buildEventCursor,
   buildEventRange,
   getNextCalendarEvent,
   listCalendarEvents,
 } from "../events";
+import {
+  getGoogleCalendarConnection,
+  syncGoogleCalendars,
+} from "../googleCalendar";
 import type { CalendarEvent } from "../types";
 
 export const useCalendarEvents = (
@@ -20,6 +26,26 @@ export const useCalendarEvents = (
   const requestSequenceRef = useRef(0);
 
   const refresh = useCallback(() => setRevision((current) => current + 1), []);
+
+  useEffect(() => {
+    void showSequence;
+    let active = true;
+    invoke<AppSettings>("load_settings")
+      .then(async (settings) => {
+        const connection = await getGoogleCalendarConnection();
+        if (!connection.connected) return null;
+        return syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
+      })
+      .then((result) => {
+        if (active && result) refresh();
+      })
+      .catch((syncError) =>
+        console.warn("Google Calendar sync was skipped:", syncError),
+      );
+    return () => {
+      active = false;
+    };
+  }, [showSequence, refresh]);
 
   useEffect(() => {
     void showSequence;

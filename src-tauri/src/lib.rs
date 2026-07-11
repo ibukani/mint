@@ -82,6 +82,7 @@ pub fn run() {
         .setup(|app| {
             let calendar_store = features::calendar::initialize_store(app.handle())?;
             app.manage(calendar_store);
+            app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Initialize system tray
             core::tray::init_tray(app)?;
@@ -151,6 +152,11 @@ pub fn run() {
             features::calendar::create_calendar_event,
             features::calendar::update_calendar_event,
             features::calendar::delete_calendar_event,
+            features::google_calendar::get_google_calendar_connection,
+            features::google_calendar::connect_google_calendar,
+            features::google_calendar::list_google_calendars,
+            features::google_calendar::sync_google_calendars,
+            features::google_calendar::disconnect_google_calendar,
             features::v2t::transcribe_audio_file,
         ])
         .run(tauri::generate_context!())

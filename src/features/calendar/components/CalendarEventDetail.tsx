@@ -26,6 +26,9 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
 }) => {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const readOnly =
+    event.source.kind === "google" &&
+    !["writer", "owner"].includes(event.source.accessRole);
 
   const handleDelete = async () => {
     if (!window.confirm(`「${event.title}」を削除しますか？`)) return;
@@ -64,6 +67,7 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
         {event.notes && (
           <p className="calendar-event-detail__notes">{event.notes}</p>
         )}
+        {readOnly && <p>この予定表は読み取り専用です。</p>}
         {error && (
           <p className="calendar-screen__status is-error" role="alert">
             {error}
@@ -76,7 +80,7 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           type="button"
           variant="ghost"
           className="calendar-event-detail__delete"
-          disabled={deleting}
+          disabled={deleting || readOnly}
           onClick={handleDelete}
         >
           <Trash2 size={16} aria-hidden="true" />
@@ -96,6 +100,7 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           type="button"
           aria-keyshortcuts="E"
           title="編集（E）"
+          disabled={readOnly}
           onClick={onEdit}
         >
           <Pencil size={16} aria-hidden="true" />

@@ -113,6 +113,8 @@ pub struct CalendarSettings {
     pub enabled: bool,
     pub shortcut: String,
     pub create_event_shortcut: String,
+    pub selected_google_calendar_ids: Vec<String>,
+    pub default_google_calendar_id: String,
 }
 
 impl Default for CalendarSettings {
@@ -121,6 +123,8 @@ impl Default for CalendarSettings {
             enabled: true,
             shortcut: "Alt+Down".to_string(),
             create_event_shortcut: "Alt+Up".to_string(),
+            selected_google_calendar_ids: Vec::new(),
+            default_google_calendar_id: String::new(),
         }
     }
 }

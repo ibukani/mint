@@ -2,6 +2,31 @@ export interface CalendarSettings {
   enabled: boolean;
   shortcut: string;
   createEventShortcut: string;
+  selectedGoogleCalendarIds: string[];
+  defaultGoogleCalendarId: string;
+}
+
+export interface GoogleCalendarInfo {
+  id: string;
+  name: string;
+  primary: boolean;
+  accessRole: "freeBusyReader" | "reader" | "writer" | "owner";
+  backgroundColor: string;
+}
+
+export interface GoogleCalendarConnection {
+  connected: boolean;
+  accountEmail: string;
+  lastSyncedAt: string | null;
+  pendingOperations: number;
+  error: string | null;
+}
+
+export interface GoogleCalendarSyncResult {
+  syncedCalendars: number;
+  changedEvents: number;
+  pendingOperations: number;
+  syncedAt: string;
 }
 
 export interface AllDayEventSchedule {
@@ -19,9 +44,17 @@ export interface TimedEventSchedule {
 
 export type CalendarEventSchedule = AllDayEventSchedule | TimedEventSchedule;
 
-export interface CalendarEventSource {
-  kind: "local";
-}
+export type CalendarEventSource =
+  | { kind: "local" }
+  | {
+      kind: "google";
+      calendarId: string;
+      eventId: string;
+      etag: string;
+      accessRole: "freeBusyReader" | "reader" | "writer" | "owner";
+      recurringEventId?: string;
+      originalStartTime?: string;
+    };
 
 export interface CalendarEventInput {
   title: string;
