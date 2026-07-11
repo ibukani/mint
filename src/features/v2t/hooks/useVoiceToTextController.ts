@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
@@ -11,6 +12,7 @@ const COPY_ERROR_VISIBLE_MS = 5000;
 const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
 const CLIPBOARD_READ_ERROR_STATUS =
   "クリップボードから貼り付けられませんでした";
+const FILE_PICKER_ERROR_STATUS = "音声ファイルを選択できませんでした";
 
 const focusAndSelect = (id: string) => {
   const element = document.getElementById(id);
@@ -233,6 +235,33 @@ export const useVoiceToTextController = () => {
     }
   };
 
+  const selectAudioFile = async () => {
+    setAudioFilePasteStatus("");
+    setApiKeyPasteStatus("");
+    try {
+      const selected = await open({
+        title: "文字起こしする音声ファイルを選択",
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: "音声ファイル",
+            extensions: ["wav", "mp3", "m4a", "aac", "flac", "ogg", "webm"],
+          },
+        ],
+      });
+      if (!selected) return;
+      setAudioFilePath(selected);
+      clearTranscriptionOutput();
+      setAudioFilePasteStatus("音声ファイルを選択しました");
+    } catch (error) {
+      console.error("Failed to select an audio file:", error);
+      setAudioFilePasteStatus(FILE_PICKER_ERROR_STATUS);
+    } finally {
+      focusAndSelect("v2t-audio-file-input");
+    }
+  };
+
   const handleAudioFilePathKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Enter" || !canTranscribe) return;
     event.preventDefault();
@@ -324,6 +353,7 @@ export const useVoiceToTextController = () => {
     updateAudioFilePath,
     clearAudioFilePath,
     pasteAudioFilePath,
+    selectAudioFile,
     handleAudioFilePathKeyDown,
     normalizeAudioFilePath: (value: string) => setAudioFilePath(value.trim()),
     resetVoiceToTextSettings,

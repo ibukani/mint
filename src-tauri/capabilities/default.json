@@ -20,6 +20,7 @@
     "core:window:allow-start-dragging",
     "autostart:default",
     "process:default",
+    "dialog:allow-open",
     "updater:default"
   ]
 }

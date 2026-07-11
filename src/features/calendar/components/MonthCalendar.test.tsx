@@ -82,24 +82,44 @@ describe("MonthCalendar", () => {
     ).toBeInTheDocument();
   });
 
-  it("supports left and right arrow month navigation", () => {
+  it("supports keyboard date navigation and month paging", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 0, 15, 9, 0, 0));
-    render(<MonthCalendarHarness />);
+    const onCreate = vi.fn();
+    render(<MonthCalendarHarness onCreate={onCreate} />);
 
-    fireEvent.keyDown(screen.getByLabelText("月間カレンダー"), {
-      key: "ArrowLeft",
-    });
-    expect(
-      screen.getByRole("heading", { name: "2025年 12月" }),
-    ).toBeInTheDocument();
+    const january15 = screen.getByRole("button", { name: "1月15日" });
+    expect(january15).toHaveAttribute("tabindex", "0");
 
-    fireEvent.keyDown(screen.getByLabelText("月間カレンダー"), {
+    january15.focus();
+    fireEvent.keyDown(january15, {
       key: "ArrowRight",
     });
+    const january16 = screen.getByRole("button", { name: "1月16日" });
+    expect(january16).toHaveFocus();
+    expect(january16).toHaveAttribute("tabindex", "0");
+
+    fireEvent.keyDown(january16, { key: "ArrowDown" });
+    expect(screen.getByRole("button", { name: "1月23日" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "1月23日" }), {
+      key: "PageDown",
+    });
+    expect(
+      screen.getByRole("heading", { name: "2026年 2月" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2月23日" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByLabelText("月間カレンダー"), {
+      key: "n",
+    });
+    expect(onCreate).toHaveBeenCalledWith("2026-02-23");
+
+    fireEvent.keyDown(screen.getByLabelText("月間カレンダー"), { key: "t" });
     expect(
       screen.getByRole("heading", { name: "2026年 1月" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1月15日" })).toHaveFocus();
   });
 
   it("shows a subtle event marker and opens event entry points", () => {

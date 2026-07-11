@@ -60,6 +60,57 @@ export const deleteCalendarEvent = (id: string) =>
 const formatTimeInput = (date: Date) =>
   `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
+const timeInputToMinutes = (value: string) => {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+};
+
+const minutesToTimeInput = (value: number) =>
+  `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+
+export const adjustEndTimeForStartChange = (
+  previousStart: string,
+  previousEnd: string,
+  nextStart: string,
+) => {
+  const previousStartMinutes = timeInputToMinutes(previousStart);
+  const previousEndMinutes = timeInputToMinutes(previousEnd);
+  const nextStartMinutes = timeInputToMinutes(nextStart);
+  if (nextStartMinutes === null) return previousEnd;
+
+  const previousDuration =
+    previousStartMinutes !== null &&
+    previousEndMinutes !== null &&
+    previousEndMinutes > previousStartMinutes
+      ? previousEndMinutes - previousStartMinutes
+      : 60;
+  const nextEndMinutes = Math.min(
+    nextStartMinutes + previousDuration,
+    23 * 60 + 59,
+  );
+  return minutesToTimeInput(nextEndMinutes);
+};
+
+export type CalendarEventValidationField =
+  | "title"
+  | "date"
+  | "startTime"
+  | "endTime";
+
+export class CalendarEventValidationError extends Error {
+  constructor(
+    public readonly field: CalendarEventValidationField,
+    message: string,
+  ) {
+    super(message);
+    this.name = "CalendarEventValidationError";
+  }
+}
+
 export const createDefaultEventDraft = (
   requestedDate?: string,
   now = new Date(),
@@ -117,7 +168,18 @@ export const draftToEventInput = (
   draft: CalendarEventDraft,
 ): CalendarEventInput => {
   const title = draft.title.trim();
-  if (!title) throw new Error("タイトルを入力してください。");
+  if (!title) {
+    throw new CalendarEventValidationError(
+      "title",
+      "タイトルを入力してください。",
+    );
+  }
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) ||
+    toMachineDate(parseMachineDate(draft.date)) !== draft.date
+  ) {
+    throw new CalendarEventValidationError("date", "日付を入力してください。");
+  }
 
   if (draft.allDay) {
     return {
@@ -131,15 +193,23 @@ export const draftToEventInput = (
     };
   }
 
+  const startMinutes = timeInputToMinutes(draft.startTime);
+  if (startMinutes === null) {
+    throw new CalendarEventValidationError(
+      "startTime",
+      "開始時刻を入力してください。",
+    );
+  }
+  const endMinutes = timeInputToMinutes(draft.endTime);
+  if (endMinutes === null || endMinutes <= startMinutes) {
+    throw new CalendarEventValidationError(
+      "endTime",
+      "終了時刻は開始時刻より後にしてください。",
+    );
+  }
+
   const startsAt = new Date(`${draft.date}T${draft.startTime}:00`);
   const endsAt = new Date(`${draft.date}T${draft.endTime}:00`);
-  if (
-    Number.isNaN(startsAt.getTime()) ||
-    Number.isNaN(endsAt.getTime()) ||
-    endsAt <= startsAt
-  ) {
-    throw new Error("終了時刻は開始時刻より後にしてください。");
-  }
 
   return {
     title,

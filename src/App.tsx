@@ -39,8 +39,15 @@ const saveSidebarTones: Record<
 };
 
 const AppContent: React.FC = () => {
-  const { settings, loading, error, saveStatus, clearError, reloadSettings } =
-    useAppSettings();
+  const {
+    settings,
+    loading,
+    error,
+    saveStatus,
+    clearError,
+    reloadSettings,
+    retrySaveSettings,
+  } = useAppSettings();
   const { label, activeTab, setActiveTab } = useSettingsWindow(settings?.theme);
 
   if (loading) return <AppLoading />;
@@ -61,7 +68,11 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      <ErrorToast message={error} onDismiss={clearError} />
+      <ErrorToast
+        message={error}
+        onDismiss={clearError}
+        onRetry={saveStatus === "error" ? retrySaveSettings : undefined}
+      />
       <SettingsNavigationProvider
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -75,7 +86,7 @@ const AppContent: React.FC = () => {
           statusLabel={saveSidebarLabels[saveStatus]}
           statusTone={saveSidebarTones[saveStatus]}
         >
-          <SettingsSaveStatus status={saveStatus} />
+          <SettingsSaveStatus status={saveStatus} onRetry={retrySaveSettings} />
           {settingsLoadError ? (
             <AppErrorState
               message={settingsLoadError}

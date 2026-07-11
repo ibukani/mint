@@ -60,7 +60,7 @@ export const Sidebar = <TTabId extends string>({
       </div>
       <p className="app-sidebar__section-label">設定</p>
       <div className="app-sidebar__navigation">
-        {tabs.map((tab) => (
+        {tabs.map((tab, index) => (
           <button
             type="button"
             key={tab.id}
@@ -75,6 +75,7 @@ export const Sidebar = <TTabId extends string>({
                 : undefined
             }
             aria-current={activeTab === tab.id ? "page" : undefined}
+            aria-keyshortcuts={`Control+${index + 1} Meta+${index + 1}`}
             onClick={() => onTabChange(tab.id)}
           >
             <span className="app-sidebar__button-icon" aria-hidden="true">
@@ -88,6 +89,7 @@ export const Sidebar = <TTabId extends string>({
                 </small>
               )}
             </span>
+            <kbd className="app-sidebar__shortcut">Ctrl {index + 1}</kbd>
           </button>
         ))}
       </div>

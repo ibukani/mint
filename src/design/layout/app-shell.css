@@ -240,6 +240,35 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.app-sidebar__shortcut {
+  margin-left: auto;
+  padding: 3px 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-control) 72%, transparent);
+  color: var(--color-text-subtle);
+  font-family: inherit;
+  font-size: 0.6rem;
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  opacity: 0;
+  transition:
+    opacity var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.app-sidebar__button:hover .app-sidebar__shortcut,
+.app-sidebar__button:focus-visible .app-sidebar__shortcut,
+.app-sidebar__button--active .app-sidebar__shortcut {
+  opacity: 1;
+}
+
+.app-sidebar__button--active .app-sidebar__shortcut {
+  border-color: var(--border-accent);
+  color: var(--color-accent);
+}
+
 .app-sidebar__button-copy small {
   color: var(--color-text-subtle);
   font-size: 0.68rem;
@@ -318,6 +347,7 @@
   .app-sidebar__brand,
   .app-sidebar__section-label,
   .app-sidebar__footer,
+  .app-sidebar__shortcut,
   .app-sidebar__button-copy small {
     display: none;
   }

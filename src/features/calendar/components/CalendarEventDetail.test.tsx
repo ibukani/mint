@@ -30,6 +30,7 @@ describe("CalendarEventDetail", () => {
   it("edits and deletes a confirmed event", async () => {
     const onEdit = vi.fn();
     const onDeleted = vi.fn();
+    const onDuplicate = vi.fn();
     mocks.deleteEvent.mockResolvedValue(undefined);
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(
@@ -37,6 +38,7 @@ describe("CalendarEventDetail", () => {
         event={event}
         onBack={vi.fn()}
         onDeleted={onDeleted}
+        onDuplicate={onDuplicate}
         onEdit={onEdit}
       />,
     );
@@ -45,6 +47,17 @@ describe("CalendarEventDetail", () => {
     expect(screen.getByText("確認事項")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /編集/ }));
     expect(onEdit).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: /編集/ })).toHaveAttribute(
+      "aria-keyshortcuts",
+      "E",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /複製/ }));
+    expect(onDuplicate).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: /複製/ })).toHaveAttribute(
+      "aria-keyshortcuts",
+      "D",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /削除/ }));
     await waitFor(() =>

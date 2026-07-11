@@ -272,6 +272,28 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("switches settings tabs with Ctrl+number shortcuts", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+
+    const calendarTab = screen.getByRole("button", { name: "カレンダー" });
+    const shortcut = calendarTab.getAttribute("aria-keyshortcuts") ?? "";
+    const shortcutNumber = shortcut.match(/Control\+(\d+)/)?.[1];
+    expect(shortcutNumber).toBeDefined();
+    if (!shortcutNumber) return;
+    fireEvent.keyDown(window, { key: shortcutNumber, ctrlKey: true });
+
+    expect(
+      await screen.findByRole("heading", { name: "カレンダー設定" }),
+    ).toBeInTheDocument();
+    expect(calendarTab).toHaveAttribute("aria-current", "page");
+    expect(shortcut).toContain(`Control+${shortcutNumber}`);
+  });
+
   it("restores the last selected settings tab", async () => {
     window.localStorage.setItem("mint.active-settings-tab", "clock");
     vi.mocked(invoke).mockResolvedValue(

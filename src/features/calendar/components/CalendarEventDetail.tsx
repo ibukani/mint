@@ -1,4 +1,4 @@
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, CopyPlus, Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "../../../design/components";
@@ -13,6 +13,7 @@ interface CalendarEventDetailProps {
   event: CalendarEvent;
   onBack: () => void;
   onDeleted: () => void;
+  onDuplicate: () => void;
   onEdit: () => void;
 }
 
@@ -20,6 +21,7 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
   event,
   onBack,
   onDeleted,
+  onDuplicate,
   onEdit,
 }) => {
   const [deleting, setDeleting] = useState(false);
@@ -80,7 +82,22 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           <Trash2 size={16} aria-hidden="true" />
           {deleting ? "削除中…" : "削除"}
         </Button>
-        <Button type="button" onClick={onEdit}>
+        <Button
+          type="button"
+          variant="ghost"
+          aria-keyshortcuts="D"
+          title="複製して編集（D）"
+          onClick={onDuplicate}
+        >
+          <CopyPlus size={16} aria-hidden="true" />
+          複製
+        </Button>
+        <Button
+          type="button"
+          aria-keyshortcuts="E"
+          title="編集（E）"
+          onClick={onEdit}
+        >
           <Pencil size={16} aria-hidden="true" />
           編集
         </Button>

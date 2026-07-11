@@ -18,7 +18,8 @@ type CalendarScreen =
   | { kind: "day"; date: string }
   | { kind: "detail"; event: CalendarEvent; returnDate?: string }
   | { kind: "create"; date: string; returnDate?: string }
-  | { kind: "edit"; event: CalendarEvent; returnDate?: string };
+  | { kind: "edit"; event: CalendarEvent; returnDate?: string }
+  | { kind: "duplicate"; event: CalendarEvent; returnDate?: string };
 
 export const CalendarOverlay: React.FC = () => {
   const dirtyRef = useRef(false);
@@ -53,7 +54,9 @@ export const CalendarOverlay: React.FC = () => {
       if (
         openMode === "createEvent" &&
         dirtyRef.current &&
-        (current.kind === "create" || current.kind === "edit")
+        (current.kind === "create" ||
+          current.kind === "edit" ||
+          current.kind === "duplicate")
       ) {
         return current;
       }
@@ -68,7 +71,12 @@ export const CalendarOverlay: React.FC = () => {
   }, []);
 
   const handleBack = useCallback(() => {
-    if ((screen.kind === "create" || screen.kind === "edit") && !canClose()) {
+    if (
+      (screen.kind === "create" ||
+        screen.kind === "edit" ||
+        screen.kind === "duplicate") &&
+      !canClose()
+    ) {
       return;
     }
     dirtyRef.current = false;
@@ -85,6 +93,7 @@ export const CalendarOverlay: React.FC = () => {
         );
         break;
       case "edit":
+      case "duplicate":
         setScreen({
           kind: "detail",
           event: screen.event,
@@ -98,14 +107,53 @@ export const CalendarOverlay: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      if (screen.kind === "month") closeCalendar();
-      else handleBack();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (screen.kind === "month") closeCalendar();
+        else handleBack();
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable) ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (screen.kind === "day" && key === "n") {
+        event.preventDefault();
+        setScreen({
+          kind: "create",
+          date: screen.date,
+          returnDate: screen.date,
+        });
+      } else if (screen.kind === "detail" && key === "e") {
+        event.preventDefault();
+        setScreen({
+          kind: "edit",
+          event: screen.event,
+          returnDate: screen.returnDate,
+        });
+      } else if (screen.kind === "detail" && key === "d") {
+        event.preventDefault();
+        setScreen({
+          kind: "duplicate",
+          event: screen.event,
+          returnDate: screen.returnDate,
+        });
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeCalendar, handleBack, screen.kind]);
+  }, [closeCalendar, handleBack, screen]);
 
   const renderScreen = () => {
     switch (screen.kind) {
@@ -145,6 +193,13 @@ export const CalendarOverlay: React.FC = () => {
                 returnDate: screen.returnDate,
               })
             }
+            onDuplicate={() =>
+              setScreen({
+                kind: "duplicate",
+                event: screen.event,
+                returnDate: screen.returnDate,
+              })
+            }
             onDeleted={() => {
               refresh();
               setScreen(
@@ -157,9 +212,11 @@ export const CalendarOverlay: React.FC = () => {
         );
       case "create":
       case "edit":
+      case "duplicate":
         return (
           <CalendarEventEditor
             event={screen.kind === "edit" ? screen.event : undefined}
+            template={screen.kind === "duplicate" ? screen.event : undefined}
             initialDate={screen.kind === "create" ? screen.date : undefined}
             onCancel={handleBack}
             onDirtyChange={handleDirtyChange}
@@ -186,9 +243,7 @@ export const CalendarOverlay: React.FC = () => {
             onViewMonthChange={setViewMonth}
             onOpenDay={(date) => setScreen({ kind: "day", date })}
             onOpenEvent={(event) => setScreen({ kind: "detail", event })}
-            onCreate={() =>
-              setScreen({ kind: "create", date: toMachineDate(today) })
-            }
+            onCreate={(date) => setScreen({ kind: "create", date })}
           />
         );
     }

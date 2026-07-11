@@ -46,6 +46,8 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
         type="button"
         className="calendar-icon-button"
         aria-label="この日に予定を追加"
+        aria-keyshortcuts="N"
+        title="この日に予定を追加（N）"
         onClick={onAdd}
       >
         <Plus size={18} aria-hidden="true" />

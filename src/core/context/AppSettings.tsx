@@ -32,6 +32,7 @@ interface AppSettingsContextType {
   shortcutErrors: Record<string, string>;
   clearError: () => void;
   reloadSettings: () => Promise<void>;
+  retrySaveSettings: () => Promise<void>;
   updateSettings: (
     newSettings: Partial<AppSettings> | ((prev: AppSettings) => AppSettings),
   ) => void;
@@ -43,7 +44,6 @@ const AppSettingsContext = createContext<AppSettingsContextType | undefined>(
 
 const SAVE_DEBOUNCE_MS = 500;
 const SAVE_SUCCESS_VISIBLE_MS = 2000;
-const SAVE_ERROR_VISIBLE_MS = 5000;
 
 export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -59,9 +59,9 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   // Reference to the latest requested settings state
   const settingsRef = useRef<AppSettings | null>(null);
   const pendingSaveRef = useRef<AppSettings | null>(null);
+  const failedSaveRef = useRef<AppSettings | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceRef = useRef<number>(0);
 
   const reloadSettings = useCallback(async () => {
@@ -138,6 +138,8 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         await invoke("save_settings", { settings: toSave });
         // Only clear errors if this is still the latest save request
         if (sequenceRef.current === seq) {
+          failedSaveRef.current = null;
+          setError(null);
           setShortcutErrors({});
           setSaveStatus("saved");
         }
@@ -146,6 +148,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Failed to save settings:", err);
         // Only apply error states if this request is still the latest
         if (sequenceRef.current === seq) {
+          failedSaveRef.current = toSave;
           setError("設定の保存に失敗しました");
           setSaveStatus("error");
           parseAndSetErrors(msg);
@@ -182,11 +185,17 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const clearError = useCallback(() => {
     setError(null);
-    if (saveStatus === "error") {
-      setSaveStatus("idle");
-    }
-    setShortcutErrors({});
-  }, [saveStatus]);
+  }, []);
+
+  const retrySaveSettings = useCallback(async () => {
+    const failedSettings = failedSaveRef.current;
+    if (!failedSettings) return;
+
+    failedSaveRef.current = null;
+    setError(null);
+    sequenceRef.current += 1;
+    await commitSettings(failedSettings, sequenceRef.current);
+  }, [commitSettings]);
 
   useEffect(() => {
     if (saveStatusTimerRef.current) {
@@ -205,27 +214,6 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (saveStatusTimerRef.current) {
         clearTimeout(saveStatusTimerRef.current);
         saveStatusTimerRef.current = null;
-      }
-    };
-  }, [saveStatus]);
-
-  useEffect(() => {
-    if (saveErrorTimerRef.current) {
-      clearTimeout(saveErrorTimerRef.current);
-      saveErrorTimerRef.current = null;
-    }
-
-    if (saveStatus === "error") {
-      saveErrorTimerRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-        saveErrorTimerRef.current = null;
-      }, SAVE_ERROR_VISIBLE_MS);
-    }
-
-    return () => {
-      if (saveErrorTimerRef.current) {
-        clearTimeout(saveErrorTimerRef.current);
-        saveErrorTimerRef.current = null;
       }
     };
   }, [saveStatus]);
@@ -273,6 +261,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       // 4. Increment sequence ID for race condition protection
       sequenceRef.current += 1;
       const currentSeq = sequenceRef.current;
+      failedSaveRef.current = null;
 
       // 5. Handle Side-Effects
       pendingSaveRef.current = updated;
@@ -310,6 +299,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         shortcutErrors,
         clearError,
         reloadSettings,
+        retrySaveSettings,
         updateSettings,
       }}
     >

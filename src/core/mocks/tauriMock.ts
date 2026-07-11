@@ -33,6 +33,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const params = new URLSearchParams(window.location.search);
   const currentLabel = params.get("label") || "main";
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
+  const mockAudioPath = params.get("mockAudioPath");
 
   // 利用するウィンドウラベルをモック登録
   mockWindows(currentLabel, "main", "clock", "calendar");
@@ -161,6 +162,8 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               rawJson: {},
             }
           : null;
+      case "plugin:dialog|open":
+        return mockAudioPath;
       case "plugin:updater|download_and_install": {
         const channel = typedArgs?.onEvent as
           | { onmessage?: (event: DownloadEvent) => void }

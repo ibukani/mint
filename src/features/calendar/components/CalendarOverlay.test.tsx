@@ -1,6 +1,7 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
+import type { CalendarEvent } from "../types";
 import { CalendarOverlay } from "./CalendarOverlay";
 
 const mocks = vi.hoisted(() => ({
@@ -10,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
-  invoke: vi.fn(async (command: string) => {
+  invoke: vi.fn<(command: string) => Promise<unknown>>(async (command) => {
     if (command === "list_calendar_events") return [];
     if (command === "get_next_calendar_event") return null;
     return undefined;
@@ -61,9 +62,24 @@ vi.mock("../../../core/context/AppSettings", () => ({
   useAppSettings: () => ({ settings: createMockSettings() }),
 }));
 
+const calendarEvent: CalendarEvent = {
+  id: "event-1",
+  title: "設計レビュー",
+  notes: "確認事項",
+  schedule: {
+    kind: "allDay",
+    startDate: "2026-07-11",
+    endDateExclusive: "2026-07-12",
+  },
+  source: { kind: "local" },
+  createdAt: "2026-07-10T00:00:00.000Z",
+  updatedAt: "2026-07-10T00:00:00.000Z",
+};
+
 describe("CalendarOverlay window coordination", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 11, 9, 0, 0));
     mocks.listeners.clear();
     mocks.hideCalendar.mockClear();
     mocks.hideClock.mockClear();
@@ -71,6 +87,11 @@ describe("CalendarOverlay window coordination", () => {
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
     mocks.invoke.mockClear();
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "list_calendar_events") return [];
+      if (command === "get_next_calendar_event") return null;
+      return undefined;
+    });
   });
 
   afterEach(() => {
@@ -161,5 +182,43 @@ describe("CalendarOverlay window coordination", () => {
       screen.getByRole("heading", { name: "予定を追加" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("タイトル")).toHaveFocus();
+  });
+
+  it("creates an event for the open day with the N shortcut", async () => {
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "7月11日" }));
+    fireEvent.keyDown(window, { key: "n" });
+
+    expect(
+      screen.getByRole("heading", { name: "予定を追加" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("日付")).toHaveValue("2026-07-11");
+  });
+
+  it("opens a reusable copy from event detail with the D shortcut", async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "list_calendar_events") return [calendarEvent];
+      if (command === "get_next_calendar_event") return calendarEvent;
+      return undefined;
+    });
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "7月11日、予定1件" }));
+    fireEvent.click(screen.getByRole("button", { name: /設計レビュー/ }));
+    fireEvent.keyDown(window, { key: "d" });
+
+    expect(
+      screen.getByRole("heading", { name: "予定を複製" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("タイトル")).toHaveValue("設計レビュー");
   });
 });

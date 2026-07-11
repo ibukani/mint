@@ -5,14 +5,21 @@ import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
 import { VoiceToTextSettings } from "./VoiceToTextSettings";
 
+const dialogMocks = vi.hoisted(() => ({ open: vi.fn() }));
+
 // Mock invoke
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
+vi.mock("@tauri-apps/plugin-dialog", () => ({
+  open: dialogMocks.open,
+}));
+
 describe("VoiceToTextSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dialogMocks.open.mockResolvedValue(null);
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(undefined),
@@ -907,6 +914,100 @@ describe("VoiceToTextSettings", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("selects an audio file with the native file picker", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    dialogMocks.open.mockResolvedValue("/tmp/interview.m4a");
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "音声ファイルを選択" }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(dialogMocks.open).toHaveBeenCalledWith({
+      title: "文字起こしする音声ファイルを選択",
+      multiple: false,
+      directory: false,
+      filters: [
+        {
+          name: "音声ファイル",
+          extensions: ["wav", "mp3", "m4a", "aac", "flac", "ogg", "webm"],
+        },
+      ],
+    });
+    expect(screen.getByLabelText("音声ファイルパス")).toHaveValue(
+      "/tmp/interview.m4a",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "音声ファイルを選択しました",
+    );
+  });
+
+  it("keeps the current file when the picker is cancelled", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    dialogMocks.open.mockResolvedValue(null);
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const input = screen.getByLabelText("音声ファイルパス");
+    fireEvent.change(input, { target: { value: "/tmp/current.wav" } });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "音声ファイルを選択" }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(input).toHaveValue("/tmp/current.wav");
   });
 
   it("ignores empty clipboard content when pasting the audio file path", async () => {

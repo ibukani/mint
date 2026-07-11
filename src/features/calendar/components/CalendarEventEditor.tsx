@@ -9,6 +9,8 @@ import {
   TextInput,
 } from "../../../design/components";
 import {
+  adjustEndTimeForStartChange,
+  CalendarEventValidationError,
   createCalendarEvent,
   createDefaultEventDraft,
   draftToEventInput,
@@ -19,25 +21,38 @@ import type { CalendarEvent, CalendarEventDraft } from "../types";
 
 interface CalendarEventEditorProps {
   event?: CalendarEvent;
+  template?: CalendarEvent;
   initialDate?: string;
   onCancel: () => void;
   onDirtyChange: (dirty: boolean) => void;
   onSaved: (event: CalendarEvent) => void;
 }
 
+const validationFieldIds = {
+  title: "calendar-event-title",
+  date: "calendar-event-date",
+  startTime: "calendar-event-start-time",
+  endTime: "calendar-event-end-time",
+} as const;
+
 export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
   event,
+  template,
   initialDate,
   onCancel,
   onDirtyChange,
   onSaved,
 }) => {
-  const initialDraft = useMemo(
-    () => (event ? eventToDraft(event) : createDefaultEventDraft(initialDate)),
-    [event, initialDate],
-  );
+  const initialDraft = useMemo(() => {
+    const sourceEvent = event ?? template;
+    return sourceEvent
+      ? eventToDraft(sourceEvent)
+      : createDefaultEventDraft(initialDate);
+  }, [event, initialDate, template]);
   const [draft, setDraft] = useState<CalendarEventDraft>(initialDraft);
-  const [error, setError] = useState("");
+  const [validationError, setValidationError] =
+    useState<CalendarEventValidationError | null>(null);
+  const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialDraft);
 
@@ -51,11 +66,30 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
   const updateDraft = <K extends keyof CalendarEventDraft>(
     key: K,
     value: CalendarEventDraft[K],
-  ) => setDraft((current) => ({ ...current, [key]: value }));
+  ) => {
+    setValidationError(null);
+    setSaveError("");
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateStartTime = (nextStartTime: string) => {
+    setValidationError(null);
+    setSaveError("");
+    setDraft((current) => ({
+      ...current,
+      startTime: nextStartTime,
+      endTime: adjustEndTimeForStartChange(
+        current.startTime,
+        current.endTime,
+        nextStartTime,
+      ),
+    }));
+  };
 
   const handleSubmit = async (submitEvent: React.FormEvent) => {
     submitEvent.preventDefault();
-    setError("");
+    setValidationError(null);
+    setSaveError("");
     setSaving(true);
     try {
       const input = draftToEventInput(draft);
@@ -65,13 +99,26 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
       onDirtyChange(false);
       onSaved(saved);
     } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "予定を保存できませんでした",
-      );
+      if (saveError instanceof CalendarEventValidationError) {
+        setValidationError(saveError);
+        document.getElementById(validationFieldIds[saveError.field])?.focus();
+      } else {
+        console.error("Failed to save calendar event:", saveError);
+        setSaveError("予定を保存できませんでした。もう一度お試しください。");
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (keyEvent: React.KeyboardEvent<HTMLFormElement>) => {
+    if (
+      keyEvent.key === "Enter" &&
+      (keyEvent.ctrlKey || keyEvent.metaKey) &&
+      !saving
+    ) {
+      keyEvent.preventDefault();
+      keyEvent.currentTarget.requestSubmit();
     }
   };
 
@@ -79,6 +126,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
     <form
       className="calendar-screen calendar-event-editor"
       onSubmit={handleSubmit}
+      onKeyDown={handleKeyDown}
     >
       <header className="calendar-screen__header">
         <button
@@ -89,12 +137,20 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
         >
           <ArrowLeft size={18} aria-hidden="true" />
         </button>
-        <h2>{event ? "予定を編集" : "予定を追加"}</h2>
+        <h2>{event ? "予定を編集" : template ? "予定を複製" : "予定を追加"}</h2>
         <span className="calendar-screen__header-spacer" aria-hidden="true" />
       </header>
 
       <div className="calendar-event-editor__fields">
-        <Field id="calendar-event-title" label="タイトル" error={error}>
+        <Field
+          id="calendar-event-title"
+          label="タイトル"
+          error={
+            validationError?.field === "title"
+              ? validationError.message
+              : undefined
+          }
+        >
           <TextInput
             id="calendar-event-title"
             value={draft.title}
@@ -103,10 +159,19 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
             }
             placeholder="予定のタイトル"
             autoComplete="off"
+            invalid={validationError?.field === "title"}
           />
         </Field>
 
-        <Field id="calendar-event-date" label="日付">
+        <Field
+          id="calendar-event-date"
+          label="日付"
+          error={
+            validationError?.field === "date"
+              ? validationError.message
+              : undefined
+          }
+        >
           <TextInput
             id="calendar-event-date"
             type="date"
@@ -115,6 +180,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
               updateDraft("date", changeEvent.target.value)
             }
             required
+            invalid={validationError?.field === "date"}
           />
         </Field>
 
@@ -132,18 +198,35 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
 
         {!draft.allDay && (
           <div className="calendar-event-editor__times">
-            <Field id="calendar-event-start-time" label="開始">
+            <Field
+              id="calendar-event-start-time"
+              label="開始"
+              error={
+                validationError?.field === "startTime"
+                  ? validationError.message
+                  : undefined
+              }
+            >
               <TextInput
                 id="calendar-event-start-time"
                 type="time"
                 value={draft.startTime}
                 onChange={(changeEvent) =>
-                  updateDraft("startTime", changeEvent.target.value)
+                  updateStartTime(changeEvent.target.value)
                 }
                 required
+                invalid={validationError?.field === "startTime"}
               />
             </Field>
-            <Field id="calendar-event-end-time" label="終了">
+            <Field
+              id="calendar-event-end-time"
+              label="終了"
+              error={
+                validationError?.field === "endTime"
+                  ? validationError.message
+                  : undefined
+              }
+            >
               <TextInput
                 id="calendar-event-end-time"
                 type="time"
@@ -152,6 +235,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
                   updateDraft("endTime", changeEvent.target.value)
                 }
                 required
+                invalid={validationError?.field === "endTime"}
               />
             </Field>
           </div>
@@ -168,13 +252,23 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
             placeholder="場所や補足など"
           />
         </Field>
+        {saveError && (
+          <p className="calendar-event-editor__error" role="alert">
+            {saveError}
+          </p>
+        )}
       </div>
 
       <footer className="calendar-screen__actions">
         <Button type="button" variant="ghost" onClick={onCancel}>
           キャンセル
         </Button>
-        <Button type="submit" disabled={saving}>
+        <Button
+          type="submit"
+          disabled={saving}
+          aria-keyshortcuts="Control+Enter Meta+Enter"
+          title="保存（Ctrl + Enter）"
+        >
           {saving ? "保存中…" : "保存"}
         </Button>
       </footer>

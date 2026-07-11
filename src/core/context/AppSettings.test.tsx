@@ -17,8 +17,14 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const TestComponent: React.FC = () => {
-  const { settings, updateSettings, error, saveStatus, shortcutErrors } =
-    useAppSettings();
+  const {
+    settings,
+    updateSettings,
+    error,
+    saveStatus,
+    shortcutErrors,
+    retrySaveSettings,
+  } = useAppSettings();
   if (!settings) return <div>Loading...</div>;
   return (
     <div>
@@ -61,6 +67,9 @@ const TestComponent: React.FC = () => {
         data-testid="btn-showdate"
       >
         Toggle ShowDate
+      </button>
+      <button type="button" onClick={() => void retrySaveSettings()}>
+        Retry Save
       </button>
     </div>
   );
@@ -240,7 +249,7 @@ describe("AppSettingsProvider", () => {
     expect(screen.getByTestId("save-status")).toHaveTextContent("idle");
   });
 
-  it("clears the error status after a short delay", async () => {
+  it("keeps the error status visible until the failed save is resolved", async () => {
     vi.useFakeTimers();
     const mockSettings = createMockSettings();
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
@@ -274,7 +283,47 @@ describe("AppSettingsProvider", () => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByTestId("save-status")).toHaveTextContent("idle");
+    expect(screen.getByTestId("save-status")).toHaveTextContent("error");
+  });
+
+  it("retries the exact failed settings and clears the error on success", async () => {
+    const mockSettings = createMockSettings();
+    let saveAttempts = 0;
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "save_settings") {
+        saveAttempts += 1;
+        if (saveAttempts === 1) throw new Error("temporary write failure");
+        return undefined;
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => Promise.resolve());
+
+    fireEvent.click(screen.getByTestId("btn-theme"));
+    await waitFor(() =>
+      expect(screen.getByTestId("save-status")).toHaveTextContent("error"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry Save" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("save-status")).toHaveTextContent("saved"),
+    );
+    expect(screen.getByTestId("error")).toHaveTextContent("no-error");
+    expect(invoke).toHaveBeenLastCalledWith(
+      "save_settings",
+      expect.objectContaining({
+        settings: expect.objectContaining({ theme: "light" }),
+      }),
+    );
+    expect(saveAttempts).toBe(2);
   });
 
   it("parses registration error and sets shortcut error state", async () => {

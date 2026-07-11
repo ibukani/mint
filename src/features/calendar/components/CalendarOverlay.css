@@ -213,6 +213,12 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.month-calendar__day.is-selected:not(.is-today) {
+  border-color: var(--border-control-focus);
+  background: color-mix(in srgb, var(--surface-control-hover) 78%, transparent);
+  color: var(--color-text-primary);
+}
+
 .month-calendar__day time {
   display: grid;
   place-items: center;
@@ -552,6 +558,17 @@ button.month-calendar__next-event {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+}
+
+.calendar-event-editor__error {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-error);
+  border-radius: var(--radius-sm);
+  background: var(--surface-error);
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
 }
 
 .calendar-event-detail__body {
