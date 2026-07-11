@@ -17,6 +17,7 @@ export const useGameLauncher = () => {
   const scanSequence = useRef(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingRef = useRef(false);
+  const visibleRef = useRef(false);
   const launchingRef = useRef(false);
 
   const scan = useCallback(async () => {
@@ -38,6 +39,7 @@ export const useGameLauncher = () => {
   const close = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
+    visibleRef.current = false;
     setVisible(false);
     setHiding(true);
     const reduceMotion = window.matchMedia?.(
@@ -47,9 +49,13 @@ export const useGameLauncher = () => {
       () => {
         void getCurrentWindow()
           .hide()
+          .catch((error) => {
+            console.error("Failed to hide game launcher window:", error);
+          })
           .finally(() => {
             hideTimer.current = null;
             setHiding(false);
+            closingRef.current = false;
           });
       },
       reduceMotion ? 0 : HIDE_ANIMATION_MS,
@@ -85,6 +91,7 @@ export const useGameLauncher = () => {
         hideTimer.current = null;
       }
       closingRef.current = false;
+      visibleRef.current = true;
       setHiding(false);
       setVisible(true);
       setShowSequence((current) => current + 1);
@@ -93,7 +100,7 @@ export const useGameLauncher = () => {
     const hide = listen("game-launcher-hide-requested", close);
     const currentWindow = getCurrentWindow();
     const focus = currentWindow.onFocusChanged(({ payload }) => {
-      if (!payload && !closingRef.current) close();
+      if (!payload && !closingRef.current && visibleRef.current) close();
     });
     return () => {
       document.body.classList.remove("is-overlay");

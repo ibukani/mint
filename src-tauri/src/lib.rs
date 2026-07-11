@@ -138,7 +138,12 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
+                let label = window.label();
+                if label == "main"
+                    || label == "clock"
+                    || label == "calendar"
+                    || label == "gameLauncher"
+                {
                     api.prevent_close();
                     let _ = window.hide();
                 }
