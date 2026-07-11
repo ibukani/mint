@@ -141,6 +141,12 @@ impl Default for CalendarSettings {
 pub struct GameLauncherSettings {
     pub enabled: bool,
     pub shortcut: String,
+    #[serde(default = "default_game_launcher_color")]
+    pub theme_color: String,
+}
+
+fn default_game_launcher_color() -> String {
+    "#818cf8".to_string()
 }
 
 impl Default for GameLauncherSettings {
@@ -148,6 +154,7 @@ impl Default for GameLauncherSettings {
         Self {
             enabled: true,
             shortcut: "Alt+1".to_string(),
+            theme_color: default_game_launcher_color(),
         }
     }
 }

@@ -36,5 +36,6 @@ export const defaultAppSettings: AppSettings = {
   gameLauncher: {
     enabled: true,
     shortcut: "Alt+1",
+    themeColor: "#818cf8",
   },
 };

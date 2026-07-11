@@ -17,9 +17,17 @@
   --surface-elevated: #171e1c;
   --surface-control: #1a2220;
   --surface-control-hover: #222c29;
-  --surface-accent: rgb(99 216 190 / 12%);
-  --surface-accent-action: rgb(99 216 190 / 16%);
-  --surface-accent-action-hover: rgb(99 216 190 / 24%);
+  --surface-accent: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --surface-accent-action: color-mix(
+    in srgb,
+    var(--color-accent) 16%,
+    transparent
+  );
+  --surface-accent-action-hover: color-mix(
+    in srgb,
+    var(--color-accent) 24%,
+    transparent
+  );
   --surface-error: rgb(255 107 107 / 12%);
   --surface-success: rgb(62 207 142 / 12%);
   --surface-warning: rgb(241 202 120 / 12%);
@@ -29,17 +37,17 @@
   --border-panel: #29332f;
   --border-subtle: #202825;
   --border-control: #35423e;
-  --border-control-focus: #63d8be;
-  --border-accent: rgb(99 216 190 / 42%);
-  --border-action: rgb(99 216 190 / 48%);
-  --border-action-hover: #63d8be;
+  --border-control-focus: var(--color-accent);
+  --border-accent: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --border-action: color-mix(in srgb, var(--color-accent) 48%, transparent);
+  --border-action-hover: var(--color-accent);
   --border-error: rgb(255 107 107 / 45%);
   --border-success: rgb(62 207 142 / 45%);
   --border-warning: rgb(241 202 120 / 45%);
   --border-overlay: rgb(255 255 255 / 10%);
-  --page-accent-top: rgb(89 215 182 / 9%);
+  --page-accent-top: color-mix(in srgb, var(--color-accent) 9%, transparent);
   --page-accent-bottom: rgb(255 173 131 / 6%);
-  --surface-selection: rgb(104 225 194 / 24%);
+  --surface-selection: color-mix(in srgb, var(--color-accent) 24%, transparent);
 }
 
 :root[data-theme="light"] {
@@ -60,9 +68,17 @@
   --surface-elevated: #ffffff;
   --surface-control: #ffffff;
   --surface-control-hover: #edf5f1;
-  --surface-accent: rgb(8 127 107 / 9%);
-  --surface-accent-action: rgb(8 127 107 / 10%);
-  --surface-accent-action-hover: rgb(8 127 107 / 16%);
+  --surface-accent: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --surface-accent-action: color-mix(
+    in srgb,
+    var(--color-accent) 10%,
+    transparent
+  );
+  --surface-accent-action-hover: color-mix(
+    in srgb,
+    var(--color-accent) 16%,
+    transparent
+  );
   --surface-error: rgb(201 55 55 / 9%);
   --surface-success: rgb(22 124 80 / 9%);
   --surface-warning: rgb(150 107 19 / 9%);
@@ -72,15 +88,55 @@
   --border-panel: #d3ded9;
   --border-subtle: #dfe8e3;
   --border-control: #c7d4ce;
-  --border-control-focus: #087f6b;
-  --border-accent: rgb(8 127 107 / 30%);
-  --border-action: rgb(8 127 107 / 42%);
-  --border-action-hover: #087f6b;
+  --border-control-focus: var(--color-accent);
+  --border-accent: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --border-action: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --border-action-hover: var(--color-accent);
   --border-error: rgb(201 55 55 / 35%);
   --border-success: rgb(22 124 80 / 35%);
   --border-warning: rgb(150 107 19 / 35%);
   --border-overlay: rgb(23 32 30 / 12%);
-  --page-accent-top: rgb(8 127 107 / 5%);
+  --page-accent-top: color-mix(in srgb, var(--color-accent) 5%, transparent);
   --page-accent-bottom: rgb(196 93 56 / 3%);
-  --surface-selection: rgb(8 127 107 / 18%);
+  --surface-selection: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.theme-accent-scope {
+  --surface-accent: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --surface-accent-action: color-mix(
+    in srgb,
+    var(--color-accent) 16%,
+    transparent
+  );
+  --surface-accent-action-hover: color-mix(
+    in srgb,
+    var(--color-accent) 24%,
+    transparent
+  );
+  --border-control-focus: var(--color-accent);
+  --border-accent: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --border-action: color-mix(in srgb, var(--color-accent) 48%, transparent);
+  --border-action-hover: var(--color-accent);
+  --page-accent-top: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --surface-selection: color-mix(in srgb, var(--color-accent) 24%, transparent);
+}
+
+[data-theme="light"] .theme-accent-scope {
+  --surface-accent: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --surface-accent-action: color-mix(
+    in srgb,
+    var(--color-accent) 10%,
+    transparent
+  );
+  --surface-accent-action-hover: color-mix(
+    in srgb,
+    var(--color-accent) 16%,
+    transparent
+  );
+  --border-control-focus: var(--color-accent);
+  --border-accent: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --border-action: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --border-action-hover: var(--color-accent);
+  --page-accent-top: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  --surface-selection: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }

@@ -45,6 +45,7 @@ export const GameLauncherOverlay: React.FC = () => {
     scan,
     showSequence,
     startGame,
+    themeColor,
   } = useGameLauncher();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -96,10 +97,11 @@ export const GameLauncherOverlay: React.FC = () => {
   return (
     <OverlayFrame>
       <OverlayCard
-        className={`${animationClass} game-launcher`}
+        className={`${animationClass} game-launcher theme-accent-scope`}
         role="dialog"
         aria-label="ゲームランチャー"
         onKeyDown={handleKeyDown}
+        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <header className="game-launcher__header">
           <div className="game-launcher__title">

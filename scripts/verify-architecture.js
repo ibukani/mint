@@ -682,6 +682,14 @@ const designBoundaryAllowlist = new Map([
     "src/features/calendar/components/CalendarSettings.tsx",
     new Set(["inline-style", "color-literal"]),
   ],
+  [
+    "src/features/game_launcher/components/GameLauncherOverlay.tsx",
+    new Set(["inline-style"]),
+  ],
+  [
+    "src/features/game_launcher/components/GameLauncherSettings.tsx",
+    new Set(["inline-style", "color-literal"]),
+  ],
 ]);
 
 function isDesignBoundaryAllowed(relativeFile, rule) {

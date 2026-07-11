@@ -1,12 +1,15 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import { launchGame, listInstalledGames } from "../api";
 import type { GameScanResult, InstalledGame } from "../types";
 
 const HIDE_ANIMATION_MS = 180;
 
 export const useGameLauncher = () => {
+  const { settings } = useAppSettings();
   const [result, setResult] = useState<GameScanResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,5 +125,8 @@ export const useGameLauncher = () => {
     scan,
     showSequence,
     startGame,
+    themeColor:
+      settings?.gameLauncher.themeColor ??
+      defaultAppSettings.gameLauncher.themeColor,
   };
 };

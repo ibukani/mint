@@ -1,6 +1,7 @@
 export interface GameLauncherSettings {
   enabled: boolean;
   shortcut: string;
+  themeColor: string;
 }
 
 export type GameStore = "steam" | "epic" | "riot";
