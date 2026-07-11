@@ -1,6 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AppSettings } from "../../../core/context/AppSettings";
+import { loadSettings } from "../../../core/settings";
 import {
   buildEventCursor,
   buildEventRange,
@@ -30,7 +29,7 @@ export const useCalendarEvents = (
   useEffect(() => {
     void showSequence;
     let active = true;
-    invoke<AppSettings>("load_settings")
+    loadSettings()
       .then(async (settings) => {
         const connection = await getGoogleCalendarConnection();
         if (!connection.connected) return null;

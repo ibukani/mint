@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type React from "react";
 import {
@@ -12,6 +11,7 @@ import {
 import type { CalendarSettings } from "../../features/calendar/types";
 import type { ClockSettings } from "../../features/clock/types";
 import type { VoiceToTextSettings } from "../../features/v2t/types";
+import { loadSettings, saveSettings } from "../settings";
 
 export interface AppSettings {
   calendar: CalendarSettings;
@@ -68,7 +68,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(true);
     setError(null);
     try {
-      const loaded = await invoke<AppSettings>("load_settings");
+      const loaded = await loadSettings();
       setSettings(loaded);
       settingsRef.current = loaded;
     } catch (err) {
@@ -84,7 +84,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const unlistenPromise = listen("settings-changed", async () => {
       try {
-        const loaded = await invoke<AppSettings>("load_settings");
+        const loaded = await loadSettings();
         setSettings((prev) => {
           if (JSON.stringify(prev) !== JSON.stringify(loaded)) {
             settingsRef.current = loaded;
@@ -135,7 +135,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     async (toSave: AppSettings, seq: number) => {
       setSaveStatus("saving");
       try {
-        await invoke("save_settings", { settings: toSave });
+        await saveSettings(toSave);
         // Only clear errors if this is still the latest save request
         if (sequenceRef.current === seq) {
           failedSaveRef.current = null;

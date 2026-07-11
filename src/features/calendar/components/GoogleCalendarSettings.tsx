@@ -1,60 +1,22 @@
 import { CalendarSync, CheckCircle2, Cloud, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import { Button, Field, Select, Switch } from "../../../design/components";
-import {
-  connectGoogleCalendar,
-  disconnectGoogleCalendar,
-  getGoogleCalendarConnection,
-  listGoogleCalendars,
-  syncGoogleCalendars,
-} from "../googleCalendar";
-import type { GoogleCalendarConnection, GoogleCalendarInfo } from "../types";
+import { useGoogleCalendarSettings } from "../hooks/useGoogleCalendarSettings";
 
 export const GoogleCalendarSettings = () => {
-  const { featureSettings: calendar, handleChange } =
-    useFeatureSettings("calendar");
-  const [connection, setConnection] = useState<GoogleCalendarConnection | null>(
-    null,
-  );
-  const [calendars, setCalendars] = useState<GoogleCalendarInfo[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  const reload = useCallback(async () => {
-    const next = await getGoogleCalendarConnection();
-    setConnection(next);
-    setCalendars(next.connected ? await listGoogleCalendars() : []);
-  }, []);
-
-  useEffect(() => {
-    reload().catch((reason) => setError(String(reason)));
-  }, [reload]);
+  const {
+    calendar,
+    connection,
+    calendars,
+    busy,
+    error,
+    connect,
+    sync,
+    disconnect,
+    toggleCalendar,
+    setDefaultCalendar,
+  } = useGoogleCalendarSettings();
 
   if (!calendar) return null;
-
-  const run = async (action: () => Promise<unknown>) => {
-    setBusy(true);
-    setError("");
-    try {
-      await action();
-      await reload();
-    } catch (reason) {
-      setError(String(reason));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const toggleCalendar = (id: string, checked: boolean) => {
-    const selected = checked
-      ? [...calendar.selectedGoogleCalendarIds, id]
-      : calendar.selectedGoogleCalendarIds.filter((value) => value !== id);
-    handleChange("selectedGoogleCalendarIds", [...new Set(selected)]);
-    if (!checked && calendar.defaultGoogleCalendarId === id) {
-      handleChange("defaultGoogleCalendarId", "");
-    }
-  };
 
   return (
     <section
@@ -86,7 +48,7 @@ export const GoogleCalendarSettings = () => {
               認証情報はOSの安全な領域に保存されます
             </span>
           </div>
-          <Button disabled={busy} onClick={() => run(connectGoogleCalendar)}>
+          <Button disabled={busy} onClick={connect}>
             {busy ? "接続しています…" : "Googleアカウントを接続"}
           </Button>
         </div>
@@ -141,9 +103,7 @@ export const GoogleCalendarSettings = () => {
             <Select
               id="google-calendar-default"
               value={calendar.defaultGoogleCalendarId}
-              onChange={(event) =>
-                handleChange("defaultGoogleCalendarId", event.target.value)
-              }
+              onChange={(event) => setDefaultCalendar(event.target.value)}
             >
               <option value="">選択してください</option>
               {calendars
@@ -160,27 +120,10 @@ export const GoogleCalendarSettings = () => {
             </Select>
           </Field>
           <div className="calendar-google-actions">
-            <Button
-              disabled={busy}
-              onClick={() =>
-                run(() =>
-                  syncGoogleCalendars(calendar.selectedGoogleCalendarIds),
-                )
-              }
-            >
+            <Button disabled={busy} onClick={sync}>
               今すぐ同期
             </Button>
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() =>
-                run(async () => {
-                  await disconnectGoogleCalendar();
-                  handleChange("selectedGoogleCalendarIds", []);
-                  handleChange("defaultGoogleCalendarId", "");
-                })
-              }
-            >
+            <Button variant="ghost" disabled={busy} onClick={disconnect}>
               接続を解除
             </Button>
           </div>
