@@ -166,8 +166,8 @@ describe("CalendarOverlay window coordination", () => {
       height: number;
       width: number;
     };
-    expect(size.width).toBe(436);
-    expect(size.height).toBe(400);
+    expect(size.width).toBe(420);
+    expect(size.height).toBe(384);
   });
 
   it("opens the event editor when quick entry is requested", async () => {
