@@ -13,8 +13,11 @@ export const useGameLauncher = () => {
   const [launchingId, setLaunchingId] = useState<string | null>(null);
   const [visible, setVisible] = useState(true);
   const [hiding, setHiding] = useState(false);
+  const [showSequence, setShowSequence] = useState(0);
   const scanSequence = useRef(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closingRef = useRef(false);
+  const launchingRef = useRef(false);
 
   const scan = useCallback(async () => {
     const sequence = ++scanSequence.current;
@@ -33,7 +36,8 @@ export const useGameLauncher = () => {
   }, []);
 
   const close = useCallback(() => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (closingRef.current) return;
+    closingRef.current = true;
     setVisible(false);
     setHiding(true);
     const reduceMotion = window.matchMedia?.(
@@ -43,7 +47,10 @@ export const useGameLauncher = () => {
       () => {
         void getCurrentWindow()
           .hide()
-          .finally(() => setHiding(false));
+          .finally(() => {
+            hideTimer.current = null;
+            setHiding(false);
+          });
       },
       reduceMotion ? 0 : HIDE_ANIMATION_MS,
     );
@@ -51,6 +58,8 @@ export const useGameLauncher = () => {
 
   const startGame = useCallback(
     async (game: InstalledGame) => {
+      if (launchingRef.current || closingRef.current) return;
+      launchingRef.current = true;
       setLaunchingId(game.id);
       setError(null);
       try {
@@ -59,6 +68,7 @@ export const useGameLauncher = () => {
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : String(reason));
       } finally {
+        launchingRef.current = false;
         setLaunchingId(null);
       }
     },
@@ -70,14 +80,20 @@ export const useGameLauncher = () => {
     document.documentElement.classList.add("is-overlay");
     void scan();
     const shown = listen("game-launcher-shown", () => {
+      if (hideTimer.current) {
+        clearTimeout(hideTimer.current);
+        hideTimer.current = null;
+      }
+      closingRef.current = false;
       setHiding(false);
       setVisible(true);
+      setShowSequence((current) => current + 1);
       void scan();
     });
     const hide = listen("game-launcher-hide-requested", close);
     const currentWindow = getCurrentWindow();
     const focus = currentWindow.onFocusChanged(({ payload }) => {
-      if (!payload) close();
+      if (!payload && !closingRef.current) close();
     });
     return () => {
       document.body.classList.remove("is-overlay");
@@ -97,6 +113,7 @@ export const useGameLauncher = () => {
     loading,
     result,
     scan,
+    showSequence,
     startGame,
   };
 };

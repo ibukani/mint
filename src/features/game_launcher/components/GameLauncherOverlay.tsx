@@ -1,4 +1,3 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { Gamepad2, RefreshCw, Search, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,13 +12,13 @@ const storeLabel: Record<GameStore, string> = {
   riot: "Riot Games",
 };
 
-const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
+export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
   const [failed, setFailed] = useState(false);
   if (game.imagePath && !failed) {
     return (
       <img
         className="game-launcher__artwork"
-        src={convertFileSrc(game.imagePath)}
+        src={game.imagePath}
         alt=""
         onError={() => setFailed(true)}
       />
@@ -44,6 +43,7 @@ export const GameLauncherOverlay: React.FC = () => {
     loading,
     result,
     scan,
+    showSequence,
     startGame,
   } = useGameLauncher();
   const [query, setQuery] = useState("");
@@ -62,15 +62,21 @@ export const GameLauncherOverlay: React.FC = () => {
   }, [query, result]);
 
   useEffect(() => {
+    void showSequence;
     inputRef.current?.focus();
-  }, []);
+  }, [showSequence]);
+  const activeIndex = games.length ? selectedIndex % games.length : 0;
   useEffect(() => {
-    itemRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
+    itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
-  const selected = games[selectedIndex];
+  const selected = games[activeIndex];
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
+    if (event.altKey && event.key === "1") {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    } else if (event.key === "Escape") {
       event.preventDefault();
       close();
     } else if (event.key === "ArrowDown" && games.length) {
@@ -143,8 +149,8 @@ export const GameLauncherOverlay: React.FC = () => {
                   }}
                   type="button"
                   key={`${game.store}:${game.id}`}
-                  className={`game-launcher__item${index === selectedIndex ? " is-selected" : ""}`}
-                  aria-current={index === selectedIndex ? "true" : undefined}
+                  className={`game-launcher__item${index === activeIndex ? " is-selected" : ""}`}
+                  aria-current={index === activeIndex ? "true" : undefined}
                   onMouseEnter={() => setSelectedIndex(index)}
                   onClick={() => void startGame(game)}
                   disabled={launchingId !== null}
@@ -176,7 +182,10 @@ export const GameLauncherOverlay: React.FC = () => {
           <aside className="game-launcher__preview" aria-live="polite">
             {selected ? (
               <>
-                <GameArtwork game={selected} />
+                <GameArtwork
+                  key={`${selected.store}:${selected.id}:${selected.imagePath ?? "fallback"}`}
+                  game={selected}
+                />
                 <span className={`game-launcher__store is-${selected.store}`}>
                   {storeLabel[selected.store]}
                 </span>
