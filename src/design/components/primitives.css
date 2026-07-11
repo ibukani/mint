@@ -349,7 +349,7 @@
   display: inline-block;
   width: 46px;
   height: 26px;
-  flex: 0 0 46px;
+  flex-shrink: 0;
   cursor: pointer;
   user-select: none;
 }
