@@ -26,6 +26,16 @@ const REQUIRED_CORE_DOCS = [
   "docs/adr/001-static-feature-module.md",
 ];
 
+const REQUIRED_REPOSITORY_SKILLS = [
+  "add-overlay-window",
+  "add-tauri-command",
+  "audit-feature",
+  "change-mint-ui",
+  "create-static-feature",
+  "repair-after-review",
+  "update-settings-schema",
+];
+
 const REQUIRED_CI_COMMANDS = [
   "npm run check",
   "npm run test:scaffold",
@@ -172,6 +182,39 @@ if (expectFile(".nvmrc")) {
 
 for (const doc of REQUIRED_CORE_DOCS) {
   expectFile(doc);
+}
+
+for (const skill of REQUIRED_REPOSITORY_SKILLS) {
+  const skillDir = `.agents/skills/${skill}`;
+  const skillPath = `${skillDir}/SKILL.md`;
+  const metadataPath = `${skillDir}/agents/openai.yaml`;
+  if (expectFile(skillPath)) {
+    const skillContent = readText(skillPath);
+    expectContains(skillPath, skillContent, `name: ${skill}`);
+    if (/\bTODO\b|\[TODO/.test(skillContent)) {
+      reportError(`${skillPath} contains unfinished TODO guidance`);
+    } else {
+      reportPass(`${skillPath} contains no unfinished TODO guidance`);
+    }
+  }
+  if (expectFile(metadataPath)) {
+    const metadata = readText(metadataPath);
+    expectContains(metadataPath, metadata, "display_name:");
+    expectContains(metadataPath, metadata, "short_description:");
+    expectContains(metadataPath, metadata, `$${skill}`);
+  }
+}
+
+const skillRoot = path.join(ROOT_DIR, ".agents/skills");
+for (const entry of fs.readdirSync(skillRoot, { withFileTypes: true })) {
+  if (!entry.isDirectory()) continue;
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name)) {
+    reportError(
+      `Skill directory must use kebab-case: .agents/skills/${entry.name}`,
+    );
+  } else {
+    reportPass(`Skill directory uses kebab-case: ${entry.name}`);
+  }
 }
 
 if (expectFile("docs/ai-development.md")) {

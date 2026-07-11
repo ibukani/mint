@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mint Tauri Command追加"
+  short_description: "型安全なTauri IPCとmockを同期して追加する"
+  default_prompt: "Use $add-tauri-command to add a typed Mint Tauri IPC command."

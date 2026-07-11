@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mint Feature監査"
+  short_description: "Featureの設計・型・mock・挙動を証拠ベースで監査する"
+  default_prompt: "Use $audit-feature to audit this Mint feature change for release readiness."

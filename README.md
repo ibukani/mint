@@ -55,7 +55,7 @@ npm run scaffold:feature my_tool MyTool
 npm run check:quick
 ```
 
-詳細なAI向け手順は `docs/ai-development.md`、`docs/ai-quality-rubric.md`、`.agents/skills/create_static_feature/SKILL.md` を参照してください。
+詳細なAI向け手順は `docs/ai-development.md`、`docs/ai-quality-rubric.md`、`.agents/skills/create-static-feature/SKILL.md` を参照してください。
 
 ---
 

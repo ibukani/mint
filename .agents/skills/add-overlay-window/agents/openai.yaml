@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mint Overlay追加"
+  short_description: "Tauri overlayとReact routeを一貫して追加する"
+  default_prompt: "Use $add-overlay-window to add and verify a Mint overlay window."

@@ -128,6 +128,12 @@ export function buildAiContext() {
     ),
     formatSection("Frontend invokes", extractInvokes()),
     formatSection("Rust commands", extractRustCommands()),
+    formatSection(
+      "Repository skills",
+      listDirs(".agents/skills").map(
+        (skill) => `.agents/skills/${skill}/SKILL.md`,
+      ),
+    ),
     formatSection("Core docs", [
       "docs/ai-development.md - mandatory AI development rules",
       "docs/ai-foundation-audit.md - current AI development foundation status",

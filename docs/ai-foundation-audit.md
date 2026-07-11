@@ -29,6 +29,9 @@ No immediate required foundation improvements remain after the current audit. Th
 - `docs/ai-quality-rubric.md` makes completion criteria explicit instead of relying on ad hoc judgment.
 - `scripts/scaffold-feature.js` prints a short summary by default and supports `--verbose` for file-level detail.
 - `rtk` commands remain the preferred way to collect concise command output.
+- Repository workflows are exposed as concise, kebab-case skills under `.agents/skills/`; `npm run ai:context` lists them from the live worktree.
+- `npm run check:ai-foundation` validates required skills, their UI metadata, naming, and unfinished TODO leakage.
+- Legacy self-prompts were removed in favor of discoverable skills to avoid maintaining duplicate instructions.
 
 ## Required Verification
 

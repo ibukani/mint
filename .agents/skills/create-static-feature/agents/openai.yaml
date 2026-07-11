@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mint静的Feature作成"
+  short_description: "Mintの新規Featureを静的構成で安全に作成する"
+  default_prompt: "Use $create-static-feature to scaffold and implement a new Mint feature."

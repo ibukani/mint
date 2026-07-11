@@ -93,7 +93,7 @@ The scaffolder creates the frontend feature module, Rust feature module, AppSett
   node scripts/scaffold-feature.js <feature_name> [PascalComponentName]
   ```
 - 生成されたファイルの詳細ログが必要な場合だけ `--verbose` を付けてください。通常は短いサマリ出力で十分です。
-- 詳しい作成手順や手動登録の詳細は、カスタムSkillの指示書 `.agents/skills/create_static_feature/SKILL.md` を参照してください。
+- 詳しい作成手順は、カスタムSkill `.agents/skills/create-static-feature/SKILL.md` を参照してください。Scaffolder が初期登録を行うため、同じ配線を手作業で重複追加しないでください。
 
 ### 3. 設計整合性の検証 (Verification)
 - コードの追加・変更を行った際は、必ず以下のコマンドを実行して設計構造に整合性エラーがないかを検証してください：
