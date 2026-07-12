@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -143,6 +144,8 @@ pub struct GameLauncherSettings {
     pub shortcut: String,
     #[serde(default = "default_game_launcher_color")]
     pub theme_color: String,
+    pub favorite_game_keys: Vec<String>,
+    pub last_played_at_by_game: HashMap<String, String>,
 }
 
 fn default_game_launcher_color() -> String {
@@ -155,6 +158,8 @@ impl Default for GameLauncherSettings {
             enabled: true,
             shortcut: "Alt+1".to_string(),
             theme_color: default_game_launcher_color(),
+            favorite_game_keys: Vec::new(),
+            last_played_at_by_game: HashMap::new(),
         }
     }
 }
@@ -530,6 +535,8 @@ mod tests {
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up");
         assert!(settings.game_launcher.enabled);
         assert_eq!(settings.game_launcher.shortcut, "Alt+1");
+        assert!(settings.game_launcher.favorite_game_keys.is_empty());
+        assert!(settings.game_launcher.last_played_at_by_game.is_empty());
         assert!(settings
             .active_shortcuts()
             .contains(&("gameLauncher", "Alt+1")));

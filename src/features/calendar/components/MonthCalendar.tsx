@@ -46,11 +46,17 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   );
   const monthLabel = `${viewMonth.getFullYear()}年 ${viewMonth.getMonth() + 1}月`;
 
-  useEffect(() => {
-    if (days.some((day) => day.machineDate === selectedDate)) return;
+  const activeFocusDate = useMemo(() => {
+    if (days.some((day) => day.machineDate === selectedDate)) {
+      return selectedDate;
+    }
+    const todayMachineDate = toMachineDate(today);
+    if (days.some((day) => day.machineDate === todayMachineDate)) {
+      return todayMachineDate;
+    }
     const firstCurrentDay = days.find((day) => day.inCurrentMonth);
-    if (firstCurrentDay) setSelectedDate(firstCurrentDay.machineDate);
-  }, [days, selectedDate]);
+    return firstCurrentDay ? firstCurrentDay.machineDate : selectedDate;
+  }, [days, selectedDate, today]);
 
   useEffect(() => {
     if (!shouldFocusSelectedRef.current) return;
@@ -72,13 +78,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     }
   };
 
-  const selectedDateValue = () => {
-    const [year, month, day] = selectedDate.split("-").map(Number);
+  const activeFocusDateValue = () => {
+    const dateToUse = activeFocusDate || selectedDate;
+    const [year, month, day] = dateToUse.split("-").map(Number);
     return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
   };
 
   const shiftSelectedMonth = (delta: number) => {
-    const current = selectedDateValue();
+    const current = activeFocusDateValue();
     const targetMonth = new Date(
       current.getFullYear(),
       current.getMonth() + delta,
@@ -94,23 +101,8 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   };
 
   const moveMonth = (delta: number) => {
-    const current = selectedDateValue();
     const targetMonth = shiftMonth(viewMonth, delta);
-    const lastDay = new Date(
-      targetMonth.getFullYear(),
-      targetMonth.getMonth() + 1,
-      0,
-    ).getDate();
-    setSelectedDate(
-      toMachineDate(
-        new Date(
-          targetMonth.getFullYear(),
-          targetMonth.getMonth(),
-          Math.min(current.getDate(), lastDay),
-        ),
-      ),
-    );
-    onViewMonthChange(shiftMonth(viewMonth, delta));
+    onViewMonthChange(targetMonth);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -126,7 +118,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
 
     if (isDayButton && event.key in dayDelta) {
       event.preventDefault();
-      const nextDate = selectedDateValue();
+      const nextDate = activeFocusDateValue();
       nextDate.setDate(nextDate.getDate() + (dayDelta[event.key] ?? 0));
       selectAndFocusDate(nextDate);
     } else if (isDayButton && event.key === "PageUp") {
@@ -214,7 +206,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
               className={`month-calendar__day${day.inCurrentMonth ? "" : " is-outside"}${day.isToday ? " is-today" : ""}${day.machineDate === selectedDate ? " is-selected" : ""}`}
               aria-label={`${day.date.getMonth() + 1}月${day.date.getDate()}日${eventLabel}`}
               aria-current={day.isToday ? "date" : undefined}
-              tabIndex={day.machineDate === selectedDate ? 0 : -1}
+              tabIndex={day.machineDate === activeFocusDate ? 0 : -1}
               ref={(element) => {
                 if (element) dayRefs.current.set(day.machineDate, element);
                 else dayRefs.current.delete(day.machineDate);

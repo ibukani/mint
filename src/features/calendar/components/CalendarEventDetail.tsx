@@ -60,7 +60,7 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
         <span className="calendar-screen__header-spacer" aria-hidden="true" />
       </header>
 
-      <div className="calendar-event-detail__body">
+      <div className="calendar-event-detail__body" data-window-drag-block>
         <p className="calendar-event-detail__date">{formatEventDate(event)}</p>
         <h3>{event.title}</h3>
         <p className="calendar-event-detail__time">{formatEventTime(event)}</p>

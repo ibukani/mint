@@ -3,20 +3,29 @@
   color-scheme: dark;
   --color-text-primary: #f4f7f6;
   --color-text-secondary: #c1cac7;
-  --color-text-muted: #909b97;
-  --color-text-subtle: #687570;
+  --color-text-muted: #9aa7a2;
+  --color-text-subtle: #7f8d87;
   --color-placeholder: #596a64;
   --color-accent: #59d7b6;
   --color-accent-strong: #f5a87f;
   --color-error: #ff9b9b;
   --color-success: #70d6a5;
   --color-warning: #f1ca78;
+  --color-info: #7fb4ff;
+  --color-on-danger: #fff;
   --surface-page: #090d0c;
   --surface-root: #0d1211;
   --surface-panel: #121817;
   --surface-elevated: #171e1c;
   --surface-control: #1a2220;
   --surface-control-hover: #222c29;
+  --surface-sidebar: color-mix(
+    in srgb,
+    var(--surface-page) 78%,
+    var(--surface-root)
+  );
+  --surface-titlebar: color-mix(in srgb, var(--surface-page) 92%, transparent);
+  --surface-danger-solid: #d93645;
   --surface-accent: color-mix(in srgb, var(--color-accent) 12%, transparent);
   --surface-accent-action: color-mix(
     in srgb,
@@ -31,6 +40,7 @@
   --surface-error: rgb(255 107 107 / 12%);
   --surface-success: rgb(62 207 142 / 12%);
   --surface-warning: rgb(241 202 120 / 12%);
+  --surface-info: rgb(127 180 255 / 12%);
   --surface-overlay: rgb(12 16 15 / 94%);
   --surface-titlebar-btn-hover: rgb(255 255 255 / 6%);
   --surface-titlebar-btn-active: rgb(255 255 255 / 10%);
@@ -44,6 +54,7 @@
   --border-error: rgb(255 107 107 / 45%);
   --border-success: rgb(62 207 142 / 45%);
   --border-warning: rgb(241 202 120 / 45%);
+  --border-info: rgb(127 180 255 / 45%);
   --border-overlay: rgb(255 255 255 / 10%);
   --page-accent-top: color-mix(in srgb, var(--color-accent) 9%, transparent);
   --page-accent-bottom: rgb(255 173 131 / 6%);
@@ -54,20 +65,29 @@
   color-scheme: light;
   --color-text-primary: #17201e;
   --color-text-secondary: #42534d;
-  --color-text-muted: #687a73;
-  --color-text-subtle: #75867f;
+  --color-text-muted: #52665d;
+  --color-text-subtle: #60746b;
   --color-placeholder: #98a39f;
   --color-accent: #087f6b;
   --color-accent-strong: #c45d38;
   --color-error: #c93737;
   --color-success: #167c50;
   --color-warning: #966b13;
+  --color-info: #2e6fbd;
+  --color-on-danger: #fff;
   --surface-page: #e7efeb;
   --surface-root: #f1f6f3;
   --surface-panel: #f8fbf9;
   --surface-elevated: #ffffff;
   --surface-control: #ffffff;
   --surface-control-hover: #edf5f1;
+  --surface-sidebar: color-mix(
+    in srgb,
+    var(--surface-page) 76%,
+    var(--surface-root)
+  );
+  --surface-titlebar: color-mix(in srgb, var(--surface-page) 92%, transparent);
+  --surface-danger-solid: #c93737;
   --surface-accent: color-mix(in srgb, var(--color-accent) 9%, transparent);
   --surface-accent-action: color-mix(
     in srgb,
@@ -82,6 +102,7 @@
   --surface-error: rgb(201 55 55 / 9%);
   --surface-success: rgb(22 124 80 / 9%);
   --surface-warning: rgb(150 107 19 / 9%);
+  --surface-info: rgb(46 111 189 / 9%);
   --surface-overlay: rgb(250 252 251 / 96%);
   --surface-titlebar-btn-hover: rgb(23 32 30 / 5%);
   --surface-titlebar-btn-active: rgb(23 32 30 / 9%);
@@ -95,6 +116,7 @@
   --border-error: rgb(201 55 55 / 35%);
   --border-success: rgb(22 124 80 / 35%);
   --border-warning: rgb(150 107 19 / 35%);
+  --border-info: rgb(46 111 189 / 35%);
   --border-overlay: rgb(23 32 30 / 12%);
   --page-accent-top: color-mix(in srgb, var(--color-accent) 5%, transparent);
   --page-accent-bottom: rgb(196 93 56 / 3%);

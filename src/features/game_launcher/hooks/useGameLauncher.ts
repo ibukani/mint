@@ -3,17 +3,18 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
-import { launchGame, listInstalledGames } from "../api";
-import type { GameScanResult, InstalledGame } from "../types";
+import { launchGame, listInstalledGames, openGameStorePage } from "../api";
+import { type GameScanResult, gameKey, type InstalledGame } from "../types";
 
 const HIDE_ANIMATION_MS = 180;
 
 export const useGameLauncher = () => {
-  const { settings } = useAppSettings();
+  const { settings, updateSettings } = useAppSettings();
   const [result, setResult] = useState<GameScanResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [launchingId, setLaunchingId] = useState<string | null>(null);
+  const [openingStoreId, setOpeningStoreId] = useState<string | null>(null);
   const [visible, setVisible] = useState(true);
   const [hiding, setHiding] = useState(false);
   const [showSequence, setShowSequence] = useState(0);
@@ -73,6 +74,18 @@ export const useGameLauncher = () => {
       setError(null);
       try {
         await launchGame({ id: game.id, store: game.store });
+        const playedAt = new Date().toISOString();
+        const key = gameKey(game);
+        updateSettings((previous) => ({
+          ...previous,
+          gameLauncher: {
+            ...previous.gameLauncher,
+            lastPlayedAtByGame: {
+              ...previous.gameLauncher.lastPlayedAtByGame,
+              [key]: playedAt,
+            },
+          },
+        }));
         close();
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : String(reason));
@@ -81,7 +94,36 @@ export const useGameLauncher = () => {
         setLaunchingId(null);
       }
     },
-    [close],
+    [close, updateSettings],
+  );
+
+  const openStorePage = useCallback(async (game: InstalledGame) => {
+    setOpeningStoreId(gameKey(game));
+    setError(null);
+    try {
+      await openGameStorePage({ id: game.id, store: game.store });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setOpeningStoreId(null);
+    }
+  }, []);
+
+  const toggleFavorite = useCallback(
+    (game: InstalledGame) => {
+      const key = gameKey(game);
+      updateSettings((previous) => {
+        const favorites = previous.gameLauncher.favoriteGameKeys;
+        const favoriteGameKeys = favorites.includes(key)
+          ? favorites.filter((favorite) => favorite !== key)
+          : [...favorites, key];
+        return {
+          ...previous,
+          gameLauncher: { ...previous.gameLauncher, favoriteGameKeys },
+        };
+      });
+    },
+    [updateSettings],
   );
 
   useEffect(() => {
@@ -120,11 +162,20 @@ export const useGameLauncher = () => {
     close,
     error,
     launchingId,
+    openingStoreId,
     loading,
     result,
     scan,
     showSequence,
     startGame,
+    openStorePage,
+    toggleFavorite,
+    favoriteGameKeys:
+      settings?.gameLauncher.favoriteGameKeys ??
+      defaultAppSettings.gameLauncher.favoriteGameKeys,
+    lastPlayedAtByGame:
+      settings?.gameLauncher.lastPlayedAtByGame ??
+      defaultAppSettings.gameLauncher.lastPlayedAtByGame,
     themeColor:
       settings?.gameLauncher.themeColor ??
       defaultAppSettings.gameLauncher.themeColor,

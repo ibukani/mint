@@ -54,7 +54,11 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
       </button>
     </header>
 
-    <div className="calendar-day-agenda__list" aria-live="polite">
+    <div
+      className="calendar-day-agenda__list"
+      aria-live="polite"
+      data-window-drag-block
+    >
       {loading && <p className="calendar-screen__status">読み込み中…</p>}
       {!loading && error && (
         <p className="calendar-screen__status is-error">{error}</p>

@@ -64,7 +64,9 @@ describe("UpdaterSettings", () => {
       await screen.findByText("新しいバージョンがあります"),
     ).toBeInTheDocument();
     expect(screen.getByText("現在 v0.1.0")).toBeInTheDocument();
-    expect(screen.getAllByText("v0.2.0")).toHaveLength(2);
+    const versionLabels = screen.getAllByText("v0.2.0");
+    expect(versionLabels).toHaveLength(2);
+    expect(versionLabels[0]).toHaveClass("design-status-badge--info");
     expect(
       screen.getByRole("heading", { name: "リリースノート" }),
     ).toBeInTheDocument();

@@ -23,6 +23,7 @@ interface CalendarEventEditorProps {
   event?: CalendarEvent;
   template?: CalendarEvent;
   initialDate?: string;
+  showBackButton?: boolean;
   onCancel: () => void;
   onDirtyChange: (dirty: boolean) => void;
   onSaved: (event: CalendarEvent) => void;
@@ -39,6 +40,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
   event,
   template,
   initialDate,
+  showBackButton = false,
   onCancel,
   onDirtyChange,
   onSaved,
@@ -129,19 +131,23 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
       onKeyDown={handleKeyDown}
     >
       <header className="calendar-screen__header">
-        <button
-          type="button"
-          className="calendar-icon-button"
-          aria-label="戻る"
-          onClick={onCancel}
-        >
-          <ArrowLeft size={18} aria-hidden="true" />
-        </button>
+        {showBackButton ? (
+          <button
+            type="button"
+            className="calendar-icon-button"
+            aria-label="戻る"
+            onClick={onCancel}
+          >
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+        ) : (
+          <span className="calendar-screen__header-spacer" aria-hidden="true" />
+        )}
         <h2>{event ? "予定を編集" : template ? "予定を複製" : "予定を追加"}</h2>
         <span className="calendar-screen__header-spacer" aria-hidden="true" />
       </header>
 
-      <div className="calendar-event-editor__fields">
+      <div className="calendar-event-editor__fields" data-window-drag-block>
         <Field
           id="calendar-event-title"
           label="タイトル"

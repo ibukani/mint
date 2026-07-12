@@ -22,7 +22,9 @@ export const FeatureSettingsHeader: React.FC<FeatureSettingsHeaderProps> = ({
   ariaLabel = "この機能を有効にする (Enable Feature)",
 }) => {
   return (
-    <div className="feature-settings-header">
+    <div
+      className={`feature-settings-header ${enabled ? "is-enabled" : "is-disabled"}`}
+    >
       <div className="feature-settings-state">
         <Switch
           id={switchId}
@@ -41,6 +43,8 @@ export const FeatureSettingsHeader: React.FC<FeatureSettingsHeaderProps> = ({
         variant="ghost"
         className="feature-settings-header__reset"
         onClick={onReset}
+        aria-label="デフォルトに戻す"
+        title="デフォルトに戻す"
       >
         <RotateCcw size={15} aria-hidden="true" />
         デフォルトに戻す

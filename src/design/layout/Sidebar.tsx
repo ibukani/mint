@@ -9,14 +9,61 @@ export interface SidebarTab<TTabId extends string = string> {
   icon?: React.ReactNode;
 }
 
+type SidebarStatusTone = "neutral" | "pending" | "success" | "error";
+
 interface SidebarProps<TTabId extends string> {
   title: string;
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
   onTabChange: (tabId: TTabId) => void;
   statusLabel?: string;
-  statusTone?: "neutral" | "pending" | "success" | "error";
+  statusTone?: SidebarStatusTone;
 }
+
+const NAVIGATION_SCROLL_PADDING = 12;
+
+const statusTitles: Record<SidebarStatusTone, string> = {
+  neutral: "自動保存",
+  pending: "保存待ち",
+  success: "保存済み",
+  error: "保存エラー",
+};
+
+const revealActiveTab = (activeTabButton: HTMLButtonElement) => {
+  const navigation = activeTabButton.parentElement;
+  if (
+    !navigation ||
+    navigation.clientWidth === 0 ||
+    navigation.scrollWidth <= navigation.clientWidth
+  ) {
+    return;
+  }
+
+  const tabLeft = activeTabButton.offsetLeft;
+  const tabRight = tabLeft + activeTabButton.offsetWidth;
+  const visibleLeft = navigation.scrollLeft;
+  const visibleRight = visibleLeft + navigation.clientWidth;
+  const isOutsideVisibleArea =
+    tabLeft < visibleLeft + NAVIGATION_SCROLL_PADDING ||
+    tabRight > visibleRight - NAVIGATION_SCROLL_PADDING;
+  if (!isOutsideVisibleArea) return;
+
+  const maxScrollLeft = navigation.scrollWidth - navigation.clientWidth;
+  const centeredScrollLeft =
+    tabLeft + activeTabButton.offsetWidth / 2 - navigation.clientWidth / 2;
+  const nextScrollLeft = Math.min(
+    maxScrollLeft,
+    Math.max(0, centeredScrollLeft),
+  );
+
+  if (nextScrollLeft === visibleLeft) return;
+
+  if (typeof navigation.scrollTo === "function") {
+    navigation.scrollTo({ left: nextScrollLeft, behavior: "smooth" });
+  } else {
+    navigation.scrollLeft = nextScrollLeft;
+  }
+};
 
 export const Sidebar = <TTabId extends string>({
   title,
@@ -31,21 +78,7 @@ export const Sidebar = <TTabId extends string>({
   // biome-ignore lint/correctness/useExhaustiveDependencies: activeTab changes which button receives the ref.
   useEffect(() => {
     const activeTabButton = activeTabRef.current;
-    if (
-      !activeTabButton?.parentElement ||
-      (activeTabButton.parentElement.clientWidth > 0 &&
-        activeTabButton.parentElement.scrollWidth <=
-          activeTabButton.parentElement.clientWidth) ||
-      typeof activeTabButton.scrollIntoView !== "function"
-    ) {
-      return;
-    }
-
-    activeTabButton.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
+    if (activeTabButton) revealActiveTab(activeTabButton);
   }, [activeTab]);
 
   return (
@@ -97,12 +130,18 @@ export const Sidebar = <TTabId extends string>({
           </button>
         ))}
       </div>
-      <div className="app-sidebar__footer">
+      <div
+        className="app-sidebar__footer"
+        aria-live={statusTone === "neutral" ? undefined : "polite"}
+      >
         <span
           className={`app-sidebar__status-dot app-sidebar__status-dot--${statusTone}`}
           aria-hidden="true"
         />
-        <span>{statusLabel}</span>
+        <span className="app-sidebar__footer-copy">
+          <strong>{statusTitles[statusTone]}</strong>
+          <span>{statusLabel}</span>
+        </span>
       </div>
     </nav>
   );

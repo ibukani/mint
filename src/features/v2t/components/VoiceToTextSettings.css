@@ -51,7 +51,7 @@
   position: sticky;
   top: 0;
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-panel);
   border-radius: var(--radius-lg);
   background:
     linear-gradient(
@@ -59,13 +59,22 @@
       color-mix(in srgb, var(--surface-elevated) 68%, transparent),
       transparent 150%
     ),
-    var(--surface-root);
+    color-mix(in srgb, var(--surface-root) 88%, var(--surface-panel));
   box-shadow: var(--shadow-card);
+}
+
+.v2t-workbench:focus-within {
+  border-color: color-mix(
+    in srgb,
+    var(--border-accent) 72%,
+    var(--border-panel)
+  );
+  box-shadow: var(--shadow-card-raised);
 }
 
 .v2t-workbench__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
@@ -74,7 +83,7 @@
 
 .v2t-workbench__kicker {
   color: var(--color-accent);
-  font-size: 0.68rem;
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -91,8 +100,19 @@
   border: 1px solid var(--border-control);
   border-radius: 999px;
   color: var(--color-text-subtle);
-  font-size: 0.68rem;
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.v2t-readiness::before {
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+  opacity: 0.8;
 }
 
 .v2t-readiness.is-ready {
@@ -103,7 +123,7 @@
 
 .v2t-workbench__body {
   display: flex;
-  min-height: 360px;
+  min-height: 380px;
   flex-direction: column;
   gap: var(--space-5);
   padding: var(--space-5);
@@ -145,7 +165,7 @@
 
   .v2t-workbench {
     position: static;
-    grid-row: 1;
+    grid-row: 2;
   }
 }
 
@@ -158,19 +178,6 @@
     min-height: 320px;
     padding: var(--space-4);
   }
-}
-
-.v2t-workbench {
-  border-color: var(--border-panel);
-  box-shadow: var(--shadow-card);
-}
-
-.v2t-workbench {
-  background: color-mix(in srgb, var(--surface-root) 88%, var(--surface-panel));
-}
-
-.v2t-workbench__body {
-  min-height: 380px;
 }
 
 .status-toast-label {
@@ -288,14 +295,6 @@
 
 .v2t-setup-step.is-current .v2t-setup-step__copy strong {
   color: var(--color-accent);
-}
-
-.v2t-workbench__header {
-  align-items: center;
-}
-
-.v2t-readiness {
-  white-space: nowrap;
 }
 
 .v2t-transcribe-button:disabled {

@@ -37,5 +37,7 @@ export const defaultAppSettings: AppSettings = {
     enabled: true,
     shortcut: "Alt+1",
     themeColor: "#818cf8",
+    favoriteGameKeys: [],
+    lastPlayedAtByGame: {},
   },
 };

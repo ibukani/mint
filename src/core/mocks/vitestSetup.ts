@@ -39,6 +39,12 @@ mockIPC(async (cmd, args) => {
       const cursor = typedArgs?.cursor as CalendarEventCursor | undefined;
       return cursor ? mockGetNextCalendarEvent(cursor) : null;
     }
+    case "open_calendar_editor_window": {
+      return;
+    }
+    case "get_calendar_editor_payload": {
+      return null;
+    }
     case "create_calendar_event": {
       const input = typedArgs?.input as CalendarEventInput | undefined;
       if (!input) throw new Error("Calendar event input is required.");
@@ -63,13 +69,16 @@ mockIPC(async (cmd, args) => {
             id: "730",
             title: "Counter-Strike 2",
             store: "steam",
-            imagePath: null,
+            imagePath:
+              "https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg",
+            fallbackImagePath: null,
           },
           {
             id: "valorant",
             title: "VALORANT",
             store: "riot",
             imagePath: null,
+            fallbackImagePath: null,
           },
         ],
         sources: [
@@ -79,6 +88,7 @@ mockIPC(async (cmd, args) => {
         ],
       };
     case "launch_game":
+    case "open_game_store_page":
       return;
     case "get_google_calendar_connection":
       return {

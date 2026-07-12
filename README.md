@@ -13,6 +13,7 @@
 ### 現在の機能一覧
 - **時計オーバーレイ (Clock Overlay)**: **implemented**。ショートカットキーでのトレイ表示、自動非表示、フォントサイズ変更など。
 - **カレンダー (Calendar)**: **implemented**。ローカル予定の管理とGoogle Calendarの複数予定表・双方向同期に対応。
+- **ゲームランチャー (Game Launcher)**: **implemented**。インストールされているゲームの取得と起動に対応。
 - **音声入力 (Voice to Text)**: **placeholder**。設定UIやキー保存はありますが、録音・文字起こしの実処理は未実装です。
 
 ## 主な機能（開発基盤）

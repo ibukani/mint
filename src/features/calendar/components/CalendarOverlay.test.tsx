@@ -178,10 +178,17 @@ describe("CalendarOverlay window coordination", () => {
       mocks.listeners.get("calendar-create-requested")?.({});
     });
 
-    expect(
-      screen.getByRole("heading", { name: "予定を追加" }),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("タイトル")).toHaveFocus();
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.invoke).toHaveBeenCalledWith("open_calendar_editor_window", {
+      payload: expect.objectContaining({
+        mode: "create",
+      }),
+    });
   });
 
   it("creates an event for the open day with the N shortcut", async () => {
@@ -194,10 +201,18 @@ describe("CalendarOverlay window coordination", () => {
     fireEvent.click(screen.getByRole("button", { name: "7月11日" }));
     fireEvent.keyDown(window, { key: "n" });
 
-    expect(
-      screen.getByRole("heading", { name: "予定を追加" }),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("日付")).toHaveValue("2026-07-11");
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.invoke).toHaveBeenCalledWith("open_calendar_editor_window", {
+      payload: {
+        mode: "create",
+        date: "2026-07-11",
+      },
+    });
   });
 
   it("opens a reusable copy from event detail with the D shortcut", async () => {
@@ -216,9 +231,19 @@ describe("CalendarOverlay window coordination", () => {
     fireEvent.click(screen.getByRole("button", { name: /設計レビュー/ }));
     fireEvent.keyDown(window, { key: "d" });
 
-    expect(
-      screen.getByRole("heading", { name: "予定を複製" }),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("タイトル")).toHaveValue("設計レビュー");
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.invoke).toHaveBeenCalledWith("open_calendar_editor_window", {
+      payload: expect.objectContaining({
+        mode: "duplicate",
+        template: expect.objectContaining({
+          title: "設計レビュー",
+        }),
+      }),
+    });
   });
 });
