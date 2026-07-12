@@ -21,11 +21,11 @@ import { AppShell } from "./design/layout";
 import { syncGoogleCalendars } from "./features/calendar/googleCalendar";
 
 const saveSidebarLabels: Record<SaveStatus, string> = {
-  idle: "設定は自動保存されます",
+  idle: "変更時に自動保存",
   pending: "変更を保存待ち",
-  saving: "変更を保存中",
-  saved: "変更を保存しました",
-  error: "保存に失敗しました",
+  saving: "保存中",
+  saved: "最新の状態です",
+  error: "再試行が必要です",
 };
 
 const saveSidebarTones: Record<
@@ -51,6 +51,7 @@ const AppContent: React.FC = () => {
   } = useAppSettings();
   const { label, activeTab, setActiveTab } = useSettingsWindow(settings?.theme);
   const startupSyncStarted = useRef(false);
+  const initialActiveTab = useRef(activeTab);
 
   useEffect(() => {
     if (
@@ -113,7 +114,10 @@ const AppContent: React.FC = () => {
           ) : (
             <Suspense fallback={<AppLoading compact />}>
               <ActiveTabComponent />
-              <AutoFocusTrigger key={activeTab} />
+              <AutoFocusTrigger
+                key={activeTab}
+                enabled={activeTab !== initialActiveTab.current}
+              />
             </Suspense>
           )}
         </AppShell>

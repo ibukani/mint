@@ -25,4 +25,19 @@ describe("AutoFocusTrigger", () => {
     });
     expect(screen.getByLabelText("下部の設定項目")).not.toHaveFocus();
   });
+
+  it("can leave the initial focus for the application skip link", async () => {
+    render(
+      <main className="app-content">
+        <SettingsSection title="一般設定">
+          <span />
+        </SettingsSection>
+        <AutoFocusTrigger enabled={false} />
+      </main>,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(screen.getByRole("heading", { name: "一般設定" })).not.toHaveFocus();
+  });
 });

@@ -45,6 +45,16 @@
   box-shadow: var(--shadow-card);
 }
 
+.clock-control-group:focus-within,
+.clock-preview-panel:focus-within {
+  border-color: color-mix(
+    in srgb,
+    var(--border-accent) 72%,
+    var(--border-panel)
+  );
+  box-shadow: var(--shadow-card-raised);
+}
+
 .clock-control-group__heading {
   display: flex;
   align-items: flex-start;
@@ -249,7 +259,7 @@
 
   .clock-preview-panel {
     position: static;
-    grid-row: 1;
+    grid-row: 2;
   }
 }
 

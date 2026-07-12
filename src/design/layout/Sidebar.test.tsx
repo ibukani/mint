@@ -7,20 +7,62 @@ describe("Sidebar", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps the active tab reachable in a horizontal navigation", () => {
-    const scrollIntoView = vi.fn();
-    const originalDescriptor = Object.getOwnPropertyDescriptor(
+  it("keeps the active tab reachable without scrolling the page", () => {
+    const scrollTo = vi.fn();
+    const originalClientWidth = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
-      "scrollIntoView",
+      "clientWidth",
+    );
+    const originalScrollWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollWidth",
+    );
+    const originalScrollTo = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollTo",
+    );
+    const originalOffsetLeft = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "offsetLeft",
+    );
+    const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "offsetWidth",
     );
 
     try {
-      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", {
         configurable: true,
-        value: scrollIntoView,
+        get() {
+          return this.classList.contains("app-sidebar__navigation") ? 100 : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+        configurable: true,
+        get() {
+          return this.classList.contains("app-sidebar__navigation") ? 300 : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+        configurable: true,
+        value: scrollTo,
+      });
+      Object.defineProperty(HTMLElement.prototype, "offsetLeft", {
+        configurable: true,
+        get() {
+          return this.classList.contains("app-sidebar__button--active")
+            ? 220
+            : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+        configurable: true,
+        get() {
+          return this.classList.contains("app-sidebar__button") ? 80 : 0;
+        },
       });
 
-      render(
+      const { container } = render(
         <Sidebar
           title="mint"
           tabs={[
@@ -33,20 +75,25 @@ describe("Sidebar", () => {
         />,
       );
 
-      expect(scrollIntoView).toHaveBeenCalledWith({
+      const navigation = container.querySelector(".app-sidebar__navigation");
+      if (!navigation) throw new Error("navigation is missing");
+      expect(scrollTo).toHaveBeenCalledWith({
+        left: 200,
         behavior: "smooth",
-        block: "nearest",
-        inline: "center",
       });
     } finally {
-      if (originalDescriptor) {
-        Object.defineProperty(
-          HTMLElement.prototype,
-          "scrollIntoView",
-          originalDescriptor,
-        );
-      } else {
-        Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+      for (const [property, descriptor] of [
+        ["clientWidth", originalClientWidth],
+        ["scrollWidth", originalScrollWidth],
+        ["scrollTo", originalScrollTo],
+        ["offsetLeft", originalOffsetLeft],
+        ["offsetWidth", originalOffsetWidth],
+      ] as const) {
+        if (descriptor) {
+          Object.defineProperty(HTMLElement.prototype, property, descriptor);
+        } else {
+          Reflect.deleteProperty(HTMLElement.prototype, property);
+        }
       }
     }
   });
@@ -63,6 +110,7 @@ describe("Sidebar", () => {
       />,
     );
 
+    expect(screen.getByText("保存エラー")).toBeInTheDocument();
     expect(screen.getByText("保存に失敗しました")).toBeInTheDocument();
     expect(
       container.querySelector(".app-sidebar__status-dot--error"),

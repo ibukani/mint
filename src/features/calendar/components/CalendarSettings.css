@@ -165,9 +165,13 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 980px) {
   .calendar-google-onboarding {
     grid-template-columns: 1fr;
+  }
+
+  .calendar-google-onboarding__visual {
+    justify-content: center;
   }
 
   .calendar-google-onboarding .design-button {
@@ -201,6 +205,18 @@
 
 .calendar-google-row:hover {
   background: var(--surface-control-hover);
+}
+
+.calendar-google-row:has(.design-switch__input:checked) {
+  background: var(--surface-accent);
+}
+
+.calendar-google-row:has(.design-switch__input:checked):hover {
+  background: var(--surface-accent-action);
+}
+
+.calendar-google-row:has(.design-switch__input:focus-visible) {
+  box-shadow: inset 0 0 0 1px var(--border-control-focus);
 }
 
 .calendar-google-row__color {

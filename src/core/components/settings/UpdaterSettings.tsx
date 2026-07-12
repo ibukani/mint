@@ -80,7 +80,7 @@ export const UpdaterSettings: React.FC = () => {
           )}
           <span>{statusLabel}</span>
           {status === "available" && update && (
-            <StatusBadge tone="available">v{update.version}</StatusBadge>
+            <StatusBadge tone="info">v{update.version}</StatusBadge>
           )}
         </div>
 

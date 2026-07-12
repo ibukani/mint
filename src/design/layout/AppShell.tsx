@@ -29,6 +29,9 @@ export const AppShell = <TTabId extends string>({
   const windowDragHandlers = useWindowDrag();
   return (
     <Panel className="app-shell" {...windowDragHandlers}>
+      <a className="app-skip-link" href="#main-content">
+        メインコンテンツへ移動
+      </a>
       <TitleBar title={title} contextLabel={contextLabel} />
       <div className="app-shell__body">
         <Sidebar

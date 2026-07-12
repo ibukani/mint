@@ -1,8 +1,16 @@
 import type React from "react";
 import { useEffect } from "react";
 
-export const AutoFocusTrigger: React.FC = () => {
+interface AutoFocusTriggerProps {
+  enabled?: boolean;
+}
+
+export const AutoFocusTrigger: React.FC<AutoFocusTriggerProps> = ({
+  enabled = true,
+}) => {
   useEffect(() => {
+    if (!enabled) return undefined;
+
     const timer = setTimeout(() => {
       const content = document.querySelector<HTMLElement>(".app-content");
       const title = content?.querySelector<HTMLElement>(
@@ -14,7 +22,7 @@ export const AutoFocusTrigger: React.FC = () => {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [enabled]);
 
   return null;
 };
