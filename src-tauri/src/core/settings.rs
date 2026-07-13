@@ -285,6 +285,7 @@ impl AppSettings {
 pub enum SettingsError {
     DuplicateShortcut { features: Vec<String> },
     RegistrationFailed { feature: String, message: String },
+    AutostartError { message: String },
     IoError { message: String },
 }
 
@@ -304,6 +305,43 @@ fn get_config_path(app: &AppHandle) -> Result<PathBuf, String> {
         fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     }
     Ok(path.join("settings.json"))
+}
+
+fn should_enable_autostart(requested: bool, debug_build: bool) -> bool {
+    requested && !debug_build
+}
+
+/// Synchronize the OS auto-start entry with the saved preference.
+///
+/// A development Tauri binary loads its UI from `devUrl` (`localhost:1420`).
+/// Registering that binary in Windows startup would launch it after reboot
+/// without the Vite server and display a connection-refused page. Development
+/// builds therefore always remove the entry, which also cleans up entries
+/// created by older development sessions.
+pub fn sync_autostart(app: &AppHandle, requested: bool) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+
+    let desired_state = should_enable_autostart(requested, cfg!(debug_assertions));
+    if desired_state {
+        // Always write the current executable path. This replaces a stale
+        // development executable when the user first launches a release build.
+        return app
+            .autolaunch()
+            .enable()
+            .map_err(|error| format!("自動起動設定の更新に失敗しました: {error}"));
+    }
+
+    let current_state = app
+        .autolaunch()
+        .is_enabled()
+        .map_err(|error| format!("自動起動設定の状態確認に失敗しました: {error}"))?;
+    if !current_state {
+        return Ok(());
+    }
+
+    app.autolaunch()
+        .disable()
+        .map_err(|error| format!("自動起動設定の更新に失敗しました: {error}"))
 }
 
 /// Internal function for loading settings (used by setup and command).
@@ -363,6 +401,9 @@ pub fn save_settings(
         }
         .to_string());
     }
+
+    sync_autostart(&app, settings.autostart)
+        .map_err(|message| SettingsError::AutostartError { message }.to_string())?;
 
     let old_settings = load_settings_internal(&app).ok();
 
@@ -432,14 +473,6 @@ pub fn save_settings(
         }
         .to_string()
     })?;
-
-    // Sync autostart setting
-    use tauri_plugin_autostart::ManagerExt;
-    if settings.autostart {
-        let _ = app.autolaunch().enable();
-    } else {
-        let _ = app.autolaunch().disable();
-    }
 
     // Update the in-memory cache so subsequent reads are instant
     *state.0.lock().unwrap() = Some(settings.clone());
@@ -561,5 +594,13 @@ mod tests {
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
         assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
+    }
+
+    #[test]
+    fn development_builds_never_enable_autostart() {
+        assert!(!should_enable_autostart(true, true));
+        assert!(!should_enable_autostart(false, true));
+        assert!(should_enable_autostart(true, false));
+        assert!(!should_enable_autostart(false, false));
     }
 }

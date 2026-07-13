@@ -109,6 +109,12 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 match core::settings::load_settings_internal(&handle) {
                     Ok(settings) => {
+                        if let Err(error) =
+                            core::settings::sync_autostart(&handle, settings.autostart)
+                        {
+                            eprintln!("Failed to synchronize autostart setting: {}", error);
+                        }
+
                         // Pre-populate the in-memory cache
                         {
                             let state = handle.state::<AppSettingsState>();
