@@ -12,6 +12,10 @@ export const requiresImmediateSettingsSave = (
   previous.autostart !== next.autostart ||
   previous.theme !== next.theme ||
   previous.settingsShortcut !== next.settingsShortcut ||
+  previous.fileShelf.enabled !== next.fileShelf.enabled ||
+  previous.fileShelf.shortcut !== next.fileShelf.shortcut ||
+  previous.fileShelf.edge !== next.fileShelf.edge ||
+  previous.fileShelf.edgeHandleEnabled !== next.fileShelf.edgeHandleEnabled ||
   previous.clock.enabled !== next.clock.enabled ||
   previous.clock.shortcut !== next.clock.shortcut ||
   previous.calendar.enabled !== next.calendar.enabled ||

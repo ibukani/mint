@@ -7,6 +7,7 @@ const LEGACY_DUPLICATE_FEATURES = [
   "calendarCreateEvent",
   "gameLauncher",
   "quickCapture",
+  "fileShelf",
   "voiceToText",
 ] as const;
 
@@ -17,6 +18,7 @@ const LEGACY_FEATURE_MATCHERS = [
   { feature: "calendar", terms: ["カレンダー"] },
   { feature: "gameLauncher", terms: ["ゲームランチャー"] },
   { feature: "quickCapture", terms: ["クイックキャプチャー"] },
+  { feature: "fileShelf", terms: ["ファイルシェル"] },
   { feature: "settings", terms: ["設定画面", "設定ショートカット"] },
 ] as const;
 

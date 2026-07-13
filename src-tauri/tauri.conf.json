@@ -81,6 +81,20 @@
         "focusable": true
       },
       {
+        "label": "fileShelf",
+        "title": "File Shelf",
+        "width": 32,
+        "height": 96,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focusable": true
+      },
+      {
         "label": "calendarEditor",
         "title": "Calendar Event Editor",
         "width": 420,

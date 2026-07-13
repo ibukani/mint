@@ -2,6 +2,13 @@ import { defaultAppSettings } from "../defaultSettings";
 import type { AppSettings } from "../settingsModel";
 
 const defaultMockSettings: AppSettings = {
+  fileShelf: {
+    enabled: defaultAppSettings.fileShelf.enabled,
+    shortcut: defaultAppSettings.fileShelf.shortcut,
+    edge: defaultAppSettings.fileShelf.edge,
+    edgeHandleEnabled: defaultAppSettings.fileShelf.edgeHandleEnabled,
+  },
+
   quickCapture: {
     enabled: defaultAppSettings.quickCapture.enabled,
     shortcut: defaultAppSettings.quickCapture.shortcut,

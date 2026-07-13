@@ -42,6 +42,7 @@ describe("parseShortcutErrors", () => {
       calendarCreateEvent: "ショートカットキーが重複しています",
       gameLauncher: "ショートカットキーが重複しています",
       quickCapture: "ショートカットキーが重複しています",
+      fileShelf: "ショートカットキーが重複しています",
       voiceToText: "ショートカットキーが重複しています",
     });
   });
@@ -50,6 +51,7 @@ describe("parseShortcutErrors", () => {
     ["設定画面ショートカットの登録に失敗しました", "settings"],
     ["ゲームランチャーショートカットの登録に失敗しました", "gameLauncher"],
     ["クイックキャプチャーショートカットの登録に失敗しました", "quickCapture"],
+    ["ファイルシェルショートカットの登録に失敗しました", "fileShelf"],
     ["予定登録ショートカットの登録に失敗しました", "calendarCreateEvent"],
   ])("recognizes legacy failures for %s", (message, feature) => {
     expect(parseShortcutErrors(message)).toEqual({ [feature]: message });

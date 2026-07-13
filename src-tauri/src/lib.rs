@@ -11,6 +11,7 @@ use core::settings::AppSettingsState;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_drag::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -50,6 +51,7 @@ pub fn run() {
                                         "calendar" => features::calendar::toggle_calendar_overlay(app),
                                         "gameLauncher" => features::game_launcher::toggle_game_launcher_overlay(app),
                                         "quickCapture" => features::quick_capture::toggle_quick_capture_overlay(app),
+                                        "fileShelf" => features::file_shelf::toggle_file_shelf_overlay(app),
                                         "calendarCreateEvent" => {
                                             features::calendar::open_calendar_event_editor(app)
                                         }
@@ -70,6 +72,7 @@ pub fn run() {
                                     "calendar" => features::calendar::toggle_calendar_overlay(app),
                                     "gameLauncher" => features::game_launcher::toggle_game_launcher_overlay(app),
                                     "quickCapture" => features::quick_capture::toggle_quick_capture_overlay(app),
+                                    "fileShelf" => features::file_shelf::toggle_file_shelf_overlay(app),
                                     "calendarCreateEvent" => {
                                         features::calendar::open_calendar_event_editor(app)
                                     }
@@ -88,6 +91,8 @@ pub fn run() {
             app.manage(calendar_store);
             let quick_capture_store = features::quick_capture::initialize_store(app.handle())?;
             app.manage(quick_capture_store);
+            let file_shelf_store = features::file_shelf::initialize_store(app.handle())?;
+            app.manage(file_shelf_store);
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Add ready event listener for calendar editor window to resolve timing issues
@@ -124,6 +129,11 @@ pub fn run() {
                             let state = handle.state::<AppSettingsState>();
                             *state.0.lock().unwrap() = Some(settings.clone());
                         }
+
+                        features::file_shelf::apply_window_settings(
+                            &handle,
+                            &settings.file_shelf,
+                        );
 
                         use tauri_plugin_global_shortcut::GlobalShortcutExt;
                         let shortcuts = settings.active_shortcuts();
@@ -168,13 +178,23 @@ pub fn run() {
                     || label == "calendar"
                     || label == "gameLauncher"
                     || label == "quickCapture"
+                    || label == "fileShelf"
                 {
                     api.prevent_close();
                     let _ = window.hide();
+                    if label == "fileShelf" {
+                        if let Some(state) = window
+                            .app_handle()
+                            .try_state::<features::file_shelf::FileShelfWindowState>()
+                        {
+                            *state.0.lock().unwrap_or_else(|value| value.into_inner()) = false;
+                        }
+                    }
                 }
             }
         })
         .manage(features::calendar::window::CalendarEditorState::default())
+        .manage(features::file_shelf::FileShelfWindowState::default())
         .invoke_handler(tauri::generate_handler![
             core::settings::load_settings,
             core::settings::save_settings,
@@ -206,6 +226,13 @@ pub fn run() {
             features::quick_capture::export_quick_capture_markdown,
             features::quick_capture::export_quick_capture_backup,
             features::quick_capture::import_quick_capture_backup,
+            features::file_shelf::load_file_shelf_state,
+            features::file_shelf::add_file_shelf_paths,
+            features::file_shelf::add_file_shelf_content,
+            features::file_shelf::remove_file_shelf_items,
+            features::file_shelf::restore_file_shelf_removal,
+            features::file_shelf::clear_file_shelf,
+            features::file_shelf::set_file_shelf_expanded,
             features::game_launcher::launch::open_game_store_page,
         ])
         .run(tauri::generate_context!())

@@ -1,4 +1,5 @@
 import {
+  Archive,
   CalendarDays,
   Clock3,
   Gamepad2,
@@ -44,7 +45,20 @@ const QuickCaptureSettings = lazy(() =>
   ),
 );
 
+const FileShelfSettings = lazy(() =>
+  import("../../features/file_shelf/components/FileShelfSettings").then(
+    (m) => ({ default: m.FileShelfSettings }),
+  ),
+);
+
 export const SETTINGS_TABS = [
+  {
+    id: "fileShelf",
+    label: "ファイルシェル",
+    navigationLabel: "シェルフ",
+    description: "ファイルの一時置き場",
+    icon: React.createElement(Archive, { size: 18, "aria-hidden": true }),
+  },
   {
     id: "quickCapture",
     label: "クイックキャプチャー",
@@ -94,6 +108,7 @@ export const SETTINGS_TAB_COMPONENTS: Record<
   SettingsTabId,
   React.LazyExoticComponent<React.FC>
 > = {
+  fileShelf: FileShelfSettings,
   quickCapture: QuickCaptureSettings,
   gameLauncher: GameLauncherSettings,
   calendar: CalendarSettings,

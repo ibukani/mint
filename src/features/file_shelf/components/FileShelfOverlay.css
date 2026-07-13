@@ -1,0 +1,315 @@
+.file-shelf-handle {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+  color: var(--color-accent);
+  cursor: pointer;
+  place-items: center;
+}
+
+.file-shelf-handle strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.file-shelf-handle:focus-visible,
+.file-shelf button:focus-visible,
+.file-shelf [tabindex="0"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.file-shelf {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  border: 1px solid var(--border-overlay);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  backdrop-filter: blur(var(--blur-lg));
+}
+
+.file-shelf button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.file-shelf button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.file-shelf__header,
+.file-shelf__title,
+.file-shelf__header-actions,
+.file-shelf__paste-zone,
+.file-shelf__group-summary,
+.file-shelf__stack-toggle,
+.file-shelf__single,
+.file-shelf__item,
+.file-shelf__item-main,
+.file-shelf__selection-actions,
+.file-shelf__footer,
+.file-shelf__footer button {
+  display: flex;
+  align-items: center;
+}
+
+.file-shelf__header {
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.file-shelf__title {
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.file-shelf__title > svg {
+  flex: 0 0 auto;
+  color: var(--color-accent);
+}
+
+.file-shelf__title h1,
+.file-shelf__title span {
+  margin: 0;
+}
+
+.file-shelf__title h1 {
+  font-size: var(--font-size-base);
+}
+
+.file-shelf__title span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.file-shelf__header-actions {
+  gap: var(--space-1);
+}
+
+.file-shelf__header-actions button,
+.file-shelf__selection-actions button {
+  display: grid;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  place-items: center;
+}
+
+.file-shelf__header-actions button:hover,
+.file-shelf__selection-actions button:hover {
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
+}
+
+.file-shelf__paste-zone {
+  gap: var(--space-2);
+  margin: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border-accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.file-shelf__paste-zone > svg {
+  flex: 0 0 auto;
+  color: var(--color-accent);
+}
+
+.file-shelf__content {
+  min-height: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  overflow-y: auto;
+}
+
+.file-shelf__empty {
+  display: grid;
+  min-height: 210px;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  text-align: center;
+  place-content: center;
+  place-items: center;
+}
+
+.file-shelf__empty strong {
+  color: var(--color-text-secondary);
+}
+
+.file-shelf__empty span {
+  max-width: 250px;
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+}
+
+.file-shelf__group {
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+}
+
+.file-shelf__group-summary {
+  min-height: 58px;
+}
+
+.file-shelf__stack-toggle,
+.file-shelf__single,
+.file-shelf__item-main {
+  min-width: 0;
+  flex: 1;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+
+.file-shelf__single.is-selected,
+.file-shelf__item.is-selected {
+  background: var(--surface-accent-action);
+}
+
+.file-shelf__stack-toggle > span:last-child,
+.file-shelf__single > span,
+.file-shelf__item-main > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.file-shelf__stack-toggle strong,
+.file-shelf__stack-toggle small,
+.file-shelf__single strong,
+.file-shelf__single small,
+.file-shelf__item-main strong,
+.file-shelf__item-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-shelf__stack-toggle small,
+.file-shelf__single small,
+.file-shelf__item-main small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.file-shelf__stack-icons {
+  display: flex;
+  min-width: 38px;
+  color: var(--color-accent);
+}
+
+.file-shelf__stack-icons > svg + svg {
+  margin-left: calc(var(--space-2) * -1);
+}
+
+.file-shelf__single > svg,
+.file-shelf__item-main > svg {
+  flex: 0 0 auto;
+  color: var(--color-accent);
+}
+
+.file-shelf__drag-handle {
+  align-self: stretch;
+  padding: 0 var(--space-2);
+  border-left: 1px solid var(--border-subtle);
+  color: var(--color-text-muted);
+  cursor: grab;
+}
+
+.file-shelf__drag-handle:hover {
+  background: var(--surface-control-hover);
+  color: var(--color-accent);
+}
+
+.file-shelf__drag-handle:active {
+  cursor: grabbing;
+}
+
+.file-shelf__items {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-control);
+}
+
+.file-shelf__item + .file-shelf__item {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.file-shelf__selection-actions {
+  min-height: 42px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-control);
+}
+
+.file-shelf__selection-actions > span {
+  margin-right: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.file-shelf__selection-actions .is-danger {
+  color: var(--color-error);
+}
+
+.file-shelf__footer {
+  min-height: 42px;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.file-shelf__feedback {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-shelf__feedback .is-error {
+  color: var(--color-error);
+}
+
+.file-shelf__footer button {
+  flex: 0 0 auto;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+}
+
+.file-shelf__footer button:hover {
+  background: var(--surface-accent-action-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-shelf * {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
