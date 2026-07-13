@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  mockAddQuickCaptureAttachment,
   mockCreateQuickCaptureNote,
+  mockDeleteQuickCaptureAttachment,
   mockDeleteQuickCaptureNote,
   mockLoadQuickCaptureState,
   mockSaveQuickCaptureDraft,
@@ -55,5 +57,22 @@ describe("quickCaptureMock", () => {
     expect(() => mockDeleteQuickCaptureNote("missing")).toThrow(
       "メモが見つかりません",
     );
+  });
+
+  it("keeps attachments with the note and removes them independently", () => {
+    const note = mockCreateQuickCaptureNote({
+      content: "添付を確認する",
+      tags: [],
+      pinned: false,
+    });
+    const attachment = mockAddQuickCaptureAttachment({
+      noteId: note.id,
+      sourcePath: "/tmp/reference.pdf",
+    });
+    expect(mockLoadQuickCaptureState().notes[0].attachments).toEqual([
+      attachment,
+    ]);
+    mockDeleteQuickCaptureAttachment(note.id, attachment.id);
+    expect(mockLoadQuickCaptureState().notes[0].attachments).toEqual([]);
   });
 });

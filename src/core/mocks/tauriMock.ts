@@ -6,6 +6,7 @@ import type {
   CalendarEventRange,
 } from "../../features/calendar/types";
 import type {
+  QuickCaptureAttachmentInput,
   QuickCaptureDraftInput,
   QuickCaptureNoteInput,
 } from "../../features/quick_capture/types";
@@ -18,7 +19,9 @@ import {
 } from "./calendarEventMock";
 import { createMockSettings } from "./mockSettings";
 import {
+  mockAddQuickCaptureAttachment,
   mockCreateQuickCaptureNote,
+  mockDeleteQuickCaptureAttachment,
   mockDeleteQuickCaptureNote,
   mockLoadQuickCaptureState,
   mockSaveQuickCaptureDraft,
@@ -167,6 +170,49 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         mockDeleteQuickCaptureNote(id);
         return;
       }
+      case "add_quick_capture_attachment": {
+        const input = typedArgs?.input as
+          | QuickCaptureAttachmentInput
+          | undefined;
+        if (!input)
+          throw new Error("Quick capture attachment input is required.");
+        return mockAddQuickCaptureAttachment(input);
+      }
+      case "delete_quick_capture_attachment": {
+        const noteId = typedArgs?.noteId as string | undefined;
+        const attachmentId = typedArgs?.attachmentId as string | undefined;
+        if (!noteId || !attachmentId) {
+          throw new Error("Quick capture attachment id is required.");
+        }
+        mockDeleteQuickCaptureAttachment(noteId, attachmentId);
+        return;
+      }
+      case "export_quick_capture_markdown": {
+        const input = typedArgs?.input as
+          | { path?: string; content?: string }
+          | undefined;
+        if (!input?.path || !input.content?.trim()) {
+          throw new Error("Markdown export input is invalid.");
+        }
+        localStorage.setItem(
+          "mint_mock_last_markdown_export",
+          JSON.stringify(input),
+        );
+        return;
+      }
+      case "export_quick_capture_backup": {
+        const path = typedArgs?.path as string | undefined;
+        if (!path?.trim())
+          throw new Error("Quick capture backup path is required.");
+        localStorage.setItem("mint_mock_last_backup_path", path);
+        return;
+      }
+      case "import_quick_capture_backup": {
+        const path = typedArgs?.path as string | undefined;
+        if (!path?.trim())
+          throw new Error("Quick capture backup path is required.");
+        return mockLoadQuickCaptureState();
+      }
       case "list_installed_games":
         return {
           games: [
@@ -310,6 +356,8 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           : null;
       case "plugin:dialog|open":
         return mockAudioPath;
+      case "plugin:dialog|save":
+        return "/tmp/quick-capture.md";
       case "plugin:updater|download_and_install": {
         const channel = typedArgs?.onEvent as
           | { onmessage?: (event: DownloadEvent) => void }

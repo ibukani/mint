@@ -1,14 +1,20 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { save } from "@tauri-apps/plugin-dialog";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import Fuse from "fuse.js";
 import {
+  Archive,
   Check,
+  ClipboardPaste,
+  Download,
   Edit3,
   Eye,
   FileText,
+  Paperclip,
   Pin,
   Search,
   Tag,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import type React from "react";
@@ -16,6 +22,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
+import {
+  chooseQuickCaptureBackupForOpen,
+  chooseQuickCaptureBackupForSave,
+  exportQuickCaptureMarkdown,
+} from "../api";
 import { useQuickCapture } from "../hooks/useQuickCapture";
 import type { QuickCaptureNote } from "../types";
 import "./QuickCaptureOverlay.css";
@@ -34,13 +45,26 @@ const formatUpdatedAt = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
+const parseTags = (value: string) =>
+  value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+const safeFileName = (value: string) =>
+  `${value.replace(/[\\/:*?"<>|]+/g, "-").trim() || "quick-capture"}.md`;
+
 export const QuickCaptureOverlay: React.FC = () => {
   const capture = useQuickCapture();
   const [preview, setPreview] = useState(false);
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [actionStatus, setActionStatus] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const { focusSequence } = capture;
+  const activeNote = capture.activeId
+    ? capture.notes.find((note) => note.id === capture.activeId)
+    : null;
 
   useEffect(() => {
     void focusSequence;
@@ -70,6 +94,74 @@ export const QuickCaptureOverlay: React.FC = () => {
     } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       void capture.promote();
+    }
+  };
+
+  const pasteClipboard = async () => {
+    try {
+      const value = await navigator.clipboard.readText();
+      if (!value) {
+        setActionStatus("クリップボードが空です");
+        return;
+      }
+      const textarea = editorRef.current;
+      const start = textarea?.selectionStart ?? capture.content.length;
+      const end = textarea?.selectionEnd ?? start;
+      capture.setContent(
+        `${capture.content.slice(0, start)}${value}${capture.content.slice(end)}`,
+      );
+      setActionStatus("貼り付けました");
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        textarea?.setSelectionRange(start + value.length, start + value.length);
+      });
+    } catch {
+      setActionStatus("クリップボードを読み取れませんでした");
+    }
+  };
+
+  const exportMarkdown = async () => {
+    try {
+      const path = await save({
+        title: "Markdownとして書き出す",
+        defaultPath: safeFileName(noteTitle({ content: capture.content })),
+        filters: [{ name: "Markdown", extensions: ["md"] }],
+      });
+      if (!path) return;
+      await exportQuickCaptureMarkdown({
+        path,
+        content: capture.content,
+        tags: parseTags(capture.tags),
+      });
+      setActionStatus("Markdownを書き出しました");
+    } catch (reason) {
+      setActionStatus(
+        reason instanceof Error ? reason.message : "書き出しに失敗しました",
+      );
+    }
+  };
+
+  const exportBackup = async () => {
+    try {
+      const path = await chooseQuickCaptureBackupForSave();
+      if (path) await capture.exportBackup(path);
+    } catch (reason) {
+      setActionStatus(
+        reason instanceof Error ? reason.message : "バックアップに失敗しました",
+      );
+    }
+  };
+
+  const importBackup = async () => {
+    try {
+      if (!window.confirm("現在の下書きと保存済みメモを置き換えますか？"))
+        return;
+      const path = await chooseQuickCaptureBackupForOpen();
+      if (path && !Array.isArray(path)) await capture.importBackup(path);
+    } catch (reason) {
+      setActionStatus(
+        reason instanceof Error ? reason.message : "復元に失敗しました",
+      );
     }
   };
 
@@ -131,16 +223,46 @@ export const QuickCaptureOverlay: React.FC = () => {
                   <Eye size={14} aria-hidden="true" /> プレビュー
                 </button>
               </div>
-              {capture.activeId && (
+              <div className="quick-capture__toolbar-actions">
                 <button
                   type="button"
-                  className={`quick-capture__pin${capture.pinned ? " is-active" : ""}`}
-                  aria-pressed={capture.pinned}
-                  onClick={() => capture.setPinned(!capture.pinned)}
+                  className="quick-capture__toolbar-button"
+                  onClick={() => void pasteClipboard()}
+                  title="クリップボードから貼り付け"
                 >
-                  <Pin size={14} aria-hidden="true" /> ピン留め
+                  <ClipboardPaste size={14} aria-hidden="true" /> 貼り付け
                 </button>
-              )}
+                {capture.content.trim() && (
+                  <button
+                    type="button"
+                    className="quick-capture__toolbar-button"
+                    onClick={() => void exportMarkdown()}
+                    title="Markdownとして書き出し"
+                  >
+                    <Download size={14} aria-hidden="true" /> 書き出し
+                  </button>
+                )}
+                {capture.activeId && (
+                  <>
+                    <button
+                      type="button"
+                      className="quick-capture__toolbar-button"
+                      onClick={() => void capture.addAttachment()}
+                      title="ファイルを添付"
+                    >
+                      <Paperclip size={14} aria-hidden="true" /> 添付
+                    </button>
+                    <button
+                      type="button"
+                      className={`quick-capture__pin${capture.pinned ? " is-active" : ""}`}
+                      aria-pressed={capture.pinned}
+                      onClick={() => capture.setPinned(!capture.pinned)}
+                    >
+                      <Pin size={14} aria-hidden="true" /> ピン留め
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {preview ? (
@@ -191,12 +313,59 @@ export const QuickCaptureOverlay: React.FC = () => {
               />
             </label>
 
+            {activeNote && activeNote.attachments.length > 0 && (
+              <section
+                className="quick-capture__attachments"
+                aria-label="添付ファイル"
+              >
+                <div className="quick-capture__attachments-heading">
+                  <span>
+                    <Paperclip size={13} aria-hidden="true" /> 添付ファイル
+                  </span>
+                  <small>{activeNote.attachments.length}件</small>
+                </div>
+                <div className="quick-capture__attachment-list">
+                  {activeNote.attachments.map((attachment) => (
+                    <div
+                      className="quick-capture__attachment"
+                      key={attachment.id}
+                    >
+                      <button
+                        type="button"
+                        className="quick-capture__attachment-link"
+                        onClick={() => void openPath(attachment.storedPath)}
+                        title="既定のアプリで開く"
+                      >
+                        <strong>{attachment.fileName}</strong>
+                        <small>
+                          {attachment.sizeBytes
+                            ? `${Math.ceil(attachment.sizeBytes / 1024)}KB`
+                            : "添付済み"}
+                        </small>
+                      </button>
+                      <button
+                        type="button"
+                        className="quick-capture__attachment-remove"
+                        aria-label={`${attachment.fileName}を削除`}
+                        onClick={() =>
+                          void capture.removeAttachment(attachment.id)
+                        }
+                      >
+                        <X size={13} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <footer className="quick-capture__editor-footer">
               <span
                 className={capture.status === "error" ? "is-error" : ""}
                 aria-live="polite"
               >
-                {capture.error ??
+                {capture.error ||
+                  actionStatus ||
                   (capture.status === "saving"
                     ? "保存中…"
                     : capture.status === "saved"
@@ -232,6 +401,29 @@ export const QuickCaptureOverlay: React.FC = () => {
           </section>
 
           <aside className="quick-capture__library" aria-label="保存済みメモ">
+            <div className="quick-capture__library-header">
+              <strong>
+                <Archive size={14} aria-hidden="true" /> 保存済みメモ
+              </strong>
+              <div>
+                <button
+                  type="button"
+                  aria-label="バックアップを書き出す"
+                  title="バックアップを書き出す"
+                  onClick={() => void exportBackup()}
+                >
+                  <Download size={13} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="バックアップから復元する"
+                  title="バックアップから復元する"
+                  onClick={() => void importBackup()}
+                >
+                  <Upload size={13} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
             <label className="quick-capture__search">
               <Search size={14} aria-hidden="true" />
               <input

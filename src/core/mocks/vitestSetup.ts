@@ -7,6 +7,7 @@ import type {
   CalendarEventRange,
 } from "../../features/calendar/types";
 import type {
+  QuickCaptureAttachmentInput,
   QuickCaptureDraftInput,
   QuickCaptureNoteInput,
 } from "../../features/quick_capture/types";
@@ -18,7 +19,9 @@ import {
   mockUpdateCalendarEvent,
 } from "./calendarEventMock";
 import {
+  mockAddQuickCaptureAttachment,
   mockCreateQuickCaptureNote,
+  mockDeleteQuickCaptureAttachment,
   mockDeleteQuickCaptureNote,
   mockLoadQuickCaptureState,
   mockSaveQuickCaptureDraft,
@@ -92,6 +95,27 @@ mockIPC(async (cmd, args) => {
       mockDeleteQuickCaptureNote(id);
       return;
     }
+    case "add_quick_capture_attachment": {
+      const input = typedArgs?.input as QuickCaptureAttachmentInput | undefined;
+      if (!input)
+        throw new Error("Quick capture attachment input is required.");
+      return mockAddQuickCaptureAttachment(input);
+    }
+    case "delete_quick_capture_attachment": {
+      const noteId = typedArgs?.noteId as string | undefined;
+      const attachmentId = typedArgs?.attachmentId as string | undefined;
+      if (!noteId || !attachmentId) {
+        throw new Error("Quick capture attachment id is required.");
+      }
+      mockDeleteQuickCaptureAttachment(noteId, attachmentId);
+      return;
+    }
+    case "export_quick_capture_markdown":
+      return;
+    case "export_quick_capture_backup":
+      return;
+    case "import_quick_capture_backup":
+      return mockLoadQuickCaptureState();
     case "list_installed_games":
       return {
         games: [
@@ -173,6 +197,8 @@ mockIPC(async (cmd, args) => {
     }
     case "plugin:updater|check":
       return null;
+    case "plugin:dialog|save":
+      return "/tmp/quick-capture.mintbackup";
     case "plugin:updater|download_and_install": {
       const channel = typedArgs?.onEvent as
         | { onmessage?: (event: DownloadEvent) => void }

@@ -177,6 +177,11 @@ pub fn run() {
             features::quick_capture::create_quick_capture_note,
             features::quick_capture::update_quick_capture_note,
             features::quick_capture::delete_quick_capture_note,
+            features::quick_capture::add_quick_capture_attachment,
+            features::quick_capture::delete_quick_capture_attachment,
+            features::quick_capture::export_quick_capture_markdown,
+            features::quick_capture::export_quick_capture_backup,
+            features::quick_capture::import_quick_capture_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

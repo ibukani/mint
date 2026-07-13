@@ -16,6 +16,16 @@ export interface QuickCaptureNote {
   pinned: boolean;
   createdAt: string;
   updatedAt: string;
+  attachments: QuickCaptureAttachment[];
+}
+
+export interface QuickCaptureAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storedPath: string;
+  createdAt: string;
 }
 
 export interface QuickCaptureState {
@@ -30,4 +40,15 @@ export interface QuickCaptureDraftInput {
 
 export interface QuickCaptureNoteInput extends QuickCaptureDraftInput {
   pinned: boolean;
+}
+
+export interface QuickCaptureAttachmentInput {
+  noteId: string;
+  sourcePath: string;
+}
+
+export interface QuickCaptureExportInput {
+  path: string;
+  content: string;
+  tags: string[];
 }

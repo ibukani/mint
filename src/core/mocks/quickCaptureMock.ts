@@ -1,4 +1,6 @@
 import type {
+  QuickCaptureAttachment,
+  QuickCaptureAttachmentInput,
   QuickCaptureDraftInput,
   QuickCaptureNote,
   QuickCaptureNoteInput,
@@ -27,7 +29,14 @@ const read = (): QuickCaptureState => {
   const value = localStorage.getItem(STORAGE_KEY);
   if (!value) return emptyState();
   try {
-    return JSON.parse(value) as QuickCaptureState;
+    const state = JSON.parse(value) as QuickCaptureState;
+    return {
+      ...state,
+      notes: state.notes.map((note) => ({
+        ...note,
+        attachments: note.attachments ?? [],
+      })),
+    };
   } catch {
     return emptyState();
   }
@@ -68,6 +77,7 @@ export const mockCreateQuickCaptureNote = (input: QuickCaptureNoteInput) => {
     pinned: input.pinned,
     createdAt: now,
     updatedAt: now,
+    attachments: [],
   };
   write({ ...state, notes: sortNotes([note, ...state.notes]) });
   return note;
@@ -100,4 +110,55 @@ export const mockDeleteQuickCaptureNote = (id: string) => {
     throw new Error("メモが見つかりません。");
   }
   write({ ...state, notes: state.notes.filter((note) => note.id !== id) });
+};
+
+export const mockAddQuickCaptureAttachment = (
+  input: QuickCaptureAttachmentInput,
+) => {
+  const state = read();
+  const note = state.notes.find((item) => item.id === input.noteId);
+  if (!note) throw new Error("メモが見つかりません。");
+  const createdAt = new Date().toISOString();
+  const fileName = input.sourcePath.split(/[\\/]/).pop() || "添付ファイル";
+  const attachment: QuickCaptureAttachment = {
+    id: crypto.randomUUID(),
+    fileName,
+    mimeType: "application/octet-stream",
+    sizeBytes: 0,
+    storedPath: input.sourcePath,
+    createdAt,
+  };
+  write({
+    ...state,
+    notes: state.notes.map((item) =>
+      item.id === input.noteId
+        ? { ...item, attachments: [...item.attachments, attachment] }
+        : item,
+    ),
+  });
+  return attachment;
+};
+
+export const mockDeleteQuickCaptureAttachment = (
+  noteId: string,
+  attachmentId: string,
+) => {
+  const state = read();
+  const note = state.notes.find((item) => item.id === noteId);
+  if (!note?.attachments.some((item) => item.id === attachmentId)) {
+    throw new Error("添付ファイルが見つかりません。");
+  }
+  write({
+    ...state,
+    notes: state.notes.map((item) =>
+      item.id === noteId
+        ? {
+            ...item,
+            attachments: item.attachments.filter(
+              (attachment) => attachment.id !== attachmentId,
+            ),
+          }
+        : item,
+    ),
+  });
 };

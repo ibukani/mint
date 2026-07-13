@@ -2,8 +2,13 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  addQuickCaptureAttachment,
+  chooseQuickCaptureAttachment,
   createQuickCaptureNote,
+  deleteQuickCaptureAttachment,
   deleteQuickCaptureNote,
+  exportQuickCaptureBackup,
+  importQuickCaptureBackup,
   loadQuickCaptureState,
   saveQuickCaptureDraft,
   updateQuickCaptureNote,
@@ -169,6 +174,81 @@ export const useQuickCapture = () => {
     showDraft();
   }, [activeId, showDraft]);
 
+  const addAttachment = useCallback(async () => {
+    if (!activeId) return;
+    try {
+      const sourcePath = await chooseQuickCaptureAttachment();
+      if (!sourcePath || Array.isArray(sourcePath)) return;
+      const attachment = await addQuickCaptureAttachment({
+        noteId: activeId,
+        sourcePath,
+      });
+      setNotes((current) =>
+        current.map((note) =>
+          note.id === activeId
+            ? { ...note, attachments: [...note.attachments, attachment] }
+            : note,
+        ),
+      );
+      setStatus("saved");
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setStatus("error");
+    }
+  }, [activeId]);
+
+  const exportBackup = useCallback(async (path: string) => {
+    try {
+      await exportQuickCaptureBackup(path);
+      setStatus("saved");
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setStatus("error");
+    }
+  }, []);
+
+  const importBackup = useCallback(
+    async (path: string) => {
+      try {
+        await importQuickCaptureBackup(path);
+        await reload();
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
+        setStatus("error");
+      }
+    },
+    [reload],
+  );
+
+  const removeAttachment = useCallback(
+    async (attachmentId: string) => {
+      if (!activeId) return;
+      try {
+        await deleteQuickCaptureAttachment(activeId, attachmentId);
+        setNotes((current) =>
+          current.map((note) =>
+            note.id === activeId
+              ? {
+                  ...note,
+                  attachments: note.attachments.filter(
+                    (attachment) => attachment.id !== attachmentId,
+                  ),
+                }
+              : note,
+          ),
+        );
+        setStatus("saved");
+        setError(null);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
+        setStatus("error");
+      }
+    },
+    [activeId],
+  );
+
   const close = useCallback(async () => {
     await persist();
     await getCurrentWindow().hide();
@@ -202,17 +282,20 @@ export const useQuickCapture = () => {
 
   return {
     activeId,
+    addAttachment,
     allTags,
     close,
     content,
     draft,
     error,
+    exportBackup,
     focusSequence,
     notes,
     openDraft,
     pinned,
     promote,
     removeActive,
+    removeAttachment,
     selectNote,
     setContent,
     setPinned,
@@ -220,5 +303,7 @@ export const useQuickCapture = () => {
     showDraft,
     status,
     tags,
+    importBackup,
+    reload,
   };
 };
