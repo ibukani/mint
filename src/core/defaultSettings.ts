@@ -40,4 +40,8 @@ export const defaultAppSettings: AppSettings = {
     favoriteGameKeys: [],
     lastPlayedAtByGame: {},
   },
+  quickCapture: {
+    enabled: true,
+    shortcut: "Alt+2",
+  },
 };

@@ -67,6 +67,20 @@
         "focusable": true
       },
       {
+        "label": "quickCapture",
+        "title": "Quick Capture",
+        "width": 680,
+        "height": 500,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focusable": true
+      },
+      {
         "label": "calendarEditor",
         "title": "Calendar Event Editor",
         "width": 420,

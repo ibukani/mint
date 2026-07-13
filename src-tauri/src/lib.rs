@@ -49,6 +49,7 @@ pub fn run() {
                                         "clock" => features::clock::toggle_clock_overlay(app),
                                         "calendar" => features::calendar::toggle_calendar_overlay(app),
                                         "gameLauncher" => features::game_launcher::toggle_game_launcher_overlay(app),
+                                        "quickCapture" => features::quick_capture::toggle_quick_capture_overlay(app),
                                         "calendarCreateEvent" => {
                                             features::calendar::open_calendar_event_editor(app)
                                         }
@@ -68,6 +69,7 @@ pub fn run() {
                                     "clock" => features::clock::toggle_clock_overlay(app),
                                     "calendar" => features::calendar::toggle_calendar_overlay(app),
                                     "gameLauncher" => features::game_launcher::toggle_game_launcher_overlay(app),
+                                    "quickCapture" => features::quick_capture::toggle_quick_capture_overlay(app),
                                     "calendarCreateEvent" => {
                                         features::calendar::open_calendar_event_editor(app)
                                     }
@@ -84,6 +86,8 @@ pub fn run() {
         .setup(|app| {
             let calendar_store = features::calendar::initialize_store(app.handle())?;
             app.manage(calendar_store);
+            let quick_capture_store = features::quick_capture::initialize_store(app.handle())?;
+            app.manage(quick_capture_store);
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Add ready event listener for calendar editor window to resolve timing issues
@@ -163,6 +167,7 @@ pub fn run() {
                     || label == "clock"
                     || label == "calendar"
                     || label == "gameLauncher"
+                    || label == "quickCapture"
                 {
                     api.prevent_close();
                     let _ = window.hide();
@@ -190,6 +195,16 @@ pub fn run() {
             features::v2t::transcribe_audio_file,
             features::game_launcher::scan::list_installed_games,
             features::game_launcher::launch::launch_game,
+            features::quick_capture::load_quick_capture_state,
+            features::quick_capture::save_quick_capture_draft,
+            features::quick_capture::create_quick_capture_note,
+            features::quick_capture::update_quick_capture_note,
+            features::quick_capture::delete_quick_capture_note,
+            features::quick_capture::add_quick_capture_attachment,
+            features::quick_capture::delete_quick_capture_attachment,
+            features::quick_capture::export_quick_capture_markdown,
+            features::quick_capture::export_quick_capture_backup,
+            features::quick_capture::import_quick_capture_backup,
             features::game_launcher::launch::open_game_store_page,
         ])
         .run(tauri::generate_context!())

@@ -6,6 +6,11 @@ import type {
   CalendarEventInput,
   CalendarEventRange,
 } from "../../features/calendar/types";
+import type {
+  QuickCaptureAttachmentInput,
+  QuickCaptureDraftInput,
+  QuickCaptureNoteInput,
+} from "../../features/quick_capture/types";
 import {
   mockCreateCalendarEvent,
   mockDeleteCalendarEvent,
@@ -13,9 +18,18 @@ import {
   mockListCalendarEvents,
   mockUpdateCalendarEvent,
 } from "./calendarEventMock";
+import {
+  mockAddQuickCaptureAttachment,
+  mockCreateQuickCaptureNote,
+  mockDeleteQuickCaptureAttachment,
+  mockDeleteQuickCaptureNote,
+  mockLoadQuickCaptureState,
+  mockSaveQuickCaptureDraft,
+  mockUpdateQuickCaptureNote,
+} from "./quickCaptureMock";
 
 // テスト環境でTauriのウィンドウ管理をモック
-mockWindows("main", "clock", "calendar", "gameLauncher");
+mockWindows("main", "clock", "calendar", "gameLauncher", "quickCapture");
 
 import { createMockSettings } from "./mockSettings";
 
@@ -62,6 +76,52 @@ mockIPC(async (cmd, args) => {
       mockDeleteCalendarEvent(id);
       return;
     }
+    case "load_quick_capture_state":
+      return mockLoadQuickCaptureState();
+    case "save_quick_capture_draft": {
+      const input = typedArgs?.input as QuickCaptureDraftInput | undefined;
+      if (!input) throw new Error("Quick capture draft input is required.");
+      return mockSaveQuickCaptureDraft(input);
+    }
+    case "create_quick_capture_note": {
+      const input = typedArgs?.input as QuickCaptureNoteInput | undefined;
+      if (!input) throw new Error("Quick capture note input is required.");
+      return mockCreateQuickCaptureNote(input);
+    }
+    case "update_quick_capture_note": {
+      const id = typedArgs?.id as string | undefined;
+      const input = typedArgs?.input as QuickCaptureNoteInput | undefined;
+      if (!id || !input)
+        throw new Error("Quick capture note update is invalid.");
+      return mockUpdateQuickCaptureNote(id, input);
+    }
+    case "delete_quick_capture_note": {
+      const id = typedArgs?.id as string | undefined;
+      if (!id) throw new Error("Quick capture note id is required.");
+      mockDeleteQuickCaptureNote(id);
+      return;
+    }
+    case "add_quick_capture_attachment": {
+      const input = typedArgs?.input as QuickCaptureAttachmentInput | undefined;
+      if (!input)
+        throw new Error("Quick capture attachment input is required.");
+      return mockAddQuickCaptureAttachment(input);
+    }
+    case "delete_quick_capture_attachment": {
+      const noteId = typedArgs?.noteId as string | undefined;
+      const attachmentId = typedArgs?.attachmentId as string | undefined;
+      if (!noteId || !attachmentId) {
+        throw new Error("Quick capture attachment id is required.");
+      }
+      mockDeleteQuickCaptureAttachment(noteId, attachmentId);
+      return;
+    }
+    case "export_quick_capture_markdown":
+      return;
+    case "export_quick_capture_backup":
+      return;
+    case "import_quick_capture_backup":
+      return mockLoadQuickCaptureState();
     case "list_installed_games":
       return {
         games: [
@@ -147,6 +207,8 @@ mockIPC(async (cmd, args) => {
     }
     case "plugin:updater|check":
       return null;
+    case "plugin:dialog|save":
+      return "/tmp/quick-capture.mintbackup";
     case "plugin:updater|download_and_install": {
       const channel = typedArgs?.onEvent as
         | { onmessage?: (event: DownloadEvent) => void }

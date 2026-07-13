@@ -4,6 +4,7 @@ const MOCK_WINDOW_LABELS = [
   "calendar",
   "gameLauncher",
   "calendarEditor",
+  "quickCapture",
 ] as const;
 
 export const getMockWindowRegistration = (currentLabel: string) => [

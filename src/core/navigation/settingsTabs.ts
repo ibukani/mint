@@ -3,6 +3,7 @@ import {
   Clock3,
   Gamepad2,
   Mic2,
+  NotebookPen,
   SlidersHorizontal,
 } from "lucide-react";
 import React, { lazy } from "react";
@@ -37,7 +38,20 @@ const GameLauncherSettings = lazy(() =>
   ),
 );
 
+const QuickCaptureSettings = lazy(() =>
+  import("../../features/quick_capture/components/QuickCaptureSettings").then(
+    (m) => ({ default: m.QuickCaptureSettings }),
+  ),
+);
+
 export const SETTINGS_TABS = [
+  {
+    id: "quickCapture",
+    label: "クイックキャプチャー",
+    navigationLabel: "キャプチャー",
+    description: "下書きとメモの呼び出し",
+    icon: React.createElement(NotebookPen, { size: 18, "aria-hidden": true }),
+  },
   {
     id: "general",
     label: "一般設定",
@@ -80,6 +94,7 @@ export const SETTINGS_TAB_COMPONENTS: Record<
   SettingsTabId,
   React.LazyExoticComponent<React.FC>
 > = {
+  quickCapture: QuickCaptureSettings,
   gameLauncher: GameLauncherSettings,
   calendar: CalendarSettings,
   general: GeneralSettings,

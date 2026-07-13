@@ -2,6 +2,11 @@ import { defaultAppSettings } from "../defaultSettings";
 import type { AppSettings } from "../settingsModel";
 
 const defaultMockSettings: AppSettings = {
+  quickCapture: {
+    enabled: defaultAppSettings.quickCapture.enabled,
+    shortcut: defaultAppSettings.quickCapture.shortcut,
+  },
+
   gameLauncher: {
     enabled: defaultAppSettings.gameLauncher.enabled,
     shortcut: defaultAppSettings.gameLauncher.shortcut,
