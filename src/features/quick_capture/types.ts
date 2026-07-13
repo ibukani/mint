@@ -33,6 +33,11 @@ export interface QuickCaptureState {
   notes: QuickCaptureNote[];
 }
 
+export interface QuickCapturePromotion {
+  note: QuickCaptureNote;
+  draft: QuickCaptureDraft;
+}
+
 export interface QuickCaptureDraftInput {
   content: string;
   tags: string[];

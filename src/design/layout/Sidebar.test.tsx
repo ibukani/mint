@@ -116,4 +116,19 @@ describe("Sidebar", () => {
       container.querySelector(".app-sidebar__status-dot--error"),
     ).toBeInTheDocument();
   });
+
+  it("shows the Command modifier on Apple platforms", () => {
+    vi.spyOn(window.navigator, "platform", "get").mockReturnValue("MacIntel");
+
+    render(
+      <Sidebar
+        title="mint"
+        tabs={[{ id: "general", label: "一般設定" }]}
+        activeTab="general"
+        onTabChange={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText("⌘ 1")).toBeInTheDocument();
+  });
 });

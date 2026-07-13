@@ -8,6 +8,7 @@ import type {
   QuickCaptureExportInput,
   QuickCaptureNote,
   QuickCaptureNoteInput,
+  QuickCapturePromotion,
   QuickCaptureState,
 } from "./types";
 
@@ -16,6 +17,9 @@ export const loadQuickCaptureState = () =>
 
 export const saveQuickCaptureDraft = (input: QuickCaptureDraftInput) =>
   invoke<QuickCaptureDraft>("save_quick_capture_draft", { input });
+
+export const promoteQuickCaptureNote = (input: QuickCaptureNoteInput) =>
+  invoke<QuickCapturePromotion>("promote_quick_capture_note", { input });
 
 export const createQuickCaptureNote = (input: QuickCaptureNoteInput) =>
   invoke<QuickCaptureNote>("create_quick_capture_note", { input });

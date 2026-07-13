@@ -31,19 +31,26 @@ export const useClockOverlay = () => {
     setIsHiding(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 
-    hideTimerRef.current = setTimeout(() => {
-      getCurrentWindow()
-        .hide()
-        .then(() => {
-          setIsHiding(false);
-          hideTimerRef.current = null;
-        })
-        .catch((error) => {
-          console.error("Failed to hide clock window:", error);
-          setIsHiding(false);
-          hideTimerRef.current = null;
-        });
-    }, HIDE_ANIMATION_MS);
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    hideTimerRef.current = setTimeout(
+      () => {
+        getCurrentWindow()
+          .hide()
+          .then(() => {
+            setIsHiding(false);
+            hideTimerRef.current = null;
+          })
+          .catch((error) => {
+            console.error("Failed to hide clock window:", error);
+            setIsHiding(false);
+            hideTimerRef.current = null;
+          });
+      },
+      reduceMotion ? 0 : HIDE_ANIMATION_MS,
+    );
   }, []);
 
   useEffect(

@@ -30,7 +30,9 @@ export const VoiceToTextConnectionSettings: React.FC<{
     apiKeyLoaded,
     apiKeySaveError,
     apiKeySaveStatus,
+    apiKeySaveTone,
     apiKeyPasteStatus,
+    apiKeyPasteTone,
     baseUrlError,
     modelError,
     languageError,
@@ -120,51 +122,67 @@ export const VoiceToTextConnectionSettings: React.FC<{
           label="API キー"
           helpText="音声認識APIの認証キーです。キーはOSのセキュアストレージ（Windows 資格情報マネージャー）に安全に保存されます。"
         >
-          <FieldRow>
-            <TextInput
-              id="v2t-api-key-input"
-              className="v2t-row-input"
-              type={showApiKey ? "text" : "password"}
-              value={apiKeyLoaded ? apiKey : ""}
-              onChange={(event) => {
-                clearTranscriptionOutput();
-                setApiKey(event.target.value);
-                setApiKeySaveError("");
-                setApiKeySaveStatus("");
-                setApiKeyPasteStatus("");
-              }}
-              onBlur={saveApiKey}
-              placeholder={apiKeyLoaded ? "APIキーを入力" : "読み込み中..."}
-              disabled={!apiKeyLoaded}
-            />
-            <Button
-              variant="ghost"
-              className="v2t-icon-button"
-              disabled={!apiKeyLoaded}
-              aria-label="API キーを貼り付け"
-              title="貼り付け"
-              onClick={() => void pasteApiKey()}
-            >
-              <ClipboardPaste size={16} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              className="v2t-icon-button"
-              aria-label={showApiKey ? "隠す" : "表示"}
-              title={showApiKey ? "APIキーを隠す" : "APIキーを表示"}
-              aria-pressed={showApiKey}
-              disabled={!apiKeyLoaded}
-              onClick={() => setShowApiKey((current) => !current)}
-            >
-              {showApiKey ? (
-                <EyeOff size={16} aria-hidden="true" />
-              ) : (
-                <Eye size={16} aria-hidden="true" />
-              )}
-            </Button>
-            {apiKeyPasteStatus && <StatusToast message={apiKeyPasteStatus} />}
-            {apiKeySaveStatus && <StatusToast message={apiKeySaveStatus} />}
-          </FieldRow>
+          <div className="v2t-control-with-status">
+            <FieldRow>
+              <TextInput
+                id="v2t-api-key-input"
+                className="v2t-row-input"
+                type={showApiKey ? "text" : "password"}
+                value={apiKeyLoaded ? apiKey : ""}
+                onChange={(event) => {
+                  clearTranscriptionOutput();
+                  setApiKey(event.target.value);
+                  setApiKeySaveError("");
+                  setApiKeySaveStatus("");
+                  setApiKeyPasteStatus("");
+                }}
+                onBlur={saveApiKey}
+                placeholder={apiKeyLoaded ? "APIキーを入力" : "読み込み中..."}
+                disabled={!apiKeyLoaded}
+              />
+              <Button
+                variant="ghost"
+                className="v2t-icon-button"
+                disabled={!apiKeyLoaded}
+                aria-label="API キーを貼り付け"
+                title="貼り付け"
+                onClick={() => void pasteApiKey()}
+              >
+                <ClipboardPaste size={16} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="v2t-icon-button"
+                aria-label={showApiKey ? "隠す" : "表示"}
+                title={showApiKey ? "APIキーを隠す" : "APIキーを表示"}
+                aria-pressed={showApiKey}
+                disabled={!apiKeyLoaded}
+                onClick={() => setShowApiKey((current) => !current)}
+              >
+                {showApiKey ? (
+                  <EyeOff size={16} aria-hidden="true" />
+                ) : (
+                  <Eye size={16} aria-hidden="true" />
+                )}
+              </Button>
+            </FieldRow>
+            {(apiKeyPasteStatus || apiKeySaveStatus) && (
+              <div className="v2t-control-status">
+                {apiKeyPasteStatus && (
+                  <StatusToast
+                    message={apiKeyPasteStatus}
+                    tone={apiKeyPasteTone}
+                  />
+                )}
+                {apiKeySaveStatus && (
+                  <StatusToast
+                    message={apiKeySaveStatus}
+                    tone={apiKeySaveTone}
+                  />
+                )}
+              </div>
+            )}
+          </div>
           {apiKeySaveError && <ErrorMessage>{apiKeySaveError}</ErrorMessage>}
         </Field>
 

@@ -1,3 +1,25 @@
+const DUPLICATE_SHORTCUT_MESSAGE = "ショートカットキーが重複しています";
+
+const LEGACY_DUPLICATE_FEATURES = [
+  "settings",
+  "clock",
+  "calendar",
+  "calendarCreateEvent",
+  "gameLauncher",
+  "quickCapture",
+  "voiceToText",
+] as const;
+
+const LEGACY_FEATURE_MATCHERS = [
+  { feature: "clock", terms: ["時計"] },
+  { feature: "voiceToText", terms: ["音声入力"] },
+  { feature: "calendarCreateEvent", terms: ["予定登録", "予定入力"] },
+  { feature: "calendar", terms: ["カレンダー"] },
+  { feature: "gameLauncher", terms: ["ゲームランチャー"] },
+  { feature: "quickCapture", terms: ["クイックキャプチャー"] },
+  { feature: "settings", terms: ["設定画面", "設定ショートカット"] },
+] as const;
+
 export const parseShortcutErrors = (
   errorMessage: string,
 ): Record<string, string> => {
@@ -15,7 +37,7 @@ export const parseShortcutErrors = (
     ) {
       for (const feature of parsed.features) {
         if (typeof feature === "string") {
-          errors[feature] = "ショートカットキーが重複しています";
+          errors[feature] = DUPLICATE_SHORTCUT_MESSAGE;
         }
       }
       return errors;
@@ -34,16 +56,17 @@ export const parseShortcutErrors = (
     return errors;
   } catch {
     if (errorMessage.includes("重複")) {
-      errors.clock = "ショートカットキーが重複しています";
-      errors.calendar = "ショートカットキーが重複しています";
-      errors.calendarCreateEvent = "ショートカットキーが重複しています";
-      errors.voiceToText = "ショートカットキーが重複しています";
-    } else if (errorMessage.includes("時計")) {
-      errors.clock = errorMessage;
-    } else if (errorMessage.includes("音声入力")) {
-      errors.voiceToText = errorMessage;
-    } else if (errorMessage.includes("カレンダー")) {
-      errors.calendar = errorMessage;
+      for (const feature of LEGACY_DUPLICATE_FEATURES) {
+        errors[feature] = DUPLICATE_SHORTCUT_MESSAGE;
+      }
+      return errors;
+    }
+
+    for (const { feature, terms } of LEGACY_FEATURE_MATCHERS) {
+      if (terms.some((term) => errorMessage.includes(term))) {
+        errors[feature] = errorMessage;
+        break;
+      }
     }
     return errors;
   }

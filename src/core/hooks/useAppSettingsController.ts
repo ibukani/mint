@@ -100,10 +100,15 @@ export const useAppSettingsController = () => {
                 : String(saveError);
             console.error("Failed to save settings:", saveError);
             if (sequenceRef.current === sequence) {
+              const parsedShortcutErrors = parseShortcutErrors(message);
               failedSaveRef.current = settingsToSave;
-              setError("設定の保存に失敗しました");
+              setError(
+                Object.keys(parsedShortcutErrors).length > 0
+                  ? "ショートカットキーを確認してください。競合または登録できないキーがあります。"
+                  : "設定の保存に失敗しました",
+              );
               updateSaveStatus("error");
-              setShortcutErrors(parseShortcutErrors(message));
+              setShortcutErrors(parsedShortcutErrors);
             }
           }
         });

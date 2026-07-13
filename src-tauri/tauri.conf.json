@@ -96,7 +96,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: https://asset.localhost https://cdn.cloudflare.steamstatic.com; connect-src ipc: http://ipc.localhost"
     }
   },
   "bundle": {

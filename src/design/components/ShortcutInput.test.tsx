@@ -24,4 +24,32 @@ describe("ShortcutInput", () => {
     expect(screen.getByText("キーの組み合わせを入力")).toBeInTheDocument();
     expect(screen.getByRole("textbox")).toHaveClass("is-recording");
   });
+
+  it("forwards help text and recording instructions to the input", () => {
+    render(
+      <ShortcutInput
+        id="shortcut"
+        value="Alt+Left"
+        onChange={() => {}}
+        aria-describedby="shortcut-help shortcut-error"
+      />,
+    );
+
+    const input = screen.getByRole("textbox");
+    expect(input).toHaveAttribute(
+      "aria-describedby",
+      "shortcut-help shortcut-error",
+    );
+
+    fireEvent.focus(input);
+
+    expect(input).toHaveAttribute(
+      "aria-describedby",
+      "shortcut-help shortcut-error shortcut-recording-help",
+    );
+    expect(screen.getByText("Escでキャンセル、Del/BSでクリア")).toHaveAttribute(
+      "id",
+      "shortcut-recording-help",
+    );
+  });
 });

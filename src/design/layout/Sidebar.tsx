@@ -29,6 +29,15 @@ const statusTitles: Record<SidebarStatusTone, string> = {
   error: "保存エラー",
 };
 
+const getShortcutModifier = () => {
+  if (typeof navigator === "undefined") return "Ctrl";
+  return /Mac|iPhone|iPad|iPod/.test(
+    `${navigator.platform} ${navigator.userAgent}`,
+  )
+    ? "⌘"
+    : "Ctrl";
+};
+
 const revealActiveTab = (activeTabButton: HTMLButtonElement) => {
   const navigation = activeTabButton.parentElement;
   if (
@@ -74,6 +83,7 @@ export const Sidebar = <TTabId extends string>({
   statusTone = "neutral",
 }: SidebarProps<TTabId>) => {
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const shortcutModifier = getShortcutModifier();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: activeTab changes which button receives the ref.
   useEffect(() => {
@@ -126,7 +136,9 @@ export const Sidebar = <TTabId extends string>({
                 </small>
               )}
             </span>
-            <kbd className="app-sidebar__shortcut">Ctrl {index + 1}</kbd>
+            <kbd className="app-sidebar__shortcut">
+              {shortcutModifier} {index + 1}
+            </kbd>
           </button>
         ))}
       </div>

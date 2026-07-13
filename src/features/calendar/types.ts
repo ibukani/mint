@@ -70,6 +70,13 @@ export interface CalendarEvent extends CalendarEventInput {
   updatedAt: string;
 }
 
+export interface CalendarEditorPayload {
+  mode: "create" | "edit" | "duplicate";
+  date?: string;
+  event?: CalendarEvent;
+  template?: CalendarEvent;
+}
+
 export interface CalendarEventRange {
   startInstant: string;
   endInstant: string;

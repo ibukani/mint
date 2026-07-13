@@ -11,6 +11,7 @@ import {
   FileText,
   Paperclip,
   Pin,
+  RefreshCw,
   Search,
   Tag,
   Trash2,
@@ -61,17 +62,31 @@ export const QuickCaptureOverlay: React.FC = () => {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLElement | null>(null);
   const { focusSequence } = capture;
+  const isSaving = capture.status === "saving";
   const activeNote = capture.activeId
     ? capture.notes.find((note) => note.id === capture.activeId)
     : null;
 
   useEffect(() => {
     void focusSequence;
-    editorRef.current?.focus();
-    const length = editorRef.current?.value.length ?? 0;
-    editorRef.current?.setSelectionRange(length, length);
-  }, [focusSequence]);
+    const focusTarget = preview ? previewRef.current : editorRef.current;
+    focusTarget?.focus();
+    if (!preview) {
+      const length = editorRef.current?.value.length ?? 0;
+      editorRef.current?.setSelectionRange(length, length);
+    }
+  }, [focusSequence, preview]);
+
+  useEffect(() => {
+    void focusSequence;
+    if (capture.activeId !== null) return;
+    setPreview(false);
+    setQuery("");
+    setTagFilter(null);
+    setActionStatus("");
+  }, [capture.activeId, focusSequence]);
 
   const filteredNotes = useMemo(() => {
     const tagged = tagFilter
@@ -168,7 +183,7 @@ export const QuickCaptureOverlay: React.FC = () => {
   return (
     <OverlayFrame>
       <OverlayCard
-        className="quick-capture"
+        className="quick-capture is-visible"
         role="dialog"
         aria-label="クイックキャプチャー"
         onKeyDown={handleKeyDown}
@@ -197,6 +212,8 @@ export const QuickCaptureOverlay: React.FC = () => {
               type="button"
               className="quick-capture__icon-button"
               aria-label="クイックキャプチャーを閉じる"
+              aria-keyshortcuts="Escape Alt+2"
+              title="閉じる（Esc）"
               onClick={() => void capture.close()}
             >
               <X size={16} aria-hidden="true" />
@@ -207,10 +224,15 @@ export const QuickCaptureOverlay: React.FC = () => {
         <main className="quick-capture__body">
           <section className="quick-capture__editor-pane" aria-label="メモ編集">
             <div className="quick-capture__toolbar">
-              <div className="quick-capture__mode-switch">
+              <fieldset
+                className="quick-capture__mode-switch"
+                aria-label="メモの表示モード"
+              >
                 <button
                   type="button"
                   className={!preview ? "is-active" : ""}
+                  aria-pressed={!preview}
+                  aria-controls="quick-capture-content"
                   onClick={() => setPreview(false)}
                 >
                   <Edit3 size={14} aria-hidden="true" /> 編集
@@ -218,11 +240,13 @@ export const QuickCaptureOverlay: React.FC = () => {
                 <button
                   type="button"
                   className={preview ? "is-active" : ""}
+                  aria-pressed={preview}
+                  aria-controls="quick-capture-content"
                   onClick={() => setPreview(true)}
                 >
                   <Eye size={14} aria-hidden="true" /> プレビュー
                 </button>
-              </div>
+              </fieldset>
               <div className="quick-capture__toolbar-actions">
                 <button
                   type="button"
@@ -247,6 +271,7 @@ export const QuickCaptureOverlay: React.FC = () => {
                     <button
                       type="button"
                       className="quick-capture__toolbar-button"
+                      disabled={isSaving}
                       onClick={() => void capture.addAttachment()}
                       title="ファイルを添付"
                     >
@@ -266,7 +291,13 @@ export const QuickCaptureOverlay: React.FC = () => {
             </div>
 
             {preview ? (
-              <article className="quick-capture__preview">
+              <article
+                ref={previewRef}
+                id="quick-capture-content"
+                className="quick-capture__preview"
+                tabIndex={-1}
+                aria-label="メモのプレビュー"
+              >
                 {capture.content.trim() ? (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -295,6 +326,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             ) : (
               <textarea
                 ref={editorRef}
+                id="quick-capture-content"
                 aria-label="メモ本文"
                 value={capture.content}
                 onChange={(event) => capture.setContent(event.target.value)}
@@ -347,6 +379,7 @@ export const QuickCaptureOverlay: React.FC = () => {
                         type="button"
                         className="quick-capture__attachment-remove"
                         aria-label={`${attachment.fileName}を削除`}
+                        disabled={isSaving}
                         onClick={() =>
                           void capture.removeAttachment(attachment.id)
                         }
@@ -362,6 +395,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             <footer className="quick-capture__editor-footer">
               <span
                 className={capture.status === "error" ? "is-error" : ""}
+                role={capture.error ? "alert" : "status"}
                 aria-live="polite"
               >
                 {capture.error ||
@@ -373,10 +407,22 @@ export const QuickCaptureOverlay: React.FC = () => {
                       : "")}
               </span>
               <div>
+                {capture.canRetrySave && capture.error && (
+                  <button
+                    type="button"
+                    className="quick-capture__retry"
+                    disabled={isSaving}
+                    onClick={() => void capture.retrySave()}
+                    title="保存を再試行"
+                  >
+                    <RefreshCw size={14} aria-hidden="true" /> 再試行
+                  </button>
+                )}
                 {capture.activeId && (
                   <button
                     type="button"
                     className="quick-capture__danger"
+                    disabled={isSaving}
                     onClick={() => {
                       if (window.confirm("このメモを削除しますか？"))
                         void capture.removeActive();
@@ -389,7 +435,8 @@ export const QuickCaptureOverlay: React.FC = () => {
                   <button
                     type="button"
                     className="quick-capture__save"
-                    disabled={!capture.content.trim()}
+                    disabled={!capture.content.trim() || isSaving}
+                    aria-keyshortcuts="Control+Enter Meta+Enter"
                     onClick={() => void capture.promote()}
                   >
                     <Check size={14} aria-hidden="true" /> メモに保存{" "}
@@ -427,6 +474,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             <label className="quick-capture__search">
               <Search size={14} aria-hidden="true" />
               <input
+                aria-label="保存済みメモを検索"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="メモを検索"
@@ -454,6 +502,9 @@ export const QuickCaptureOverlay: React.FC = () => {
                     type="button"
                     key={note.id}
                     className={`quick-capture__note${capture.activeId === note.id ? " is-active" : ""}`}
+                    aria-current={
+                      capture.activeId === note.id ? "true" : undefined
+                    }
                     onClick={() => void capture.selectNote(note)}
                   >
                     <span className="quick-capture__note-title">

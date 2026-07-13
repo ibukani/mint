@@ -13,9 +13,9 @@ export const useVoiceToTextApiKey = () => {
   const [apiKeyLoaded, setApiKeyLoaded] = useState(false);
   const [apiKeySaveError, setApiKeySaveError] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
-  const [apiKeySaveStatus, setApiKeySaveStatus] =
+  const [apiKeySaveStatus, setApiKeySaveStatus, apiKeySaveTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
-  const [apiKeyPasteStatus, setApiKeyPasteStatus] =
+  const [apiKeyPasteStatus, setApiKeyPasteStatus, apiKeyPasteTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export const useVoiceToTextApiKey = () => {
     try {
       const value = (await navigator.clipboard.readText()).trim();
       if (!value) {
-        setApiKeyPasteStatus(EMPTY_PASTE_STATUS);
+        setApiKeyPasteStatus(EMPTY_PASTE_STATUS, "warning");
         return;
       }
       setApiKey(value);
@@ -70,7 +70,7 @@ export const useVoiceToTextApiKey = () => {
       setApiKeyPasteStatus("API キーを貼り付けました");
     } catch (error) {
       console.error("Failed to paste API key:", error);
-      setApiKeyPasteStatus(CLIPBOARD_READ_ERROR_STATUS);
+      setApiKeyPasteStatus(CLIPBOARD_READ_ERROR_STATUS, "error");
     } finally {
       focusAndSelect("v2t-api-key-input");
     }
@@ -87,7 +87,9 @@ export const useVoiceToTextApiKey = () => {
     apiKeyLoaded,
     apiKeySaveError,
     apiKeySaveStatus,
+    apiKeySaveTone,
     apiKeyPasteStatus,
+    apiKeyPasteTone,
     showApiKey,
     setApiKey,
     setApiKeySaveError,

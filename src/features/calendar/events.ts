@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { buildCalendarDays, startOfMonth, toMachineDate } from "./calendar";
 import type {
+  CalendarEditorPayload,
   CalendarEvent,
   CalendarEventCursor,
   CalendarEventDraft,
@@ -181,18 +182,9 @@ export const eventToDraft = (event: CalendarEvent): CalendarEventDraft => {
   };
 };
 
-export const openCalendarEditor = async (payload: {
-  mode: "create" | "edit" | "duplicate";
-  date?: string;
-  event?: CalendarEvent;
-  template?: CalendarEvent;
-}) => {
-  try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("open_calendar_editor_window", { payload });
-  } catch (error) {
-    console.error("Failed to open calendar editor window:", error);
-  }
+export const openCalendarEditor = async (payload: CalendarEditorPayload) => {
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke<void>("open_calendar_editor_window", { payload });
 };
 
 export const draftToEventInput = (

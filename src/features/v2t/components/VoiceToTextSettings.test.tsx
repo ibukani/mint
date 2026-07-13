@@ -228,9 +228,10 @@ describe("VoiceToTextSettings", () => {
       expect(apiKeyInput).toHaveFocus();
       expect(apiKeyInput.selectionStart).toBe(0);
       expect(apiKeyInput.selectionEnd).toBe(apiKeyInput.value.length);
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "API キーを貼り付けました",
-      );
+      const status = screen.getByRole("status");
+      expect(status).toHaveTextContent("API キーを貼り付けました");
+      expect(status.closest(".v2t-control-status")).toBeInTheDocument();
+      expect(status.closest(".design-row")).toBeNull();
 
       await act(async () => {
         vi.advanceTimersByTime(2000);
@@ -297,6 +298,9 @@ describe("VoiceToTextSettings", () => {
       expect(apiKeyInput).toHaveFocus();
       expect(screen.getByRole("status")).toHaveTextContent(
         "貼り付ける内容がありません",
+      );
+      expect(screen.getByRole("status")).toHaveClass(
+        "status-toast-label--warning",
       );
 
       await act(async () => {
@@ -470,6 +474,61 @@ describe("VoiceToTextSettings", () => {
         .getByRole("button", { name: "文字起こしを実行" })
         .getAttribute("aria-describedby"),
     ).toContain("v2t-transcribe-button-help");
+  });
+
+  it("blocks transcription when provider settings are invalid", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "not a url",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") {
+        throw new Error("transcription should be blocked");
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+
+    const transcribeButton = screen.getByRole("button", {
+      name: "文字起こしを実行",
+    });
+    expect(transcribeButton).toBeDisabled();
+    expect(screen.getByText("API接続")).toBeInTheDocument();
+    expect(screen.getByText("設定を確認")).toBeInTheDocument();
+    expect(screen.getByText("準備中")).toHaveAttribute("aria-live", "polite");
+    expect(
+      screen.getByText("有効なAPIエンドポイントURLを入力してください。"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("API エンドポイント (Base URL)"), {
+      target: { value: "https://api.example.com/v1" },
+    });
+
+    expect(transcribeButton).toBeEnabled();
+    expect(screen.getByText("接続設定済み")).toBeInTheDocument();
   });
 
   it("focuses the transcription error after a failed request", async () => {

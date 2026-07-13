@@ -124,6 +124,30 @@ describe("App Window Routing", () => {
     ).toBeNull();
   });
 
+  it("keeps a single retry action for settings save failures", async () => {
+    const mockSettings = createMockSettings({ theme: "dark" });
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === "load_settings") return mockSettings;
+      if (command === "save_settings") {
+        throw new Error("settings storage unavailable");
+      }
+      return undefined;
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "一般設定" });
+    fireEvent.click(screen.getByRole("radio", { name: "ライト" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "設定の保存に失敗しました",
+    );
+    expect(screen.getAllByRole("button", { name: "再試行" })).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: "もう一度保存" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders ClockOverlay when label=clock", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
@@ -294,6 +318,24 @@ describe("App Window Routing", () => {
     ).toBeInTheDocument();
     expect(calendarTab).toHaveAttribute("aria-current", "page");
     expect(shortcut).toContain(`Control+${shortcutNumber}`);
+  });
+
+  it("does not steal Ctrl+number from an editable control", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+
+    const themeRadio = screen.getByRole("radio", { name: "ダーク" });
+    themeRadio.focus();
+    fireEvent.keyDown(themeRadio, { key: "4", ctrlKey: true });
+
+    expect(
+      screen.queryByRole("heading", { name: "時計オーバーレイ設定" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "一般設定" })).toBeVisible();
   });
 
   it("restores the last selected settings tab", async () => {

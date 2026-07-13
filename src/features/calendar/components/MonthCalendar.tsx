@@ -21,6 +21,8 @@ interface MonthCalendarProps {
   onOpenDay: (date: string) => void;
   onOpenEvent: (event: CalendarEvent) => void;
   onViewMonthChange: (month: Date) => void;
+  selectedDate?: string;
+  onSelectedDateChange?: (date: string) => void;
   today: Date;
   viewMonth: Date;
 }
@@ -34,12 +36,22 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onOpenDay,
   onOpenEvent,
   onViewMonthChange,
+  selectedDate: selectedDateProp,
+  onSelectedDateChange,
   today,
   viewMonth,
 }) => {
-  const [selectedDate, setSelectedDate] = useState(() => toMachineDate(today));
+  const [internalSelectedDate, setInternalSelectedDate] = useState(() =>
+    toMachineDate(today),
+  );
   const dayRefs = useRef(new Map<string, HTMLButtonElement>());
   const shouldFocusSelectedRef = useRef(false);
+  const hasFocusedInitialDateRef = useRef(false);
+  const selectedDate = selectedDateProp ?? internalSelectedDate;
+  const updateSelectedDate = (nextDate: string) => {
+    if (selectedDateProp === undefined) setInternalSelectedDate(nextDate);
+    onSelectedDateChange?.(nextDate);
+  };
   const days = useMemo(
     () => buildCalendarDays(viewMonth, today),
     [viewMonth, today],
@@ -59,6 +71,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   }, [days, selectedDate, today]);
 
   useEffect(() => {
+    if (hasFocusedInitialDateRef.current) return;
+    const initialDateButton = dayRefs.current.get(activeFocusDate);
+    if (!initialDateButton) return;
+    initialDateButton.focus();
+    hasFocusedInitialDateRef.current = true;
+  }, [activeFocusDate]);
+
+  useEffect(() => {
     if (!shouldFocusSelectedRef.current) return;
     const selectedButton = dayRefs.current.get(selectedDate);
     if (!selectedButton) return;
@@ -69,7 +89,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   const selectAndFocusDate = (date: Date) => {
     const machineDate = toMachineDate(date);
     shouldFocusSelectedRef.current = true;
-    setSelectedDate(machineDate);
+    updateSelectedDate(machineDate);
     if (
       date.getFullYear() !== viewMonth.getFullYear() ||
       date.getMonth() !== viewMonth.getMonth()
@@ -145,7 +165,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   };
 
   const goToToday = () => {
-    setSelectedDate(toMachineDate(today));
+    updateSelectedDate(toMachineDate(today));
     onViewMonthChange(startOfMonth(today));
   };
 
@@ -212,7 +232,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                 else dayRefs.current.delete(day.machineDate);
               }}
               onClick={() => {
-                setSelectedDate(day.machineDate);
+                updateSelectedDate(day.machineDate);
                 onOpenDay(day.machineDate);
               }}
             >

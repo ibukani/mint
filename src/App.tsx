@@ -87,11 +87,7 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      <ErrorToast
-        message={error}
-        onDismiss={clearError}
-        onRetry={saveStatus === "error" ? retrySaveSettings : undefined}
-      />
+      <ErrorToast message={error} onDismiss={clearError} />
       <SettingsNavigationProvider
         activeTab={activeTab}
         setActiveTab={setActiveTab}

@@ -66,6 +66,28 @@ export const mockSaveQuickCaptureDraft = (input: QuickCaptureDraftInput) => {
   return draft;
 };
 
+export const mockPromoteQuickCaptureNote = (input: QuickCaptureNoteInput) => {
+  if (!input.content.trim()) throw new Error("メモの本文を入力してください。");
+  const state = read();
+  const now = new Date().toISOString();
+  const note: QuickCaptureNote = {
+    id: crypto.randomUUID(),
+    content: input.content,
+    tags: normalizeTags(input.tags),
+    pinned: input.pinned,
+    createdAt: now,
+    updatedAt: now,
+    attachments: [],
+  };
+  const draft = {
+    content: "",
+    tags: [],
+    updatedAt: now,
+  };
+  write({ draft, notes: sortNotes([note, ...state.notes]) });
+  return { note, draft };
+};
+
 export const mockCreateQuickCaptureNote = (input: QuickCaptureNoteInput) => {
   if (!input.content.trim()) throw new Error("メモの本文を入力してください。");
   const state = read();

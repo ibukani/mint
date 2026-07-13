@@ -97,6 +97,12 @@
   align-items: center;
   gap: var(--space-1);
 }
+.quick-capture__mode-switch {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .quick-capture__toolbar-button {
   display: flex;
   align-items: center;
@@ -132,6 +138,10 @@
   background: transparent;
   color: var(--color-text-primary);
   line-height: 1.7;
+}
+.quick-capture__preview:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
 }
 .quick-capture__preview {
   min-height: 0;
@@ -278,6 +288,16 @@
   align-items: center;
   gap: var(--space-1);
   color: var(--color-error);
+}
+.quick-capture__editor-footer .quick-capture__retry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-accent);
+}
+.quick-capture__editor-footer .quick-capture__retry:hover {
+  background: var(--surface-accent-action);
+  color: var(--color-accent);
 }
 .quick-capture button:disabled {
   cursor: not-allowed;

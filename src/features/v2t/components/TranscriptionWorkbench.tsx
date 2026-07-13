@@ -26,9 +26,11 @@ export const TranscriptionWorkbench: React.FC<{
   const {
     audioFilePath,
     audioFilePasteStatus,
+    audioFilePasteTone,
     transcriptionText,
     transcriptionError,
     copyStatus,
+    copyTone,
     transcribing,
     canTranscribe,
     transcribeHelpText,
@@ -58,6 +60,7 @@ export const TranscriptionWorkbench: React.FC<{
         <span
           className={`v2t-readiness ${canTranscribe ? "is-ready" : ""}`}
           aria-live="polite"
+          aria-atomic="true"
         >
           {canTranscribe ? "実行可能" : "準備中"}
         </span>
@@ -90,50 +93,57 @@ export const TranscriptionWorkbench: React.FC<{
           label="音声ファイルパス"
           helpText="ボタンからファイルを選ぶか、パスを貼り付けて指定します。Enter でも文字起こしを開始できます。"
         >
-          <FieldRow className="v2t-file-row">
-            <TextInput
-              id="v2t-audio-file-input"
-              className="v2t-row-input"
-              type="text"
-              value={audioFilePath}
-              onChange={(event) => updateAudioFilePath(event.target.value)}
-              onBlur={(event) => normalizeAudioFilePath(event.target.value)}
-              onKeyDown={handleAudioFilePathKeyDown}
-              aria-keyshortcuts="Enter"
-              placeholder="例: /Users/me/audio.wav"
-            />
-            <Button
-              variant="ghost"
-              className="v2t-icon-button"
-              aria-label="音声ファイルを選択"
-              title="ファイルを選択"
-              onClick={() => void selectAudioFile()}
-            >
-              <FolderOpen size={16} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              className="v2t-icon-button"
-              aria-label="音声ファイルパスを貼り付け"
-              title="貼り付け"
-              onClick={() => void pasteAudioFilePath()}
-            >
-              <ClipboardPaste size={16} aria-hidden="true" />
-            </Button>
-            <Button
-              variant="ghost"
-              className="v2t-icon-button"
-              aria-label="クリア"
-              title="クリア"
-              onClick={clearAudioFilePath}
-              disabled={!audioFilePath}
-            >
-              <Trash2 size={16} aria-hidden="true" />
-            </Button>
+          <div className="v2t-control-with-status">
+            <FieldRow className="v2t-file-row">
+              <TextInput
+                id="v2t-audio-file-input"
+                className="v2t-row-input"
+                type="text"
+                value={audioFilePath}
+                onChange={(event) => updateAudioFilePath(event.target.value)}
+                onBlur={(event) => normalizeAudioFilePath(event.target.value)}
+                onKeyDown={handleAudioFilePathKeyDown}
+                aria-keyshortcuts="Enter"
+                placeholder="例: /Users/me/audio.wav"
+              />
+              <Button
+                variant="ghost"
+                className="v2t-icon-button"
+                aria-label="音声ファイルを選択"
+                title="ファイルを選択"
+                onClick={() => void selectAudioFile()}
+              >
+                <FolderOpen size={16} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="v2t-icon-button"
+                aria-label="音声ファイルパスを貼り付け"
+                title="貼り付け"
+                onClick={() => void pasteAudioFilePath()}
+              >
+                <ClipboardPaste size={16} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="v2t-icon-button"
+                aria-label="クリア"
+                title="クリア"
+                onClick={clearAudioFilePath}
+                disabled={!audioFilePath}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+              </Button>
+            </FieldRow>
             {audioFilePasteStatus && (
-              <StatusToast message={audioFilePasteStatus} />
+              <div className="v2t-control-status">
+                <StatusToast
+                  message={audioFilePasteStatus}
+                  tone={audioFilePasteTone}
+                />
+              </div>
             )}
-          </FieldRow>
+          </div>
         </Field>
 
         <Field id="v2t-transcribe-button" helpText={transcribeHelpText}>
@@ -174,7 +184,9 @@ export const TranscriptionWorkbench: React.FC<{
                 <Trash2 size={15} aria-hidden="true" />
                 結果をクリア
               </Button>
-              {copyStatus && <StatusToast message={copyStatus} />}
+              {copyStatus && (
+                <StatusToast message={copyStatus} tone={copyTone} />
+              )}
             </div>
             <TextArea
               id="v2t-transcription-result"

@@ -12,6 +12,12 @@ const overlayWindowTitles: Record<string, string> = {
 const isSettingsTabId = (value: string | null): value is SettingsTabId =>
   SETTINGS_TABS.some((tab) => tab.id === value);
 
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
+
 const getInitialSettingsTab = (): SettingsTabId => {
   const requestedTab = new URLSearchParams(window.location.search).get("tab");
   if (isSettingsTabId(requestedTab)) return requestedTab;
@@ -67,6 +73,7 @@ export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
       ) {
         return;
       }
+      if (isEditableTarget(event.target)) return;
 
       const tabIndex = Number(event.key) - 1;
       const tab = SETTINGS_TABS[tabIndex];

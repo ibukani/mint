@@ -11,9 +11,16 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
+  openEditorShouldFail: false,
   invoke: vi.fn<(command: string) => Promise<unknown>>(async (command) => {
     if (command === "list_calendar_events") return [];
     if (command === "get_next_calendar_event") return null;
+    if (command === "open_calendar_editor_window") {
+      if (mocks.openEditorShouldFail) {
+        throw new Error("editor window unavailable");
+      }
+      return undefined;
+    }
     return undefined;
   }),
 }));
@@ -86,10 +93,17 @@ describe("CalendarOverlay window coordination", () => {
     mocks.emitTo.mockClear();
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
+    mocks.openEditorShouldFail = false;
     mocks.invoke.mockClear();
     mocks.invoke.mockImplementation(async (command: string) => {
       if (command === "list_calendar_events") return [];
       if (command === "get_next_calendar_event") return null;
+      if (command === "open_calendar_editor_window") {
+        if (mocks.openEditorShouldFail) {
+          throw new Error("editor window unavailable");
+        }
+        return undefined;
+      }
       return undefined;
     });
   });
@@ -191,6 +205,39 @@ describe("CalendarOverlay window coordination", () => {
     });
   });
 
+  it("shows a retry action when the event editor cannot be opened", async () => {
+    mocks.openEditorShouldFail = true;
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "7月11日" }));
+    fireEvent.click(screen.getByRole("button", { name: "この日に予定を追加" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "予定入力画面を開けませんでした。再試行してください。",
+    );
+    const retryButton = screen.getByRole("button", { name: "再試行" });
+
+    mocks.openEditorShouldFail = false;
+    fireEvent.click(retryButton);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("creates an event for the open day with the N shortcut", async () => {
     render(<CalendarOverlay />);
     await act(async () => {
@@ -213,6 +260,22 @@ describe("CalendarOverlay window coordination", () => {
         date: "2026-07-11",
       },
     });
+  });
+
+  it("restores the selected day after returning from its agenda", async () => {
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const selectedDay = screen.getByRole("button", { name: "7月11日" });
+    fireEvent.click(selectedDay);
+    fireEvent.click(screen.getByRole("button", { name: "月表示に戻る" }));
+
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByRole("button", { name: "7月11日" })).toHaveFocus();
   });
 
   it("opens a reusable copy from event detail with the D shortcut", async () => {

@@ -1,6 +1,7 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import type {
+  CalendarEditorPayload,
   CalendarEventCursor,
   CalendarEventInput,
   CalendarEventRange,
@@ -24,6 +25,7 @@ import {
   mockDeleteQuickCaptureAttachment,
   mockDeleteQuickCaptureNote,
   mockLoadQuickCaptureState,
+  mockPromoteQuickCaptureNote,
   mockSaveQuickCaptureDraft,
   mockUpdateQuickCaptureNote,
 } from "./quickCaptureMock";
@@ -125,6 +127,16 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         return mockGetNextCalendarEvent(cursor);
       }
       case "open_calendar_editor_window": {
+        const payload = typedArgs?.payload as CalendarEditorPayload | undefined;
+        const mode = payload?.mode;
+        if (
+          !mode ||
+          !["create", "edit", "duplicate"].includes(mode) ||
+          (mode === "edit" && !payload?.event) ||
+          (mode === "duplicate" && !payload?.template)
+        ) {
+          throw new Error("Calendar editor payload is required.");
+        }
         return;
       }
       case "get_calendar_editor_payload": {
@@ -153,6 +165,11 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         const input = typedArgs?.input as QuickCaptureDraftInput | undefined;
         if (!input) throw new Error("Quick capture draft input is required.");
         return mockSaveQuickCaptureDraft(input);
+      }
+      case "promote_quick_capture_note": {
+        const input = typedArgs?.input as QuickCaptureNoteInput | undefined;
+        if (!input) throw new Error("Quick capture note input is required.");
+        return mockPromoteQuickCaptureNote(input);
       }
       case "create_quick_capture_note": {
         const input = typedArgs?.input as QuickCaptureNoteInput | undefined;

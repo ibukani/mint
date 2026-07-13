@@ -2,6 +2,11 @@ import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { chooseAudioFile, transcribeAudio } from "../api";
 import { focusAndSelect } from "../focus";
+import {
+  validateBaseUrl,
+  validateLanguageCode,
+  validateModelName,
+} from "../settings";
 import type { VoiceToTextSettings } from "../types";
 import { useTransientStatus } from "./useTransientStatus";
 
@@ -32,9 +37,11 @@ export const useTranscriptionWorkbench = ({
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
   const [transcribing, setTranscribing] = useState(false);
-  const [audioFilePasteStatus, setAudioFilePasteStatus] =
+  const [audioFilePasteStatus, setAudioFilePasteStatus, audioFilePasteTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
-  const [copyStatus, setCopyStatus] = useTransientStatus(getCopyStatusDuration);
+  const [copyStatus, setCopyStatus, copyTone] = useTransientStatus(
+    getCopyStatusDuration,
+  );
 
   useEffect(() => {
     if (transcriptionText) focusAndSelect("v2t-transcription-result");
@@ -52,11 +59,17 @@ export const useTranscriptionWorkbench = ({
     setCopyStatus("");
   }, [setCopyStatus]);
 
+  const configurationError =
+    validateBaseUrl(settings.baseUrl) ??
+    validateModelName(settings.model) ??
+    validateLanguageCode(settings.language);
+
   const canTranscribe =
     settings.enabled &&
     apiKeyLoaded &&
     Boolean(apiKey.trim()) &&
     Boolean(audioFilePath.trim()) &&
+    !configurationError &&
     !transcribing;
 
   const transcribeAudioFile = useCallback(async () => {
@@ -91,7 +104,7 @@ export const useTranscriptionWorkbench = ({
       focusAndSelect("v2t-transcription-result");
     } catch (error) {
       console.error("Failed to copy transcription text:", error);
-      setCopyStatus("コピーに失敗しました");
+      setCopyStatus("コピーに失敗しました", "error");
     }
   }, [setCopyStatus, transcriptionText]);
 
@@ -124,7 +137,7 @@ export const useTranscriptionWorkbench = ({
     try {
       const value = (await navigator.clipboard.readText()).trim();
       if (!value) {
-        setAudioFilePasteStatus(EMPTY_PASTE_STATUS);
+        setAudioFilePasteStatus(EMPTY_PASTE_STATUS, "warning");
         clearApiKeyPasteStatus();
         return;
       }
@@ -133,7 +146,7 @@ export const useTranscriptionWorkbench = ({
       clearApiKeyPasteStatus();
     } catch (error) {
       console.error("Failed to paste audio file path:", error);
-      setAudioFilePasteStatus(CLIPBOARD_READ_ERROR_STATUS);
+      setAudioFilePasteStatus(CLIPBOARD_READ_ERROR_STATUS, "error");
       clearApiKeyPasteStatus();
     } finally {
       focusAndSelect("v2t-audio-file-input");
@@ -151,7 +164,7 @@ export const useTranscriptionWorkbench = ({
       setAudioFilePasteStatus("音声ファイルを選択しました");
     } catch (error) {
       console.error("Failed to select an audio file:", error);
-      setAudioFilePasteStatus(FILE_PICKER_ERROR_STATUS);
+      setAudioFilePasteStatus(FILE_PICKER_ERROR_STATUS, "error");
     } finally {
       focusAndSelect("v2t-audio-file-input");
     }
@@ -183,7 +196,9 @@ export const useTranscriptionWorkbench = ({
         ? "実行するには、APIキーを入力してください。"
         : !audioFilePath.trim()
           ? "実行するには、音声ファイルパスを入力してください。"
-          : undefined;
+          : configurationError
+            ? configurationError
+            : undefined;
 
   const setupSteps = [
     {
@@ -192,13 +207,15 @@ export const useTranscriptionWorkbench = ({
       detail: settings.enabled ? "有効" : "有効化が必要",
     },
     {
-      label: "APIキー",
-      complete: apiKeyLoaded && Boolean(apiKey.trim()),
+      label: "API接続",
+      complete: apiKeyLoaded && Boolean(apiKey.trim()) && !configurationError,
       detail: !apiKeyLoaded
         ? "読み込み中"
         : apiKey.trim()
-          ? "設定済み"
-          : "入力が必要",
+          ? configurationError
+            ? "設定を確認"
+            : "接続設定済み"
+          : "APIキーが必要",
     },
     {
       label: "音声ファイル",
@@ -210,9 +227,11 @@ export const useTranscriptionWorkbench = ({
   return {
     audioFilePath,
     audioFilePasteStatus,
+    audioFilePasteTone,
     transcriptionText,
     transcriptionError,
     copyStatus,
+    copyTone,
     transcribing,
     canTranscribe,
     transcribeHelpText,

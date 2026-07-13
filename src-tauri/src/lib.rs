@@ -197,6 +197,7 @@ pub fn run() {
             features::game_launcher::launch::launch_game,
             features::quick_capture::load_quick_capture_state,
             features::quick_capture::save_quick_capture_draft,
+            features::quick_capture::promote_quick_capture_note,
             features::quick_capture::create_quick_capture_note,
             features::quick_capture::update_quick_capture_note,
             features::quick_capture::delete_quick_capture_note,

@@ -6,7 +6,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
-import type { CalendarEvent } from "../types";
+import type { CalendarEditorPayload, CalendarEvent } from "../types";
 import { CalendarEventEditor } from "./CalendarEventEditor";
 import "./CalendarOverlay.css";
 
@@ -14,13 +14,6 @@ type EditorState =
   | { kind: "create"; date: string }
   | { kind: "edit"; event: CalendarEvent }
   | { kind: "duplicate"; event: CalendarEvent };
-
-interface EditorPayload {
-  mode: string;
-  date?: string;
-  event?: CalendarEvent;
-  template?: CalendarEvent;
-}
 
 const getTodayMachineDate = () => {
   const today = new Date();
@@ -63,7 +56,7 @@ export const CalendarEditorOverlay: React.FC = () => {
     emit("calendar-editor-ready").catch(console.error);
 
     // 2. Also try retrieving it directly via invoke as a fallback
-    invoke<EditorPayload>("get_calendar_editor_payload")
+    invoke<CalendarEditorPayload | null>("get_calendar_editor_payload")
       .then((payload) => {
         if (!payload) return;
         if (payload.mode === "create") {
@@ -81,24 +74,27 @@ export const CalendarEditorOverlay: React.FC = () => {
         console.warn("Failed to get initial calendar editor payload", err);
       });
 
-    const unlisten = listen<EditorPayload>("calendar-editor-shown", (event) => {
-      const payload = event.payload;
-      if (payload.mode === "create") {
-        setEditorState({
-          kind: "create",
-          date: payload.date || getTodayMachineDate(),
-        });
-      } else if (payload.mode === "edit" && payload.event) {
-        setEditorState({ kind: "edit", event: payload.event });
-      } else if (payload.mode === "duplicate" && payload.template) {
-        setEditorState({ kind: "duplicate", event: payload.template });
-      } else {
-        setEditorState({
-          kind: "create",
-          date: getTodayMachineDate(),
-        });
-      }
-    });
+    const unlisten = listen<CalendarEditorPayload>(
+      "calendar-editor-shown",
+      (event) => {
+        const payload = event.payload;
+        if (payload.mode === "create") {
+          setEditorState({
+            kind: "create",
+            date: payload.date || getTodayMachineDate(),
+          });
+        } else if (payload.mode === "edit" && payload.event) {
+          setEditorState({ kind: "edit", event: payload.event });
+        } else if (payload.mode === "duplicate" && payload.template) {
+          setEditorState({ kind: "duplicate", event: payload.template });
+        } else {
+          setEditorState({
+            kind: "create",
+            date: getTodayMachineDate(),
+          });
+        }
+      },
+    );
 
     return () => {
       document.body.classList.remove("is-overlay");

@@ -1,16 +1,64 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { GameArtwork, GameLauncherOverlay } from "./GameLauncherOverlay";
 
+const eventMocks = vi.hoisted(() => ({
+  listeners: new Map<string, () => void>(),
+}));
+
+const apiMocks = vi.hoisted(() => ({
+  launch: vi.fn().mockResolvedValue(undefined),
+  list: vi.fn().mockResolvedValue({
+    games: [
+      {
+        id: "730",
+        title: "Counter-Strike 2",
+        store: "steam",
+        imagePath: null,
+        fallbackImagePath: null,
+      },
+      {
+        id: "valorant",
+        title: "VALORANT",
+        store: "riot",
+        imagePath: null,
+        fallbackImagePath: null,
+      },
+    ],
+    sources: [],
+  }),
+  openStore: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (event: string, callback: () => void) => {
+    eventMocks.listeners.set(event, callback);
+    return () => eventMocks.listeners.delete(event);
+  }),
+}));
+
+vi.mock("../api", () => ({
+  launchGame: apiMocks.launch,
+  listInstalledGames: apiMocks.list,
+  openGameStorePage: apiMocks.openStore,
+}));
+
 describe("GameLauncherOverlay", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    eventMocks.listeners.clear();
+    apiMocks.launch.mockClear();
+    apiMocks.list.mockClear();
+    apiMocks.openStore.mockClear();
+  });
 
   it("検索してキーボードでゲームを選べる", async () => {
     render(
@@ -57,6 +105,43 @@ describe("GameLauncherOverlay", () => {
       screen.getByRole("dialog", { name: "ゲームランチャー" }),
     ).toHaveClass("is-hiding");
     expect(screen.queryByText("起動中…")).not.toBeInTheDocument();
+  });
+
+  it("再表示時に前回の検索をクリアし、キーボード操作を案内する", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+
+    const search = await screen.findByRole("textbox", { name: "ゲームを検索" });
+    expect(search).toHaveAttribute(
+      "aria-keyshortcuts",
+      "ArrowDown ArrowUp Enter",
+    );
+    expect(screen.getByText("↑ ↓ Enter")).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "valorant" } });
+    expect(search).toHaveValue("valorant");
+
+    act(() => eventMocks.listeners.get("game-launcher-shown")?.());
+
+    await waitFor(() => expect(search).toHaveValue(""));
+  });
+
+  it("アクションボタンのEnterで選択中ゲームを起動しない", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+
+    const favorite = await screen.findByRole("button", {
+      name: "VALORANTをお気に入りに追加",
+    });
+    fireEvent.keyDown(favorite, { key: "Enter" });
+
+    expect(apiMocks.launch).not.toHaveBeenCalled();
   });
 
   it("バックエンドで抽出したdata URLのゲームアイコンを表示する", () => {

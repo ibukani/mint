@@ -33,4 +33,25 @@ describe("parseShortcutErrors", () => {
       parseShortcutErrors("時計ショートカットの登録に失敗しました"),
     ).toEqual({ clock: "時計ショートカットの登録に失敗しました" });
   });
+
+  it("maps a legacy duplicate error to every shortcut owner", () => {
+    expect(parseShortcutErrors("ショートカットキーが重複しています")).toEqual({
+      settings: "ショートカットキーが重複しています",
+      clock: "ショートカットキーが重複しています",
+      calendar: "ショートカットキーが重複しています",
+      calendarCreateEvent: "ショートカットキーが重複しています",
+      gameLauncher: "ショートカットキーが重複しています",
+      quickCapture: "ショートカットキーが重複しています",
+      voiceToText: "ショートカットキーが重複しています",
+    });
+  });
+
+  it.each([
+    ["設定画面ショートカットの登録に失敗しました", "settings"],
+    ["ゲームランチャーショートカットの登録に失敗しました", "gameLauncher"],
+    ["クイックキャプチャーショートカットの登録に失敗しました", "quickCapture"],
+    ["予定登録ショートカットの登録に失敗しました", "calendarCreateEvent"],
+  ])("recognizes legacy failures for %s", (message, feature) => {
+    expect(parseShortcutErrors(message)).toEqual({ [feature]: message });
+  });
 });

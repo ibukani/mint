@@ -10,3 +10,5 @@ export interface VoiceToTextSettings {
 export interface TranscriptionResult {
   text: string;
 }
+
+export type StatusTone = "success" | "error" | "warning" | "neutral";

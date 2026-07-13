@@ -5,6 +5,7 @@ import {
   mockDeleteQuickCaptureAttachment,
   mockDeleteQuickCaptureNote,
   mockLoadQuickCaptureState,
+  mockPromoteQuickCaptureNote,
   mockSaveQuickCaptureDraft,
   mockUpdateQuickCaptureNote,
 } from "./quickCaptureMock";
@@ -48,6 +49,22 @@ describe("quickCaptureMock", () => {
     expect(mockLoadQuickCaptureState().notes.map((note) => note.id)).toEqual([
       first.id,
     ]);
+  });
+
+  it("promotes a note and clears the draft as one mock operation", () => {
+    mockSaveQuickCaptureDraft({ content: "下書き", tags: ["inbox"] });
+
+    const promotion = mockPromoteQuickCaptureNote({
+      content: "保存するメモ",
+      tags: ["work"],
+      pinned: false,
+    });
+
+    expect(promotion.note.content).toBe("保存するメモ");
+    expect(mockLoadQuickCaptureState()).toMatchObject({
+      draft: { content: "", tags: [] },
+      notes: [expect.objectContaining({ id: promotion.note.id })],
+    });
   });
 
   it("rejects empty and missing notes", () => {

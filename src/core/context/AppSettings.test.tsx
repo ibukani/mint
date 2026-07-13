@@ -417,6 +417,9 @@ describe("AppSettingsProvider", () => {
         "時計ショートカットの登録に失敗しました",
       );
     });
+    expect(screen.getByTestId("error")).toHaveTextContent(
+      "ショートカットキーを確認してください。競合または登録できないキーがあります。",
+    );
     expect(screen.getByTestId("save-status")).toHaveTextContent("error");
   });
 
@@ -453,7 +456,7 @@ describe("AppSettingsProvider", () => {
 
     expect(screen.getByTestId("save-status")).toHaveTextContent("error");
     expect(screen.getByTestId("error")).toHaveTextContent(
-      "設定の保存に失敗しました",
+      "ショートカットキーを確認してください。競合または登録できないキーがあります。",
     );
 
     act(() => {

@@ -124,6 +124,8 @@ export const GameLauncherOverlay: React.FC = () => {
 
   useEffect(() => {
     void showSequence;
+    setQuery("");
+    setSelectedIndex(0);
     inputRef.current?.focus();
   }, [showSequence]);
   const activeIndex = games.length ? selectedIndex % games.length : 0;
@@ -140,6 +142,8 @@ export const GameLauncherOverlay: React.FC = () => {
     } else if (event.key === "Escape") {
       event.preventDefault();
       close();
+    } else if (event.target !== inputRef.current) {
+      return;
     } else if (event.key === "ArrowDown" && games.length) {
       event.preventDefault();
       setSelectedIndex((current) => (current + 1) % games.length);
@@ -176,6 +180,8 @@ export const GameLauncherOverlay: React.FC = () => {
             className="overlay-close-button"
             onClick={close}
             aria-label="閉じる"
+            aria-keyshortcuts="Escape"
+            title="閉じる（Esc）"
           >
             <X size={16} aria-hidden="true" />
           </button>
@@ -186,6 +192,8 @@ export const GameLauncherOverlay: React.FC = () => {
           <input
             ref={inputRef}
             aria-label="ゲームを検索"
+            aria-controls="game-launcher-list"
+            aria-keyshortcuts="ArrowDown ArrowUp Enter"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -194,11 +202,12 @@ export const GameLauncherOverlay: React.FC = () => {
             placeholder="ゲームまたはストアを検索"
             autoComplete="off"
           />
-          <kbd>Alt 1</kbd>
+          <kbd aria-label="上下キーで選択、Enterで起動">↑ ↓ Enter</kbd>
         </label>
 
         <div className="game-launcher__body">
           <section
+            id="game-launcher-list"
             className="game-launcher__list"
             aria-label="ゲーム一覧"
             data-window-drag-block
@@ -300,12 +309,15 @@ export const GameLauncherOverlay: React.FC = () => {
                 <div className="game-launcher__preview-actions">
                   <button
                     type="button"
+                    disabled={launchingId !== null}
                     onClick={() => void startGame(selected)}
                   >
-                    <Play size={15} aria-hidden="true" /> 起動
+                    <Play size={15} aria-hidden="true" />
+                    {launchingId === selected.id ? "起動中…" : "起動"}
                   </button>
                   <button
                     type="button"
+                    disabled={openingStoreId !== null || launchingId !== null}
                     onClick={() => void openStorePage(selected)}
                   >
                     <ExternalLink size={15} aria-hidden="true" /> 管理画面
@@ -319,7 +331,11 @@ export const GameLauncherOverlay: React.FC = () => {
         </div>
 
         <footer className="game-launcher__footer">
-          <span className={error ? "is-error" : ""}>
+          <span
+            className={error ? "is-error" : ""}
+            role={error ? "alert" : "status"}
+            aria-live="polite"
+          >
             {error ??
               result?.sources
                 .filter((source) => source.warning)

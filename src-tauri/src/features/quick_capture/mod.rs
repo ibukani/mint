@@ -55,6 +55,13 @@ pub struct QuickCaptureState {
     pub notes: Vec<QuickCaptureNote>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCapturePromotion {
+    pub note: QuickCaptureNote,
+    pub draft: QuickCaptureDraft,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuickCaptureDraftInput {
@@ -346,6 +353,73 @@ fn save_draft_in_store(
         content: input.content,
         tags,
         updated_at,
+    })
+}
+
+#[tauri::command]
+pub fn promote_quick_capture_note(
+    input: QuickCaptureNoteInput,
+    state: tauri::State<'_, QuickCaptureStoreState>,
+) -> Result<QuickCapturePromotion, String> {
+    promote_note_in_store(&state.path, input)
+}
+
+fn promote_note_in_store(
+    path: &Path,
+    input: QuickCaptureNoteInput,
+) -> Result<QuickCapturePromotion, String> {
+    if input.content.trim().is_empty() {
+        return Err("メモの本文を入力してください。".to_string());
+    }
+
+    let mut connection = open_store(path)?;
+    let transaction = connection
+        .transaction()
+        .map_err(|error| error.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    let note_timestamp = timestamp();
+    transaction
+        .execute(
+            "INSERT INTO quick_capture_notes(id, content, pinned, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, ?5)",
+            params![
+                id,
+                input.content,
+                input.pinned,
+                note_timestamp,
+                note_timestamp
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    let tags = replace_tags(&transaction, &id, input.tags)?;
+
+    let draft_timestamp = timestamp();
+    transaction
+        .execute(
+            "INSERT INTO quick_capture_draft(singleton, content, updated_at) VALUES(1, ?1, ?2)
+             ON CONFLICT(singleton) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at",
+            params!["", draft_timestamp],
+        )
+        .map_err(|error| error.to_string())?;
+    transaction
+        .execute("DELETE FROM quick_capture_draft_tags", [])
+        .map_err(|error| error.to_string())?;
+    transaction.commit().map_err(|error| error.to_string())?;
+
+    Ok(QuickCapturePromotion {
+        note: QuickCaptureNote {
+            id,
+            content: input.content,
+            tags,
+            pinned: input.pinned,
+            attachments: Vec::new(),
+            created_at: note_timestamp.clone(),
+            updated_at: note_timestamp,
+        },
+        draft: QuickCaptureDraft {
+            content: String::new(),
+            tags: Vec::new(),
+            updated_at: draft_timestamp,
+        },
     })
 }
 
@@ -876,6 +950,38 @@ mod tests {
 
         delete_note_in_store(&path, note.id).unwrap();
         assert!(load_state_from_store(&path).unwrap().notes.is_empty());
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn promoting_a_note_clears_the_draft_in_the_same_store_operation() {
+        let path = test_path();
+        save_draft_in_store(
+            &path,
+            QuickCaptureDraftInput {
+                content: "変換前の下書き".into(),
+                tags: vec!["inbox".into()],
+            },
+        )
+        .unwrap();
+
+        let promotion = promote_note_in_store(
+            &path,
+            QuickCaptureNoteInput {
+                content: "保存するメモ".into(),
+                tags: vec!["work".into()],
+                pinned: false,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(promotion.note.content, "保存するメモ");
+        assert_eq!(promotion.draft.content, "");
+        let state = load_state_from_store(&path).unwrap();
+        assert_eq!(state.notes.len(), 1);
+        assert_eq!(state.notes[0].id, promotion.note.id);
+        assert_eq!(state.draft.content, "");
+        assert!(state.draft.tags.is_empty());
         let _ = fs::remove_file(path);
     }
 

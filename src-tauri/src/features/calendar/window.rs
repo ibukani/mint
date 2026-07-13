@@ -127,7 +127,9 @@ pub fn open_calendar_event_editor(app: &AppHandle) {
 
     // Use the command to open it with default empty payload (needs State inside Tauri, so we retrieve it or pass None)
     if let Some(state) = app.try_state::<CalendarEditorState>() {
-        open_calendar_editor_window(app.clone(), state, None);
+        if let Err(error) = open_calendar_editor_window(app.clone(), state, None) {
+            eprintln!("Failed to open calendar editor from shortcut: {error}");
+        }
     }
 }
 
@@ -143,10 +145,10 @@ pub fn open_calendar_editor_window(
     app: tauri::AppHandle,
     state: tauri::State<'_, CalendarEditorState>,
     payload: Option<CalendarEditorPayload>,
-) {
-    let Some(editor) = app.get_webview_window("calendarEditor") else {
-        return;
-    };
+) -> Result<(), String> {
+    let editor = app
+        .get_webview_window("calendarEditor")
+        .ok_or_else(|| "Calendar editor window is unavailable".to_string())?;
 
     let payload = payload.unwrap_or_else(|| CalendarEditorPayload {
         mode: "create".to_string(),
@@ -155,27 +157,56 @@ pub fn open_calendar_editor_window(
         template: None,
     });
 
-    if let Ok(mut guard) = state.0.lock() {
-        *guard = Some(payload.clone());
+    let payload_is_valid = match payload.mode.as_str() {
+        "create" => true,
+        "edit" => payload.event.is_some(),
+        "duplicate" => payload.template.is_some(),
+        _ => false,
+    };
+    if !payload_is_valid {
+        return Err("Calendar editor payload is invalid".to_string());
     }
+
+    let mut guard = state
+        .0
+        .lock()
+        .map_err(|_| "Calendar editor state is unavailable".to_string())?;
+    *guard = Some(payload.clone());
+    drop(guard);
 
     if let Ok(Some(monitor)) = editor.current_monitor().or_else(|_| app.primary_monitor()) {
         let scale = monitor.scale_factor();
         let physical_width = (420.0 * scale) as u32;
         let physical_height = (640.0 * scale) as u32;
-        let _ = editor.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-            physical_width,
-            physical_height,
-        )));
-        let _ = editor.center();
+        editor
+            .set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+                physical_width,
+                physical_height,
+            )))
+            .map_err(|error| format!("Failed to size calendar editor window: {error}"))?;
+        editor
+            .center()
+            .map_err(|error| format!("Failed to center calendar editor window: {error}"))?;
     }
 
-    let _ = editor.show();
-    let _ = editor.set_always_on_top(true);
-    let _ = editor.unminimize();
-    let _ = editor.set_focus();
+    editor
+        .show()
+        .map_err(|error| format!("Failed to show calendar editor window: {error}"))?;
+    editor
+        .set_always_on_top(true)
+        .map_err(|error| format!("Failed to keep calendar editor on top: {error}"))?;
+    editor
+        .unminimize()
+        .map_err(|error| format!("Failed to restore calendar editor window: {error}"))?;
+    editor
+        .set_focus()
+        .map_err(|error| format!("Failed to focus calendar editor window: {error}"))?;
 
-    let _ = editor.emit("calendar-editor-shown", payload);
+    editor
+        .emit("calendar-editor-shown", payload)
+        .map_err(|error| format!("Failed to deliver calendar editor payload: {error}"))?;
+
+    Ok(())
 }
 
 fn show_calendar_overlay(

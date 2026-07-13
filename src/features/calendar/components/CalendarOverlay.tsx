@@ -1,12 +1,13 @@
 import { X } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { startOfMonth, toMachineDate } from "../calendar";
 import { eventsForDate, openCalendarEditor } from "../events";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
 import { useCalendarOverlay } from "../hooks/useCalendarOverlay";
-import type { CalendarEvent } from "../types";
+import type { CalendarEditorPayload, CalendarEvent } from "../types";
 import { CalendarDayAgenda } from "./CalendarDayAgenda";
 import { CalendarEventDetail } from "./CalendarEventDetail";
 import { MonthCalendar } from "./MonthCalendar";
@@ -28,12 +29,38 @@ export const CalendarOverlay: React.FC = () => {
   } = useCalendarOverlay(() => true);
   const [today, setToday] = useState(() => new Date());
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() =>
+    toMachineDate(new Date()),
+  );
   const [screen, setScreen] = useState<CalendarScreen>({ kind: "month" });
+  const [editorActionError, setEditorActionError] = useState("");
+  const [editorRetryPayload, setEditorRetryPayload] =
+    useState<CalendarEditorPayload | null>(null);
+  const editorAttemptRef = useRef(0);
   const { events, nextEvent, loading, error, refresh } = useCalendarEvents(
     viewMonth,
     today,
     showSequence,
   );
+
+  const openEditor = useCallback(async (payload: CalendarEditorPayload) => {
+    const attempt = ++editorAttemptRef.current;
+    setEditorActionError("");
+    setEditorRetryPayload(payload);
+
+    try {
+      await openCalendarEditor(payload);
+      if (attempt === editorAttemptRef.current) {
+        setEditorRetryPayload(null);
+      }
+    } catch (openError) {
+      if (attempt !== editorAttemptRef.current) return;
+      console.error("Failed to open calendar editor window:", openError);
+      setEditorActionError(
+        "予定入力画面を開けませんでした。再試行してください。",
+      );
+    }
+  }, []);
 
   // Clear any residual CSS zoom left by previous code versions (HMR / cached WebView state)
   useEffect(() => {
@@ -47,16 +74,19 @@ export const CalendarOverlay: React.FC = () => {
     const nextToday = new Date();
     setToday(nextToday);
     setViewMonth(startOfMonth(nextToday));
+    setSelectedDate(toMachineDate(nextToday));
+    setEditorActionError("");
+    setEditorRetryPayload(null);
     if (openMode === "createEvent") {
       setScreen({ kind: "month" });
-      openCalendarEditor({
+      void openEditor({
         mode: "create",
         date: toMachineDate(nextToday),
-      }).catch(console.error);
+      });
     } else {
       setScreen({ kind: "month" });
     }
-  }, [openMode, showSequence]);
+  }, [openMode, openEditor, showSequence]);
 
   const handleBack = useCallback(() => {
     switch (screen.kind) {
@@ -100,24 +130,18 @@ export const CalendarOverlay: React.FC = () => {
       const key = event.key.toLowerCase();
       if (screen.kind === "day" && key === "n") {
         event.preventDefault();
-        openCalendarEditor({ mode: "create", date: screen.date }).catch(
-          console.error,
-        );
+        void openEditor({ mode: "create", date: screen.date });
       } else if (screen.kind === "detail" && key === "e") {
         event.preventDefault();
-        openCalendarEditor({ mode: "edit", event: screen.event }).catch(
-          console.error,
-        );
+        void openEditor({ mode: "edit", event: screen.event });
       } else if (screen.kind === "detail" && key === "d") {
         event.preventDefault();
-        openCalendarEditor({ mode: "duplicate", template: screen.event }).catch(
-          console.error,
-        );
+        void openEditor({ mode: "duplicate", template: screen.event });
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeCalendar, handleBack, screen]);
+  }, [closeCalendar, handleBack, openEditor, screen]);
 
   const renderScreen = () => {
     switch (screen.kind) {
@@ -129,11 +153,7 @@ export const CalendarOverlay: React.FC = () => {
             loading={loading}
             error={error}
             onBack={handleBack}
-            onAdd={() =>
-              openCalendarEditor({ mode: "create", date: screen.date }).catch(
-                console.error,
-              )
-            }
+            onAdd={() => void openEditor({ mode: "create", date: screen.date })}
             onSelect={(event) =>
               setScreen({
                 kind: "detail",
@@ -149,15 +169,13 @@ export const CalendarOverlay: React.FC = () => {
             event={screen.event}
             onBack={handleBack}
             onEdit={() =>
-              openCalendarEditor({ mode: "edit", event: screen.event }).catch(
-                console.error,
-              )
+              void openEditor({ mode: "edit", event: screen.event })
             }
             onDuplicate={() =>
-              openCalendarEditor({
+              void openEditor({
                 mode: "duplicate",
                 template: screen.event,
-              }).catch(console.error)
+              })
             }
             onDeleted={() => {
               refresh();
@@ -181,9 +199,9 @@ export const CalendarOverlay: React.FC = () => {
             onViewMonthChange={setViewMonth}
             onOpenDay={(date) => setScreen({ kind: "day", date })}
             onOpenEvent={(event) => setScreen({ kind: "detail", event })}
-            onCreate={(date) =>
-              openCalendarEditor({ mode: "create", date }).catch(console.error)
-            }
+            onCreate={(date) => void openEditor({ mode: "create", date })}
+            selectedDate={selectedDate}
+            onSelectedDateChange={setSelectedDate}
           />
         );
     }
@@ -207,6 +225,18 @@ export const CalendarOverlay: React.FC = () => {
         >
           <X size={15} aria-hidden="true" />
         </button>
+        {editorActionError && editorRetryPayload && (
+          <div className="calendar-overlay__action-error" role="alert">
+            <span>{editorActionError}</span>
+            <Button
+              variant="ghost"
+              className="calendar-overlay__action-error-retry"
+              onClick={() => void openEditor(editorRetryPayload)}
+            >
+              再試行
+            </Button>
+          </div>
+        )}
         {renderScreen()}
       </OverlayCard>
     </OverlayFrame>

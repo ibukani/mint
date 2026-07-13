@@ -7,6 +7,7 @@ interface ShortcutInputProps {
   id?: string;
   invalid?: boolean;
   placeholderText?: string;
+  "aria-describedby"?: string;
 }
 
 export const ShortcutInput: React.FC<ShortcutInputProps> = ({
@@ -15,8 +16,10 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
   id,
   invalid = false,
   placeholderText = "キーを押して設定...",
+  "aria-describedby": ariaDescribedBy,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
+  const recordingHelpId = id ? `${id}-recording-help` : undefined;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.preventDefault();
@@ -116,6 +119,12 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
   ]
     .filter(Boolean)
     .join(" ");
+  const describedBy = [
+    ariaDescribedBy,
+    isRecording ? recordingHelpId : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="shortcut-input-wrapper">
@@ -148,9 +157,10 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
         onBlur={handleBlur}
         placeholder={placeholderText}
         aria-invalid={invalid}
+        aria-describedby={describedBy || undefined}
       />
       {isRecording && (
-        <span className="shortcut-input-help">
+        <span className="shortcut-input-help" id={recordingHelpId}>
           Escでキャンセル、Del/BSでクリア
         </span>
       )}
