@@ -38,3 +38,4 @@ Mint アプリケーションのE2Eテスト環境が構築されるまでの間
 ## 7. プラットフォーム固有
 - Windows実機にて、アプリの多重起動が防止されているか（Single Instance）。
 - トレイアイコンが Windows 11 のタスクバーで正しく表示されるか。
+- Windowsの自動起動は `npm run tauri -- build` で作成したリリース版をインストールして確認する。`npm run tauri -- dev` は `localhost:1420` のViteサーバーを使うため、自動起動には登録されない。
