@@ -7,6 +7,9 @@ const defaultMockSettings: AppSettings = {
     shortcut: defaultAppSettings.fileShelf.shortcut,
     edge: defaultAppSettings.fileShelf.edge,
     edgeHandleEnabled: defaultAppSettings.fileShelf.edgeHandleEnabled,
+    clipboardHistoryEnabled:
+      defaultAppSettings.fileShelf.clipboardHistoryEnabled,
+    clipboardHistoryLimit: defaultAppSettings.fileShelf.clipboardHistoryLimit,
   },
 
   quickCapture: {

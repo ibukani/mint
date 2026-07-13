@@ -24,6 +24,14 @@ describe("settings change policy", () => {
     expect(requiresImmediateSettingsSave(previous, next)).toBe(false);
   });
 
+  it("applies clipboard-history privacy changes immediately", () => {
+    const previous = cloneSettings();
+    const next = cloneSettings();
+    next.fileShelf.clipboardHistoryEnabled = true;
+
+    expect(requiresImmediateSettingsSave(previous, next)).toBe(true);
+  });
+
   it("compares complete settings snapshots", () => {
     const settings = cloneSettings();
 

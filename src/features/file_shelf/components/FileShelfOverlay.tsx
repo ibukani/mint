@@ -10,6 +10,7 @@ import {
   Folder,
   FolderSearch,
   GripVertical,
+  History,
   Link,
   Plus,
   RotateCcw,
@@ -216,6 +217,17 @@ export const FileShelfOverlay: React.FC = () => {
             </div>
           </div>
           <div className="file-shelf__header-actions">
+            {shelf.clipboardHistoryCount > 0 && (
+              <button
+                type="button"
+                onClick={() => void shelf.clearClipboardHistory()}
+                aria-label="クリップボード履歴だけを消去"
+                title="クリップボード履歴だけを消去"
+                disabled={shelf.busy}
+              >
+                <History size={17} aria-hidden="true" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => void shelf.choosePaths()}
@@ -314,6 +326,9 @@ export const FileShelfOverlay: React.FC = () => {
                             {group.items[0].availability === "missing"
                               ? "元の場所に見つかりません"
                               : [
+                                  group.items[0].source === "clipboardHistory"
+                                    ? "履歴"
+                                    : null,
                                   kindLabel[group.items[0].kind],
                                   formatBytes(group.items[0].sizeBytes),
                                 ]
@@ -365,7 +380,14 @@ export const FileShelfOverlay: React.FC = () => {
                               <small>
                                 {item.availability === "missing"
                                   ? "見つかりません"
-                                  : kindLabel[item.kind]}
+                                  : [
+                                      item.source === "clipboardHistory"
+                                        ? "履歴"
+                                        : null,
+                                      kindLabel[item.kind],
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")}
                               </small>
                             </span>
                           </button>

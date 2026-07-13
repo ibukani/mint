@@ -25,6 +25,12 @@ describe("FileShelfSettings", () => {
       "Alt+3",
     );
     expect(screen.getByLabelText("表示する側")).toHaveValue("right");
+    expect(
+      screen.getByRole("switch", {
+        name: "クリップボード履歴を保存する",
+      }),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText("履歴の保存件数")).toHaveValue("25");
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText("表示する側"), {
@@ -51,6 +57,14 @@ describe("FileShelfSettings", () => {
       fireEvent.click(
         screen.getByRole("switch", { name: "ハンドルを常に表示する" }),
       );
+      fireEvent.click(
+        screen.getByRole("switch", {
+          name: "クリップボード履歴を保存する",
+        }),
+      );
+      fireEvent.change(screen.getByLabelText("履歴の保存件数"), {
+        target: { value: "50" },
+      });
     });
 
     await act(async () => {
@@ -62,5 +76,11 @@ describe("FileShelfSettings", () => {
     expect(
       screen.getByRole("switch", { name: "ハンドルを常に表示する" }),
     ).toBeChecked();
+    expect(
+      screen.getByRole("switch", {
+        name: "クリップボード履歴を保存する",
+      }),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText("履歴の保存件数")).toHaveValue("25");
   });
 });

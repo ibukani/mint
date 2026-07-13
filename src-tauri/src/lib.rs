@@ -12,6 +12,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_drag::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -93,6 +94,7 @@ pub fn run() {
             app.manage(quick_capture_store);
             let file_shelf_store = features::file_shelf::initialize_store(app.handle())?;
             app.manage(file_shelf_store);
+            features::file_shelf::start_clipboard_history_monitor(app.handle().clone());
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Add ready event listener for calendar editor window to resolve timing issues
@@ -131,6 +133,10 @@ pub fn run() {
                         }
 
                         features::file_shelf::apply_window_settings(
+                            &handle,
+                            &settings.file_shelf,
+                        );
+                        features::file_shelf::apply_clipboard_history_settings(
                             &handle,
                             &settings.file_shelf,
                         );
@@ -232,6 +238,7 @@ pub fn run() {
             features::file_shelf::remove_file_shelf_items,
             features::file_shelf::restore_file_shelf_removal,
             features::file_shelf::clear_file_shelf,
+            features::file_shelf::clear_file_shelf_clipboard_history,
             features::file_shelf::set_file_shelf_expanded,
             features::game_launcher::launch::open_game_store_page,
         ])

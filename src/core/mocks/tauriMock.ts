@@ -25,7 +25,9 @@ import {
 import {
   mockAddFileShelfContent,
   mockAddFileShelfPaths,
+  mockCaptureFileShelfClipboardText,
   mockClearFileShelf,
+  mockClearFileShelfClipboardHistory,
   mockLoadFileShelfState,
   mockRemoveFileShelfItems,
   mockRestoreFileShelfRemoval,
@@ -64,6 +66,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const currentLabel = params.get("label") || "main";
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
   const mockAudioPath = params.get("mockAudioPath");
+  const mockClipboardHistory = params.get("mockClipboardHistory");
+  if (mockClipboardHistory) {
+    mockCaptureFileShelfClipboardText(mockClipboardHistory);
+  }
 
   // mockWindows の第1引数が現在のウィンドウになるため、URLのlabelを先頭にする。
   const [registeredCurrentLabel, ...additionalWindowLabels] =
@@ -202,6 +208,8 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       }
       case "clear_file_shelf":
         return mockClearFileShelf();
+      case "clear_file_shelf_clipboard_history":
+        return mockClearFileShelfClipboardHistory();
       case "set_file_shelf_expanded":
         return;
       case "save_quick_capture_draft": {

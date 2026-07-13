@@ -21,7 +21,16 @@ const read = (): FileShelfState => {
   const value = localStorage.getItem(STORAGE_KEY);
   if (!value) return emptyState();
   try {
-    return JSON.parse(value) as FileShelfState;
+    const parsed = JSON.parse(value) as FileShelfState;
+    return {
+      groups: parsed.groups.map((group) => ({
+        ...group,
+        items: group.items.map((item) => ({
+          ...item,
+          source: item.source ?? "manual",
+        })),
+      })),
+    };
   } catch {
     return emptyState();
   }
@@ -82,6 +91,7 @@ export const mockAddFileShelfPaths = (
       textContent: null,
       mimeType: null,
       sizeBytes: kind === "file" ? 0 : null,
+      source: "manual" as const,
     };
   });
   const next = items.length
@@ -112,6 +122,7 @@ export const mockAddFileShelfContent = (
       textContent: null,
       mimeType: input.mimeType,
       sizeBytes: input.dataBase64.length,
+      source: "manual",
     };
   } else {
     const value = input.kind === "url" ? input.url : input.text;
@@ -126,6 +137,7 @@ export const mockAddFileShelfContent = (
       textContent: value.trim(),
       mimeType: input.kind === "url" ? "text/uri-list" : "text/plain",
       sizeBytes: null,
+      source: "manual",
     };
   }
   const next = { groups: [createGroup([item]), ...state.groups] };
@@ -173,5 +185,81 @@ export const mockClearFileShelf = () => {
   const ids = read().groups.flatMap((group) =>
     group.items.map((item) => item.id),
   );
+  return mockRemoveFileShelfItems(ids);
+};
+
+export const mockCaptureFileShelfClipboardText = (
+  value: string,
+  maxItems = 25,
+): FileShelfMutation => {
+  const text = value.trim();
+  if (!text || new TextEncoder().encode(text).byteLength > 64 * 1024) {
+    throw new Error(
+      "クリップボード履歴は64KB以下の文章またはURLに対応しています。",
+    );
+  }
+  const state = read();
+  const existingGroup = state.groups.find((group) =>
+    group.items.some(
+      (item) => item.textContent === text && item.availability === "ready",
+    ),
+  );
+  if (existingGroup) {
+    const next =
+      existingGroup.items[0]?.source === "clipboardHistory"
+        ? {
+            groups: [
+              { ...existingGroup, createdAt: new Date().toISOString() },
+              ...state.groups.filter((group) => group.id !== existingGroup.id),
+            ],
+          }
+        : state;
+    write(next);
+    return {
+      state: next,
+      addedCount: 0,
+      skippedCount:
+        existingGroup.items[0]?.source === "clipboardHistory" ? 0 : 1,
+    };
+  }
+
+  let historyUrl: URL | null = null;
+  try {
+    const parsed = new URL(text);
+    if (["http:", "https:"].includes(parsed.protocol)) historyUrl = parsed;
+  } catch {
+    historyUrl = null;
+  }
+  const item = {
+    kind: (historyUrl ? "url" : "text") as FileShelfItemKind,
+    displayName: historyUrl?.host || text.replace(/\s+/g, " ").slice(0, 42),
+    sourcePath: null,
+    textContent: text,
+    mimeType: historyUrl ? "text/uri-list" : "text/plain",
+    sizeBytes: null,
+    source: "clipboardHistory" as const,
+  };
+  const withNewGroup = [createGroup([item]), ...state.groups];
+  const limit = Math.min(100, Math.max(5, maxItems));
+  let historyItems = 0;
+  const groups = withNewGroup.filter((group) => {
+    if (group.items[0]?.source !== "clipboardHistory") return true;
+    historyItems += 1;
+    return historyItems <= limit;
+  });
+  const next = { groups };
+  write(next);
+  return { state: next, addedCount: 1, skippedCount: 0 };
+};
+
+export const mockClearFileShelfClipboardHistory = () => {
+  const ids = read().groups.flatMap((group) =>
+    group.items
+      .filter((item) => item.source === "clipboardHistory")
+      .map((item) => item.id),
+  );
+  if (!ids.length) {
+    throw new Error("消去できるクリップボード履歴がありません。");
+  }
   return mockRemoveFileShelfItems(ids);
 };

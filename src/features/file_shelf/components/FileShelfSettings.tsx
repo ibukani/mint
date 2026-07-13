@@ -1,4 +1,4 @@
-import { Keyboard, PanelRightOpen } from "lucide-react";
+import { History, Keyboard, PanelRightOpen } from "lucide-react";
 import type React from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
@@ -104,6 +104,57 @@ export const FileShelfSettings: React.FC = () => {
           </Field>
           <p className="file-shelf-settings-note">
             ファイルの中身やパスは外部へ送信されません。貼り付けた画像だけMintのデータ領域へ保存します。
+          </p>
+        </section>
+
+        <section
+          className="settings-group file-shelf-settings-history"
+          aria-labelledby="file-shelf-history-title"
+        >
+          <div className="settings-group__heading">
+            <History size={18} aria-hidden="true" />
+            <div>
+              <h3 id="file-shelf-history-title">クリップボード履歴</h3>
+              <p>有効にした後でコピーした文章とURLを自動で棚へ追加します。</p>
+            </div>
+          </div>
+          <Field
+            id="file-shelf-clipboard-history"
+            label="クリップボード履歴を保存する"
+            orientation="inline"
+            helpText="初期状態は無効です。画像は必要なときにCtrl+Vで追加できます。"
+          >
+            <Switch
+              id="file-shelf-clipboard-history"
+              checked={settings.clipboardHistoryEnabled}
+              onChange={(event) =>
+                handleChange("clipboardHistoryEnabled", event.target.checked)
+              }
+            />
+          </Field>
+          <Field
+            id="file-shelf-clipboard-limit"
+            label="履歴の保存件数"
+            helpText="同じ内容は重複させず、もう一度コピーすると先頭へ移動します。"
+          >
+            <Select
+              id="file-shelf-clipboard-limit"
+              value={String(settings.clipboardHistoryLimit)}
+              disabled={!settings.clipboardHistoryEnabled}
+              onChange={(event) =>
+                handleChange(
+                  "clipboardHistoryLimit",
+                  Number(event.target.value),
+                )
+              }
+            >
+              <option value="10">10件</option>
+              <option value="25">25件</option>
+              <option value="50">50件</option>
+            </Select>
+          </Field>
+          <p className="file-shelf-settings-note">
+            履歴はこのPC内だけに保存されます。パスワードなどの機密情報をコピーする場合は無効にしてください。
           </p>
         </section>
       </div>

@@ -39,6 +39,7 @@ url = "2"
 steamlocate = "2.1"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 tauri-plugin-drag = "2.1.1"
+tauri-plugin-clipboard-manager = "2.3.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 systemicons = "0.9.13"

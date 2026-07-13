@@ -187,6 +187,8 @@ pub struct FileShelfSettings {
     pub shortcut: String,
     pub edge: FileShelfEdge,
     pub edge_handle_enabled: bool,
+    pub clipboard_history_enabled: bool,
+    pub clipboard_history_limit: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -204,6 +206,8 @@ impl Default for FileShelfSettings {
             shortcut: "Alt+3".to_string(),
             edge: FileShelfEdge::Right,
             edge_handle_enabled: true,
+            clipboard_history_enabled: false,
+            clipboard_history_limit: 25,
         }
     }
 }
@@ -564,6 +568,7 @@ pub fn save_settings(
     let _ = tauri::Emitter::emit(&app, "settings-changed", ());
 
     crate::features::file_shelf::apply_window_settings(&app, &settings.file_shelf);
+    crate::features::file_shelf::apply_clipboard_history_settings(&app, &settings.file_shelf);
 
     // Update window sizes and positions using the new settings
     use tauri::Manager;
@@ -660,6 +665,8 @@ mod tests {
         assert_eq!(settings.file_shelf.shortcut, "Alt+3");
         assert_eq!(settings.file_shelf.edge, FileShelfEdge::Right);
         assert!(settings.file_shelf.edge_handle_enabled);
+        assert!(!settings.file_shelf.clipboard_history_enabled);
+        assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
         assert!(settings.game_launcher.favorite_game_keys.is_empty());
         assert!(settings.game_launcher.last_played_at_by_game.is_empty());
         assert!(settings
@@ -692,6 +699,19 @@ mod tests {
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
         assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
+
+        // クリップボード履歴追加前の fileShelf 設定を安全側の既定値で補完
+        let legacy_file_shelf_json = r#"{
+          "fileShelf": {
+            "enabled": true,
+            "shortcut": "Alt+3",
+            "edge": "right",
+            "edgeHandleEnabled": true
+          }
+        }"#;
+        let settings: AppSettings = serde_json::from_str(legacy_file_shelf_json).unwrap();
+        assert!(!settings.file_shelf.clipboard_history_enabled);
+        assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
     }
 
     #[test]

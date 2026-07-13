@@ -17,6 +17,7 @@ const first: FileShelfItem = {
   sizeBytes: 2048,
   createdAt: "2026-07-13T00:00:00Z",
   availability: "ready",
+  source: "manual",
 };
 
 const second: FileShelfItem = {
@@ -52,6 +53,7 @@ const actions = {
   copyItem: vi.fn(),
   openItem: vi.fn(),
   revealItem: vi.fn(),
+  clearClipboardHistory: vi.fn(),
 };
 
 const expandedShelf = () => ({
@@ -71,6 +73,7 @@ const expandedShelf = () => ({
   notice: "",
   undoToken: "",
   itemCount: 2,
+  clipboardHistoryCount: 0,
   reportError: vi.fn(),
   ...actions,
 });
@@ -156,5 +159,35 @@ describe("FileShelfOverlay", () => {
     fireEvent.click(screen.getByRole("button", { name: /example.com.*URL/ }));
     fireEvent.click(screen.getByRole("button", { name: "選択項目をコピー" }));
     expect(actions.copyItem).toHaveBeenCalledWith(urlItem);
+  });
+
+  it("marks clipboard history and can clear only that history", () => {
+    const historyItem: FileShelfItem = {
+      ...urlItem,
+      source: "clipboardHistory",
+    };
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: "url-group",
+            createdAt: "2026-07-13T00:00:00Z",
+            items: [historyItem],
+          },
+        ],
+      },
+      itemCount: 1,
+      clipboardHistoryCount: 1,
+    });
+    render(<FileShelfOverlay />);
+
+    expect(screen.getByText("履歴 · URL")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "クリップボード履歴だけを消去",
+      }),
+    );
+    expect(actions.clearClipboardHistory).toHaveBeenCalledOnce();
   });
 });

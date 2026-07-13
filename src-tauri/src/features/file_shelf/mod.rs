@@ -10,10 +10,11 @@ use std::{
     time::Duration as StdDuration,
 };
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use url::Url;
 use uuid::Uuid;
 
-use crate::core::settings::{AppSettings, FileShelfEdge, FileShelfSettings};
+use crate::core::settings::{AppSettings, AppSettingsState, FileShelfEdge, FileShelfSettings};
 
 const COLLAPSED_WIDTH: f64 = 32.0;
 const COLLAPSED_HEIGHT: f64 = 96.0;
@@ -21,7 +22,9 @@ const EXPANDED_WIDTH: f64 = 360.0;
 const EXPANDED_HEIGHT: f64 = 520.0;
 const MAX_TEXT_BYTES: usize = 1024 * 1024;
 const MAX_IMAGE_BYTES: usize = 25 * 1024 * 1024;
+const MAX_CLIPBOARD_HISTORY_BYTES: usize = 64 * 1024;
 const UNDO_SECONDS: i64 = 10;
+const CLIPBOARD_POLL_INTERVAL: StdDuration = StdDuration::from_millis(900);
 
 pub struct FileShelfStoreState {
     path: PathBuf,
@@ -75,6 +78,30 @@ pub enum FileShelfAvailability {
     Missing,
 }
 
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum FileShelfItemSource {
+    Manual,
+    ClipboardHistory,
+}
+
+impl FileShelfItemSource {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Manual => "manual",
+            Self::ClipboardHistory => "clipboardHistory",
+        }
+    }
+
+    fn from_str(value: &str) -> Result<Self, String> {
+        match value {
+            "manual" => Ok(Self::Manual),
+            "clipboardHistory" => Ok(Self::ClipboardHistory),
+            _ => Err(format!("Unknown file shelf item source: {value}")),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileShelfItem {
@@ -88,6 +115,7 @@ pub struct FileShelfItem {
     pub size_bytes: Option<u64>,
     pub created_at: String,
     pub availability: FileShelfAvailability,
+    pub source: FileShelfItemSource,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -148,6 +176,7 @@ struct NewItem {
     text_content: Option<String>,
     mime_type: Option<String>,
     size_bytes: Option<u64>,
+    source: FileShelfItemSource,
 }
 
 pub fn initialize_store(app: &AppHandle) -> Result<FileShelfStoreState, String> {
@@ -167,8 +196,89 @@ pub fn initialize_store(app: &AppHandle) -> Result<FileShelfStoreState, String> 
     Ok(state)
 }
 
+pub fn start_clipboard_history_monitor(app: AppHandle) {
+    let _ = std::thread::Builder::new()
+        .name("mint-clipboard-history".to_string())
+        .spawn(move || {
+            let mut monitoring = false;
+            let mut previous_text = String::new();
+
+            loop {
+                std::thread::sleep(CLIPBOARD_POLL_INTERVAL);
+                let settings = app
+                    .try_state::<AppSettingsState>()
+                    .and_then(|state| state.0.lock().ok().and_then(|value| value.clone()))
+                    .or_else(|| crate::core::settings::load_settings_internal(&app).ok());
+                let Some(settings) = settings.map(|settings| settings.file_shelf) else {
+                    continue;
+                };
+
+                if !should_monitor_clipboard(&settings) {
+                    monitoring = false;
+                    previous_text.clear();
+                    continue;
+                }
+
+                let current_text = match app.clipboard().read_text() {
+                    Ok(text) => text.trim().to_string(),
+                    Err(_) => {
+                        monitoring = true;
+                        previous_text.clear();
+                        continue;
+                    }
+                };
+                if !monitoring {
+                    monitoring = true;
+                    previous_text = current_text;
+                    continue;
+                }
+                if current_text.is_empty() || current_text == previous_text {
+                    continue;
+                }
+                previous_text.clone_from(&current_text);
+
+                let Some(store) = app.try_state::<FileShelfStoreState>() else {
+                    continue;
+                };
+                if let Ok(mutation) = capture_clipboard_text_in_store(
+                    &store.path,
+                    current_text,
+                    settings.clipboard_history_limit,
+                ) {
+                    if mutation.added_count > 0 || mutation.skipped_count == 0 {
+                        let _ = app.emit("file-shelf-state-changed", mutation.state);
+                    }
+                }
+            }
+        });
+}
+
+fn should_monitor_clipboard(settings: &FileShelfSettings) -> bool {
+    settings.enabled && settings.clipboard_history_enabled
+}
+
+pub fn apply_clipboard_history_settings(app: &AppHandle, settings: &FileShelfSettings) {
+    let Some(store) = app.try_state::<FileShelfStoreState>() else {
+        return;
+    };
+    let Ok(connection) = open_store(&store.path) else {
+        return;
+    };
+    let Ok(removed) = prune_clipboard_history(
+        &connection,
+        clipboard_history_limit(settings.clipboard_history_limit),
+    ) else {
+        return;
+    };
+    if removed > 0 {
+        if let Ok(state) = load_state_from_store(&store.path) {
+            let _ = app.emit("file-shelf-state-changed", state);
+        }
+    }
+}
+
 fn timestamp() -> String {
-    Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
+    Utc::now().to_rfc3339_opts(SecondsFormat::Nanos, true)
 }
 
 fn open_store(path: &Path) -> Result<Connection, String> {
@@ -193,6 +303,7 @@ fn open_store(path: &Path) -> Result<Connection, String> {
                mime_type TEXT,
                size_bytes INTEGER,
                created_at TEXT NOT NULL,
+               origin TEXT NOT NULL DEFAULT 'manual',
                removed_at TEXT,
                removal_token TEXT
              );
@@ -202,6 +313,23 @@ fn open_store(path: &Path) -> Result<Connection, String> {
                ON file_shelf_items(removal_token);",
         )
         .map_err(|error| error.to_string())?;
+    let has_origin = connection
+        .prepare("PRAGMA table_info(file_shelf_items)")
+        .and_then(|mut statement| {
+            let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+            columns.collect::<Result<Vec<_>, _>>()
+        })
+        .map_err(|error| error.to_string())?
+        .iter()
+        .any(|column| column == "origin");
+    if !has_origin {
+        connection
+            .execute(
+                "ALTER TABLE file_shelf_items ADD COLUMN origin TEXT NOT NULL DEFAULT 'manual'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+    }
     Ok(connection)
 }
 
@@ -241,7 +369,7 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
         let mut item_statement = connection
             .prepare(
                 "SELECT id, kind, display_name, source_path, text_content, mime_type,
-                        size_bytes, created_at
+                        size_bytes, created_at, origin
                  FROM file_shelf_items
                  WHERE group_id = ?1 AND removed_at IS NULL
                  ORDER BY created_at ASC",
@@ -258,14 +386,25 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
                     row.get::<_, Option<String>>(5)?,
                     row.get::<_, Option<i64>>(6)?,
                     row.get::<_, String>(7)?,
+                    row.get::<_, String>(8)?,
                 ))
             })
             .map_err(|error| error.to_string())?;
         let mut items = Vec::new();
         for row in item_rows {
-            let (id, kind, display_name, source_path, text_content, mime_type, size, created) =
-                row.map_err(|error| error.to_string())?;
+            let (
+                id,
+                kind,
+                display_name,
+                source_path,
+                text_content,
+                mime_type,
+                size,
+                created,
+                source,
+            ) = row.map_err(|error| error.to_string())?;
             let kind = FileShelfItemKind::from_str(&kind)?;
+            let source = FileShelfItemSource::from_str(&source)?;
             let availability = if kind.has_path()
                 && source_path
                     .as_ref()
@@ -286,6 +425,7 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
                 size_bytes: size.and_then(|value| u64::try_from(value).ok()),
                 created_at: created,
                 availability,
+                source,
             });
         }
         result.push(FileShelfGroup {
@@ -313,8 +453,8 @@ fn insert_group(connection: &Connection, items: Vec<NewItem>) -> Result<(), Stri
             .execute(
                 "INSERT INTO file_shelf_items(
                    id, group_id, kind, display_name, source_path, text_content,
-                   mime_type, size_bytes, created_at
-                 ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                   mime_type, size_bytes, created_at, origin
+                 ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 params![
                     id,
                     group_id,
@@ -325,6 +465,7 @@ fn insert_group(connection: &Connection, items: Vec<NewItem>) -> Result<(), Stri
                     item.mime_type,
                     size,
                     created_at,
+                    item.source.as_str(),
                 ],
             )
             .map_err(|error| error.to_string())?;
@@ -390,6 +531,7 @@ fn add_paths_in_store(
             text_content: None,
             mime_type: None,
             size_bytes: metadata.is_file().then_some(metadata.len()),
+            source: FileShelfItemSource::Manual,
         });
     }
 
@@ -462,6 +604,7 @@ fn add_content_in_store(
                 text_content: Some(text),
                 mime_type: Some("text/plain".to_string()),
                 size_bytes: None,
+                source: FileShelfItemSource::Manual,
             }
         }
         AddFileShelfContentInput::Url { url } => {
@@ -481,6 +624,7 @@ fn add_content_in_store(
                 text_content: Some(url),
                 mime_type: Some("text/uri-list".to_string()),
                 size_bytes: None,
+                source: FileShelfItemSource::Manual,
             }
         }
         AddFileShelfContentInput::Image {
@@ -513,6 +657,7 @@ fn add_content_in_store(
                 text_content: None,
                 mime_type: Some(mime_type),
                 size_bytes: Some(bytes.len() as u64),
+                source: FileShelfItemSource::Manual,
             }
         }
     };
@@ -522,6 +667,137 @@ fn add_content_in_store(
         added_count: 1,
         skipped_count: 0,
     })
+}
+
+fn clipboard_history_limit(value: u32) -> usize {
+    value.clamp(5, 100) as usize
+}
+
+fn prune_clipboard_history(connection: &Connection, max_items: usize) -> Result<usize, String> {
+    let mut statement = connection
+        .prepare(
+            "SELECT DISTINCT group_id
+             FROM file_shelf_items
+             WHERE origin = 'clipboardHistory' AND removed_at IS NULL
+             ORDER BY created_at DESC",
+        )
+        .map_err(|error| error.to_string())?;
+    let stale_groups = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|error| error.to_string())?
+        .skip(max_items)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    drop(statement);
+
+    let mut removed = 0;
+    for group_id in stale_groups {
+        removed += connection
+            .execute("DELETE FROM file_shelf_groups WHERE id = ?1", [group_id])
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(removed)
+}
+
+fn capture_clipboard_text_in_store(
+    database_path: &Path,
+    text: String,
+    max_items: u32,
+) -> Result<FileShelfMutation, String> {
+    let text = text.trim().to_string();
+    if text.is_empty() || text.len() > MAX_CLIPBOARD_HISTORY_BYTES {
+        return Err("クリップボード履歴は64KB以下の文章またはURLに対応しています。".to_string());
+    }
+
+    let connection = open_store(database_path)?;
+    let existing = connection
+        .query_row(
+            "SELECT group_id, origin
+             FROM file_shelf_items
+             WHERE text_content = ?1 AND removed_at IS NULL
+             LIMIT 1",
+            [&text],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+
+    if let Some((group_id, origin)) = existing {
+        let promoted = origin == FileShelfItemSource::ClipboardHistory.as_str();
+        if promoted {
+            let created_at = timestamp();
+            connection
+                .execute(
+                    "UPDATE file_shelf_groups SET created_at = ?1 WHERE id = ?2",
+                    params![created_at, group_id],
+                )
+                .map_err(|error| error.to_string())?;
+            connection
+                .execute(
+                    "UPDATE file_shelf_items SET created_at = ?1 WHERE group_id = ?2",
+                    params![created_at, group_id],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        prune_clipboard_history(&connection, clipboard_history_limit(max_items))?;
+        return Ok(FileShelfMutation {
+            state: load_state_from_store(database_path)?,
+            added_count: 0,
+            skipped_count: usize::from(!promoted),
+        });
+    }
+
+    let parsed_url = Url::parse(&text)
+        .ok()
+        .filter(|url| matches!(url.scheme(), "http" | "https"));
+    let item = if let Some(url) = parsed_url {
+        NewItem {
+            kind: FileShelfItemKind::Url,
+            display_name: url.host_str().unwrap_or(&text).to_string(),
+            source_path: None,
+            text_content: Some(text),
+            mime_type: Some("text/uri-list".to_string()),
+            size_bytes: None,
+            source: FileShelfItemSource::ClipboardHistory,
+        }
+    } else {
+        NewItem {
+            kind: FileShelfItemKind::Text,
+            display_name: display_text(&text),
+            source_path: None,
+            text_content: Some(text),
+            mime_type: Some("text/plain".to_string()),
+            size_bytes: None,
+            source: FileShelfItemSource::ClipboardHistory,
+        }
+    };
+    insert_group(&connection, vec![item])?;
+    prune_clipboard_history(&connection, clipboard_history_limit(max_items))?;
+    Ok(FileShelfMutation {
+        state: load_state_from_store(database_path)?,
+        added_count: 1,
+        skipped_count: 0,
+    })
+}
+
+fn clear_clipboard_history_in_store(database_path: &Path) -> Result<FileShelfRemoval, String> {
+    let connection = open_store(database_path)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT id FROM file_shelf_items
+             WHERE origin = 'clipboardHistory' AND removed_at IS NULL",
+        )
+        .map_err(|error| error.to_string())?;
+    let ids = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|error| error.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    drop(statement);
+    if ids.is_empty() {
+        return Err("消去できるクリップボード履歴がありません。".to_string());
+    }
+    remove_items_in_store(database_path, ids)
 }
 
 fn remove_items_in_store(
@@ -591,7 +867,7 @@ fn is_managed_asset(path: &Path, assets_dir: &Path) -> bool {
 
 fn purge_old_removals(database_path: &Path, assets_dir: &Path) -> Result<(), String> {
     let connection = open_store(database_path)?;
-    let cutoff = (Utc::now() - Duration::hours(24)).to_rfc3339_opts(SecondsFormat::Millis, true);
+    let cutoff = (Utc::now() - Duration::hours(24)).to_rfc3339_opts(SecondsFormat::Nanos, true);
     let mut statement = connection
         .prepare(
             "SELECT source_path FROM file_shelf_items
@@ -678,6 +954,13 @@ pub fn clear_file_shelf(
         .flat_map(|group| group.items.into_iter().map(|item| item.id))
         .collect();
     remove_items_in_store(&state.path, ids)
+}
+
+#[tauri::command]
+pub fn clear_file_shelf_clipboard_history(
+    state: tauri::State<'_, FileShelfStoreState>,
+) -> Result<FileShelfRemoval, String> {
+    clear_clipboard_history_in_store(&state.path)
 }
 
 fn set_window_mode(
@@ -865,5 +1148,107 @@ mod tests {
             &assets.join("nested").join("pasted.png"),
             &assets,
         ));
+    }
+
+    #[test]
+    fn clipboard_history_deduplicates_and_prunes_without_touching_manual_items() {
+        let (database, root) = test_paths("clipboard-history");
+        let file = root.join("manual.txt");
+        fs::write(&file, "manual").unwrap();
+        open_store(&database).unwrap();
+        add_paths_in_store(
+            &database,
+            AddFileShelfPathsInput {
+                paths: vec![file.to_string_lossy().to_string()],
+            },
+        )
+        .unwrap();
+
+        for index in 0..6 {
+            capture_clipboard_text_in_store(&database, format!("history {index}"), 5).unwrap();
+        }
+        let duplicate =
+            capture_clipboard_text_in_store(&database, "history 2".to_string(), 5).unwrap();
+
+        assert_eq!(duplicate.added_count, 0);
+        assert_eq!(duplicate.state.groups.len(), 6);
+        assert_eq!(
+            duplicate.state.groups[0].items[0].text_content.as_deref(),
+            Some("history 2")
+        );
+        assert_eq!(
+            duplicate
+                .state
+                .groups
+                .iter()
+                .flat_map(|group| &group.items)
+                .filter(|item| item.source == FileShelfItemSource::ClipboardHistory)
+                .count(),
+            5
+        );
+        assert!(duplicate
+            .state
+            .groups
+            .iter()
+            .flat_map(|group| &group.items)
+            .any(|item| item.source == FileShelfItemSource::Manual));
+
+        let cleared = clear_clipboard_history_in_store(&database).unwrap();
+        assert_eq!(cleared.state.groups.len(), 1);
+        assert_eq!(
+            cleared.state.groups[0].items[0].source,
+            FileShelfItemSource::Manual
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn existing_shelf_database_migrates_items_to_manual_source() {
+        let (database, root) = test_paths("origin-migration");
+        let connection = Connection::open(&database).unwrap();
+        connection
+            .execute_batch(
+                "PRAGMA foreign_keys = ON;
+                 CREATE TABLE file_shelf_groups (
+                   id TEXT PRIMARY KEY NOT NULL,
+                   created_at TEXT NOT NULL
+                 );
+                 CREATE TABLE file_shelf_items (
+                   id TEXT PRIMARY KEY NOT NULL,
+                   group_id TEXT NOT NULL REFERENCES file_shelf_groups(id) ON DELETE CASCADE,
+                   kind TEXT NOT NULL,
+                   display_name TEXT NOT NULL,
+                   source_path TEXT,
+                   text_content TEXT,
+                   mime_type TEXT,
+                   size_bytes INTEGER,
+                   created_at TEXT NOT NULL,
+                   removed_at TEXT,
+                   removal_token TEXT
+                 );
+                 INSERT INTO file_shelf_groups(id, created_at) VALUES('group', '2026-07-13T00:00:00Z');
+                 INSERT INTO file_shelf_items(
+                   id, group_id, kind, display_name, text_content, created_at
+                 ) VALUES('item', 'group', 'text', 'saved text', 'saved text', '2026-07-13T00:00:00Z');",
+            )
+            .unwrap();
+        drop(connection);
+
+        open_store(&database).unwrap();
+        let state = load_state_from_store(&database).unwrap();
+        assert_eq!(state.groups[0].items[0].source, FileShelfItemSource::Manual);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn clipboard_monitor_requires_explicit_opt_in() {
+        let mut settings = FileShelfSettings::default();
+        assert!(!should_monitor_clipboard(&settings));
+
+        settings.clipboard_history_enabled = true;
+        assert!(should_monitor_clipboard(&settings));
+
+        settings.enabled = false;
+        assert!(!should_monitor_clipboard(&settings));
     }
 }

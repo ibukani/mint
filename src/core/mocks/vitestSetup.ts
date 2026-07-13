@@ -27,6 +27,7 @@ import {
   mockAddFileShelfContent,
   mockAddFileShelfPaths,
   mockClearFileShelf,
+  mockClearFileShelfClipboardHistory,
   mockLoadFileShelfState,
   mockRemoveFileShelfItems,
   mockRestoreFileShelfRemoval,
@@ -133,6 +134,8 @@ mockIPC(async (cmd, args) => {
     }
     case "clear_file_shelf":
       return mockClearFileShelf();
+    case "clear_file_shelf_clipboard_history":
+      return mockClearFileShelfClipboardHistory();
     case "set_file_shelf_expanded":
       return;
     case "save_quick_capture_draft": {

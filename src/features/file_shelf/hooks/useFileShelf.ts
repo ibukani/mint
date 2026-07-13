@@ -6,6 +6,7 @@ import {
   addFileShelfPaths,
   chooseFileShelfPaths,
   clearFileShelf,
+  clearFileShelfClipboardHistory,
   loadFileShelfState,
   openFileShelfPath,
   openFileShelfUrl,
@@ -96,10 +97,17 @@ export const useFileShelf = () => {
   useEffect(() => {
     let unlistenMode: (() => void) | undefined;
     let unlistenDrop: (() => void) | undefined;
+    let unlistenState: (() => void) | undefined;
     void listen<boolean>("file-shelf-mode-changed", (event) => {
       setExpanded(event.payload);
     }).then((cleanup) => {
       unlistenMode = cleanup;
+    });
+    void listen<FileShelfState>("file-shelf-state-changed", (event) => {
+      setState(event.payload);
+      setNotice("クリップボード履歴を更新しました");
+    }).then((cleanup) => {
+      unlistenState = cleanup;
     });
     void getCurrentWebview()
       .onDragDropEvent((event) => {
@@ -115,6 +123,7 @@ export const useFileShelf = () => {
     return () => {
       unlistenMode?.();
       unlistenDrop?.();
+      unlistenState?.();
     };
   }, [addPaths, changeExpanded]);
 
@@ -178,6 +187,21 @@ export const useFileShelf = () => {
       setState(removal.state);
       setUndoToken(removal.undoToken);
       setNotice("棚を空にしました");
+    } catch (reason) {
+      fail(reason);
+    } finally {
+      setBusy(false);
+    }
+  }, [fail]);
+
+  const clearClipboardHistory = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const removal = await clearFileShelfClipboardHistory();
+      setState(removal.state);
+      setUndoToken(removal.undoToken);
+      setNotice("クリップボード履歴を消去しました");
     } catch (reason) {
       fail(reason);
     } finally {
@@ -279,6 +303,18 @@ export const useFileShelf = () => {
     [state.groups],
   );
 
+  const clipboardHistoryCount = useMemo(
+    () =>
+      state.groups.reduce(
+        (sum, group) =>
+          sum +
+          group.items.filter((item) => item.source === "clipboardHistory")
+            .length,
+        0,
+      ),
+    [state.groups],
+  );
+
   return {
     state,
     expanded,
@@ -288,6 +324,7 @@ export const useFileShelf = () => {
     notice,
     undoToken,
     itemCount,
+    clipboardHistoryCount,
     reportError: fail,
     changeExpanded,
     addPaths,
@@ -295,6 +332,7 @@ export const useFileShelf = () => {
     choosePaths,
     removeItems,
     clear,
+    clearClipboardHistory,
     undo,
     dragItems,
     copyItem,

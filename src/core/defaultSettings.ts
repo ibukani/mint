@@ -49,5 +49,7 @@ export const defaultAppSettings: AppSettings = {
     shortcut: "Alt+3",
     edge: "right",
     edgeHandleEnabled: true,
+    clipboardHistoryEnabled: false,
+    clipboardHistoryLimit: 25,
   },
 };

@@ -3,11 +3,15 @@ export interface FileShelfSettings {
   shortcut: string;
   edge: "left" | "right";
   edgeHandleEnabled: boolean;
+  clipboardHistoryEnabled: boolean;
+  clipboardHistoryLimit: number;
 }
 
 export type FileShelfItemKind = "file" | "folder" | "image" | "text" | "url";
 
 export type FileShelfAvailability = "ready" | "missing";
+
+export type FileShelfItemSource = "manual" | "clipboardHistory";
 
 export interface FileShelfItem {
   id: string;
@@ -20,6 +24,7 @@ export interface FileShelfItem {
   sizeBytes: number | null;
   createdAt: string;
   availability: FileShelfAvailability;
+  source: FileShelfItemSource;
 }
 
 export interface FileShelfGroup {

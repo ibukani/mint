@@ -35,6 +35,9 @@ export const restoreFileShelfRemoval = (undoToken: string) =>
 export const clearFileShelf = () =>
   invoke<FileShelfRemoval>("clear_file_shelf");
 
+export const clearFileShelfClipboardHistory = () =>
+  invoke<FileShelfRemoval>("clear_file_shelf_clipboard_history");
+
 export const setFileShelfExpanded = (expanded: boolean, focus = expanded) =>
   invoke<void>("set_file_shelf_expanded", { expanded, focus });
 
