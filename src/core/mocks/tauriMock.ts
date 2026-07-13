@@ -5,6 +5,10 @@ import type {
   CalendarEventInput,
   CalendarEventRange,
 } from "../../features/calendar/types";
+import type {
+  QuickCaptureDraftInput,
+  QuickCaptureNoteInput,
+} from "../../features/quick_capture/types";
 import {
   mockCreateCalendarEvent,
   mockDeleteCalendarEvent,
@@ -13,6 +17,13 @@ import {
   mockUpdateCalendarEvent,
 } from "./calendarEventMock";
 import { createMockSettings } from "./mockSettings";
+import {
+  mockCreateQuickCaptureNote,
+  mockDeleteQuickCaptureNote,
+  mockLoadQuickCaptureState,
+  mockSaveQuickCaptureDraft,
+  mockUpdateQuickCaptureNote,
+} from "./quickCaptureMock";
 
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
 const isTauri =
@@ -36,7 +47,14 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const mockAudioPath = params.get("mockAudioPath");
 
   // 利用するウィンドウラベルをモック登録
-  mockWindows(currentLabel, "main", "clock", "calendar", "gameLauncher");
+  mockWindows(
+    currentLabel,
+    "main",
+    "clock",
+    "calendar",
+    "gameLauncher",
+    "quickCapture",
+  );
 
   // ローカルストレージキー
   const STORAGE_KEY = "mint_mock_settings";
@@ -67,6 +85,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               gameLauncher: {
                 ...defaultSettings.gameLauncher,
                 ...(parsed.gameLauncher ?? {}),
+              },
+              quickCapture: {
+                ...defaultSettings.quickCapture,
+                ...(parsed.quickCapture ?? {}),
               },
             };
           } catch (e) {
@@ -118,6 +140,31 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         const id = typedArgs?.id as string | undefined;
         if (!id) throw new Error("Calendar event id is required.");
         mockDeleteCalendarEvent(id);
+        return;
+      }
+      case "load_quick_capture_state":
+        return mockLoadQuickCaptureState();
+      case "save_quick_capture_draft": {
+        const input = typedArgs?.input as QuickCaptureDraftInput | undefined;
+        if (!input) throw new Error("Quick capture draft input is required.");
+        return mockSaveQuickCaptureDraft(input);
+      }
+      case "create_quick_capture_note": {
+        const input = typedArgs?.input as QuickCaptureNoteInput | undefined;
+        if (!input) throw new Error("Quick capture note input is required.");
+        return mockCreateQuickCaptureNote(input);
+      }
+      case "update_quick_capture_note": {
+        const id = typedArgs?.id as string | undefined;
+        const input = typedArgs?.input as QuickCaptureNoteInput | undefined;
+        if (!id || !input)
+          throw new Error("Quick capture note update is invalid.");
+        return mockUpdateQuickCaptureNote(id, input);
+      }
+      case "delete_quick_capture_note": {
+        const id = typedArgs?.id as string | undefined;
+        if (!id) throw new Error("Quick capture note id is required.");
+        mockDeleteQuickCaptureNote(id);
         return;
       }
       case "list_installed_games":

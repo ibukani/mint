@@ -6,6 +6,10 @@ import type {
   CalendarEventInput,
   CalendarEventRange,
 } from "../../features/calendar/types";
+import type {
+  QuickCaptureDraftInput,
+  QuickCaptureNoteInput,
+} from "../../features/quick_capture/types";
 import {
   mockCreateCalendarEvent,
   mockDeleteCalendarEvent,
@@ -13,9 +17,16 @@ import {
   mockListCalendarEvents,
   mockUpdateCalendarEvent,
 } from "./calendarEventMock";
+import {
+  mockCreateQuickCaptureNote,
+  mockDeleteQuickCaptureNote,
+  mockLoadQuickCaptureState,
+  mockSaveQuickCaptureDraft,
+  mockUpdateQuickCaptureNote,
+} from "./quickCaptureMock";
 
 // テスト環境でTauriのウィンドウ管理をモック
-mockWindows("main", "clock", "calendar", "gameLauncher");
+mockWindows("main", "clock", "calendar", "gameLauncher", "quickCapture");
 
 import { createMockSettings } from "./mockSettings";
 
@@ -54,6 +65,31 @@ mockIPC(async (cmd, args) => {
       const id = typedArgs?.id as string | undefined;
       if (!id) throw new Error("Calendar event id is required.");
       mockDeleteCalendarEvent(id);
+      return;
+    }
+    case "load_quick_capture_state":
+      return mockLoadQuickCaptureState();
+    case "save_quick_capture_draft": {
+      const input = typedArgs?.input as QuickCaptureDraftInput | undefined;
+      if (!input) throw new Error("Quick capture draft input is required.");
+      return mockSaveQuickCaptureDraft(input);
+    }
+    case "create_quick_capture_note": {
+      const input = typedArgs?.input as QuickCaptureNoteInput | undefined;
+      if (!input) throw new Error("Quick capture note input is required.");
+      return mockCreateQuickCaptureNote(input);
+    }
+    case "update_quick_capture_note": {
+      const id = typedArgs?.id as string | undefined;
+      const input = typedArgs?.input as QuickCaptureNoteInput | undefined;
+      if (!id || !input)
+        throw new Error("Quick capture note update is invalid.");
+      return mockUpdateQuickCaptureNote(id, input);
+    }
+    case "delete_quick_capture_note": {
+      const id = typedArgs?.id as string | undefined;
+      if (!id) throw new Error("Quick capture note id is required.");
+      mockDeleteQuickCaptureNote(id);
       return;
     }
     case "list_installed_games":

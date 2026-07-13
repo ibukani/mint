@@ -21,6 +21,12 @@ const GameLauncherOverlay = lazy(() =>
   ),
 );
 
+const QuickCaptureOverlay = lazy(() =>
+  import("../features/quick_capture/components/QuickCaptureOverlay").then(
+    (m) => ({ default: m.QuickCaptureOverlay }),
+  ),
+);
+
 export const WINDOW_ROUTES: Record<
   string,
   React.LazyExoticComponent<React.FC>
@@ -28,4 +34,5 @@ export const WINDOW_ROUTES: Record<
   clock: ClockOverlay,
   calendar: CalendarOverlay,
   gameLauncher: GameLauncherOverlay,
+  quickCapture: QuickCaptureOverlay,
 };

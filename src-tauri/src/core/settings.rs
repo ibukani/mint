@@ -161,7 +161,24 @@ impl Default for GameLauncherSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
+pub struct QuickCaptureSettings {
+    pub enabled: bool,
+    pub shortcut: String,
+}
+
+impl Default for QuickCaptureSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            shortcut: "Alt+2".to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub quick_capture: QuickCaptureSettings,
     pub game_launcher: GameLauncherSettings,
     pub calendar: CalendarSettings,
     pub autostart: bool,
@@ -174,6 +191,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            quick_capture: QuickCaptureSettings::default(),
             game_launcher: GameLauncherSettings::default(),
             calendar: CalendarSettings::default(),
             autostart: false,
@@ -248,6 +266,21 @@ impl ShortcutProvider for GameLauncherSettings {
     }
 }
 
+impl ShortcutProvider for QuickCaptureSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let shortcut = self.shortcut.trim();
+        if !self.enabled || shortcut.is_empty() {
+            None
+        } else {
+            Some(shortcut)
+        }
+    }
+
+    fn feature_id(&self) -> &str {
+        "quickCapture"
+    }
+}
+
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
@@ -263,6 +296,9 @@ impl AppSettings {
         }
         if let Some(s) = self.game_launcher.shortcut() {
             list.push((self.game_launcher.feature_id(), s));
+        }
+        if let Some(s) = self.quick_capture.shortcut() {
+            list.push((self.quick_capture.feature_id(), s));
         }
         let create_event_shortcut = self.calendar.create_event_shortcut.trim();
         if self.calendar.enabled && !create_event_shortcut.is_empty() {
@@ -530,12 +566,17 @@ mod tests {
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up");
         assert!(settings.game_launcher.enabled);
         assert_eq!(settings.game_launcher.shortcut, "Alt+1");
+        assert!(settings.quick_capture.enabled);
+        assert_eq!(settings.quick_capture.shortcut, "Alt+2");
         assert!(settings
             .active_shortcuts()
             .contains(&("gameLauncher", "Alt+1")));
         assert!(settings
             .active_shortcuts()
             .contains(&("calendarCreateEvent", "Alt+Up")));
+        assert!(settings
+            .active_shortcuts()
+            .contains(&("quickCapture", "Alt+2")));
 
         // 一部だけ存在するJSONから復元
         let partial_json = r#"{"theme": "light", "clock": {"shortcut": "Ctrl+C"}}"#;

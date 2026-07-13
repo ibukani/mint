@@ -38,4 +38,8 @@ export const defaultAppSettings: AppSettings = {
     shortcut: "Alt+1",
     themeColor: "#818cf8",
   },
+  quickCapture: {
+    enabled: true,
+    shortcut: "Alt+2",
+  },
 };
