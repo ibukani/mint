@@ -50,6 +50,7 @@ fn riot_scan_detects_patchline_metadata_directory() {
     assert_eq!(games.len(), 1);
     assert_eq!(games[0].id, "valorant");
     assert_eq!(games[0].title, "VALORANT");
+    assert_eq!(games[0].fallback_image_path, None);
     assert_eq!(
         games[0].image_path.as_deref(),
         Some("data:image/x-icon;base64,aWNvbg==")

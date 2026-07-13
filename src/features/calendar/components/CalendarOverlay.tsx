@@ -1,32 +1,23 @@
 import { X } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { startOfMonth, toMachineDate } from "../calendar";
-import { eventsForDate } from "../events";
+import { eventsForDate, openCalendarEditor } from "../events";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
 import { useCalendarOverlay } from "../hooks/useCalendarOverlay";
 import type { CalendarEvent } from "../types";
 import { CalendarDayAgenda } from "./CalendarDayAgenda";
 import { CalendarEventDetail } from "./CalendarEventDetail";
-import { CalendarEventEditor } from "./CalendarEventEditor";
 import { MonthCalendar } from "./MonthCalendar";
 import "./CalendarOverlay.css";
 
 type CalendarScreen =
   | { kind: "month" }
   | { kind: "day"; date: string }
-  | { kind: "detail"; event: CalendarEvent; returnDate?: string }
-  | { kind: "create"; date: string; returnDate?: string }
-  | { kind: "edit"; event: CalendarEvent; returnDate?: string }
-  | { kind: "duplicate"; event: CalendarEvent; returnDate?: string };
+  | { kind: "detail"; event: CalendarEvent; returnDate?: string };
 
 export const CalendarOverlay: React.FC = () => {
-  const dirtyRef = useRef(false);
-  const canClose = useCallback(
-    () => !dirtyRef.current || window.confirm("未保存の変更を破棄しますか？"),
-    [],
-  );
   const {
     animationClass,
     closeCalendar,
@@ -34,7 +25,7 @@ export const CalendarOverlay: React.FC = () => {
     openMode,
     showSequence,
     themeColor,
-  } = useCalendarOverlay(canClose);
+  } = useCalendarOverlay(() => true);
   const [today, setToday] = useState(() => new Date());
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [screen, setScreen] = useState<CalendarScreen>({ kind: "month" });
@@ -56,60 +47,33 @@ export const CalendarOverlay: React.FC = () => {
     const nextToday = new Date();
     setToday(nextToday);
     setViewMonth(startOfMonth(nextToday));
-    setScreen((current) => {
-      if (
-        openMode === "createEvent" &&
-        dirtyRef.current &&
-        (current.kind === "create" ||
-          current.kind === "edit" ||
-          current.kind === "duplicate")
-      ) {
-        return current;
-      }
-      return openMode === "createEvent"
-        ? { kind: "create", date: toMachineDate(nextToday) }
-        : { kind: "month" };
-    });
+    if (openMode === "createEvent") {
+      setScreen({ kind: "month" });
+      openCalendarEditor({
+        mode: "create",
+        date: toMachineDate(nextToday),
+      }).catch(console.error);
+    } else {
+      setScreen({ kind: "month" });
+    }
   }, [openMode, showSequence]);
 
-  const handleDirtyChange = useCallback((dirty: boolean) => {
-    dirtyRef.current = dirty;
-  }, []);
-
   const handleBack = useCallback(() => {
-    if (
-      (screen.kind === "create" ||
-        screen.kind === "edit" ||
-        screen.kind === "duplicate") &&
-      !canClose()
-    ) {
-      return;
-    }
-    dirtyRef.current = false;
     switch (screen.kind) {
       case "day":
         setScreen({ kind: "month" });
         break;
       case "detail":
-      case "create":
         setScreen(
           screen.returnDate
             ? { kind: "day", date: screen.returnDate }
             : { kind: "month" },
         );
         break;
-      case "edit":
-      case "duplicate":
-        setScreen({
-          kind: "detail",
-          event: screen.event,
-          returnDate: screen.returnDate,
-        });
-        break;
       default:
         closeCalendar();
     }
-  }, [canClose, closeCalendar, screen]);
+  }, [screen, closeCalendar]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -136,25 +100,19 @@ export const CalendarOverlay: React.FC = () => {
       const key = event.key.toLowerCase();
       if (screen.kind === "day" && key === "n") {
         event.preventDefault();
-        setScreen({
-          kind: "create",
-          date: screen.date,
-          returnDate: screen.date,
-        });
+        openCalendarEditor({ mode: "create", date: screen.date }).catch(
+          console.error,
+        );
       } else if (screen.kind === "detail" && key === "e") {
         event.preventDefault();
-        setScreen({
-          kind: "edit",
-          event: screen.event,
-          returnDate: screen.returnDate,
-        });
+        openCalendarEditor({ mode: "edit", event: screen.event }).catch(
+          console.error,
+        );
       } else if (screen.kind === "detail" && key === "d") {
         event.preventDefault();
-        setScreen({
-          kind: "duplicate",
-          event: screen.event,
-          returnDate: screen.returnDate,
-        });
+        openCalendarEditor({ mode: "duplicate", template: screen.event }).catch(
+          console.error,
+        );
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -172,11 +130,9 @@ export const CalendarOverlay: React.FC = () => {
             error={error}
             onBack={handleBack}
             onAdd={() =>
-              setScreen({
-                kind: "create",
-                date: screen.date,
-                returnDate: screen.date,
-              })
+              openCalendarEditor({ mode: "create", date: screen.date }).catch(
+                console.error,
+              )
             }
             onSelect={(event) =>
               setScreen({
@@ -193,18 +149,15 @@ export const CalendarOverlay: React.FC = () => {
             event={screen.event}
             onBack={handleBack}
             onEdit={() =>
-              setScreen({
-                kind: "edit",
-                event: screen.event,
-                returnDate: screen.returnDate,
-              })
+              openCalendarEditor({ mode: "edit", event: screen.event }).catch(
+                console.error,
+              )
             }
             onDuplicate={() =>
-              setScreen({
-                kind: "duplicate",
-                event: screen.event,
-                returnDate: screen.returnDate,
-              })
+              openCalendarEditor({
+                mode: "duplicate",
+                template: screen.event,
+              }).catch(console.error)
             }
             onDeleted={() => {
               refresh();
@@ -213,27 +166,6 @@ export const CalendarOverlay: React.FC = () => {
                   ? { kind: "day", date: screen.returnDate }
                   : { kind: "month" },
               );
-            }}
-          />
-        );
-      case "create":
-      case "edit":
-      case "duplicate":
-        return (
-          <CalendarEventEditor
-            event={screen.kind === "edit" ? screen.event : undefined}
-            template={screen.kind === "duplicate" ? screen.event : undefined}
-            initialDate={screen.kind === "create" ? screen.date : undefined}
-            onCancel={handleBack}
-            onDirtyChange={handleDirtyChange}
-            onSaved={(event) => {
-              dirtyRef.current = false;
-              refresh();
-              setScreen({
-                kind: "detail",
-                event,
-                returnDate: screen.returnDate,
-              });
             }}
           />
         );
@@ -249,7 +181,9 @@ export const CalendarOverlay: React.FC = () => {
             onViewMonthChange={setViewMonth}
             onOpenDay={(date) => setScreen({ kind: "day", date })}
             onOpenEvent={(event) => setScreen({ kind: "detail", event })}
-            onCreate={(date) => setScreen({ kind: "create", date })}
+            onCreate={(date) =>
+              openCalendarEditor({ mode: "create", date }).catch(console.error)
+            }
           />
         );
     }

@@ -68,9 +68,69 @@ describe("GameLauncherOverlay", () => {
           title: "VALORANT",
           store: "riot",
           imagePath,
+          fallbackImagePath: null,
         }}
       />,
     );
     expect(document.querySelector("img")).toHaveAttribute("src", imagePath);
+  });
+
+  it("主画像の読み込み失敗時にローカル画像へフォールバックする", () => {
+    render(
+      <GameArtwork
+        game={{
+          id: "730",
+          title: "Counter-Strike 2",
+          store: "steam",
+          imagePath: "https://example.invalid/header.jpg",
+          fallbackImagePath: "data:image/png;base64,aWNvbg==",
+        }}
+      />,
+    );
+    const image = document.querySelector(".game-launcher__artwork");
+    if (!image) throw new Error("game artwork was not rendered");
+    fireEvent.error(image);
+    expect(image).toHaveAttribute("src", "data:image/png;base64,aWNvbg==");
+  });
+
+  it("画像の読み込み中もゲームの頭文字を表示する", () => {
+    render(
+      <GameArtwork
+        game={{
+          id: "730",
+          title: "Counter-Strike 2",
+          store: "steam",
+          imagePath: "https://example.invalid/header.jpg",
+          fallbackImagePath: null,
+        }}
+      />,
+    );
+
+    expect(
+      document.querySelector(".game-launcher__artwork-initial"),
+    ).toHaveTextContent("CS2");
+    expect(document.querySelector(".game-launcher__artwork")).not.toHaveClass(
+      "is-loaded",
+    );
+  });
+
+  it("お気に入りを切り替えると一覧の先頭へ移動する", async () => {
+    const { container } = render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const favorite = await screen.findByRole("button", {
+      name: "VALORANTをお気に入りに追加",
+    });
+    fireEvent.click(favorite);
+    expect(
+      screen.getByRole("button", {
+        name: "VALORANTをお気に入りから削除",
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      container.querySelector(".game-launcher__launch strong"),
+    ).toHaveTextContent("VALORANT");
   });
 });

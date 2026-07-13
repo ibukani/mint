@@ -80,7 +80,7 @@ export const UpdaterSettings: React.FC = () => {
           )}
           <span>{statusLabel}</span>
           {status === "available" && update && (
-            <StatusBadge tone="available">v{update.version}</StatusBadge>
+            <StatusBadge tone="info">v{update.version}</StatusBadge>
           )}
         </div>
 
@@ -96,6 +96,7 @@ export const UpdaterSettings: React.FC = () => {
           <section
             className="updater-settings__notes"
             aria-labelledby="updater-release-notes-title"
+            data-window-drag-block
           >
             <h4 id="updater-release-notes-title">リリースノート</h4>
             <p>{update.body}</p>

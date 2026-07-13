@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     | undefined,
   hide: vi.fn().mockResolvedValue(undefined),
   launch: vi.fn().mockResolvedValue(undefined),
+  openStore: vi.fn().mockResolvedValue(undefined),
   list: vi.fn().mockResolvedValue({ games: [], sources: [] }),
 }));
 
@@ -38,6 +39,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 vi.mock("../api", () => ({
   launchGame: mocks.launch,
   listInstalledGames: mocks.list,
+  openGameStorePage: mocks.openStore,
 }));
 
 const game: InstalledGame = {
@@ -45,6 +47,7 @@ const game: InstalledGame = {
   title: "Counter-Strike 2",
   store: "steam",
   imagePath: null,
+  fallbackImagePath: null,
 };
 
 describe("useGameLauncher lifecycle", () => {
@@ -53,6 +56,7 @@ describe("useGameLauncher lifecycle", () => {
     mocks.listeners.clear();
     mocks.hide.mockClear();
     mocks.launch.mockClear();
+    mocks.openStore.mockClear();
     mocks.list.mockClear();
   });
 
@@ -100,5 +104,16 @@ describe("useGameLauncher lifecycle", () => {
       ]);
     });
     expect(mocks.launch).toHaveBeenCalledOnce();
+  });
+
+  it("管理画面を開いてもゲームは起動しない", async () => {
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
+    await act(async () => {
+      await result.current.openStorePage(game);
+    });
+    expect(mocks.openStore).toHaveBeenCalledWith({ id: "730", store: "steam" });
+    expect(mocks.launch).not.toHaveBeenCalled();
   });
 });

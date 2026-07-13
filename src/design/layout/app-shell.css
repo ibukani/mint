@@ -7,6 +7,28 @@
     border-color var(--transition-base);
 }
 
+.app-skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: var(--space-3);
+  left: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-action);
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-card-raised);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform var(--transition-fast);
+}
+
+.app-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 .app-shell {
   position: relative;
   isolation: isolate;
@@ -44,16 +66,34 @@
 }
 
 .app-titlebar {
+  position: relative;
   display: flex;
-  height: 44px;
-  flex: 0 0 44px;
+  height: var(--size-titlebar-height);
+  flex: 0 0 var(--size-titlebar-height);
   align-items: center;
   justify-content: space-between;
-  padding-left: 18px;
+  padding-left: 16px;
   border-bottom: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-page) 88%, transparent);
+  background: var(--surface-titlebar);
   backdrop-filter: blur(var(--blur-md));
   user-select: none;
+}
+
+.app-titlebar::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 58%, transparent) 34%,
+    color-mix(in srgb, var(--color-accent-strong) 32%, transparent) 72%,
+    transparent
+  );
+  content: "";
+  opacity: 0.8;
 }
 
 .app-titlebar__logo,
@@ -71,7 +111,7 @@
 .app-titlebar__text,
 .app-titlebar__context,
 .app-titlebar__separator {
-  font-size: 0.6875rem;
+  font-size: var(--font-size-2xs);
 }
 
 .app-titlebar__text {
@@ -99,8 +139,8 @@
 
 .app-titlebar__button {
   display: grid;
-  width: 46px;
-  height: 44px;
+  width: 44px;
+  height: var(--size-titlebar-height);
   place-items: center;
   padding: 0;
   border: 0;
@@ -122,8 +162,8 @@
 }
 
 .app-titlebar__button--close:hover {
-  background: #d93645;
-  color: #fff;
+  background: var(--surface-danger-solid);
+  color: var(--color-on-danger);
 }
 
 .app-sidebar {
@@ -131,17 +171,17 @@
   width: var(--size-sidebar-width);
   flex: 0 0 var(--size-sidebar-width);
   flex-direction: column;
-  padding: 28px 14px 14px;
+  padding: 26px 12px 14px;
   border-right: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-page) 64%, var(--surface-root));
+  background: var(--surface-sidebar);
   overflow: hidden;
 }
 
 .app-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 0 10px 30px;
+  gap: 10px;
+  padding: 0 10px 28px;
 }
 
 .app-sidebar__brand-mark {
@@ -165,13 +205,13 @@
 .app-sidebar__subtitle {
   margin: 4px 0 0;
   color: var(--color-text-subtle);
-  font-size: 0.65rem;
+  font-size: var(--font-size-2xs);
 }
 
 .app-sidebar__section-label {
   margin: 0 var(--space-3) var(--space-2);
   color: var(--color-text-subtle);
-  font-size: 0.625rem;
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-bold);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -187,7 +227,7 @@
   position: relative;
   display: flex;
   width: 100%;
-  min-height: 52px;
+  min-height: 54px;
   align-items: center;
   gap: var(--space-3);
   padding: 7px 10px;
@@ -223,7 +263,7 @@
     color-mix(in srgb, var(--surface-control) 42%, transparent)
   );
   color: var(--color-text-primary);
-  box-shadow: var(--shadow-active);
+  box-shadow: var(--shadow-active), var(--shadow-sidebar-active);
 }
 
 .app-sidebar__button-icon {
@@ -250,8 +290,14 @@
   min-width: 0;
   flex-direction: column;
   gap: 2px;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+}
+
+.app-sidebar__button-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-sidebar__shortcut {
@@ -285,14 +331,14 @@
 
 .app-sidebar__button-copy small {
   color: var(--color-text-subtle);
-  font-size: 0.68rem;
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-regular);
   line-height: 1.35;
 }
 
 .app-sidebar__footer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   margin-top: auto;
   padding: 10px 12px;
@@ -300,7 +346,28 @@
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-control) 34%, transparent);
   color: var(--color-text-subtle);
-  font-size: 0.68rem;
+}
+
+.app-sidebar__footer-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+}
+
+.app-sidebar__footer-copy strong {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.app-sidebar__footer-copy span {
+  overflow: hidden;
+  color: var(--color-text-subtle);
+  font-size: 0.625rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-sidebar__status-dot {
@@ -308,7 +375,36 @@
   height: 7px;
   flex: 0 0 7px;
   border-radius: 50%;
+  background: var(--color-text-subtle);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-text-subtle) 10%, transparent);
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.app-sidebar__status-dot--pending {
+  background: var(--color-warning);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-warning) 12%, transparent);
+  animation: status-pulse 1.6s ease-in-out infinite;
+}
+
+.app-sidebar__status-dot--success {
   background: var(--color-success);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-success) 12%, transparent);
+}
+
+.app-sidebar__status-dot--error {
+  background: var(--color-error);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
+@keyframes status-pulse {
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .app-content {
@@ -324,10 +420,21 @@
       var(--page-accent-top),
       transparent 32rem
     ),
+    radial-gradient(
+      circle at 0% 100%,
+      var(--page-accent-bottom),
+      transparent 28rem
+    ),
     var(--surface-root);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   scroll-behavior: smooth;
   animation: content-enter 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-content:focus {
+  outline: none;
 }
 
 @keyframes content-enter {
@@ -346,6 +453,10 @@
   .app-content {
     padding: var(--space-6) var(--space-5) 64px;
   }
+
+  .app-sidebar__shortcut {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -360,7 +471,7 @@
   .app-sidebar {
     width: 100%;
     flex: 0 0 auto;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-2) var(--space-3) var(--space-1);
     border-right: 0;
     border-bottom: 1px solid var(--border-subtle);
   }
@@ -374,20 +485,30 @@
   }
 
   .app-sidebar__navigation {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
+    flex-direction: row;
     gap: 4px;
-    overflow: visible;
-    min-width: 0;
+    margin: 0 calc(var(--space-3) * -1);
+    padding: 0 var(--space-3) var(--space-1);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--space-3);
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  .app-sidebar__navigation::-webkit-scrollbar {
+    display: none;
   }
 
   .app-sidebar__button {
-    width: 100%;
-    min-width: 0;
-    min-height: 42px;
+    width: auto;
+    min-width: max-content;
+    min-height: 44px;
     justify-content: center;
     gap: 6px;
-    padding: 6px;
+    padding: 6px 10px;
+    scroll-snap-align: start;
   }
 
   .app-sidebar__button-icon {
@@ -415,12 +536,18 @@
 
 @media (max-width: 420px) {
   .app-sidebar__button {
-    flex-direction: column;
-    gap: 2px;
+    gap: 5px;
+    padding-inline: 8px;
   }
 
   .app-sidebar__button-copy {
     max-width: 100%;
     font-size: 0.62rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar__status-dot--pending {
+    animation: none;
   }
 }

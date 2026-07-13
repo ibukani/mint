@@ -5,5 +5,9 @@ interface ContentAreaProps {
 }
 
 export const ContentArea: React.FC<ContentAreaProps> = ({ children }) => {
-  return <main className="app-content">{children}</main>;
+  return (
+    <main id="main-content" className="app-content" tabIndex={-1}>
+      {children}
+    </main>
+  );
 };

@@ -1,10 +1,17 @@
-import Fuse from "fuse.js";
-import { Gamepad2, RefreshCw, Search, X } from "lucide-react";
+import {
+  ExternalLink,
+  Gamepad2,
+  Play,
+  RefreshCw,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { useGameLauncher } from "../hooks/useGameLauncher";
-import type { GameStore, InstalledGame } from "../types";
+import { type GameStore, gameKey, type InstalledGame } from "../types";
 import "./GameLauncherOverlay.css";
 
 const storeLabel: Record<GameStore, string> = {
@@ -21,16 +28,39 @@ function getAcronym(title: string): string {
     .toLowerCase();
 }
 
+function getArtworkLabel(title: string): string {
+  const acronym = getAcronym(title).toUpperCase();
+  return acronym.length > 1
+    ? acronym.slice(0, 3)
+    : title.trim().slice(0, 1).toUpperCase();
+}
+
 export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
-  const [failed, setFailed] = useState(false);
-  if (game.imagePath && !failed) {
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const [loadedSource, setLoadedSource] = useState<string | null>(null);
+  const source =
+    game.imagePath && failedSource !== game.imagePath
+      ? game.imagePath
+      : game.fallbackImagePath && failedSource !== game.fallbackImagePath
+        ? game.fallbackImagePath
+        : null;
+  if (source) {
     return (
-      <img
-        className="game-launcher__artwork"
-        src={game.imagePath}
-        alt=""
-        onError={() => setFailed(true)}
-      />
+      <span
+        className={`game-launcher__artwork-shell is-${game.store}`}
+        aria-hidden="true"
+      >
+        <span className="game-launcher__artwork-initial">
+          {getArtworkLabel(game.title)}
+        </span>
+        <img
+          className={`game-launcher__artwork${loadedSource === source ? " is-loaded" : ""}`}
+          src={source}
+          alt=""
+          onLoad={() => setLoadedSource(source)}
+          onError={() => setFailedSource(source)}
+        />
+      </span>
     );
   }
   return (
@@ -38,7 +68,7 @@ export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
       className={`game-launcher__placeholder is-${game.store}`}
       aria-hidden="true"
     >
-      {game.title.slice(0, 1).toUpperCase()}
+      {getArtworkLabel(game.title)}
     </span>
   );
 };
@@ -49,11 +79,16 @@ export const GameLauncherOverlay: React.FC = () => {
     close,
     error,
     launchingId,
+    openingStoreId,
     loading,
     result,
     scan,
     showSequence,
     startGame,
+    openStorePage,
+    toggleFavorite,
+    favoriteGameKeys,
+    lastPlayedAtByGame,
     themeColor,
   } = useGameLauncher();
   const [query, setQuery] = useState("");
@@ -64,22 +99,28 @@ export const GameLauncherOverlay: React.FC = () => {
   const games = useMemo(() => {
     const rawGames = result?.games ?? [];
     const normalized = query.trim();
-    if (!normalized) return rawGames;
-
-    const searchData = rawGames.map((game) => ({
-      ...game,
-      storeName: storeLabel[game.store],
-      acronym: getAcronym(game.title),
-    }));
-
-    const fuse = new Fuse(searchData, {
-      keys: ["title", "storeName", "acronym"],
-      threshold: 0.3,
-      ignoreLocation: true,
+    let filtered = rawGames;
+    if (normalized) {
+      const term = normalized.toLocaleLowerCase("ja");
+      filtered = rawGames.filter((game) =>
+        [game.title, storeLabel[game.store], getAcronym(game.title)].some(
+          (candidate) => candidate.toLocaleLowerCase("ja").includes(term),
+        ),
+      );
+    }
+    const favoriteSet = new Set(favoriteGameKeys);
+    return [...filtered].sort((left, right) => {
+      const leftKey = gameKey(left);
+      const rightKey = gameKey(right);
+      const favoriteDifference =
+        Number(favoriteSet.has(rightKey)) - Number(favoriteSet.has(leftKey));
+      if (favoriteDifference) return favoriteDifference;
+      const recentDifference =
+        (Date.parse(lastPlayedAtByGame[rightKey] ?? "") || 0) -
+        (Date.parse(lastPlayedAtByGame[leftKey] ?? "") || 0);
+      return recentDifference || left.title.localeCompare(right.title, "ja");
     });
-
-    return fuse.search(normalized).map((result) => result.item);
-  }, [query, result]);
+  }, [favoriteGameKeys, lastPlayedAtByGame, query, result]);
 
   useEffect(() => {
     void showSequence;
@@ -126,8 +167,8 @@ export const GameLauncherOverlay: React.FC = () => {
           <div className="game-launcher__title">
             <Gamepad2 size={20} aria-hidden="true" />
             <div>
-              <h1>Play now</h1>
-              <p>{result?.games.length ?? 0} games ready</p>
+              <h1>ゲームランチャー</h1>
+              <p>{result?.games.length ?? 0}本のゲーム</p>
             </div>
           </div>
           <button
@@ -157,35 +198,75 @@ export const GameLauncherOverlay: React.FC = () => {
         </label>
 
         <div className="game-launcher__body">
-          <section className="game-launcher__list" aria-label="ゲーム一覧">
+          <section
+            className="game-launcher__list"
+            aria-label="ゲーム一覧"
+            data-window-drag-block
+          >
             {loading ? (
               <div className="game-launcher__state">
                 ゲームをスキャンしています…
               </div>
             ) : games.length ? (
-              games.map((game, index) => (
-                <button
-                  ref={(element) => {
-                    itemRefs.current[index] = element;
-                  }}
-                  type="button"
-                  key={`${game.store}:${game.id}`}
-                  className={`game-launcher__item${index === activeIndex ? " is-selected" : ""}`}
-                  aria-current={index === activeIndex ? "true" : undefined}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                  onClick={() => void startGame(game)}
-                  disabled={launchingId !== null}
-                >
-                  <GameArtwork game={game} />
-                  <span className="game-launcher__item-copy">
-                    <strong>{game.title}</strong>
-                    <small>{storeLabel[game.store]}</small>
-                  </span>
-                  <span className="game-launcher__enter">
-                    {launchingId === game.id ? "起動中…" : "↵"}
-                  </span>
-                </button>
-              ))
+              games.map((game, index) => {
+                const key = gameKey(game);
+                const favorite = favoriteGameKeys.includes(key);
+                const lastPlayed = lastPlayedAtByGame[key];
+                return (
+                  <div
+                    key={key}
+                    className={`game-launcher__item${index === activeIndex ? " is-selected" : ""}`}
+                  >
+                    <button
+                      ref={(element) => {
+                        itemRefs.current[index] = element;
+                      }}
+                      type="button"
+                      className="game-launcher__launch"
+                      aria-current={index === activeIndex ? "true" : undefined}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      onClick={() => void startGame(game)}
+                      disabled={launchingId !== null}
+                    >
+                      <GameArtwork
+                        key={`${key}:${game.imagePath}:${game.fallbackImagePath}`}
+                        game={game}
+                      />
+                      <span className="game-launcher__item-copy">
+                        <strong>{game.title}</strong>
+                        <small>
+                          {storeLabel[game.store]}
+                          {lastPlayed
+                            ? ` · 最終プレイ ${new Date(lastPlayed).toLocaleDateString("ja-JP")}`
+                            : " · 未プレイ"}
+                        </small>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`game-launcher__action${favorite ? " is-favorite" : ""}`}
+                      onClick={() => toggleFavorite(game)}
+                      aria-label={`${game.title}を${favorite ? "お気に入りから削除" : "お気に入りに追加"}`}
+                      aria-pressed={favorite}
+                    >
+                      <Star
+                        size={16}
+                        fill={favorite ? "currentColor" : "none"}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      className="game-launcher__action"
+                      onClick={() => void openStorePage(game)}
+                      aria-label={`${game.title}のストア管理画面を開く`}
+                      disabled={openingStoreId === key}
+                    >
+                      <ExternalLink size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })
             ) : (
               <div className="game-launcher__state">
                 <strong>
@@ -211,7 +292,25 @@ export const GameLauncherOverlay: React.FC = () => {
                   {storeLabel[selected.store]}
                 </span>
                 <h2>{selected.title}</h2>
-                <p>Enterで公式クライアントから起動</p>
+                <p>
+                  {lastPlayedAtByGame[gameKey(selected)]
+                    ? `最終プレイ ${new Date(lastPlayedAtByGame[gameKey(selected)]).toLocaleString("ja-JP")}`
+                    : "まだプレイしていません"}
+                </p>
+                <div className="game-launcher__preview-actions">
+                  <button
+                    type="button"
+                    onClick={() => void startGame(selected)}
+                  >
+                    <Play size={15} aria-hidden="true" /> 起動
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void openStorePage(selected)}
+                  >
+                    <ExternalLink size={15} aria-hidden="true" /> 管理画面
+                  </button>
+                </div>
               </>
             ) : (
               <Gamepad2 size={42} aria-hidden="true" />

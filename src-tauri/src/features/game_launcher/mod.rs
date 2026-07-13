@@ -29,6 +29,7 @@ pub struct InstalledGame {
     pub title: String,
     pub store: GameStore,
     pub image_path: Option<String>,
+    pub fallback_image_path: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]

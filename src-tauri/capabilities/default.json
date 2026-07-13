@@ -2,7 +2,14 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the windows",
-  "windows": ["main", "clock", "calendar", "gameLauncher", "quickCapture"],
+  "windows": [
+    "main",
+    "clock",
+    "calendar",
+    "gameLauncher",
+    "calendarEditor",
+    "quickCapture"
+  ],
   "permissions": [
     "core:default",
     "opener:default",

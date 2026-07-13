@@ -1,6 +1,11 @@
 import type React from "react";
 
-export type StatusBadgeTone = "available" | "enabled" | "disabled" | "error";
+export type StatusBadgeTone =
+  | "available"
+  | "enabled"
+  | "disabled"
+  | "error"
+  | "info";
 
 interface StatusBadgeProps {
   children: React.ReactNode;

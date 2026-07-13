@@ -32,7 +32,11 @@ fn scan_steam() -> (Vec<InstalledGame>, GameSourceStatus) {
                     id: app.app_id.to_string(),
                     title,
                     store: GameStore::Steam,
-                    image_path: image.as_deref().and_then(image_file_data_url),
+                    image_path: Some(format!(
+                        "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/header.jpg",
+                        app.app_id
+                    )),
+                    fallback_image_path: image.as_deref().and_then(image_file_data_url),
                 });
             }
         }
@@ -146,6 +150,7 @@ fn scan_epic() -> (Vec<InstalledGame>, GameSourceStatus) {
                             title: manifest.display_name,
                             store: GameStore::Epic,
                             image_path: executable.as_deref().and_then(icon_data_url),
+                            fallback_image_path: None,
                         })
                     }
                     Ok(_) => {}
@@ -250,6 +255,7 @@ pub(super) fn scan_riot_directory(directory: &Path) -> (Vec<InstalledGame>, Opti
             title: (*title).to_string(),
             store: GameStore::Riot,
             image_path,
+            fallback_image_path: None,
         });
     }
     (games, warning)

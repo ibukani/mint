@@ -1,5 +1,6 @@
 # Mint agent guide
 
+- Mint は Tauri で提供するデスクトップ専用アプリです。スマートフォン展開やモバイル専用UIは要件に含めず、標準デスクトップウィンドウ（900×650）、最小サイズ（680×520）、ライト/ダークテーマ、オーバーレイ実寸を主な品質基準とする。既存の狭幅ルールはデスクトップウィンドウのリサイズ時に破綻させないための保険として維持する。
 - 人間向けの応答は、明示的に別言語を指定されない限り日本語で書く。
 - 変更前に `docs/ai-development.md` を読み、広い調査の前に `npm run ai:context` を実行する。UI変更では `docs/design-architecture.md` も読む。
 - 新規 feature の初期配線は手作業せず、`npm run scaffold:feature <feature_name> [PascalComponentName]` を使う。

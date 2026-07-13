@@ -1,18 +1,28 @@
 import type React from "react";
 import { useEffect } from "react";
 
-export const AutoFocusTrigger: React.FC = () => {
+interface AutoFocusTriggerProps {
+  enabled?: boolean;
+}
+
+export const AutoFocusTrigger: React.FC<AutoFocusTriggerProps> = ({
+  enabled = true,
+}) => {
   useEffect(() => {
+    if (!enabled) return undefined;
+
     const timer = setTimeout(() => {
-      const content = document.querySelector(".app-content");
-      const focusable = content?.querySelector<HTMLElement>(
-        'input:not([type="hidden"]):not([type="checkbox"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])',
+      const content = document.querySelector<HTMLElement>(".app-content");
+      const title = content?.querySelector<HTMLElement>(
+        ".design-settings-section__title",
       );
-      focusable?.focus();
+
+      if (content) content.scrollTop = 0;
+      title?.focus({ preventScroll: true });
     }, 0);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [enabled]);
 
   return null;
 };

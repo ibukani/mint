@@ -27,6 +27,7 @@ import {
   mockSaveQuickCaptureDraft,
   mockUpdateQuickCaptureNote,
 } from "./quickCaptureMock";
+import { getMockWindowRegistration } from "./windowRegistration";
 
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
 const isTauri =
@@ -49,15 +50,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
   const mockAudioPath = params.get("mockAudioPath");
 
-  // 利用するウィンドウラベルをモック登録
-  mockWindows(
-    currentLabel,
-    "main",
-    "clock",
-    "calendar",
-    "gameLauncher",
-    "quickCapture",
-  );
+  // mockWindows の第1引数が現在のウィンドウになるため、URLのlabelを先頭にする。
+  const [registeredCurrentLabel, ...additionalWindowLabels] =
+    getMockWindowRegistration(currentLabel);
+  mockWindows(registeredCurrentLabel, ...additionalWindowLabels);
 
   // ローカルストレージキー
   const STORAGE_KEY = "mint_mock_settings";
@@ -127,6 +123,12 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         const cursor = typedArgs?.cursor as CalendarEventCursor | undefined;
         if (!cursor) throw new Error("Calendar event cursor is required.");
         return mockGetNextCalendarEvent(cursor);
+      }
+      case "open_calendar_editor_window": {
+        return;
+      }
+      case "get_calendar_editor_payload": {
+        return null;
       }
       case "create_calendar_event": {
         const input = typedArgs?.input as CalendarEventInput | undefined;
@@ -220,25 +222,30 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               id: "730",
               title: "Counter-Strike 2",
               store: "steam",
-              imagePath: null,
+              imagePath:
+                "https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg",
+              fallbackImagePath: null,
             },
             {
               id: "fn:catalog:Fortnite",
               title: "Fortnite",
               store: "epic",
               imagePath: null,
+              fallbackImagePath: null,
             },
             {
               id: "league_of_legends",
               title: "League of Legends",
               store: "riot",
               imagePath: null,
+              fallbackImagePath: null,
             },
             {
               id: "valorant",
               title: "VALORANT",
               store: "riot",
               imagePath: null,
+              fallbackImagePath: null,
             },
           ],
           sources: [
@@ -255,6 +262,17 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         }
         console.log(
           `[Tauri Mock] ゲーム ${request.id} の起動をシミュレートしました。`,
+        );
+        return;
+      }
+      case "open_game_store_page": {
+        const request = typedArgs?.request as { id?: string } | undefined;
+        if (!request?.id) throw new Error("Game id is required.");
+        if (request.id === "store-error") {
+          throw new Error("ゲームクライアントを起動できませんでした。");
+        }
+        console.log(
+          `[Tauri Mock] ゲーム ${request.id} の管理画面を開きました。`,
         );
         return;
       }

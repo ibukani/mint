@@ -16,19 +16,8 @@ static LAST_LAUNCH: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
 
 #[tauri::command]
 pub fn launch_game(request: LaunchGameRequest) -> Result<(), String> {
-    let scan = list_installed_games();
-    let store = match request.store {
-        GameStoreInput::Steam => GameStore::Steam,
-        GameStoreInput::Epic => GameStore::Epic,
-        GameStoreInput::Riot => GameStore::Riot,
-    };
-    if !scan
-        .games
-        .iter()
-        .any(|game| game.store == store && game.id == request.id)
-    {
-        return Err("検出済みゲームではありません。再スキャンしてください。".to_string());
-    }
+    let store = input_store(request.store);
+    validate_detected_game(&request.id, store)?;
     if !accept_launch(Instant::now()) {
         return Ok(());
     }
@@ -42,6 +31,37 @@ pub fn launch_game(request: LaunchGameRequest) -> Result<(), String> {
         }
         GameStore::Riot => launch_riot(&request.id),
     }
+}
+
+#[tauri::command]
+pub fn open_game_store_page(request: LaunchGameRequest) -> Result<(), String> {
+    let store = input_store(request.store);
+    validate_detected_game(&request.id, store)?;
+    match store {
+        GameStore::Steam => open_uri(&format!("steam://nav/games/details/{}", request.id)),
+        GameStore::Epic => open_uri("com.epicgames.launcher://library/"),
+        GameStore::Riot => open_riot_client(),
+    }
+}
+
+fn input_store(store: GameStoreInput) -> GameStore {
+    match store {
+        GameStoreInput::Steam => GameStore::Steam,
+        GameStoreInput::Epic => GameStore::Epic,
+        GameStoreInput::Riot => GameStore::Riot,
+    }
+}
+
+fn validate_detected_game(id: &str, store: GameStore) -> Result<(), String> {
+    let scan = list_installed_games();
+    if !scan
+        .games
+        .iter()
+        .any(|game| game.store == store && game.id == id)
+    {
+        return Err("検出済みゲームではありません。再スキャンしてください。".to_string());
+    }
+    Ok(())
 }
 
 fn accept_launch(now: Instant) -> bool {
@@ -93,6 +113,17 @@ fn launch_riot(product: &str) -> Result<(), String> {
             format!("--launch-product={product}"),
             "--launch-patchline=live".to_string(),
         ])
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("Riot Clientを起動できませんでした: {error}"))
+}
+
+fn open_riot_client() -> Result<(), String> {
+    let client = riot_client_path();
+    if !client.exists() {
+        return Err("Riot Clientが見つかりません。".to_string());
+    }
+    Command::new(client)
         .spawn()
         .map(|_| ())
         .map_err(|error| format!("Riot Clientを起動できませんでした: {error}"))
