@@ -13,10 +13,17 @@ const dialogMocks = vi.hoisted(() => ({
   open: vi.fn(),
   save: vi.fn(),
 }));
+const windowMocks = vi.hoisted(() => ({
+  hide: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: dialogMocks.open,
   save: dialogMocks.save,
+}));
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({ hide: windowMocks.hide }),
 }));
 
 describe("QuickCaptureOverlay", () => {
@@ -24,6 +31,7 @@ describe("QuickCaptureOverlay", () => {
     localStorage.clear();
     dialogMocks.open.mockReset().mockResolvedValue(null);
     dialogMocks.save.mockReset().mockResolvedValue(null);
+    windowMocks.hide.mockReset().mockResolvedValue(undefined);
   });
 
   it("renders the overlay in its visible state", async () => {
@@ -257,5 +265,24 @@ describe("QuickCaptureOverlay", () => {
     expect(
       screen.getByRole("option", { name: /検索できるメモ/ }),
     ).toBeInTheDocument();
+  });
+
+  it("leaves library search before closing when Escape is pressed again", async () => {
+    render(<QuickCaptureOverlay />);
+
+    const search = await screen.findByRole("combobox", {
+      name: "保存済みメモを検索",
+    });
+    const dialog = screen.getByRole("dialog");
+    act(() => search.focus());
+
+    fireEvent.keyDown(search, { key: "Escape" });
+
+    expect(search).not.toHaveFocus();
+    expect(dialog).toBeInTheDocument();
+    expect(windowMocks.hide).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(windowMocks.hide).toHaveBeenCalledOnce());
   });
 });

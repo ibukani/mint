@@ -191,12 +191,16 @@ export const QuickCaptureOverlay: React.FC = () => {
   const handleLibrarySearchKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    if (event.key === "Escape" && (query || tagFilter)) {
+    if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      setQuery("");
-      setTagFilter(null);
-      setLibraryCursorId(capture.notes[0]?.id ?? null);
+      if (query || tagFilter) {
+        setQuery("");
+        setTagFilter(null);
+        setLibraryCursorId(capture.notes[0]?.id ?? null);
+      } else {
+        librarySearchRef.current?.blur();
+      }
       return;
     }
 
