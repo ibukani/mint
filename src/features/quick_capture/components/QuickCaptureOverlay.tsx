@@ -418,7 +418,10 @@ export const QuickCaptureOverlay: React.FC = () => {
         </header>
 
         <main className="quick-capture__body">
-          <section className="quick-capture__editor-pane" aria-label="メモ編集">
+          <section
+            className={`quick-capture__editor-pane${capture.isDropTarget ? " is-drop-target" : ""}`}
+            aria-label="メモ編集"
+          >
             <div className="quick-capture__toolbar">
               <fieldset
                 className="quick-capture__mode-switch"
@@ -497,6 +500,14 @@ export const QuickCaptureOverlay: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {capture.isDropTarget && (
+              <div className="quick-capture__drop-overlay" role="status">
+                <Paperclip size={24} aria-hidden="true" />
+                <strong>ここにドロップしてファイルを添付</strong>
+                <span>複数ファイルにも対応しています</span>
+              </div>
+            )}
 
             {preview ? (
               <article

@@ -1,3 +1,5 @@
+import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import type { DragDropEvent } from "@tauri-apps/api/window";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../events";
@@ -10,13 +12,15 @@ const mocks = vi.hoisted(() => ({
   promote: vi.fn(),
   saveDraft: vi.fn(),
   updateNote: vi.fn(),
+  addAttachment: vi.fn(),
   hide: vi.fn(),
   listen: vi.fn(),
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
+  dragDropHandler: null as ((event: { payload: DragDropEvent }) => void) | null,
 }));
 
 vi.mock("../api", () => ({
-  addQuickCaptureAttachment: vi.fn(),
+  addQuickCaptureAttachment: mocks.addAttachment,
   chooseQuickCaptureAttachment: vi.fn(),
   createQuickCaptureNote: mocks.createNote,
   deleteQuickCaptureAttachment: vi.fn(),
@@ -34,7 +38,17 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({ hide: mocks.hide }),
+  getCurrentWindow: () => ({
+    hide: mocks.hide,
+    onDragDropEvent: async (
+      handler: (event: { payload: DragDropEvent }) => void,
+    ) => {
+      mocks.dragDropHandler = handler;
+      return () => {
+        mocks.dragDropHandler = null;
+      };
+    },
+  }),
 }));
 
 import { useQuickCapture } from "./useQuickCapture";
@@ -62,6 +76,7 @@ describe("useQuickCapture", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listeners.clear();
+    mocks.dragDropHandler = null;
     mocks.load.mockResolvedValue(state);
     mocks.promote.mockResolvedValue({
       note: savedNote,
@@ -88,6 +103,83 @@ describe("useQuickCapture", () => {
     mocks.importBackup.mockResolvedValue(state);
     mocks.createNote.mockReset();
     mocks.updateNote.mockReset();
+    mocks.addAttachment.mockReset();
+  });
+
+  it("attaches dropped files to the selected note without replacing the draft", async () => {
+    mocks.addAttachment.mockImplementation(async ({ sourcePath }) => ({
+      id: `attachment-${sourcePath}`,
+      fileName: sourcePath.split("/").pop() ?? sourcePath,
+      mimeType: "application/octet-stream",
+      sizeBytes: 10,
+      storedPath: sourcePath,
+      createdAt: "2026-07-14T00:00:00.000Z",
+    }));
+
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await waitFor(() => expect(mocks.dragDropHandler).not.toBeNull());
+
+    await act(async () => {
+      await result.current.selectNote(savedNote);
+    });
+    expect(result.current.activeId).toBe(savedNote.id);
+
+    act(() => {
+      mocks.dragDropHandler?.({
+        payload: {
+          type: "enter",
+          paths: [],
+          position: new PhysicalPosition(20, 20),
+        } as DragDropEvent,
+      });
+    });
+    expect(result.current.isDropTarget).toBe(true);
+
+    act(() => {
+      mocks.dragDropHandler?.({
+        payload: {
+          type: "drop",
+          paths: ["/tmp/first.pdf", "/tmp/second.png", "/tmp/first.pdf"],
+          position: new PhysicalPosition(20, 20),
+        } as DragDropEvent,
+      });
+    });
+    await waitFor(() => expect(mocks.addAttachment).toHaveBeenCalledTimes(2));
+
+    expect(mocks.addAttachment).toHaveBeenNthCalledWith(1, {
+      noteId: savedNote.id,
+      sourcePath: "/tmp/first.pdf",
+    });
+    expect(mocks.addAttachment).toHaveBeenNthCalledWith(2, {
+      noteId: savedNote.id,
+      sourcePath: "/tmp/second.png",
+    });
+    expect(result.current.notes[0]?.attachments).toHaveLength(2);
+    expect(result.current.content).toBe("保存済みのメモ");
+    expect(result.current.isDropTarget).toBe(false);
+  });
+
+  it("asks for a saved note before accepting a dropped file", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await waitFor(() => expect(mocks.dragDropHandler).not.toBeNull());
+
+    act(() => {
+      mocks.dragDropHandler?.({
+        payload: {
+          type: "drop",
+          paths: ["/tmp/draft-only.pdf"],
+          position: new PhysicalPosition(20, 20),
+        } as DragDropEvent,
+      });
+    });
+
+    expect(mocks.addAttachment).not.toHaveBeenCalled();
+    expect(result.current.error).toBe(
+      "ファイルを添付するには、先に保存済みメモを選択してください。",
+    );
+    expect(result.current.content).toBe("下書きの内容");
   });
 
   it("keeps the draft open when selecting a note cannot save the latest edit", async () => {

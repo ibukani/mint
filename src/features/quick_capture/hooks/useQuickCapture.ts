@@ -39,6 +39,7 @@ export const useQuickCapture = () => {
   const [canRetrySave, setCanRetrySave] = useState(false);
   const [canRetryDuplicate, setCanRetryDuplicate] = useState(false);
   const [focusSequence, setFocusSequence] = useState(0);
+  const [isDropTarget, setIsDropTarget] = useState(false);
   const loaded = useRef(false);
   const revision = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,6 +48,7 @@ export const useQuickCapture = () => {
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
+  const attachmentInFlightRef = useRef(false);
   const updateContent = useCallback((value: string) => {
     revision.current += 1;
     setContent(value);
@@ -295,31 +297,135 @@ export const useQuickCapture = () => {
     }
   }, [activeId, showDraft]);
 
-  const addAttachment = useCallback(async () => {
-    if (!activeId) return;
-    try {
-      const sourcePath = await chooseQuickCaptureAttachment();
-      if (!sourcePath || Array.isArray(sourcePath)) return;
+  const addAttachmentFromPath = useCallback(
+    async (noteId: string, sourcePath: string) => {
       const attachment = await addQuickCaptureAttachment({
-        noteId: activeId,
+        noteId,
         sourcePath,
       });
       setNotes((current) =>
         current.map((note) =>
-          note.id === activeId
+          note.id === noteId
             ? { ...note, attachments: [...note.attachments, attachment] }
             : note,
         ),
       );
-      setStatus("saved");
+    },
+    [],
+  );
+
+  const attachPaths = useCallback(
+    async (paths: string[]) => {
+      const noteId = activeId;
+      const normalizedPaths = [
+        ...new Set(paths.map((path) => path.trim()).filter(Boolean)),
+      ];
+      if (
+        !noteId ||
+        normalizedPaths.length === 0 ||
+        attachmentInFlightRef.current
+      ) {
+        return;
+      }
+
+      attachmentInFlightRef.current = true;
+      setStatus("saving");
       setError(null);
       setCanRetrySave(false);
+      setCanRetryDuplicate(false);
+      let addedCount = 0;
+      try {
+        for (const sourcePath of normalizedPaths) {
+          await addAttachmentFromPath(noteId, sourcePath);
+          addedCount += 1;
+        }
+        setStatus("saved");
+      } catch (reason) {
+        setError(
+          addedCount > 0
+            ? `${addedCount}件を添付しましたが、残りのファイルを追加できませんでした。再度ドロップしてください。`
+            : reason instanceof Error
+              ? reason.message
+              : String(reason),
+        );
+        setStatus("error");
+      } finally {
+        attachmentInFlightRef.current = false;
+      }
+    },
+    [activeId, addAttachmentFromPath],
+  );
+
+  const addAttachment = useCallback(async () => {
+    if (!activeId || attachmentInFlightRef.current) return;
+    try {
+      const sourcePath = await chooseQuickCaptureAttachment();
+      if (!sourcePath || Array.isArray(sourcePath)) return;
+      await attachPaths([sourcePath]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
       setStatus("error");
       setCanRetrySave(false);
     }
-  }, [activeId]);
+  }, [activeId, attachPaths]);
+
+  const handleDroppedPaths = useCallback(
+    (paths: string[]) => {
+      if (paths.length === 0) return;
+      if (!activeId) {
+        setError(
+          "ファイルを添付するには、先に保存済みメモを選択してください。",
+        );
+        setStatus("error");
+        setCanRetrySave(false);
+        return;
+      }
+      void attachPaths(paths);
+    },
+    [activeId, attachPaths],
+  );
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    const listenForFileDrop = async () => {
+      try {
+        const currentWindow = getCurrentWindow();
+        if (typeof currentWindow.onDragDropEvent !== "function") return;
+
+        const cleanup = await currentWindow.onDragDropEvent((event) => {
+          if (disposed) return;
+          const { payload } = event;
+          if (payload.type === "leave") {
+            setIsDropTarget(false);
+            return;
+          }
+          if (payload.type === "drop") {
+            setIsDropTarget(false);
+            handleDroppedPaths(payload.paths);
+            return;
+          }
+          setIsDropTarget(activeId !== null);
+        });
+
+        if (disposed) cleanup();
+        else unlisten = cleanup;
+      } catch (reason) {
+        console.warn(
+          "Failed to register quick capture file drop listener:",
+          reason,
+        );
+      }
+    };
+
+    void listenForFileDrop();
+    return () => {
+      disposed = true;
+      setIsDropTarget(false);
+      unlisten?.();
+    };
+  }, [activeId, handleDroppedPaths]);
 
   const exportBackup = useCallback(
     async (path: string) => {
@@ -465,6 +571,7 @@ export const useQuickCapture = () => {
     canRetrySave,
     canRetryDuplicate,
     importBackup,
+    isDropTarget,
     retryDuplicate: duplicateActive,
     reload,
   };
