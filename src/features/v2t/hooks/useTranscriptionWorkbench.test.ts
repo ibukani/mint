@@ -161,4 +161,26 @@ describe("useTranscriptionWorkbench microphone recording", () => {
     expect(result.current.transcriptionError).toBe("");
     expect(apiMocks.transcribeRecording).toHaveBeenCalledTimes(2);
   });
+
+  it("discards a recording without sending it", async () => {
+    const { result } = renderHook(() =>
+      useTranscriptionWorkbench({
+        settings: createSettings(),
+        apiKey: "test-api-key",
+        apiKeyLoaded: true,
+        clearApiKeyPasteStatus: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+    act(() => result.current.discardRecording());
+
+    await waitFor(() => {
+      expect(result.current.recording).toBe(false);
+    });
+    expect(apiMocks.transcribeRecording).not.toHaveBeenCalled();
+    expect(stopTrack).toHaveBeenCalledOnce();
+  });
 });

@@ -362,6 +362,13 @@ export const useTranscriptionWorkbench = ({
     recorder.stop();
   }, []);
 
+  const discardRecording = useCallback(() => {
+    recordingDiscardedRef.current = true;
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    recorder.stop();
+  }, []);
+
   useEffect(
     () => () => {
       recordingDiscardedRef.current = true;
@@ -629,6 +636,7 @@ export const useTranscriptionWorkbench = ({
     retryTranscription,
     startRecording,
     stopRecording,
+    discardRecording,
     copyTranscriptionText,
     clearTranscriptionText,
     updateAudioFilePath,

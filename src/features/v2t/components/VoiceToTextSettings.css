@@ -178,6 +178,13 @@
   opacity: 1;
 }
 
+.v2t-discard-recording-button {
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
 .v2t-workbench__kicker {
   color: var(--color-accent);
   font-size: var(--font-size-2xs);
@@ -290,6 +297,10 @@
   .v2t-transcription-error {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .v2t-workbench__header-actions {
+    flex-wrap: wrap;
   }
 
   .v2t-retry-button {

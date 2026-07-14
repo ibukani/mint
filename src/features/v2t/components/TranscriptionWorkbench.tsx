@@ -48,6 +48,7 @@ export const TranscriptionWorkbench: React.FC<{
     retryTranscription,
     startRecording,
     stopRecording,
+    discardRecording,
     copyTranscriptionText,
     clearTranscriptionText,
     updateAudioFilePath,
@@ -113,6 +114,18 @@ export const TranscriptionWorkbench: React.FC<{
               </>
             )}
           </Button>
+          {recording && (
+            <Button
+              variant="ghost"
+              className="v2t-discard-recording-button"
+              onClick={discardRecording}
+              aria-label="録音を破棄"
+              title="録音を送信せずに破棄"
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              破棄
+            </Button>
+          )}
         </div>
       </div>
       {isDropTarget && (
