@@ -1,5 +1,6 @@
 import {
   CalendarClock,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -52,6 +53,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   const [internalSelectedDate, setInternalSelectedDate] = useState(() =>
     toMachineDate(today),
   );
+  const dateJumpRef = useRef<HTMLInputElement>(null);
   const dayRefs = useRef(new Map<string, HTMLButtonElement>());
   const shouldFocusSelectedRef = useRef(false);
   const hasFocusedInitialDateRef = useRef(false);
@@ -112,6 +114,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
   };
 
+  const selectDateFromPicker = (machineDate: string) => {
+    if (!machineDate) return;
+    const [year, month, day] = machineDate.split("-").map(Number);
+    const date = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+    if (Number.isNaN(date.getTime())) return;
+    selectAndFocusDate(date);
+  };
+
   const shiftSelectedMonth = (delta: number) => {
     const current = activeFocusDateValue();
     const targetMonth = new Date(
@@ -169,6 +179,13 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     ) {
       event.preventDefault();
       onCreate(selectedDate);
+    } else if (
+      event.key.toLowerCase() === "g" &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      dateJumpRef.current?.focus({ preventScroll: true });
     }
   };
 
@@ -192,27 +209,41 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
             {viewMonth.getMonth() + 1}月
           </strong>
         </h2>
-        <div className="month-calendar__switcher">
-          <button
-            type="button"
-            className="month-calendar__nav-button"
-            aria-label="前の月"
-            aria-keyshortcuts="PageUp"
-            title="前の月（Page Up）"
-            onClick={() => moveMonth(-1)}
-          >
-            <ChevronLeft size={18} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="month-calendar__nav-button"
-            aria-label="次の月"
-            aria-keyshortcuts="PageDown"
-            title="次の月（Page Down）"
-            onClick={() => moveMonth(1)}
-          >
-            <ChevronRight size={18} aria-hidden="true" />
-          </button>
+        <div className="month-calendar__header-actions">
+          <label className="month-calendar__date-jump" title="日付へ移動（G）">
+            <CalendarDays size={15} aria-hidden="true" />
+            <span>日付</span>
+            <input
+              ref={dateJumpRef}
+              type="date"
+              value={selectedDate}
+              aria-label="日付へ移動"
+              aria-keyshortcuts="G"
+              onChange={(event) => selectDateFromPicker(event.target.value)}
+            />
+          </label>
+          <div className="month-calendar__switcher">
+            <button
+              type="button"
+              className="month-calendar__nav-button"
+              aria-label="前の月"
+              aria-keyshortcuts="PageUp"
+              title="前の月（Page Up）"
+              onClick={() => moveMonth(-1)}
+            >
+              <ChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="month-calendar__nav-button"
+              aria-label="次の月"
+              aria-keyshortcuts="PageDown"
+              title="次の月（Page Down）"
+              onClick={() => moveMonth(1)}
+            >
+              <ChevronRight size={18} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </header>
 

@@ -85,6 +85,14 @@ describe("MonthCalendar", () => {
     expect(
       screen.getByRole("heading", { name: "2026年 7月" }),
     ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("日付へ移動"), {
+      target: { value: "2026-10-03" },
+    });
+    expect(
+      screen.getByRole("heading", { name: "2026年 10月" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "10月3日" })).toHaveFocus();
   });
 
   it("supports keyboard date navigation and month paging", () => {
@@ -125,6 +133,9 @@ describe("MonthCalendar", () => {
       screen.getByRole("heading", { name: "2026年 1月" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1月15日" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByLabelText("月間カレンダー"), { key: "g" });
+    expect(screen.getByLabelText("日付へ移動")).toHaveFocus();
   });
 
   it("shows a subtle event marker and opens event entry points", () => {
