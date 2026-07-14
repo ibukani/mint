@@ -194,6 +194,44 @@ describe("AppShell", () => {
     });
   });
 
+  it("surfaces a successful quick action in recent results", async () => {
+    const onQuickAction = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AppShell
+        title="mint"
+        tabs={[{ id: "general", label: "一般設定" }]}
+        activeTab="general"
+        onTabChange={() => undefined}
+        quickActions={[
+          {
+            id: "open-clock",
+            label: "時計を開く",
+            description: "時計オーバーレイを表示",
+            targetId: "clock",
+          },
+        ]}
+        onQuickAction={onQuickAction}
+      >
+        <p>設定コンテンツ</p>
+      </AppShell>,
+    );
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    fireEvent.click(screen.getByRole("option", { name: /時計を開く/ }));
+    await waitFor(() => {
+      expect(onQuickAction).toHaveBeenCalledWith("clock");
+      expect(
+        screen.queryByRole("dialog", { name: "クイックランチャー" }),
+      ).toBeNull();
+    });
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.getByText("最近使った項目")).toBeVisible();
+    const options = screen.getAllByRole("option");
+    expect(options[0]).toHaveTextContent("時計を開く");
+    expect(options[0]).toHaveTextContent("最近");
+  });
+
   it("keeps the quick launcher open when an action fails", async () => {
     const onQuickAction = vi
       .fn()

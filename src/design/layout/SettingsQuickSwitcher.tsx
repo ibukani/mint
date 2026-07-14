@@ -40,6 +40,8 @@ interface SettingsQuickSwitcherProps<TTabId extends string> {
 const normalizeSearchText = (value: string) =>
   value.toLocaleLowerCase("ja").replace(/\s+/g, "");
 
+const MAX_RECENT_RESULTS = 4;
+
 export const SettingsQuickSwitcher = <TTabId extends string>({
   tabs,
   activeTab,
@@ -53,6 +55,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const [activeIndex, setActiveIndex] = useState(0);
   const [actionError, setActionError] = useState("");
   const [isSelecting, setIsSelecting] = useState(false);
+  const [recentKeys, setRecentKeys] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
@@ -60,8 +63,8 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const titleId = useId();
   const resultsId = useId();
 
+  const normalizedQuery = normalizeSearchText(query);
   const filteredResults = useMemo(() => {
-    const normalizedQuery = normalizeSearchText(query);
     if (!normalizedQuery) {
       return [
         ...tabs.map<SettingsSearchResult<TTabId>>((tab) => ({
@@ -127,8 +130,27 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
         action,
       }));
     return [...tabResults, ...actionResults];
-  }, [query, quickActions, tabs]);
-  const selectedResult = filteredResults[activeIndex];
+  }, [normalizedQuery, quickActions, tabs]);
+  const recentResults = useMemo(() => {
+    if (normalizedQuery) return [];
+    return recentKeys.flatMap((key) => {
+      const result = filteredResults.find((candidate) => candidate.key === key);
+      return result ? [result] : [];
+    });
+  }, [filteredResults, normalizedQuery, recentKeys]);
+  const orderedResults = useMemo(() => {
+    if (recentResults.length === 0) return filteredResults;
+    const recentResultKeys = new Set(recentResults.map((result) => result.key));
+    return [
+      ...recentResults,
+      ...filteredResults.filter((result) => !recentResultKeys.has(result.key)),
+    ];
+  }, [filteredResults, recentResults]);
+  const recentResultKeys = useMemo(
+    () => new Set(recentResults.map((result) => result.key)),
+    [recentResults],
+  );
+  const selectedResult = orderedResults[activeIndex];
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -150,13 +172,15 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
     setQuery("");
     setActionError("");
     setActiveIndex(
-      Math.max(
-        0,
-        tabs.findIndex((tab) => tab.id === activeTab),
-      ),
+      recentKeys.length > 0
+        ? 0
+        : Math.max(
+            0,
+            tabs.findIndex((tab) => tab.id === activeTab),
+          ),
     );
     inputRef.current?.focus();
-  }, [activeTab, isOpen, tabs]);
+  }, [activeTab, isOpen, recentKeys.length, tabs]);
 
   useEffect(() => {
     if (!isOpen || !selectedResult) return;
@@ -171,6 +195,15 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
 
   if (!isOpen) return null;
 
+  const rememberResult = (result: SettingsSearchResult<TTabId>) => {
+    setRecentKeys((current) =>
+      [result.key, ...current.filter((key) => key !== result.key)].slice(
+        0,
+        MAX_RECENT_RESULTS,
+      ),
+    );
+  };
+
   const selectResult = async (result: SettingsSearchResult<TTabId>) => {
     if (result.kind === "action") {
       if (!onQuickAction || isSelecting) return;
@@ -178,6 +211,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       setActionError("");
       try {
         await onQuickAction(result.action.targetId);
+        rememberResult(result);
         onClose();
       } catch (reason) {
         setActionError(
@@ -190,6 +224,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       }
       return;
     }
+    rememberResult(result);
     if (result.kind === "setting") {
       onTabChange(result.tab.id, result.item.targetId);
     } else {
@@ -325,6 +360,9 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
           )}
         </div>
 
+        {recentResults.length > 0 && (
+          <div className="settings-switcher__section-label">最近使った項目</div>
+        )}
         <div
           ref={resultsRef}
           id={resultsId}
@@ -332,14 +370,14 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
           role="listbox"
           aria-label="設定カテゴリ・項目・操作"
         >
-          {filteredResults.map((result, index) => (
+          {orderedResults.map((result, index) => (
             <button
               type="button"
               role="option"
               id={`${resultsId}-${result.key}`}
               key={result.key}
               tabIndex={-1}
-              className={`settings-switcher__option${result.kind === "setting" ? " is-setting" : ""}${result.kind === "action" ? " is-action" : ""} ${
+              className={`settings-switcher__option${result.kind === "setting" ? " is-setting" : ""}${result.kind === "action" ? " is-action" : ""}${recentResultKeys.has(result.key) ? " is-recent" : ""} ${
                 index === activeIndex ? "is-active" : ""
               }`}
               aria-selected={index === activeIndex}
@@ -379,15 +417,16 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
               {result.kind === "tab" && result.tab.id === activeTab && (
                 <span className="settings-switcher__current">表示中</span>
               )}
-              {result.kind === "setting" && (
+              {recentResultKeys.has(result.key) ? (
+                <span className="settings-switcher__scope">最近</span>
+              ) : result.kind === "setting" ? (
                 <span className="settings-switcher__scope">項目</span>
-              )}
-              {result.kind === "action" && (
+              ) : result.kind === "action" ? (
                 <span className="settings-switcher__scope">操作</span>
-              )}
+              ) : null}
             </button>
           ))}
-          {filteredResults.length === 0 && (
+          {orderedResults.length === 0 && (
             <div className="settings-switcher__empty">
               <Search size={20} aria-hidden="true" />
               <strong>一致する設定や操作がありません</strong>
@@ -402,7 +441,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
               {actionError}
             </span>
           )}
-          <span aria-live="polite">{filteredResults.length} 件の候補</span>
+          <span aria-live="polite">{orderedResults.length} 件の候補</span>
           <span>
             <kbd>↑</kbd>
             <kbd>↓</kbd> 選択 <kbd>Enter</kbd> 決定

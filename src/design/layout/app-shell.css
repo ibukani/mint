@@ -523,6 +523,14 @@
   font-size: var(--font-size-md);
 }
 
+.settings-switcher__section-label {
+  margin: 0 var(--space-5) var(--space-1);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+}
+
 .settings-switcher__clear {
   position: absolute;
   top: 50%;
@@ -620,6 +628,11 @@
   border: 1px solid var(--border-accent);
   background: var(--surface-accent-action);
   color: var(--color-accent);
+}
+
+.settings-switcher__option.is-recent:not(.is-active) {
+  border-color: color-mix(in srgb, var(--border-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--surface-accent) 34%, transparent);
 }
 
 .settings-switcher__option-copy {
