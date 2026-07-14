@@ -464,6 +464,131 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByRole("status")).toHaveTextContent("コピーしました");
   });
 
+  it("saves a transcription result as a quick capture note once", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(
+      async (cmd: string, args?: InvokeArgs) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (cmd === "load_api_key") return "mocked-api-key";
+        if (cmd === "transcribe_audio_file") return { text: "保存する議事録" };
+        if (cmd === "create_quick_capture_note") {
+          expect(args).toEqual({
+            input: {
+              content: "保存する議事録",
+              tags: ["文字起こし"],
+              pinned: false,
+            },
+          });
+          return {
+            id: "note-1",
+            content: "保存する議事録",
+            tags: ["文字起こし"],
+            pinned: false,
+            createdAt: "2026-07-14T12:00:00Z",
+            updatedAt: "2026-07-14T12:00:00Z",
+            attachments: [],
+          };
+        }
+        return undefined;
+      },
+    );
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+      await Promise.resolve();
+    });
+
+    const saveButton = screen.getByRole("button", {
+      name: "クイックキャプチャーに保存",
+    });
+    await act(async () => {
+      fireEvent.click(saveButton);
+      await Promise.resolve();
+    });
+
+    expect(
+      await screen.findByText("クイックキャプチャーに保存しました"),
+    ).toBeVisible();
+    expect(saveButton).toBeDisabled();
+    expect(invoke).toHaveBeenCalledTimes(4);
+  });
+
+  it("keeps note saving retryable when quick capture rejects the note", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") return { text: "保存失敗を試す" };
+      if (cmd === "create_quick_capture_note") {
+        throw new Error("クイックキャプチャーを保存できませんでした");
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+      await Promise.resolve();
+    });
+
+    const saveButton = screen.getByRole("button", {
+      name: "クイックキャプチャーに保存",
+    });
+    fireEvent.click(saveButton);
+
+    expect(
+      await screen.findByText("クイックキャプチャーを保存できませんでした"),
+    ).toBeVisible();
+    expect(saveButton).toBeEnabled();
+  });
+
   it("requires an API key before transcription", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {

@@ -7,6 +7,7 @@ import {
   FolderOpen,
   LoaderCircle,
   Mic,
+  NotebookPen,
   RefreshCw,
   Square,
   Trash2,
@@ -36,6 +37,11 @@ export const TranscriptionWorkbench: React.FC<{
     transcriptionError,
     copyStatus,
     copyTone,
+    saveNoteStatus,
+    saveNoteTone,
+    savingNote,
+    saveTranscriptionAsNote,
+    transcriptionSaved,
     transcribing,
     recording,
     recordingSeconds,
@@ -264,12 +270,33 @@ export const TranscriptionWorkbench: React.FC<{
                 <ClipboardCopy size={15} aria-hidden="true" />
                 結果をコピー
               </Button>
+              <Button
+                id="v2t-save-note-button"
+                variant={transcriptionSaved ? "ghost" : "primary"}
+                disabled={savingNote || transcriptionSaved}
+                onClick={() => void saveTranscriptionAsNote()}
+                aria-label={
+                  transcriptionSaved
+                    ? "クイックキャプチャーに保存済み"
+                    : "クイックキャプチャーに保存"
+                }
+              >
+                <NotebookPen size={15} aria-hidden="true" />
+                {savingNote
+                  ? "保存中…"
+                  : transcriptionSaved
+                    ? "メモに保存済み"
+                    : "メモとして保存"}
+              </Button>
               <Button variant="ghost" onClick={clearTranscriptionText}>
                 <Trash2 size={15} aria-hidden="true" />
                 結果をクリア
               </Button>
               {copyStatus && (
                 <StatusToast message={copyStatus} tone={copyTone} />
+              )}
+              {saveNoteStatus && (
+                <StatusToast message={saveNoteStatus} tone={saveNoteTone} />
               )}
             </div>
             <TextArea

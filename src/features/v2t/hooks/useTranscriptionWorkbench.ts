@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createQuickCaptureNote } from "../../quick_capture/api";
 import {
   chooseAudioFile,
   isSupportedAudioFilePath,
@@ -87,9 +88,16 @@ export const useTranscriptionWorkbench = ({
   const recordingStartedAtRef = useRef<number | null>(null);
   const recordingDiscardedRef = useRef(false);
   const transcriptionRetryRef = useRef<TranscriptionRetry | null>(null);
+  const saveNoteAttemptRef = useRef(0);
+  const saveNoteInFlightRef = useRef(false);
+  const [savingNote, setSavingNote] = useState(false);
+  const [transcriptionSaved, setTranscriptionSaved] = useState(false);
   const [audioFilePasteStatus, setAudioFilePasteStatus, audioFilePasteTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
   const [copyStatus, setCopyStatus, copyTone] = useTransientStatus(
+    getCopyStatusDuration,
+  );
+  const [saveNoteStatus, setSaveNoteStatus, saveNoteTone] = useTransientStatus(
     getCopyStatusDuration,
   );
 
@@ -121,13 +129,18 @@ export const useTranscriptionWorkbench = ({
 
   const clearTranscriptionOutput = useCallback(() => {
     transcriptionAttemptRef.current += 1;
+    saveNoteAttemptRef.current += 1;
+    saveNoteInFlightRef.current = false;
     transcribingRef.current = false;
     transcriptionRetryRef.current = null;
     setTranscribing(false);
+    setSavingNote(false);
     setTranscriptionText("");
     setTranscriptionError("");
+    setTranscriptionSaved(false);
     setCopyStatus("");
-  }, [setCopyStatus]);
+    setSaveNoteStatus("");
+  }, [setCopyStatus, setSaveNoteStatus]);
 
   const stopRecordingTimer = useCallback(() => {
     if (recordingTimerRef.current) {
@@ -169,7 +182,12 @@ export const useTranscriptionWorkbench = ({
     setTranscribing(true);
     setTranscriptionText("");
     setTranscriptionError("");
+    saveNoteAttemptRef.current += 1;
+    saveNoteInFlightRef.current = false;
+    setSavingNote(false);
+    setTranscriptionSaved(false);
     setCopyStatus("");
+    setSaveNoteStatus("");
     transcriptionRetryRef.current = { type: "file" };
     clearApiKeyPasteStatus();
     setAudioFilePasteStatus("");
@@ -194,6 +212,7 @@ export const useTranscriptionWorkbench = ({
     clearApiKeyPasteStatus,
     setAudioFilePasteStatus,
     setCopyStatus,
+    setSaveNoteStatus,
     settings,
   ]);
 
@@ -212,7 +231,12 @@ export const useTranscriptionWorkbench = ({
       setTranscribing(true);
       setTranscriptionText("");
       setTranscriptionError("");
+      saveNoteAttemptRef.current += 1;
+      saveNoteInFlightRef.current = false;
+      setSavingNote(false);
+      setTranscriptionSaved(false);
       setCopyStatus("");
+      setSaveNoteStatus("");
       clearApiKeyPasteStatus();
       setAudioFilePasteStatus("");
 
@@ -239,7 +263,13 @@ export const useTranscriptionWorkbench = ({
         }
       }
     },
-    [clearApiKeyPasteStatus, setAudioFilePasteStatus, setCopyStatus, settings],
+    [
+      clearApiKeyPasteStatus,
+      setAudioFilePasteStatus,
+      setCopyStatus,
+      setSaveNoteStatus,
+      settings,
+    ],
   );
 
   const canRetryTranscription =
@@ -393,6 +423,46 @@ export const useTranscriptionWorkbench = ({
       setCopyStatus("コピーに失敗しました", "error");
     }
   }, [setCopyStatus, transcriptionText]);
+
+  const saveTranscriptionAsNote = useCallback(async () => {
+    if (
+      !transcriptionText ||
+      transcriptionSaved ||
+      saveNoteInFlightRef.current
+    ) {
+      return;
+    }
+
+    const attempt = saveNoteAttemptRef.current + 1;
+    saveNoteAttemptRef.current = attempt;
+    saveNoteInFlightRef.current = true;
+    setSavingNote(true);
+    setSaveNoteStatus("");
+
+    try {
+      await createQuickCaptureNote({
+        content: transcriptionText,
+        tags: ["文字起こし"],
+        pinned: false,
+      });
+      if (attempt !== saveNoteAttemptRef.current) return;
+      setTranscriptionSaved(true);
+      setSaveNoteStatus("クイックキャプチャーに保存しました");
+    } catch (error) {
+      if (attempt !== saveNoteAttemptRef.current) return;
+      setSaveNoteStatus(
+        error instanceof Error
+          ? error.message
+          : "クイックキャプチャーへの保存に失敗しました",
+        "error",
+      );
+    } finally {
+      if (attempt === saveNoteAttemptRef.current) {
+        saveNoteInFlightRef.current = false;
+        setSavingNote(false);
+      }
+    }
+  }, [setSaveNoteStatus, transcriptionSaved, transcriptionText]);
 
   const clearTranscriptionText = useCallback(() => {
     clearTranscriptionOutput();
@@ -638,6 +708,11 @@ export const useTranscriptionWorkbench = ({
     stopRecording,
     discardRecording,
     copyTranscriptionText,
+    saveTranscriptionAsNote,
+    saveNoteStatus,
+    saveNoteTone,
+    savingNote,
+    transcriptionSaved,
     clearTranscriptionText,
     updateAudioFilePath,
     clearAudioFilePath,
