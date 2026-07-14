@@ -5,6 +5,7 @@ import {
   Archive,
   Check,
   ClipboardPaste,
+  Copy,
   Download,
   Edit3,
   Eye,
@@ -256,6 +257,15 @@ export const QuickCaptureOverlay: React.FC = () => {
     }
   };
 
+  const copyClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(capture.content);
+      setActionStatus("クリップボードへコピーしました");
+    } catch {
+      setActionStatus("クリップボードへコピーできませんでした");
+    }
+  };
+
   const exportMarkdown = async () => {
     try {
       const path = await save({
@@ -395,14 +405,24 @@ export const QuickCaptureOverlay: React.FC = () => {
                   <ClipboardPaste size={14} aria-hidden="true" /> 貼り付け
                 </button>
                 {capture.content.trim() && (
-                  <button
-                    type="button"
-                    className="quick-capture__toolbar-button"
-                    onClick={() => void exportMarkdown()}
-                    title="Markdownとして書き出し"
-                  >
-                    <Download size={14} aria-hidden="true" /> 書き出し
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="quick-capture__toolbar-button"
+                      onClick={() => void copyClipboard()}
+                      title="本文をクリップボードへコピー"
+                    >
+                      <Copy size={14} aria-hidden="true" /> コピー
+                    </button>
+                    <button
+                      type="button"
+                      className="quick-capture__toolbar-button"
+                      onClick={() => void exportMarkdown()}
+                      title="Markdownとして書き出し"
+                    >
+                      <Download size={14} aria-hidden="true" /> 書き出し
+                    </button>
+                  </>
                 )}
                 {capture.activeId && (
                   <>

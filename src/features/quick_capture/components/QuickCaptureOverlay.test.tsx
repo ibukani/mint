@@ -16,6 +16,9 @@ const dialogMocks = vi.hoisted(() => ({
 const windowMocks = vi.hoisted(() => ({
   hide: vi.fn(),
 }));
+const clipboardMocks = vi.hoisted(() => ({
+  writeText: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: dialogMocks.open,
@@ -32,6 +35,11 @@ describe("QuickCaptureOverlay", () => {
     dialogMocks.open.mockReset().mockResolvedValue(null);
     dialogMocks.save.mockReset().mockResolvedValue(null);
     windowMocks.hide.mockReset().mockResolvedValue(undefined);
+    clipboardMocks.writeText.mockReset().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: clipboardMocks,
+    });
   });
 
   it("renders the overlay in its visible state", async () => {
@@ -80,6 +88,21 @@ describe("QuickCaptureOverlay", () => {
       "true",
     );
     expect(screen.getByLabelText("メモのプレビュー")).toHaveFocus();
+  });
+
+  it("copies the current draft to the clipboard", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "共有する本文" } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "コピー" }));
+
+    await waitFor(() => {
+      expect(clipboardMocks.writeText).toHaveBeenCalledWith("共有する本文");
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "クリップボードへコピーしました",
+      );
+    });
   });
 
   it("resets draft view state when returning from a saved note", async () => {
