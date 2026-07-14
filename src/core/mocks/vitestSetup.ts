@@ -8,6 +8,10 @@ import type {
   CalendarEventRange,
 } from "../../features/calendar/types";
 import type {
+  AddFileShelfContentInput,
+  AddFileShelfPathsInput,
+} from "../../features/file_shelf/types";
+import type {
   QuickCaptureAttachmentInput,
   QuickCaptureDraftInput,
   QuickCaptureNoteInput,
@@ -20,6 +24,15 @@ import {
   mockUpdateCalendarEvent,
 } from "./calendarEventMock";
 import {
+  mockAddFileShelfContent,
+  mockAddFileShelfPaths,
+  mockClearFileShelf,
+  mockClearFileShelfClipboardHistory,
+  mockLoadFileShelfState,
+  mockRemoveFileShelfItems,
+  mockRestoreFileShelfRemoval,
+} from "./fileShelfMock";
+import {
   mockAddQuickCaptureAttachment,
   mockCreateQuickCaptureNote,
   mockDeleteQuickCaptureAttachment,
@@ -31,7 +44,14 @@ import {
 } from "./quickCaptureMock";
 
 // テスト環境でTauriのウィンドウ管理をモック
-mockWindows("main", "clock", "calendar", "gameLauncher", "quickCapture");
+mockWindows(
+  "main",
+  "clock",
+  "calendar",
+  "gameLauncher",
+  "quickCapture",
+  "fileShelf",
+);
 
 import { createMockSettings } from "./mockSettings";
 
@@ -90,6 +110,34 @@ mockIPC(async (cmd, args) => {
     }
     case "load_quick_capture_state":
       return mockLoadQuickCaptureState();
+    case "load_file_shelf_state":
+      return mockLoadFileShelfState();
+    case "add_file_shelf_paths": {
+      const input = typedArgs?.input as AddFileShelfPathsInput | undefined;
+      if (!input) throw new Error("File shelf paths are required.");
+      return mockAddFileShelfPaths(input);
+    }
+    case "add_file_shelf_content": {
+      const input = typedArgs?.input as AddFileShelfContentInput | undefined;
+      if (!input) throw new Error("File shelf content is required.");
+      return mockAddFileShelfContent(input);
+    }
+    case "remove_file_shelf_items": {
+      const itemIds = typedArgs?.itemIds as string[] | undefined;
+      if (!itemIds) throw new Error("File shelf item ids are required.");
+      return mockRemoveFileShelfItems(itemIds);
+    }
+    case "restore_file_shelf_removal": {
+      const undoToken = typedArgs?.undoToken as string | undefined;
+      if (!undoToken) throw new Error("File shelf undo token is required.");
+      return mockRestoreFileShelfRemoval(undoToken);
+    }
+    case "clear_file_shelf":
+      return mockClearFileShelf();
+    case "clear_file_shelf_clipboard_history":
+      return mockClearFileShelfClipboardHistory();
+    case "set_file_shelf_expanded":
+      return;
     case "save_quick_capture_draft": {
       const input = typedArgs?.input as QuickCaptureDraftInput | undefined;
       if (!input) throw new Error("Quick capture draft input is required.");

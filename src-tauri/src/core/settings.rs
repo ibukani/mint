@@ -182,7 +182,40 @@ impl Default for QuickCaptureSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
+pub struct FileShelfSettings {
+    pub enabled: bool,
+    pub shortcut: String,
+    pub edge: FileShelfEdge,
+    pub edge_handle_enabled: bool,
+    pub clipboard_history_enabled: bool,
+    pub clipboard_history_limit: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum FileShelfEdge {
+    Left,
+    #[default]
+    Right,
+}
+
+impl Default for FileShelfSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            shortcut: "Alt+3".to_string(),
+            edge: FileShelfEdge::Right,
+            edge_handle_enabled: true,
+            clipboard_history_enabled: false,
+            clipboard_history_limit: 25,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub file_shelf: FileShelfSettings,
     pub quick_capture: QuickCaptureSettings,
     pub game_launcher: GameLauncherSettings,
     pub calendar: CalendarSettings,
@@ -196,6 +229,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            file_shelf: FileShelfSettings::default(),
             quick_capture: QuickCaptureSettings::default(),
             game_launcher: GameLauncherSettings::default(),
             calendar: CalendarSettings::default(),
@@ -286,6 +320,21 @@ impl ShortcutProvider for QuickCaptureSettings {
     }
 }
 
+impl ShortcutProvider for FileShelfSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let shortcut = self.shortcut.trim();
+        if !self.enabled || shortcut.is_empty() {
+            None
+        } else {
+            Some(shortcut)
+        }
+    }
+
+    fn feature_id(&self) -> &str {
+        "fileShelf"
+    }
+}
+
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
@@ -304,6 +353,9 @@ impl AppSettings {
         }
         if let Some(s) = self.quick_capture.shortcut() {
             list.push((self.quick_capture.feature_id(), s));
+        }
+        if let Some(s) = self.file_shelf.shortcut() {
+            list.push((self.file_shelf.feature_id(), s));
         }
         let create_event_shortcut = self.calendar.create_event_shortcut.trim();
         if self.calendar.enabled && !create_event_shortcut.is_empty() {
@@ -515,6 +567,9 @@ pub fn save_settings(
 
     let _ = tauri::Emitter::emit(&app, "settings-changed", ());
 
+    crate::features::file_shelf::apply_window_settings(&app, &settings.file_shelf);
+    crate::features::file_shelf::apply_clipboard_history_settings(&app, &settings.file_shelf);
+
     // Update window sizes and positions using the new settings
     use tauri::Manager;
     if let Some(clock_win) = app.get_webview_window("clock") {
@@ -606,6 +661,12 @@ mod tests {
         assert_eq!(settings.game_launcher.shortcut, "Alt+1");
         assert!(settings.quick_capture.enabled);
         assert_eq!(settings.quick_capture.shortcut, "Alt+2");
+        assert!(settings.file_shelf.enabled);
+        assert_eq!(settings.file_shelf.shortcut, "Alt+3");
+        assert_eq!(settings.file_shelf.edge, FileShelfEdge::Right);
+        assert!(settings.file_shelf.edge_handle_enabled);
+        assert!(!settings.file_shelf.clipboard_history_enabled);
+        assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
         assert!(settings.game_launcher.favorite_game_keys.is_empty());
         assert!(settings.game_launcher.last_played_at_by_game.is_empty());
         assert!(settings
@@ -617,6 +678,9 @@ mod tests {
         assert!(settings
             .active_shortcuts()
             .contains(&("quickCapture", "Alt+2")));
+        assert!(settings
+            .active_shortcuts()
+            .contains(&("fileShelf", "Alt+3")));
 
         // 一部だけ存在するJSONから復元
         let partial_json = r#"{"theme": "light", "clock": {"shortcut": "Ctrl+C"}}"#;
@@ -635,6 +699,19 @@ mod tests {
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
         assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
+
+        // クリップボード履歴追加前の fileShelf 設定を安全側の既定値で補完
+        let legacy_file_shelf_json = r#"{
+          "fileShelf": {
+            "enabled": true,
+            "shortcut": "Alt+3",
+            "edge": "right",
+            "edgeHandleEnabled": true
+          }
+        }"#;
+        let settings: AppSettings = serde_json::from_str(legacy_file_shelf_json).unwrap();
+        assert!(!settings.file_shelf.clipboard_history_enabled);
+        assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
     }
 
     #[test]

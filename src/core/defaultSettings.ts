@@ -44,4 +44,12 @@ export const defaultAppSettings: AppSettings = {
     enabled: true,
     shortcut: "Alt+2",
   },
+  fileShelf: {
+    enabled: true,
+    shortcut: "Alt+3",
+    edge: "right",
+    edgeHandleEnabled: true,
+    clipboardHistoryEnabled: false,
+    clipboardHistoryLimit: 25,
+  },
 };

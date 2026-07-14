@@ -7,6 +7,10 @@ import type {
   CalendarEventRange,
 } from "../../features/calendar/types";
 import type {
+  AddFileShelfContentInput,
+  AddFileShelfPathsInput,
+} from "../../features/file_shelf/types";
+import type {
   QuickCaptureAttachmentInput,
   QuickCaptureDraftInput,
   QuickCaptureNoteInput,
@@ -18,6 +22,16 @@ import {
   mockListCalendarEvents,
   mockUpdateCalendarEvent,
 } from "./calendarEventMock";
+import {
+  mockAddFileShelfContent,
+  mockAddFileShelfPaths,
+  mockCaptureFileShelfClipboardText,
+  mockClearFileShelf,
+  mockClearFileShelfClipboardHistory,
+  mockLoadFileShelfState,
+  mockRemoveFileShelfItems,
+  mockRestoreFileShelfRemoval,
+} from "./fileShelfMock";
 import { createMockSettings } from "./mockSettings";
 import {
   mockAddQuickCaptureAttachment,
@@ -42,6 +56,7 @@ const isTest =
   typeof process !== "undefined" && process?.env?.NODE_ENV === "test";
 
 if (!isTauri && typeof window !== "undefined" && !isTest) {
+  (window as unknown as Record<string, unknown>).__MINT_BROWSER_MOCK__ = true;
   console.log(
     "[Tauri Mock] 非Tauri環境（ブラウザ）を検出しました。Tauri APIのモックを初期化します。",
   );
@@ -51,6 +66,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const currentLabel = params.get("label") || "main";
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
   const mockAudioPath = params.get("mockAudioPath");
+  const mockClipboardHistory = params.get("mockClipboardHistory");
+  if (mockClipboardHistory) {
+    mockCaptureFileShelfClipboardText(mockClipboardHistory);
+  }
 
   // mockWindows の第1引数が現在のウィンドウになるため、URLのlabelを先頭にする。
   const [registeredCurrentLabel, ...additionalWindowLabels] =
@@ -90,6 +109,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
               quickCapture: {
                 ...defaultSettings.quickCapture,
                 ...(parsed.quickCapture ?? {}),
+              },
+              fileShelf: {
+                ...defaultSettings.fileShelf,
+                ...(parsed.fileShelf ?? {}),
               },
             };
           } catch (e) {
@@ -161,6 +184,34 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       }
       case "load_quick_capture_state":
         return mockLoadQuickCaptureState();
+      case "load_file_shelf_state":
+        return mockLoadFileShelfState();
+      case "add_file_shelf_paths": {
+        const input = typedArgs?.input as AddFileShelfPathsInput | undefined;
+        if (!input) throw new Error("File shelf paths are required.");
+        return mockAddFileShelfPaths(input);
+      }
+      case "add_file_shelf_content": {
+        const input = typedArgs?.input as AddFileShelfContentInput | undefined;
+        if (!input) throw new Error("File shelf content is required.");
+        return mockAddFileShelfContent(input);
+      }
+      case "remove_file_shelf_items": {
+        const itemIds = typedArgs?.itemIds as string[] | undefined;
+        if (!itemIds) throw new Error("File shelf item ids are required.");
+        return mockRemoveFileShelfItems(itemIds);
+      }
+      case "restore_file_shelf_removal": {
+        const undoToken = typedArgs?.undoToken as string | undefined;
+        if (!undoToken) throw new Error("File shelf undo token is required.");
+        return mockRestoreFileShelfRemoval(undoToken);
+      }
+      case "clear_file_shelf":
+        return mockClearFileShelf();
+      case "clear_file_shelf_clipboard_history":
+        return mockClearFileShelfClipboardHistory();
+      case "set_file_shelf_expanded":
+        return;
       case "save_quick_capture_draft": {
         const input = typedArgs?.input as QuickCaptureDraftInput | undefined;
         if (!input) throw new Error("Quick capture draft input is required.");

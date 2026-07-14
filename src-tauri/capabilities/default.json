@@ -8,12 +8,15 @@
     "calendar",
     "gameLauncher",
     "calendarEditor",
-    "quickCapture"
+    "quickCapture",
+    "fileShelf"
   ],
   "permissions": [
     "core:default",
     "opener:default",
     "opener:allow-open-path",
+    "opener:allow-reveal-item-in-dir",
+    "drag:default",
     "global-shortcut:default",
     "core:window:allow-set-position",
     "core:window:allow-set-size",

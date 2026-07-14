@@ -27,6 +27,12 @@ const QuickCaptureOverlay = lazy(() =>
   ),
 );
 
+const FileShelfOverlay = lazy(() =>
+  import("../features/file_shelf/components/FileShelfOverlay").then((m) => ({
+    default: m.FileShelfOverlay,
+  })),
+);
+
 const CalendarEditorOverlay = lazy(() =>
   import("../features/calendar/components/CalendarEditorOverlay").then((m) => ({
     default: m.CalendarEditorOverlay,
@@ -42,4 +48,5 @@ export const WINDOW_ROUTES: Record<
   calendarEditor: CalendarEditorOverlay,
   gameLauncher: GameLauncherOverlay,
   quickCapture: QuickCaptureOverlay,
+  fileShelf: FileShelfOverlay,
 };
