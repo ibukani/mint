@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
+import { CALENDAR_EVENTS_CHANGED_EVENT } from "../events";
 import type { CalendarEditorPayload, CalendarEvent } from "../types";
 import { CalendarEventEditor } from "./CalendarEventEditor";
 import "./CalendarOverlay.css";
@@ -138,10 +139,18 @@ export const CalendarEditorOverlay: React.FC = () => {
     dirtyRef.current = dirty;
   }, []);
 
-  const handleSaved = useCallback(() => {
-    dirtyRef.current = false;
-    void hideEditor();
-  }, [hideEditor]);
+  const handleSaved = useCallback(
+    (savedEvent: CalendarEvent) => {
+      dirtyRef.current = false;
+      void emit(CALENDAR_EVENTS_CHANGED_EVENT, { event: savedEvent }).catch(
+        (error) => {
+          console.warn("Failed to notify calendar event changes", error);
+        },
+      );
+      void hideEditor();
+    },
+    [hideEditor],
+  );
 
   useEffect(() => {
     (

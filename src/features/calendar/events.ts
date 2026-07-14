@@ -9,6 +9,8 @@ import type {
   CalendarEventRange,
 } from "./types";
 
+export const CALENDAR_EVENTS_CHANGED_EVENT = "calendar-events-changed";
+
 const parseMachineDate = (value: string) => {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);

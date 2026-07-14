@@ -1,8 +1,10 @@
+import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadSettings } from "../../../core/settings";
 import {
   buildEventCursor,
   buildEventRange,
+  CALENDAR_EVENTS_CHANGED_EVENT,
   getNextCalendarEvent,
   listCalendarEvents,
 } from "../events";
@@ -66,6 +68,24 @@ export const useCalendarEvents = (
     void showSequence;
     void sync();
   }, [showSequence, sync]);
+
+  useEffect(() => {
+    let isMounted = true;
+    let unlisten: (() => void) | undefined;
+    const unlistenPromise = listen(CALENDAR_EVENTS_CHANGED_EVENT, () => {
+      refresh();
+    });
+
+    void unlistenPromise.then((cleanup) => {
+      if (isMounted) unlisten = cleanup;
+      else cleanup();
+    });
+
+    return () => {
+      isMounted = false;
+      unlisten?.();
+    };
+  }, [refresh]);
 
   useEffect(() => {
     void showSequence;

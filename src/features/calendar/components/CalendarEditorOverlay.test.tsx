@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
+import { CALENDAR_EVENTS_CHANGED_EVENT } from "../events";
 import { CalendarEditorOverlay } from "./CalendarEditorOverlay";
 
 const mocks = vi.hoisted(() => ({
@@ -131,5 +132,38 @@ describe("CalendarEditorOverlay", () => {
 
     await waitFor(() => expect(mocks.hide).toHaveBeenCalledOnce());
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("notifies the calendar overlay after saving an event", async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "create_calendar_event") {
+        return {
+          id: "saved-event",
+          title: "共有する予定",
+          notes: "",
+          schedule: {
+            kind: "allDay",
+            startDate: "2026-07-14",
+            endDateExclusive: "2026-07-15",
+          },
+          source: { kind: "local" },
+          createdAt: "2026-07-14T00:00:00.000Z",
+          updatedAt: "2026-07-14T00:00:00.000Z",
+        };
+      }
+      return null;
+    });
+    render(<CalendarEditorOverlay />);
+
+    const title = await screen.findByLabelText("タイトル");
+    fireEvent.change(title, { target: { value: "共有する予定" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => {
+      expect(mocks.emit).toHaveBeenCalledWith(
+        CALENDAR_EVENTS_CHANGED_EVENT,
+        expect.objectContaining({ event: expect.anything() }),
+      );
+    });
   });
 });

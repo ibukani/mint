@@ -93,6 +93,17 @@ export const CalendarOverlay: React.FC = () => {
     }
   }, [openMode, openEditor, showSequence]);
 
+  useEffect(() => {
+    if (screen.kind !== "detail") return;
+    const updatedEvent = events.find((event) => event.id === screen.event.id);
+    if (!updatedEvent || updatedEvent === screen.event) return;
+    setScreen({
+      kind: "detail",
+      event: updatedEvent,
+      returnDate: screen.returnDate,
+    });
+  }, [events, screen]);
+
   const handleBack = useCallback(() => {
     switch (screen.kind) {
       case "day":

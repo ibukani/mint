@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
+import { CALENDAR_EVENTS_CHANGED_EVENT } from "../events";
 import type { CalendarEvent } from "../types";
 import { CalendarOverlay } from "./CalendarOverlay";
 
@@ -340,6 +341,80 @@ describe("CalendarOverlay window coordination", () => {
       calendarIds: [],
     });
     consoleWarn.mockRestore();
+  });
+
+  it("refreshes after the event editor saves in another window", async () => {
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const listCallCount = () =>
+      mocks.invoke.mock.calls.filter(
+        ([command]) => command === "list_calendar_events",
+      ).length;
+    const initialListCallCount = listCallCount();
+    expect(initialListCallCount).toBeGreaterThan(0);
+
+    await act(async () => {
+      mocks.listeners.get(CALENDAR_EVENTS_CHANGED_EVENT)?.({});
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(listCallCount()).toBe(initialListCallCount + 1);
+  });
+
+  it("updates the open event detail after an external save", async () => {
+    let currentEvent = calendarEvent;
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "load_settings") return createMockSettings();
+      if (command === "list_calendar_events") return [currentEvent];
+      if (command === "get_next_calendar_event") return currentEvent;
+      if (command === "get_google_calendar_connection") {
+        return {
+          connected: false,
+          accountEmail: "",
+          lastSyncedAt: null,
+          pendingOperations: 0,
+          error: null,
+          syncing: false,
+        };
+      }
+      return undefined;
+    });
+
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "7月11日、予定1件" }));
+    fireEvent.click(screen.getByRole("button", { name: /設計レビュー/ }));
+    expect(
+      screen.getByRole("heading", { name: "設計レビュー" }),
+    ).toBeInTheDocument();
+
+    currentEvent = {
+      ...calendarEvent,
+      title: "更新されたレビュー",
+      notes: "保存後の内容",
+    };
+    await act(async () => {
+      mocks.listeners.get(CALENDAR_EVENTS_CHANGED_EVENT)?.({});
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "更新されたレビュー" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("保存後の内容")).toBeInTheDocument();
   });
 
   it("creates an event for the open day with the N shortcut", async () => {
