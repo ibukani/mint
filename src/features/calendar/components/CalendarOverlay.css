@@ -1,4 +1,6 @@
 .calendar-overlay-card {
+  display: flex;
+  flex-direction: column;
   justify-content: stretch;
   align-items: stretch;
   padding: 14px;
@@ -35,26 +37,55 @@
   top: 8px;
 }
 
+.month-calendar__title-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.month-calendar__sync-spinner {
+  color: var(--color-accent);
+  margin-left: var(--space-2);
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+.calendar-overlay__sync-error,
 .calendar-overlay__action-error {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 20;
   display: flex;
   min-width: 0;
-  flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-  margin: 0 0 var(--space-2);
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-error);
   border-radius: var(--radius-sm);
-  background: var(--surface-error);
+  background: color-mix(in srgb, var(--surface-error) 90%, transparent);
   color: var(--color-error);
   font-size: var(--font-size-xs);
   line-height: 1.45;
+  box-shadow: 0 -4px 16px
+    color-mix(in srgb, var(--color-error) 12%, transparent);
+  backdrop-filter: blur(8px);
 }
 
+.calendar-overlay__action-error {
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.calendar-overlay__sync-error > span,
 .calendar-overlay__action-error > span {
   min-width: 0;
+}
+
+.calendar-overlay__sync-error > span {
+  flex: 1 1 180px;
 }
 
 .calendar-overlay__action-error-retry {
@@ -69,39 +100,6 @@
   border-color: var(--border-error);
   background: color-mix(in srgb, var(--surface-error) 68%, transparent);
   color: var(--color-error);
-}
-
-.calendar-overlay__sync-status,
-.calendar-overlay__sync-error {
-  display: flex;
-  min-width: 0;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-control) 72%, transparent);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  line-height: 1.45;
-}
-
-.calendar-overlay__sync-status .spinner-icon {
-  color: var(--color-accent);
-}
-
-.calendar-overlay__sync-error {
-  border-color: var(--border-error);
-  background: var(--surface-error);
-  color: var(--color-error);
-}
-
-.calendar-overlay__sync-error > span {
-  min-width: 0;
-  flex: 1 1 180px;
 }
 
 .month-calendar {

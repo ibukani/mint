@@ -1,4 +1,4 @@
-import { CircleAlert, LoaderCircle, RefreshCw, X } from "lucide-react";
+import { CircleAlert, RefreshCw, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../../design/components";
@@ -263,6 +263,7 @@ export const CalendarOverlay: React.FC = () => {
             onRetry={refresh}
             selectedDate={selectedDate}
             onSelectedDateChange={setSelectedDate}
+            syncing={syncing}
           />
         );
     }
@@ -286,16 +287,7 @@ export const CalendarOverlay: React.FC = () => {
         >
           <X size={15} aria-hidden="true" />
         </button>
-        {syncing && (
-          <div className="calendar-overlay__sync-status" role="status">
-            <LoaderCircle
-              className="spinner-icon"
-              size={15}
-              aria-hidden="true"
-            />
-            <span>Google Calendarと同期しています…</span>
-          </div>
-        )}
+
         {syncError && (
           <div className="calendar-overlay__sync-error" role="alert">
             <CircleAlert size={16} aria-hidden="true" />

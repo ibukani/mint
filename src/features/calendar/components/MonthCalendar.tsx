@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  LoaderCircle,
   Plus,
   RefreshCw,
 } from "lucide-react";
@@ -28,6 +29,7 @@ interface MonthCalendarProps {
   onSelectedDateChange?: (date: string) => void;
   today: Date;
   viewMonth: Date;
+  syncing?: boolean;
 }
 
 export const MonthCalendar: React.FC<MonthCalendarProps> = ({
@@ -44,6 +46,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onSelectedDateChange,
   today,
   viewMonth,
+  syncing,
 }) => {
   const [internalSelectedDate, setInternalSelectedDate] = useState(() =>
     toMachineDate(today),
@@ -195,13 +198,24 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       onKeyDown={handleKeyDown}
     >
       <header className="month-calendar__header">
-        <h2 aria-live="polite" aria-label={monthLabel}>
+        <h2
+          aria-live="polite"
+          aria-label={monthLabel}
+          className="month-calendar__title-container"
+        >
           <span className="month-calendar__year">
             {viewMonth.getFullYear()}年
           </span>
           <strong className="month-calendar__month">
             {viewMonth.getMonth() + 1}月
           </strong>
+          {syncing && (
+            <LoaderCircle
+              className="month-calendar__sync-spinner spinner-icon"
+              size={15}
+              aria-hidden="true"
+            />
+          )}
         </h2>
         <div className="month-calendar__header-actions">
           <label className="month-calendar__date-jump" title="日付へ移動（G）">

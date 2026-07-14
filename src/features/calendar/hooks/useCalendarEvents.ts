@@ -38,13 +38,14 @@ export const useCalendarEvents = (
 
   const sync = useCallback(async () => {
     const sequence = ++syncSequenceRef.current;
-    setSyncing(true);
     setSyncError("");
 
     try {
       const settings = await loadSettings();
       const connection = await getGoogleCalendarConnection();
       if (!connection.connected || connection.syncing) return;
+
+      setSyncing(true);
 
       await syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
       if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
