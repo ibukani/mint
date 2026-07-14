@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CalendarEvent } from "../types";
 import { CalendarEventDetail } from "./CalendarEventDetail";
 
-const mocks = vi.hoisted(() => ({ deleteEvent: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  copyText: vi.fn(),
+  deleteEvent: vi.fn(),
+}));
 
 vi.mock("../events", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../events")>()),
@@ -25,7 +28,14 @@ const event: CalendarEvent = {
 };
 
 describe("CalendarEventDetail", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.copyText.mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: mocks.copyText },
+    });
+  });
 
   it("edits and deletes a confirmed event", async () => {
     const onEdit = vi.fn();
@@ -68,6 +78,60 @@ describe("CalendarEventDetail", () => {
       expect(mocks.deleteEvent).toHaveBeenCalledWith(event.id),
     );
     expect(onDeleted).toHaveBeenCalledOnce();
+  });
+
+  it("copies the event details with the C shortcut", async () => {
+    render(
+      <CalendarEventDetail
+        event={event}
+        onBack={vi.fn()}
+        onDeleted={vi.fn()}
+        onDuplicate={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("article"), { key: "c" });
+
+    await waitFor(() =>
+      expect(mocks.copyText).toHaveBeenCalledWith(
+        "設計レビュー\n2026年7月11日(土) 終日\n確認事項",
+      ),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "予定の詳細をコピーしました",
+    );
+    expect(
+      screen.getByRole("button", { name: "詳細をコピー" }),
+    ).toHaveAttribute("aria-keyshortcuts", "C");
+  });
+
+  it("keeps the event visible when copying fails", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mocks.copyText.mockRejectedValueOnce(new Error("clipboard unavailable"));
+    render(
+      <CalendarEventDetail
+        event={event}
+        onBack={vi.fn()}
+        onDeleted={vi.fn()}
+        onDuplicate={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "詳細をコピー" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "予定の詳細をコピーできませんでした",
+    );
+    expect(screen.getByRole("heading", { name: "設計レビュー" })).toBeVisible();
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to copy calendar event:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("cancels deletion safely and restores focus to the trigger", async () => {

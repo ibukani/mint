@@ -504,6 +504,7 @@ button.month-calendar__next-event {
 
 .calendar-screen__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: auto;
@@ -720,6 +721,26 @@ button.month-calendar__next-event {
 }
 
 .calendar-event-detail__delete {
+  color: var(--color-error);
+}
+
+.calendar-event-detail__copy-status {
+  min-width: 0;
+  flex: 1 1 150px;
+  align-self: center;
+  overflow: hidden;
+  margin-right: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-event-detail__copy-status.is-success {
+  color: var(--color-success);
+}
+
+.calendar-event-detail__copy-status.is-error {
   color: var(--color-error);
 }
 
