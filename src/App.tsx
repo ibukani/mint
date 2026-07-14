@@ -55,6 +55,7 @@ const AppContent: React.FC = () => {
     clearError,
     reloadSettings,
     retrySaveSettings,
+    updateSettings,
   } = useAppSettings();
   const { label, activeTab, setActiveTab, focusRequest } = useSettingsWindow(
     settings?.theme,
@@ -113,6 +114,21 @@ const AppContent: React.FC = () => {
           onTabChange={setActiveTab}
           quickActions={SETTINGS_QUICK_ACTIONS}
           onQuickAction={(targetId) => {
+            if (
+              targetId === "themeDark" ||
+              targetId === "themeLight" ||
+              targetId === "themeSystem"
+            ) {
+              updateSettings({
+                theme:
+                  targetId === "themeDark"
+                    ? "dark"
+                    : targetId === "themeLight"
+                      ? "light"
+                      : "system",
+              });
+              return;
+            }
             if (targetId === "calendarCreateEvent") {
               if (!settings?.calendar.enabled) {
                 return Promise.reject(

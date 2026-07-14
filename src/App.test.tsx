@@ -145,6 +145,29 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("changes the theme directly from the quick launcher", async () => {
+    const settings = createMockSettings({ theme: "dark" });
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === "load_settings") return settings;
+      return undefined;
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目、操作を検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "ライトテーマ" } });
+    expect(screen.getByRole("option")).toHaveTextContent("ライトテーマにする");
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "ライト" })).toBeChecked();
+    });
+  });
+
   it("lets the user retry when settings loading fails", async () => {
     const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings();

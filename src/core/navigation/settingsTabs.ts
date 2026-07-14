@@ -5,8 +5,11 @@ import {
   Clock3,
   Gamepad2,
   Mic2,
+  Monitor,
+  Moon,
   NotebookPen,
   SlidersHorizontal,
+  Sun,
 } from "lucide-react";
 import React, { lazy } from "react";
 import type { SidebarQuickAction } from "../../design/layout/Sidebar";
@@ -280,6 +283,30 @@ export const SETTINGS_TABS = [
 ] as const;
 
 export const SETTINGS_QUICK_ACTIONS = [
+  {
+    id: "set-theme-dark",
+    label: "ダークテーマにする",
+    description: "目にやさしい暗色テーマへ変更",
+    keywords: ["テーマ", "外観", "ダーク", "夜"],
+    targetId: "themeDark",
+    icon: React.createElement(Moon, { size: 16, "aria-hidden": true }),
+  },
+  {
+    id: "set-theme-light",
+    label: "ライトテーマにする",
+    description: "明るく見やすいテーマへ変更",
+    keywords: ["テーマ", "外観", "ライト", "明るい"],
+    targetId: "themeLight",
+    icon: React.createElement(Sun, { size: 16, "aria-hidden": true }),
+  },
+  {
+    id: "set-theme-system",
+    label: "システムテーマにする",
+    description: "OSの外観設定に合わせる",
+    keywords: ["テーマ", "外観", "システム", "OS"],
+    targetId: "themeSystem",
+    icon: React.createElement(Monitor, { size: 16, "aria-hidden": true }),
+  },
   {
     id: "open-clock",
     label: "時計を開く",
