@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, RefreshCw } from "lucide-react";
 import type React from "react";
 import { formatEventTime } from "../events";
 import type { CalendarEvent } from "../types";
@@ -10,6 +10,7 @@ interface CalendarDayAgendaProps {
   error: string;
   onAdd: () => void;
   onBack: () => void;
+  onRetry: () => void;
   onSelect: (event: CalendarEvent) => void;
 }
 
@@ -29,6 +30,7 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
   error,
   onAdd,
   onBack,
+  onRetry,
   onSelect,
 }) => (
   <section className="calendar-screen calendar-day-agenda">
@@ -61,7 +63,13 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
     >
       {loading && <p className="calendar-screen__status">読み込み中…</p>}
       {!loading && error && (
-        <p className="calendar-screen__status is-error">{error}</p>
+        <div className="calendar-screen__load-error" role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={onRetry}>
+            <RefreshCw size={14} aria-hidden="true" />
+            再読み込み
+          </button>
+        </div>
       )}
       {!loading && !error && events.length === 0 && (
         <div className="calendar-screen__empty">

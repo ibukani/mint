@@ -11,6 +11,8 @@ interface HarnessProps {
   onCreate?: () => void;
   onOpenDay?: (date: string) => void;
   onOpenEvent?: (event: CalendarEvent) => void;
+  error?: string;
+  onRetry?: () => void;
 }
 
 const MonthCalendarHarness = ({
@@ -19,12 +21,14 @@ const MonthCalendarHarness = ({
   onCreate = vi.fn(),
   onOpenDay = vi.fn(),
   onOpenEvent = vi.fn(),
+  error = "",
+  onRetry = vi.fn(),
 }: HarnessProps) => {
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(today));
   return (
     <MonthCalendar
-      error=""
+      error={error}
       events={events}
       loading={false}
       nextEvent={nextEvent}
@@ -33,6 +37,7 @@ const MonthCalendarHarness = ({
       onCreate={onCreate}
       onOpenDay={onOpenDay}
       onOpenEvent={onOpenEvent}
+      onRetry={onRetry}
       onViewMonthChange={setViewMonth}
     />
   );
@@ -154,5 +159,21 @@ describe("MonthCalendar", () => {
       screen.getByRole("button", { name: "次の予定、設計レビュー" }),
     );
     expect(onOpenEvent).toHaveBeenCalledWith(calendarEvent);
+  });
+
+  it("offers a retry action when events cannot be loaded", () => {
+    const onRetry = vi.fn();
+    render(
+      <MonthCalendarHarness
+        error="予定を読み込めませんでした"
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "予定を読み込めませんでした",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "再読み込み" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });

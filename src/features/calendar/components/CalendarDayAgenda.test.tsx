@@ -28,6 +28,7 @@ describe("CalendarDayAgenda", () => {
         error=""
         onAdd={vi.fn()}
         onBack={vi.fn()}
+        onRetry={vi.fn()}
         onSelect={onSelect}
       />,
     );
@@ -46,6 +47,7 @@ describe("CalendarDayAgenda", () => {
         error=""
         onAdd={onAdd}
         onBack={vi.fn()}
+        onRetry={vi.fn()}
         onSelect={vi.fn()}
       />,
     );
@@ -53,5 +55,27 @@ describe("CalendarDayAgenda", () => {
     expect(screen.getByText("この日の予定はありません")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "予定を追加" }));
     expect(onAdd).toHaveBeenCalledOnce();
+  });
+
+  it("offers a retry action when events cannot be loaded", () => {
+    const onRetry = vi.fn();
+    render(
+      <CalendarDayAgenda
+        date="2026-07-11"
+        events={[]}
+        loading={false}
+        error="予定を読み込めませんでした"
+        onAdd={vi.fn()}
+        onBack={vi.fn()}
+        onRetry={onRetry}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "予定を読み込めませんでした",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "再読み込み" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });

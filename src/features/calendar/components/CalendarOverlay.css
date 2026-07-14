@@ -528,6 +528,50 @@ button.month-calendar__next-event {
   color: var(--color-error);
 }
 
+.calendar-screen__load-error {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: auto;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-error);
+  border-radius: var(--radius-sm);
+  background: var(--surface-error);
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.calendar-screen__load-error p {
+  min-width: 0;
+  margin: 0;
+}
+
+.calendar-screen__load-error button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--border-error) 72%, transparent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-error);
+  cursor: pointer;
+  font: inherit;
+}
+
+.calendar-screen__load-error button:hover {
+  background: color-mix(in srgb, var(--surface-error) 72%, transparent);
+}
+
+.calendar-screen__load-error button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .calendar-screen__empty p {
   margin: 0 0 var(--space-3);
 }

@@ -158,6 +158,7 @@ export const CalendarOverlay: React.FC = () => {
             loading={loading}
             error={error}
             onBack={handleBack}
+            onRetry={refresh}
             onAdd={() => void openEditor({ mode: "create", date: screen.date })}
             onSelect={(event) =>
               setScreen({
@@ -205,6 +206,7 @@ export const CalendarOverlay: React.FC = () => {
             onOpenDay={(date) => setScreen({ kind: "day", date })}
             onOpenEvent={(event) => setScreen({ kind: "detail", event })}
             onCreate={(date) => void openEditor({ mode: "create", date })}
+            onRetry={refresh}
             selectedDate={selectedDate}
             onSelectedDateChange={setSelectedDate}
           />

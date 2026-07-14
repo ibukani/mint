@@ -1,4 +1,10 @@
-import { CalendarClock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -20,6 +26,7 @@ interface MonthCalendarProps {
   onCreate: (date: string) => void;
   onOpenDay: (date: string) => void;
   onOpenEvent: (event: CalendarEvent) => void;
+  onRetry: () => void;
   onViewMonthChange: (month: Date) => void;
   selectedDate?: string;
   onSelectedDateChange?: (date: string) => void;
@@ -35,6 +42,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onCreate,
   onOpenDay,
   onOpenEvent,
+  onRetry,
   onViewMonthChange,
   selectedDate: selectedDateProp,
   onSelectedDateChange,
@@ -252,6 +260,16 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
         })}
       </div>
 
+      {!loading && error && (
+        <div className="calendar-screen__load-error" role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={onRetry}>
+            <RefreshCw size={14} aria-hidden="true" />
+            再読み込み
+          </button>
+        </div>
+      )}
+
       <footer className="month-calendar__footer">
         <button
           type="button"
@@ -285,7 +303,11 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
           >
             <CalendarClock size={15} aria-hidden="true" />
             <span className="month-calendar__next-empty-label">
-              {loading ? "予定を確認中…" : error || "次の予定はありません"}
+              {loading
+                ? "予定を確認中…"
+                : error
+                  ? "読み込みエラー"
+                  : "次の予定はありません"}
             </span>
           </div>
         )}
