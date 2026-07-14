@@ -58,6 +58,46 @@ const FileShelfSettings = lazy(() =>
 
 export const SETTINGS_TABS = [
   {
+    id: "general",
+    label: "一般設定",
+    description: "テーマと起動操作",
+    keywords: [
+      "テーマ",
+      "ダーク",
+      "ライト",
+      "自動起動",
+      "ショートカット",
+      "アップデート",
+    ],
+    searchItems: [
+      {
+        id: "general-theme",
+        label: "テーマ設定",
+        description: "ダーク・ライト・システム",
+        keywords: ["テーマ", "ダーク", "ライト", "システム"],
+        targetId: "theme-dark-choice",
+      },
+      {
+        id: "settings-shortcut",
+        label: "設定画面表示ショートカット",
+        description: "設定画面のクイックアクセス",
+        keywords: ["Ctrl+K", "Command+K", "キー"],
+        targetId: "settings-shortcut-input",
+      },
+      {
+        id: "general-autostart",
+        label: "PC起動時に自動で起動する",
+        description: "システム連携",
+        keywords: ["自動起動", "スタートアップ"],
+        targetId: "general-autostart-input",
+      },
+    ],
+    icon: React.createElement(SlidersHorizontal, {
+      size: 18,
+      "aria-hidden": true,
+    }),
+  },
+  {
     id: "fileShelf",
     label: "ファイルシェル",
     navigationLabel: "シェルフ",
@@ -99,7 +139,7 @@ export const SETTINGS_TABS = [
     id: "quickCapture",
     label: "クイックキャプチャー",
     navigationLabel: "キャプチャー",
-    description: "下書きとメモの呼び出し",
+    description: "下書きとメモの記録",
     keywords: ["メモ", "ノート", "下書き", "タグ", "添付"],
     searchItems: [
       {
@@ -111,46 +151,6 @@ export const SETTINGS_TABS = [
       },
     ],
     icon: React.createElement(NotebookPen, { size: 18, "aria-hidden": true }),
-  },
-  {
-    id: "general",
-    label: "一般設定",
-    description: "テーマと起動操作",
-    keywords: [
-      "テーマ",
-      "ダーク",
-      "ライト",
-      "自動起動",
-      "ショートカット",
-      "アップデート",
-    ],
-    searchItems: [
-      {
-        id: "general-theme",
-        label: "テーマ設定",
-        description: "ダーク・ライト・システム",
-        keywords: ["テーマ", "ダーク", "ライト", "システム"],
-        targetId: "theme-dark-choice",
-      },
-      {
-        id: "settings-shortcut",
-        label: "設定画面表示ショートカット",
-        description: "設定画面のクイックアクセス",
-        keywords: ["Ctrl+K", "Command+K", "キー"],
-        targetId: "settings-shortcut-input",
-      },
-      {
-        id: "general-autostart",
-        label: "PC起動時に自動で起動する",
-        description: "システム連携",
-        keywords: ["自動起動", "スタートアップ"],
-        targetId: "general-autostart-input",
-      },
-    ],
-    icon: React.createElement(SlidersHorizontal, {
-      size: 18,
-      "aria-hidden": true,
-    }),
   },
   {
     id: "gameLauncher",
