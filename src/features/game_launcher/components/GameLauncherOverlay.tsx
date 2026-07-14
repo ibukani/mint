@@ -280,9 +280,25 @@ export const GameLauncherOverlay: React.FC = () => {
             placeholder="ゲームまたはストアを検索"
             autoComplete="off"
           />
-          <kbd aria-label="上下、Home、Endキーで選択、Enterで起動">
-            ↑ ↓ Enter
-          </kbd>
+          {query ? (
+            <button
+              type="button"
+              className="game-launcher__search-clear"
+              aria-label="ゲーム検索をクリア"
+              title="検索をクリア"
+              onClick={() => {
+                setQuery("");
+                setSelectedGameKey(null);
+                inputRef.current?.focus({ preventScroll: true });
+              }}
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          ) : (
+            <kbd aria-label="上下、Home、Endキーで選択、Enterで起動">
+              ↑ ↓ Enter
+            </kbd>
+          )}
         </label>
 
         <div className="game-launcher__body">

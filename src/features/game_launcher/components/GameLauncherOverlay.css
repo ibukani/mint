@@ -77,6 +77,22 @@
   font-size: var(--font-size-xs);
   white-space: nowrap;
 }
+.game-launcher__search-clear {
+  display: grid;
+  flex: none;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  place-items: center;
+  cursor: pointer;
+}
+.game-launcher__search-clear:hover,
+.game-launcher__search-clear:focus-visible {
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
+}
 
 .game-launcher__body {
   display: grid;

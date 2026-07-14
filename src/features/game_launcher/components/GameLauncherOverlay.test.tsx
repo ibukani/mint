@@ -98,6 +98,27 @@ describe("GameLauncherOverlay", () => {
     expect(screen.getByText("一致するゲームがありません")).toBeInTheDocument();
   });
 
+  it("clears the game search without closing the launcher", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
+    fireEvent.change(search, { target: { value: "valorant" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "ゲーム検索をクリア" }));
+
+    expect(search).toHaveValue("");
+    expect(search).toHaveFocus();
+    expect(
+      screen.getByRole("dialog", { name: "ゲームランチャー" }),
+    ).not.toHaveClass("is-hiding");
+    expect(screen.getAllByText("Counter-Strike 2").length).toBeGreaterThan(0);
+  });
+
   it("表示中のAlt+1でゲームを起動せず閉じる", async () => {
     render(
       <AppSettingsProvider>
