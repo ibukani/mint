@@ -80,6 +80,7 @@ describe("MonthCalendar", () => {
     expect(
       screen.getByRole("heading", { name: "2026年 8月" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "8月10日" })).toHaveFocus();
 
     fireEvent.click(screen.getByRole("button", { name: "今日" }));
     expect(
@@ -136,6 +137,19 @@ describe("MonthCalendar", () => {
 
     fireEvent.keyDown(screen.getByLabelText("月間カレンダー"), { key: "g" });
     expect(screen.getByLabelText("日付へ移動")).toHaveFocus();
+  });
+
+  it("clamps the focused date when the next month is shorter", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 0, 31, 9, 0, 0));
+    render(<MonthCalendarHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "次の月" }));
+
+    expect(
+      screen.getByRole("heading", { name: "2026年 2月" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2月28日" })).toHaveFocus();
   });
 
   it("shows a subtle event marker and opens event entry points", () => {

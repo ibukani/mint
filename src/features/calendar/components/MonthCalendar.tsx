@@ -8,12 +8,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  buildCalendarDays,
-  shiftMonth,
-  startOfMonth,
-  toMachineDate,
-} from "../calendar";
+import { buildCalendarDays, startOfMonth, toMachineDate } from "../calendar";
 import { eventsForDate, formatEventDate, formatEventTime } from "../events";
 import type { CalendarEvent } from "../types";
 
@@ -139,8 +134,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   };
 
   const moveMonth = (delta: number) => {
-    const targetMonth = shiftMonth(viewMonth, delta);
-    onViewMonthChange(targetMonth);
+    shiftSelectedMonth(delta);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
