@@ -1,4 +1,4 @@
-import { Search, Trash2, X } from "lucide-react";
+import { ArrowRight, Search, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { TextInput } from "../components";
@@ -24,7 +24,7 @@ type SettingsSearchResult<TTabId extends string> =
   | {
       kind: "action";
       key: string;
-      action: SidebarQuickAction;
+      action: SidebarQuickAction<TTabId>;
     };
 
 interface SettingsQuickSwitcherProps<TTabId extends string> {
@@ -33,7 +33,7 @@ interface SettingsQuickSwitcherProps<TTabId extends string> {
   isOpen: boolean;
   onClose: () => void;
   onTabChange: (tabId: TTabId, targetId?: string) => void;
-  quickActions?: readonly SidebarQuickAction[];
+  quickActions?: readonly SidebarQuickAction<TTabId>[];
   onQuickAction?: (targetId: string) => Promise<void> | void;
 }
 
@@ -67,6 +67,8 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [actionError, setActionError] = useState("");
+  const [disabledAction, setDisabledAction] =
+    useState<SidebarQuickAction<TTabId> | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [recentKeys, setRecentKeys] = useState<string[]>(readRecentKeys);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -184,6 +186,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
     if (!isOpen) return;
     setQuery("");
     setActionError("");
+    setDisabledAction(null);
     setActiveIndex(
       recentKeys.length > 0
         ? 0
@@ -235,6 +238,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const selectResult = async (result: SettingsSearchResult<TTabId>) => {
     if (result.kind === "action") {
       if (result.action.disabled) {
+        setDisabledAction(result.action);
         setActionError(
           result.action.disabledReason ?? "この操作は現在利用できません。",
         );
@@ -243,6 +247,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       if (!onQuickAction || isSelecting) return;
       setIsSelecting(true);
       setActionError("");
+      setDisabledAction(null);
       try {
         await onQuickAction(result.action.targetId);
         rememberResult(result);
@@ -396,6 +401,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
               setQuery(event.target.value);
               setActiveIndex(0);
               setActionError("");
+              setDisabledAction(null);
             }}
             onKeyDown={handleSearchKeyDown}
           />
@@ -408,6 +414,8 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
               onClick={() => {
                 setQuery("");
                 setActiveIndex(0);
+                setActionError("");
+                setDisabledAction(null);
                 inputRef.current?.focus();
               }}
             >
@@ -523,9 +531,24 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
 
         <div className="settings-switcher__footer">
           {actionError && (
-            <span className="settings-switcher__action-error" role="alert">
-              {actionError}
-            </span>
+            <div className="settings-switcher__action-error">
+              <span role="alert">{actionError}</span>
+              {disabledAction?.disabledSettingsTarget && (
+                <button
+                  type="button"
+                  className="settings-switcher__action-settings"
+                  onClick={() => {
+                    const target = disabledAction.disabledSettingsTarget;
+                    if (!target) return;
+                    onTabChange(target.tabId, target.targetId);
+                    onClose();
+                  }}
+                >
+                  詳細設定を開く
+                  <ArrowRight size={13} aria-hidden="true" />
+                </button>
+              )}
+            </div>
           )}
           <span aria-live="polite">{orderedResults.length} 件の候補</span>
           <span>

@@ -391,12 +391,13 @@ describe("AppShell", () => {
 
   it("explains why a disabled quick action cannot run", async () => {
     const onQuickAction = vi.fn().mockResolvedValue(undefined);
+    const onTabChange = vi.fn();
     render(
       <AppShell
         title="mint"
         tabs={[{ id: "general", label: "一般設定" }]}
         activeTab="general"
-        onTabChange={() => undefined}
+        onTabChange={onTabChange}
         quickActions={[
           {
             id: "open-clock",
@@ -406,6 +407,10 @@ describe("AppShell", () => {
             disabled: true,
             disabledReason:
               "時計オーバーレイが無効です。詳細設定で有効にしてください。",
+            disabledSettingsTarget: {
+              tabId: "general",
+              targetId: "general-enabled",
+            },
           },
         ]}
         onQuickAction={onQuickAction}
@@ -432,6 +437,12 @@ describe("AppShell", () => {
     expect(
       screen.getByRole("dialog", { name: "クイックランチャー" }),
     ).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "詳細設定を開く" }));
+    expect(onTabChange).toHaveBeenCalledWith("general", "general-enabled");
+    expect(
+      screen.queryByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeNull();
   });
 
   it("does not steal Ctrl+K from an editable control and can clear a query", () => {

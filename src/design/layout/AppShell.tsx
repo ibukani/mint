@@ -19,7 +19,7 @@ interface AppShellProps<TTabId extends string> {
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
   onTabChange: (tabId: TTabId, targetId?: string) => void;
-  quickActions?: readonly SidebarQuickAction[];
+  quickActions?: readonly SidebarQuickAction<TTabId>[];
   onQuickAction?: (targetId: string) => Promise<void> | void;
   contextLabel?: string;
   statusLabel?: string;

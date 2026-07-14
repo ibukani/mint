@@ -761,11 +761,46 @@
 }
 
 .settings-switcher__action-error {
-  overflow: hidden;
+  display: flex;
+  min-width: 0;
   flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.settings-switcher__action-error > span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-error);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.settings-switcher__action-settings {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 7px;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent-action);
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.settings-switcher__action-settings:hover,
+.settings-switcher__action-settings:focus-visible {
+  border-color: var(--color-accent);
+  background: var(--surface-accent);
+  color: var(--color-text-primary);
 }
 
 .settings-switcher__footer > span:last-child {

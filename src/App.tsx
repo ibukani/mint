@@ -16,6 +16,7 @@ import {
   SETTINGS_QUICK_ACTIONS,
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
+  type SettingsTabId,
 } from "./core/navigation/settingsTabs";
 import { isOverlayTarget, openOverlay } from "./core/windowCommands";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
@@ -53,22 +54,50 @@ type OverlayFeatureSettingsKey =
   | "quickCapture"
   | "fileShelf";
 
-const quickActionAvailability: Record<
-  string,
-  { settingsKey: OverlayFeatureSettingsKey; label: string }
-> = {
-  clock: { settingsKey: "clock", label: "時計オーバーレイ" },
-  calendar: { settingsKey: "calendar", label: "カレンダー" },
-  calendarCreateEvent: { settingsKey: "calendar", label: "カレンダー" },
+type QuickActionAvailability = {
+  settingsKey: OverlayFeatureSettingsKey;
+  tabId: SettingsTabId;
+  targetId: string;
+  label: string;
+};
+
+const quickActionAvailability: Record<string, QuickActionAvailability> = {
+  clock: {
+    settingsKey: "clock",
+    tabId: "clock",
+    targetId: "clock-enabled-checkbox",
+    label: "時計オーバーレイ",
+  },
+  calendar: {
+    settingsKey: "calendar",
+    tabId: "calendar",
+    targetId: "calendar-enabled-checkbox",
+    label: "カレンダー",
+  },
+  calendarCreateEvent: {
+    settingsKey: "calendar",
+    tabId: "calendar",
+    targetId: "calendar-enabled-checkbox",
+    label: "カレンダー",
+  },
   gameLauncher: {
     settingsKey: "gameLauncher",
+    tabId: "gameLauncher",
+    targetId: "game-launcher-enabled",
     label: "ゲームランチャー",
   },
   quickCapture: {
     settingsKey: "quickCapture",
+    tabId: "quickCapture",
+    targetId: "quick-capture-enabled",
     label: "クイックキャプチャー",
   },
-  fileShelf: { settingsKey: "fileShelf", label: "ファイルシェル" },
+  fileShelf: {
+    settingsKey: "fileShelf",
+    tabId: "fileShelf",
+    targetId: "file-shelf-enabled",
+    label: "ファイルシェル",
+  },
 };
 
 const AppContent: React.FC = () => {
@@ -134,6 +163,10 @@ const AppContent: React.FC = () => {
           ...action,
           disabled: true,
           disabledReason: `${availability.label}が無効です。詳細設定で有効にしてください。`,
+          disabledSettingsTarget: {
+            tabId: availability.tabId,
+            targetId: availability.targetId,
+          },
         };
       })
     : SETTINGS_QUICK_ACTIONS;

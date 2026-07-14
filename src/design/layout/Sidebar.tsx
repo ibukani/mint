@@ -20,7 +20,7 @@ export interface SidebarSearchItem {
   targetId: string;
 }
 
-export interface SidebarQuickAction {
+export interface SidebarQuickAction<TTabId extends string = string> {
   id: string;
   label: string;
   description?: string;
@@ -29,6 +29,10 @@ export interface SidebarQuickAction {
   icon?: React.ReactNode;
   disabled?: boolean;
   disabledReason?: string;
+  disabledSettingsTarget?: {
+    tabId: TTabId;
+    targetId?: string;
+  };
 }
 
 type SidebarStatusTone = "neutral" | "pending" | "success" | "error";

@@ -172,12 +172,25 @@ describe("App Window Routing", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "時計オーバーレイが無効です。詳細設定で有効にしてください。",
     );
+    expect(
+      screen.getByRole("button", { name: "詳細設定を開く" }),
+    ).toBeVisible();
     expect(invoke).not.toHaveBeenCalledWith("open_overlay", {
       target: "clock",
     });
     expect(
       screen.getByRole("dialog", { name: "クイックランチャー" }),
     ).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "詳細設定を開く" }));
+    await screen.findByRole("heading", { name: "時計オーバーレイ設定" });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("switch", {
+          name: "時計オーバーレイを有効にする",
+        }),
+      ).toHaveFocus();
+    });
   });
 
   it("changes the theme directly from the quick launcher", async () => {
