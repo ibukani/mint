@@ -1,6 +1,11 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { chooseAudioFile, transcribeAudio } from "../api";
+import {
+  chooseAudioFile,
+  isSupportedAudioFilePath,
+  transcribeAudio,
+} from "../api";
 import { focusAndSelect } from "../focus";
 import {
   validateBaseUrl,
@@ -16,6 +21,10 @@ const EMPTY_PASTE_STATUS = "貼り付ける内容がありません";
 const CLIPBOARD_READ_ERROR_STATUS =
   "クリップボードから貼り付けられませんでした";
 const FILE_PICKER_ERROR_STATUS = "音声ファイルを選択できませんでした";
+const DROPPED_FILE_ERROR_STATUS =
+  "対応していない形式です。音声ファイルをドロップしてください";
+const MULTIPLE_DROPPED_FILES_STATUS =
+  "音声ファイルは1つずつドロップしてください";
 
 const getCopyStatusDuration = (status: string) =>
   status === "コピーしました" ? STATUS_VISIBLE_MS : COPY_ERROR_VISIBLE_MS;
@@ -37,12 +46,30 @@ export const useTranscriptionWorkbench = ({
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
   const [transcribing, setTranscribing] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
+  const workbenchRef = useRef<HTMLElement | null>(null);
   const transcriptionAttemptRef = useRef(0);
   const transcribingRef = useRef(false);
   const [audioFilePasteStatus, setAudioFilePasteStatus, audioFilePasteTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
   const [copyStatus, setCopyStatus, copyTone] = useTransientStatus(
     getCopyStatusDuration,
+  );
+
+  const isPositionInsideWorkbench = useCallback(
+    (position: { x: number; y: number }) => {
+      const workbench = workbenchRef.current;
+      if (!workbench) return false;
+
+      const rect = workbench.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      const x = position.x / scale;
+      const y = position.y / scale;
+      return (
+        x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+      );
+    },
+    [],
   );
 
   useEffect(() => {
@@ -196,6 +223,77 @@ export const useTranscriptionWorkbench = ({
     setAudioFilePasteStatus,
   ]);
 
+  const acceptDroppedAudioFiles = useCallback(
+    (paths: string[]) => {
+      if (paths.length !== 1) {
+        setAudioFilePasteStatus(
+          paths.length > 1
+            ? MULTIPLE_DROPPED_FILES_STATUS
+            : DROPPED_FILE_ERROR_STATUS,
+          "warning",
+        );
+        return;
+      }
+
+      const path = paths[0]?.trim() ?? "";
+      if (!isSupportedAudioFilePath(path)) {
+        setAudioFilePasteStatus(DROPPED_FILE_ERROR_STATUS, "warning");
+        return;
+      }
+
+      clearTranscriptionOutput();
+      setAudioFilePath(path);
+      setAudioFilePasteStatus("音声ファイルをドロップしました");
+      focusAndSelect("v2t-audio-file-input");
+    },
+    [clearTranscriptionOutput, setAudioFilePasteStatus],
+  );
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    const listenForFileDrop = async () => {
+      try {
+        const currentWindow = getCurrentWindow();
+        if (typeof currentWindow.onDragDropEvent !== "function") return;
+
+        const cleanup = await currentWindow.onDragDropEvent((event) => {
+          if (disposed) return;
+          const { payload } = event;
+
+          if (payload.type === "leave") {
+            setIsDropTarget(false);
+            return;
+          }
+
+          const isInside = isPositionInsideWorkbench(payload.position);
+          if (payload.type === "drop") {
+            setIsDropTarget(false);
+            if (isInside) acceptDroppedAudioFiles(payload.paths);
+            return;
+          }
+          setIsDropTarget(isInside);
+        });
+
+        if (disposed) {
+          cleanup();
+        } else {
+          unlisten = cleanup;
+        }
+      } catch (error) {
+        console.warn("Failed to register audio file drop listener:", error);
+      }
+    };
+
+    void listenForFileDrop();
+    return () => {
+      disposed = true;
+      setIsDropTarget(false);
+      unlisten?.();
+    };
+  }, [acceptDroppedAudioFiles, isPositionInsideWorkbench]);
+
   const handleAudioFilePathKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (
@@ -276,6 +374,8 @@ export const useTranscriptionWorkbench = ({
     audioFilePath,
     audioFilePasteStatus,
     audioFilePasteTone,
+    isDropTarget,
+    workbenchRef,
     transcriptionText,
     transcriptionError,
     copyStatus,

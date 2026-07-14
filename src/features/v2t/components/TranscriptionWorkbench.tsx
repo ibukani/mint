@@ -27,6 +27,8 @@ export const TranscriptionWorkbench: React.FC<{
     audioFilePath,
     audioFilePasteStatus,
     audioFilePasteTone,
+    isDropTarget,
+    workbenchRef,
     transcriptionText,
     transcriptionError,
     copyStatus,
@@ -49,7 +51,8 @@ export const TranscriptionWorkbench: React.FC<{
 
   return (
     <section
-      className="v2t-workbench"
+      ref={workbenchRef}
+      className={`v2t-workbench ${isDropTarget ? "is-drop-target" : ""}`}
       aria-labelledby="v2t-workbench-title"
       aria-busy={transcribing}
       onKeyDown={handleWorkbenchKeyDown}
@@ -67,6 +70,13 @@ export const TranscriptionWorkbench: React.FC<{
           {canTranscribe ? "実行可能" : "準備中"}
         </span>
       </div>
+      {isDropTarget && (
+        <div className="v2t-workbench__drop-overlay" role="status">
+          <AudioLines size={22} aria-hidden="true" />
+          <strong>音声ファイルをここにドロップ</strong>
+          <span>対応形式: WAV / MP3 / M4A / FLAC など</span>
+        </div>
+      )}
       <div className="v2t-workbench__body">
         <ol className="v2t-setup-steps" aria-label="文字起こしの準備状況">
           {setupSteps.map((step, index) => {
@@ -93,7 +103,7 @@ export const TranscriptionWorkbench: React.FC<{
         <Field
           id="v2t-audio-file-input"
           label="音声ファイルパス"
-          helpText="ボタンからファイルを選ぶか、パスを貼り付けて指定します。Enter でも文字起こしを開始できます。"
+          helpText="ボタンからファイルを選ぶか、パスを貼り付けて指定します。ワークベンチへドラッグ＆ドロップすることもできます。Enter でも文字起こしを開始できます。"
         >
           <div className="v2t-control-with-status">
             <FieldRow className="v2t-file-row">

@@ -1,11 +1,23 @@
 import { type InvokeArgs, invoke } from "@tauri-apps/api/core";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import type { DragDropEvent } from "@tauri-apps/api/window";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
 import { VoiceToTextSettings } from "./VoiceToTextSettings";
 
 const dialogMocks = vi.hoisted(() => ({ open: vi.fn() }));
+type DropEventHandler = (event: { payload: DragDropEvent }) => void;
+const dragDropMocks = vi.hoisted(() => ({
+  handler: null as DropEventHandler | null,
+}));
 
 const silenceExpectedConsoleError = () =>
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -19,9 +31,19 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: dialogMocks.open,
 }));
 
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    onDragDropEvent: async (handler: DropEventHandler) => {
+      dragDropMocks.handler = handler;
+      return vi.fn();
+    },
+  }),
+}));
+
 describe("VoiceToTextSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dragDropMocks.handler = null;
     dialogMocks.open.mockResolvedValue(null);
     Object.assign(navigator, {
       clipboard: {
@@ -1150,6 +1172,153 @@ describe("VoiceToTextSettings", () => {
     );
     expect(screen.getByRole("status")).toHaveTextContent(
       "音声ファイルを選択しました",
+    );
+  });
+
+  it("accepts a supported audio file dropped on the transcription workbench", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(dragDropMocks.handler).not.toBeNull());
+
+    const workbench = screen.getByRole("region", { name: "文字起こし" });
+    workbench.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 0,
+          right: 500,
+          bottom: 600,
+          left: 0,
+          width: 500,
+          height: 600,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "drop",
+          paths: ["/tmp/outside.wav"],
+          position: new PhysicalPosition(700, 100),
+        },
+      });
+    });
+    expect(screen.getByLabelText("音声ファイルパス")).toHaveValue("");
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "enter",
+          paths: ["C:\\Recordings\\INTERVIEW.M4A"],
+          position: new PhysicalPosition(100, 100),
+        },
+      });
+    });
+    expect(workbench).toHaveClass("is-drop-target");
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "drop",
+          paths: ["C:\\Recordings\\INTERVIEW.M4A"],
+          position: new PhysicalPosition(100, 100),
+        },
+      });
+    });
+
+    expect(workbench).not.toHaveClass("is-drop-target");
+    expect(screen.getByLabelText("音声ファイルパス")).toHaveValue(
+      "C:\\Recordings\\INTERVIEW.M4A",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "音声ファイルをドロップしました",
+    );
+  });
+
+  it("keeps the current path and explains unsupported dropped files", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(dragDropMocks.handler).not.toBeNull());
+
+    const input = screen.getByLabelText("音声ファイルパス");
+    fireEvent.change(input, { target: { value: "/tmp/current.wav" } });
+    const workbench = screen.getByRole("region", { name: "文字起こし" });
+    workbench.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 0,
+          right: 500,
+          bottom: 600,
+          left: 0,
+          width: 500,
+          height: 600,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "drop",
+          paths: ["/tmp/notes.txt"],
+          position: new PhysicalPosition(100, 100),
+        },
+      });
+    });
+
+    expect(input).toHaveValue("/tmp/current.wav");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "対応していない形式です",
     );
   });
 
