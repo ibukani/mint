@@ -519,6 +519,63 @@ describe("CalendarOverlay window coordination", () => {
     });
   });
 
+  it("returns to the month of the next event after opening its detail", async () => {
+    const upcomingEvent: CalendarEvent = {
+      ...calendarEvent,
+      id: "event-next-month",
+      title: "来月の計画会議",
+      schedule: {
+        kind: "allDay",
+        startDate: "2026-08-02",
+        endDateExclusive: "2026-08-03",
+      },
+    };
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "list_calendar_events") return [calendarEvent];
+      if (command === "get_next_calendar_event") return upcomingEvent;
+      if (command === "get_google_calendar_connection") {
+        return {
+          connected: false,
+          accountEmail: "",
+          lastSyncedAt: null,
+          pendingOperations: 0,
+          error: null,
+          syncing: false,
+        };
+      }
+      return undefined;
+    });
+
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "次の予定、来月の計画会議" }),
+      );
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByRole("heading", { name: "来月の計画会議" }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "戻る" }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "2026年 8月" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "8月2日" })).toHaveFocus();
+  });
+
   it("opens a reusable copy from event detail with the D shortcut", async () => {
     mocks.invoke.mockImplementation(async (command: string) => {
       if (command === "list_calendar_events") return [calendarEvent];

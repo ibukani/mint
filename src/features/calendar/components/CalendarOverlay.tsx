@@ -147,6 +147,13 @@ export const CalendarOverlay: React.FC = () => {
     setScreen({ kind: "day", date });
   }, []);
 
+  const openMonthEvent = useCallback((event: CalendarEvent) => {
+    const eventDate = eventStartDate(event);
+    setSelectedDate(eventDate);
+    setViewMonth(startOfMonth(parseMachineDate(eventDate)));
+    setScreen({ kind: "detail", event });
+  }, []);
+
   const moveDay = useCallback(
     (delta: number) => {
       if (screen.kind !== "day") return;
@@ -251,7 +258,7 @@ export const CalendarOverlay: React.FC = () => {
             viewMonth={viewMonth}
             onViewMonthChange={setViewMonth}
             onOpenDay={openDay}
-            onOpenEvent={(event) => setScreen({ kind: "detail", event })}
+            onOpenEvent={openMonthEvent}
             onCreate={(date) => void openEditor({ mode: "create", date })}
             onRetry={refresh}
             selectedDate={selectedDate}
