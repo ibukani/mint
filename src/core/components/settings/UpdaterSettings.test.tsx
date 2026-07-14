@@ -107,6 +107,9 @@ describe("UpdaterSettings", () => {
         "更新情報を取得できませんでした。ネットワーク接続を確認して、もう一度お試しください。",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "更新情報を取得できませんでした。ネットワーク接続を確認して、もう一度お試しください。",
+    );
     expect(screen.queryByText(/HTTP 500/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "更新を確認" })).toBeEnabled();
     expect(consoleError).toHaveBeenCalledWith(
