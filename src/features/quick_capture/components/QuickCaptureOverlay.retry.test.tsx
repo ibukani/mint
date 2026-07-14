@@ -31,11 +31,15 @@ vi.mock("../hooks/useQuickCapture", () => ({
     selectNote: vi.fn(),
     setContent: vi.fn(),
     setPinned: vi.fn(),
+    setWindowPinned: vi.fn(),
     setTags: vi.fn(),
     showDraft: vi.fn(),
     status: "error",
     tags: "",
     reload: vi.fn(),
+    windowPinned: false,
+    withAutoHideSuspended: async <Result,>(operation: () => Promise<Result>) =>
+      operation(),
   }),
 }));
 

@@ -33,6 +33,7 @@ export const useQuickCapture = () => {
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [windowPinned, setWindowPinnedState] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [status, setStatus] = useState<CaptureSaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +46,12 @@ export const useQuickCapture = () => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef({ content: "", tags: "" });
   const closeRef = useRef<() => Promise<void>>(async () => {});
+  const windowPinnedRef = useRef(false);
+  const visibleRef = useRef(false);
+  const focusedRef = useRef(true);
+  const closingRef = useRef(false);
+  const autoHideSuppressionDepthRef = useRef(0);
+  const autoHideSuppressedRef = useRef(false);
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
@@ -61,6 +68,29 @@ export const useQuickCapture = () => {
     revision.current += 1;
     setPinned(value);
   }, []);
+  const setWindowPinned = useCallback((value: boolean) => {
+    windowPinnedRef.current = value;
+    setWindowPinnedState(value);
+  }, []);
+
+  const withAutoHideSuspended = useCallback(
+    async <Result>(operation: () => Promise<Result>): Promise<Result> => {
+      autoHideSuppressionDepthRef.current += 1;
+      autoHideSuppressedRef.current = true;
+      try {
+        return await operation();
+      } finally {
+        autoHideSuppressionDepthRef.current = Math.max(
+          0,
+          autoHideSuppressionDepthRef.current - 1,
+        );
+        if (autoHideSuppressionDepthRef.current === 0 && focusedRef.current) {
+          autoHideSuppressedRef.current = false;
+        }
+      }
+    },
+    [],
+  );
 
   const clearPendingPersist = useCallback(() => {
     if (timerRef.current) {
@@ -359,7 +389,9 @@ export const useQuickCapture = () => {
   const addAttachment = useCallback(async () => {
     if (!activeId || attachmentInFlightRef.current) return;
     try {
-      const sourcePath = await chooseQuickCaptureAttachment();
+      const sourcePath = await withAutoHideSuspended(() =>
+        chooseQuickCaptureAttachment(),
+      );
       if (!sourcePath || Array.isArray(sourcePath)) return;
       await attachPaths([sourcePath]);
     } catch (reason) {
@@ -367,7 +399,7 @@ export const useQuickCapture = () => {
       setStatus("error");
       setCanRetrySave(false);
     }
-  }, [activeId, attachPaths]);
+  }, [activeId, attachPaths, withAutoHideSuspended]);
 
   const handleDroppedPaths = useCallback(
     (paths: string[]) => {
@@ -500,9 +532,23 @@ export const useQuickCapture = () => {
   );
 
   const close = useCallback(async () => {
-    const saved = await persist();
-    if (!saved) return;
-    await getCurrentWindow().hide();
+    if (closingRef.current) return;
+    closingRef.current = true;
+    try {
+      const saved = await persist();
+      if (!saved) return;
+      visibleRef.current = false;
+      try {
+        await getCurrentWindow().hide();
+      } catch (reason) {
+        visibleRef.current = true;
+        setError(reason instanceof Error ? reason.message : String(reason));
+        setStatus("error");
+        setCanRetrySave(false);
+      }
+    } finally {
+      closingRef.current = false;
+    }
   }, [persist]);
   const retrySave = persist;
   closeRef.current = close;
@@ -511,7 +557,14 @@ export const useQuickCapture = () => {
     void reload();
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
-    const shown = listen("quick-capture-shown", () => showDraft());
+    const shown = listen("quick-capture-shown", () => {
+      visibleRef.current = true;
+      focusedRef.current = true;
+      if (autoHideSuppressionDepthRef.current === 0) {
+        autoHideSuppressedRef.current = false;
+      }
+      showDraft();
+    });
     const noteCreated = listen<QuickCaptureNoteCreatedPayload>(
       QUICK_CAPTURE_NOTE_CREATED_EVENT,
       ({ payload }) => {
@@ -526,12 +579,33 @@ export const useQuickCapture = () => {
       "quick-capture-hide-requested",
       () => void closeRef.current(),
     );
+    const focus = getCurrentWindow().onFocusChanged(({ payload }) => {
+      focusedRef.current = payload;
+      if (payload) {
+        if (autoHideSuppressionDepthRef.current === 0) {
+          autoHideSuppressedRef.current = false;
+        }
+        return;
+      }
+      if (autoHideSuppressionDepthRef.current > 0) {
+        autoHideSuppressedRef.current = true;
+      }
+      if (
+        visibleRef.current &&
+        !windowPinnedRef.current &&
+        !closingRef.current &&
+        !autoHideSuppressedRef.current
+      ) {
+        void closeRef.current();
+      }
+    });
     return () => {
       document.body.classList.remove("is-overlay");
       document.documentElement.classList.remove("is-overlay");
       void shown.then((unlisten) => unlisten());
       void noteCreated.then((unlisten) => unlisten());
       void hide.then((unlisten) => unlisten());
+      void focus.then((unlisten) => unlisten());
     };
   }, [reload, showDraft, sortNotes]);
 
@@ -564,6 +638,7 @@ export const useQuickCapture = () => {
     selectNote,
     setContent: updateContent,
     setPinned: updatePinned,
+    setWindowPinned,
     setTags: updateTags,
     showDraft,
     status,
@@ -574,5 +649,7 @@ export const useQuickCapture = () => {
     isDropTarget,
     retryDuplicate: duplicateActive,
     reload,
+    windowPinned,
+    withAutoHideSuspended,
   };
 };

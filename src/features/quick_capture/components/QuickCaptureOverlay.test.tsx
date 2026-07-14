@@ -26,7 +26,10 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({ hide: windowMocks.hide }),
+  getCurrentWindow: () => ({
+    hide: windowMocks.hide,
+    onFocusChanged: async () => () => {},
+  }),
 }));
 
 vi.mock("../../../core/context/AppSettings", () => ({
@@ -54,6 +57,23 @@ describe("QuickCaptureOverlay", () => {
       "quick-capture",
       "is-visible",
     );
+  });
+
+  it("toggles window pinning separately from note pinning", async () => {
+    render(<QuickCaptureOverlay />);
+
+    const pin = await screen.findByRole("button", {
+      name: "ウィンドウを固定",
+    });
+    expect(pin).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(pin);
+
+    const unpin = screen.getByRole("button", {
+      name: "ウィンドウの固定を解除",
+    });
+    expect(unpin).toHaveAttribute("aria-pressed", "true");
+    expect(unpin).toHaveTextContent("固定中");
   });
 
   it("derives a title from the first non-empty line", () => {

@@ -315,11 +315,13 @@ export const QuickCaptureOverlay: React.FC = () => {
 
   const exportMarkdown = async () => {
     try {
-      const path = await save({
-        title: "Markdownとして書き出す",
-        defaultPath: safeFileName(noteTitle({ content: capture.content })),
-        filters: [{ name: "Markdown", extensions: ["md"] }],
-      });
+      const path = await capture.withAutoHideSuspended(() =>
+        save({
+          title: "Markdownとして書き出す",
+          defaultPath: safeFileName(noteTitle({ content: capture.content })),
+          filters: [{ name: "Markdown", extensions: ["md"] }],
+        }),
+      );
       if (!path) return;
       await exportQuickCaptureMarkdown({
         path,
@@ -336,7 +338,9 @@ export const QuickCaptureOverlay: React.FC = () => {
 
   const exportBackup = async () => {
     try {
-      const path = await chooseQuickCaptureBackupForSave();
+      const path = await capture.withAutoHideSuspended(() =>
+        chooseQuickCaptureBackupForSave(),
+      );
       if (path) await capture.exportBackup(path);
     } catch (reason) {
       setActionStatus(
@@ -347,7 +351,9 @@ export const QuickCaptureOverlay: React.FC = () => {
 
   const requestImportBackup = async () => {
     try {
-      const path = await chooseQuickCaptureBackupForOpen();
+      const path = await capture.withAutoHideSuspended(() =>
+        chooseQuickCaptureBackupForOpen(),
+      );
       if (path && !Array.isArray(path)) {
         setConfirmationError("");
         setConfirmation({ kind: "import", path });
@@ -414,6 +420,25 @@ export const QuickCaptureOverlay: React.FC = () => {
             </div>
           </div>
           <div className="quick-capture__header-actions">
+            <button
+              type="button"
+              className={`quick-capture__window-pin${capture.windowPinned ? " is-active" : ""}`}
+              aria-label={
+                capture.windowPinned
+                  ? "ウィンドウの固定を解除"
+                  : "ウィンドウを固定"
+              }
+              aria-pressed={capture.windowPinned}
+              title={
+                capture.windowPinned
+                  ? "固定を解除して、フォーカスを外したときに閉じる"
+                  : "別のウィンドウを操作しても閉じない"
+              }
+              onClick={() => capture.setWindowPinned(!capture.windowPinned)}
+            >
+              <Pin size={14} aria-hidden="true" />
+              <span>{capture.windowPinned ? "固定中" : "ウィンドウ固定"}</span>
+            </button>
             {capture.activeId && (
               <>
                 <button

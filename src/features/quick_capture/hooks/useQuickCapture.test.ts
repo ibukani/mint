@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   hide: vi.fn(),
   listen: vi.fn(),
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
+  focusChanged: null as ((event: { payload: boolean }) => void) | null,
   dragDropHandler: null as ((event: { payload: DragDropEvent }) => void) | null,
 }));
 
@@ -40,6 +41,12 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     hide: mocks.hide,
+    onFocusChanged: async (handler: (event: { payload: boolean }) => void) => {
+      mocks.focusChanged = handler;
+      return () => {
+        mocks.focusChanged = null;
+      };
+    },
     onDragDropEvent: async (
       handler: (event: { payload: DragDropEvent }) => void,
     ) => {
@@ -76,6 +83,7 @@ describe("useQuickCapture", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listeners.clear();
+    mocks.focusChanged = null;
     mocks.dragDropHandler = null;
     mocks.load.mockResolvedValue(state);
     mocks.promote.mockResolvedValue({
@@ -236,6 +244,81 @@ describe("useQuickCapture", () => {
     expect(mocks.hide).not.toHaveBeenCalled();
     expect(result.current.content).toBe("終了前に保存できない編集");
     expect(result.current.error).toBe("保存に失敗しました");
+  });
+
+  it("saves and hides once when an unpinned visible window loses focus", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await waitFor(() => expect(mocks.focusChanged).not.toBeNull());
+
+    act(() => {
+      mocks.listeners.get("quick-capture-shown")?.({});
+      mocks.focusChanged?.({ payload: false });
+      mocks.focusChanged?.({ payload: false });
+    });
+
+    await waitFor(() => expect(mocks.hide).toHaveBeenCalledOnce());
+  });
+
+  it("keeps the window open while pinned and remembers the pin after reopening", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await waitFor(() => expect(mocks.focusChanged).not.toBeNull());
+
+    act(() => {
+      mocks.listeners.get("quick-capture-shown")?.({});
+      result.current.setWindowPinned(true);
+      mocks.focusChanged?.({ payload: false });
+    });
+    await act(async () => Promise.resolve());
+    expect(mocks.hide).not.toHaveBeenCalled();
+
+    await act(async () => result.current.close());
+    expect(mocks.hide).toHaveBeenCalledOnce();
+    act(() => mocks.listeners.get("quick-capture-shown")?.({}));
+    expect(result.current.windowPinned).toBe(true);
+
+    act(() => mocks.focusChanged?.({ payload: false }));
+    await act(async () => Promise.resolve());
+    expect(mocks.hide).toHaveBeenCalledOnce();
+
+    act(() => {
+      result.current.setWindowPinned(false);
+      mocks.focusChanged?.({ payload: true });
+      mocks.focusChanged?.({ payload: false });
+    });
+    await waitFor(() => expect(mocks.hide).toHaveBeenCalledTimes(2));
+  });
+
+  it("ignores focus loss until a related native dialog returns focus", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await waitFor(() => expect(mocks.focusChanged).not.toBeNull());
+    act(() => mocks.listeners.get("quick-capture-shown")?.({}));
+
+    let resolveDialog: (() => void) | undefined;
+    let dialogPromise: Promise<void> | undefined;
+    act(() => {
+      dialogPromise = result.current.withAutoHideSuspended(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveDialog = resolve;
+          }),
+      );
+      mocks.focusChanged?.({ payload: false });
+    });
+    await act(async () => Promise.resolve());
+    expect(mocks.hide).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveDialog?.();
+      await dialogPromise;
+    });
+    act(() => {
+      mocks.focusChanged?.({ payload: true });
+      mocks.focusChanged?.({ payload: false });
+    });
+    await waitFor(() => expect(mocks.hide).toHaveBeenCalledOnce());
   });
 
   it("offers a save retry and clears the failure after the retry succeeds", async () => {
