@@ -20,6 +20,8 @@ import {
 import { isOverlayTarget, openOverlay } from "./core/windowCommands";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
+import { toMachineDate } from "./features/calendar/calendar";
+import { openCalendarEditor } from "./features/calendar/events";
 import {
   getGoogleCalendarConnection,
   syncGoogleCalendars,
@@ -111,6 +113,17 @@ const AppContent: React.FC = () => {
           onTabChange={setActiveTab}
           quickActions={SETTINGS_QUICK_ACTIONS}
           onQuickAction={(targetId) => {
+            if (targetId === "calendarCreateEvent") {
+              if (!settings?.calendar.enabled) {
+                return Promise.reject(
+                  new Error("カレンダーが無効になっています。"),
+                );
+              }
+              return openCalendarEditor({
+                mode: "create",
+                date: toMachineDate(new Date()),
+              });
+            }
             if (!isOverlayTarget(targetId)) {
               return Promise.reject(new Error("利用できない操作です。"));
             }

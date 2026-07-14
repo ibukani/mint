@@ -1,6 +1,7 @@
 import {
   Archive,
   CalendarDays,
+  CalendarPlus,
   Clock3,
   Gamepad2,
   Mic2,
@@ -294,6 +295,17 @@ export const SETTINGS_QUICK_ACTIONS = [
     keywords: ["カレンダー", "予定", "Google Calendar", "Alt+Down"],
     targetId: "calendar",
     icon: React.createElement(CalendarDays, {
+      size: 16,
+      "aria-hidden": true,
+    }),
+  },
+  {
+    id: "create-calendar-event",
+    label: "今日の予定を追加",
+    description: "今日の日付で予定入力を開始",
+    keywords: ["予定", "イベント", "新規", "作成", "Alt+Up"],
+    targetId: "calendarCreateEvent",
+    icon: React.createElement(CalendarPlus, {
       size: 16,
       "aria-hidden": true,
     }),

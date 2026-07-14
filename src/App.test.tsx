@@ -116,6 +116,35 @@ describe("App Window Routing", () => {
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
   });
 
+  it("opens a new event editor for today from the quick launcher", async () => {
+    const settings = createMockSettings();
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === "load_settings") return settings;
+      if (command === "open_calendar_editor_window") return undefined;
+      return undefined;
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目、操作を検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "今日の予定" } });
+    expect(screen.getByRole("option")).toHaveTextContent("今日の予定を追加");
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith("open_calendar_editor_window", {
+        payload: {
+          mode: "create",
+          date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        },
+      });
+    });
+  });
+
   it("lets the user retry when settings loading fails", async () => {
     const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings();
