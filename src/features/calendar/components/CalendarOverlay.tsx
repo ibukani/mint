@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { CircleAlert, LoaderCircle, RefreshCw, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../../design/components";
@@ -37,11 +37,16 @@ export const CalendarOverlay: React.FC = () => {
   const [editorRetryPayload, setEditorRetryPayload] =
     useState<CalendarEditorPayload | null>(null);
   const editorAttemptRef = useRef(0);
-  const { events, nextEvent, loading, error, refresh } = useCalendarEvents(
-    viewMonth,
-    today,
-    showSequence,
-  );
+  const {
+    events,
+    nextEvent,
+    loading,
+    error,
+    refresh,
+    syncError,
+    syncing,
+    retrySync,
+  } = useCalendarEvents(viewMonth, today, showSequence);
 
   const openEditor = useCallback(async (payload: CalendarEditorPayload) => {
     const attempt = ++editorAttemptRef.current;
@@ -225,6 +230,31 @@ export const CalendarOverlay: React.FC = () => {
         >
           <X size={15} aria-hidden="true" />
         </button>
+        {syncing && (
+          <div className="calendar-overlay__sync-status" role="status">
+            <LoaderCircle
+              className="spinner-icon"
+              size={15}
+              aria-hidden="true"
+            />
+            <span>Google Calendarと同期しています…</span>
+          </div>
+        )}
+        {syncError && (
+          <div className="calendar-overlay__sync-error" role="alert">
+            <CircleAlert size={16} aria-hidden="true" />
+            <span>Google Calendarとの同期に失敗しました。{syncError}</span>
+            <Button
+              variant="ghost"
+              className="calendar-overlay__action-error-retry"
+              disabled={syncing}
+              onClick={() => void retrySync()}
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              再同期
+            </Button>
+          </div>
+        )}
         {editorActionError && editorRetryPayload && (
           <div className="calendar-overlay__action-error" role="alert">
             <span>{editorActionError}</span>

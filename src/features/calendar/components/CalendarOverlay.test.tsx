@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
   openEditorShouldFail: false,
+  syncShouldFail: false,
   invoke: vi.fn<(command: string) => Promise<unknown>>(async (command) => {
     if (command === "list_calendar_events") return [];
     if (command === "get_next_calendar_event") return null;
@@ -23,6 +24,13 @@ const mocks = vi.hoisted(() => ({
         pendingOperations: 0,
         error: null,
         syncing: false,
+      };
+    }
+    if (command === "sync_google_calendars") {
+      if (mocks.syncShouldFail) throw new Error("network unavailable");
+      return {
+        changedEvents: 0,
+        pendingOperations: 0,
       };
     }
     if (command === "open_calendar_editor_window") {
@@ -104,8 +112,10 @@ describe("CalendarOverlay window coordination", () => {
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
     mocks.openEditorShouldFail = false;
+    mocks.syncShouldFail = false;
     mocks.invoke.mockClear();
     mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "load_settings") return createMockSettings();
       if (command === "list_calendar_events") return [];
       if (command === "get_next_calendar_event") return null;
       if (command === "get_google_calendar_connection") {
@@ -116,6 +126,13 @@ describe("CalendarOverlay window coordination", () => {
           pendingOperations: 0,
           error: null,
           syncing: false,
+        };
+      }
+      if (command === "sync_google_calendars") {
+        if (mocks.syncShouldFail) throw new Error("network unavailable");
+        return {
+          changedEvents: 0,
+          pendingOperations: 0,
         };
       }
       if (command === "open_calendar_editor_window") {
@@ -264,6 +281,65 @@ describe("CalendarOverlay window coordination", () => {
       expect.any(Error),
     );
     consoleError.mockRestore();
+  });
+
+  it("shows a retry action when Google Calendar sync fails", async () => {
+    const consoleWarn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    mocks.syncShouldFail = true;
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "load_settings") return createMockSettings();
+      if (command === "list_calendar_events") return [];
+      if (command === "get_next_calendar_event") return null;
+      if (command === "get_google_calendar_connection") {
+        return {
+          connected: true,
+          accountEmail: "user@example.com",
+          lastSyncedAt: null,
+          pendingOperations: 0,
+          error: null,
+          syncing: false,
+        };
+      }
+      if (command === "sync_google_calendars") {
+        if (mocks.syncShouldFail) throw new Error("network unavailable");
+        return { changedEvents: 0, pendingOperations: 0 };
+      }
+      return undefined;
+    });
+
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Google Calendarとの同期に失敗しました。Google Calendarに接続できませんでした。通信環境を確認して、もう一度お試しください。",
+    );
+    expect(consoleWarn).toHaveBeenCalledWith(
+      "Google Calendar sync failed:",
+      expect.any(Error),
+    );
+
+    mocks.syncShouldFail = false;
+    fireEvent.click(screen.getByRole("button", { name: "再同期" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(mocks.invoke).toHaveBeenCalledWith("sync_google_calendars", {
+      calendarIds: [],
+    });
+    consoleWarn.mockRestore();
   });
 
   it("creates an event for the open day with the N shortcut", async () => {
