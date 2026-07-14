@@ -44,6 +44,10 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
   save: vi.fn(),
 }));
 
+vi.mock("../../../core/context/AppSettings", () => ({
+  useAppSettings: () => ({ settings: undefined }),
+}));
+
 vi.mock("@tauri-apps/plugin-opener", () => ({
   openPath: vi.fn(),
   openUrl: vi.fn(),

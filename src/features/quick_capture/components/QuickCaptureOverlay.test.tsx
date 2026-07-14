@@ -29,6 +29,10 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ hide: windowMocks.hide }),
 }));
 
+vi.mock("../../../core/context/AppSettings", () => ({
+  useAppSettings: () => ({ settings: undefined }),
+}));
+
 describe("QuickCaptureOverlay", () => {
   beforeEach(() => {
     localStorage.clear();

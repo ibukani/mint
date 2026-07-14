@@ -1,6 +1,7 @@
 export interface QuickCaptureSettings {
   enabled: boolean;
   shortcut: string;
+  themeColor: string;
 }
 
 export interface QuickCaptureDraft {

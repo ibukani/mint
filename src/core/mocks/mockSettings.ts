@@ -10,11 +10,13 @@ const defaultMockSettings: AppSettings = {
     clipboardHistoryEnabled:
       defaultAppSettings.fileShelf.clipboardHistoryEnabled,
     clipboardHistoryLimit: defaultAppSettings.fileShelf.clipboardHistoryLimit,
+    themeColor: defaultAppSettings.fileShelf.themeColor,
   },
 
   quickCapture: {
     enabled: defaultAppSettings.quickCapture.enabled,
     shortcut: defaultAppSettings.quickCapture.shortcut,
+    themeColor: defaultAppSettings.quickCapture.themeColor,
   },
 
   gameLauncher: {

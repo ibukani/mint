@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import {
   getPlatformShortcutModifier,
   isApplePlatform,
@@ -107,6 +109,7 @@ const matchesQuery = (item: FileShelfItem, query: string) =>
     .includes(query);
 
 export const FileShelfOverlay: React.FC = () => {
+  const { settings } = useAppSettings();
   const shelf = useFileShelf();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -392,14 +395,18 @@ export const FileShelfOverlay: React.FC = () => {
     }
   };
 
+  const themeColor =
+    settings?.fileShelf.themeColor || defaultAppSettings.fileShelf.themeColor;
+
   if (!shelf.expanded) {
     return (
       <OverlayFrame>
         <button
           type="button"
-          className={`file-shelf-handle${shelf.isDropTarget ? " is-drop-target" : ""}`}
+          className={`file-shelf-handle theme-accent-scope${shelf.isDropTarget ? " is-drop-target" : ""}`}
           onClick={() => void shelf.changeExpanded(true)}
           aria-label={`ファイルシェルを開く、${shelf.itemCount}件`}
+          style={{ "--color-accent": themeColor } as React.CSSProperties}
         >
           <Archive size={17} aria-hidden="true" />
           <strong>{shelf.itemCount}</strong>
@@ -424,13 +431,14 @@ export const FileShelfOverlay: React.FC = () => {
 
       <section
         ref={containerRef}
-        className={`file-shelf${shelf.isDropTarget ? " is-drop-target" : ""}`}
+        className={`file-shelf theme-accent-scope${shelf.isDropTarget ? " is-drop-target" : ""}`}
         aria-label="ファイルシェル"
         tabIndex={-1}
         onPaste={(event) => void handlePaste(event)}
         onKeyDown={handleKeyDown}
         onMouseEnter={stopCollapseTimer}
         onMouseLeave={scheduleCollapse}
+        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <header className="file-shelf__header">
           <div className="file-shelf__title">

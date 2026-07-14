@@ -5,6 +5,9 @@ import type { FileShelfItem } from "../types";
 import { FileShelfOverlay } from "./FileShelfOverlay";
 
 vi.mock("../hooks/useFileShelf", () => ({ useFileShelf: vi.fn() }));
+vi.mock("../../../core/context/AppSettings", () => ({
+  useAppSettings: () => ({ settings: undefined }),
+}));
 
 const first: FileShelfItem = {
   id: "first",

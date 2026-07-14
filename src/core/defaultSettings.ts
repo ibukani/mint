@@ -43,6 +43,7 @@ export const defaultAppSettings: AppSettings = {
   quickCapture: {
     enabled: true,
     shortcut: "Alt+2",
+    themeColor: "#818cf8",
   },
   fileShelf: {
     enabled: true,
@@ -51,5 +52,6 @@ export const defaultAppSettings: AppSettings = {
     edgeHandleEnabled: true,
     clipboardHistoryEnabled: false,
     clipboardHistoryLimit: 25,
+    themeColor: "#818cf8",
   },
 };

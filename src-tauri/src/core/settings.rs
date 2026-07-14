@@ -164,11 +164,17 @@ impl Default for GameLauncherSettings {
     }
 }
 
+fn default_quick_capture_color() -> String {
+    "#818cf8".to_string()
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct QuickCaptureSettings {
     pub enabled: bool,
     pub shortcut: String,
+    #[serde(default = "default_quick_capture_color")]
+    pub theme_color: String,
 }
 
 impl Default for QuickCaptureSettings {
@@ -176,8 +182,13 @@ impl Default for QuickCaptureSettings {
         Self {
             enabled: true,
             shortcut: "Alt+2".to_string(),
+            theme_color: default_quick_capture_color(),
         }
     }
+}
+
+fn default_file_shelf_color() -> String {
+    "#818cf8".to_string()
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -189,6 +200,8 @@ pub struct FileShelfSettings {
     pub edge_handle_enabled: bool,
     pub clipboard_history_enabled: bool,
     pub clipboard_history_limit: u32,
+    #[serde(default = "default_file_shelf_color")]
+    pub theme_color: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -208,6 +221,7 @@ impl Default for FileShelfSettings {
             edge_handle_enabled: true,
             clipboard_history_enabled: false,
             clipboard_history_limit: 25,
+            theme_color: default_file_shelf_color(),
         }
     }
 }
@@ -661,8 +675,10 @@ mod tests {
         assert_eq!(settings.game_launcher.shortcut, "Alt+1");
         assert!(settings.quick_capture.enabled);
         assert_eq!(settings.quick_capture.shortcut, "Alt+2");
+        assert_eq!(settings.quick_capture.theme_color, "#818cf8");
         assert!(settings.file_shelf.enabled);
         assert_eq!(settings.file_shelf.shortcut, "Alt+3");
+        assert_eq!(settings.file_shelf.theme_color, "#818cf8");
         assert_eq!(settings.file_shelf.edge, FileShelfEdge::Right);
         assert!(settings.file_shelf.edge_handle_enabled);
         assert!(!settings.file_shelf.clipboard_history_enabled);
@@ -716,6 +732,7 @@ mod tests {
         let settings: AppSettings = serde_json::from_str(legacy_file_shelf_json).unwrap();
         assert!(!settings.file_shelf.clipboard_history_enabled);
         assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
+        assert_eq!(settings.file_shelf.theme_color, "#818cf8");
     }
 
     #[test]

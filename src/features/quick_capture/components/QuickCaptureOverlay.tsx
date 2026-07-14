@@ -24,6 +24,8 @@ import type React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import { ConfirmDialog } from "../../../design/components";
 import {
   getPlatformShortcutModifier,
@@ -77,6 +79,7 @@ type QuickCaptureConfirmation =
   | { kind: "import"; path: string };
 
 export const QuickCaptureOverlay: React.FC = () => {
+  const { settings } = useAppSettings();
   const capture = useQuickCapture();
   const [preview, setPreview] = useState(false);
   const [query, setQuery] = useState("");
@@ -372,13 +375,18 @@ export const QuickCaptureOverlay: React.FC = () => {
     setConfirmationBusy(false);
   };
 
+  const themeColor =
+    settings?.quickCapture.themeColor ||
+    defaultAppSettings.quickCapture.themeColor;
+
   return (
     <OverlayFrame>
       <OverlayCard
-        className="quick-capture is-visible"
+        className="quick-capture theme-accent-scope is-visible"
         role="dialog"
         aria-label="クイックキャプチャー"
         onKeyDown={handleKeyDown}
+        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <button
           type="button"

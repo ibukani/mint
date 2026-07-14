@@ -12,6 +12,15 @@ import {
 } from "../../../design/components";
 import "./FileShelfSettings.css";
 
+const PRESET_COLORS = [
+  { value: "#818cf8", label: "インディゴ" },
+  { value: "#38bdf8", label: "スカイ" },
+  { value: "#34d399", label: "ミント" },
+  { value: "#fbbf24", label: "アンバー" },
+  { value: "#fb7185", label: "ローズ" },
+  { value: "#f8fafc", label: "ホワイト" },
+] as const;
+
 export const FileShelfSettings: React.FC = () => {
   const {
     featureSettings: settings,
@@ -61,6 +70,27 @@ export const FileShelfSettings: React.FC = () => {
               onChange={(value) => handleChange("shortcut", value)}
               placeholderText="例: Alt+3"
             />
+          </Field>
+          <Field
+            id="file-shelf-theme-color-picker"
+            label="ファイルシェルのテーマカラー"
+          >
+            <div className="color-picker-palette">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  className={`color-picker-badge ${settings.themeColor === color.value ? "is-active" : ""}`}
+                  style={
+                    { "--swatch-color": color.value } as React.CSSProperties
+                  }
+                  title={color.label}
+                  onClick={() => handleChange("themeColor", color.value)}
+                  aria-label={color.label}
+                  aria-pressed={settings.themeColor === color.value}
+                />
+              ))}
+            </div>
           </Field>
         </section>
 

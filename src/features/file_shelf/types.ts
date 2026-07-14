@@ -5,6 +5,7 @@ export interface FileShelfSettings {
   edgeHandleEnabled: boolean;
   clipboardHistoryEnabled: boolean;
   clipboardHistoryLimit: number;
+  themeColor: string;
 }
 
 export type FileShelfItemKind = "file" | "folder" | "image" | "text" | "url";
