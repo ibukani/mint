@@ -6,6 +6,7 @@ import {
   Gamepad2,
   Keyboard,
   Mic2,
+  Monitor,
   MonitorCog,
   Moon,
   NotebookPen,
@@ -38,6 +39,12 @@ const themeOptions = [
     label: "ライト",
     description: "明るく見やすいテーマ",
     icon: Sun,
+  },
+  {
+    value: "system",
+    label: "システム",
+    description: "OSの外観設定に合わせる",
+    icon: Monitor,
   },
 ] as const;
 

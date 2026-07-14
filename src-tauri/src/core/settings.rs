@@ -700,6 +700,10 @@ mod tests {
         assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
 
+        let system_theme_json = r#"{"theme": "system"}"#;
+        let settings: AppSettings = serde_json::from_str(system_theme_json).unwrap();
+        assert_eq!(settings.theme, "system");
+
         // クリップボード履歴追加前の fileShelf 設定を安全側の既定値で補完
         let legacy_file_shelf_json = r#"{
           "fileShelf": {

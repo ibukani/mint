@@ -2,6 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../navigation/settingsTabs";
+import type { ThemeMode } from "../settingsModel";
 
 const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
 
@@ -31,7 +32,7 @@ const getInitialSettingsTab = (): SettingsTabId => {
   }
 };
 
-export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
+export const useSettingsWindow = (theme: ThemeMode | undefined) => {
   const [label, setLabel] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     getInitialSettingsTab,
@@ -52,7 +53,24 @@ export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
   }, []);
 
   useEffect(() => {
-    if (theme) document.documentElement.dataset.theme = theme;
+    if (!theme) return undefined;
+
+    const mediaQuery =
+      theme === "system" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-color-scheme: light)")
+        : null;
+    const applyTheme = () => {
+      const resolvedTheme =
+        theme === "system" ? (mediaQuery?.matches ? "light" : "dark") : theme;
+      document.documentElement.dataset.theme = resolvedTheme;
+    };
+
+    applyTheme();
+    if (!mediaQuery) return undefined;
+
+    const handleThemeChange = () => applyTheme();
+    mediaQuery.addEventListener("change", handleThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleThemeChange);
   }, [theme]);
 
   useEffect(() => {

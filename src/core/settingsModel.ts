@@ -5,13 +5,15 @@ import type { GameLauncherSettings } from "../features/game_launcher/types";
 import type { QuickCaptureSettings } from "../features/quick_capture/types";
 import type { VoiceToTextSettings } from "../features/v2t/types";
 
+export type ThemeMode = "dark" | "light" | "system";
+
 export interface AppSettings {
   fileShelf: FileShelfSettings;
   quickCapture: QuickCaptureSettings;
   gameLauncher: GameLauncherSettings;
   calendar: CalendarSettings;
   autostart: boolean;
-  theme: "dark" | "light";
+  theme: ThemeMode;
   settingsShortcut: string;
   clock: ClockSettings;
   voiceToText: VoiceToTextSettings;

@@ -31,8 +31,10 @@ describe("GeneralSettings", () => {
 
     const darkTheme = screen.getByRole("radio", { name: /ダーク/ });
     const lightTheme = screen.getByRole("radio", { name: /ライト/ });
+    const systemTheme = screen.getByRole("radio", { name: /システム/ });
     expect(darkTheme).toBeChecked();
     expect(lightTheme).not.toBeChecked();
+    expect(systemTheme).not.toBeChecked();
 
     await act(async () => {
       fireEvent.click(lightTheme);
@@ -41,6 +43,14 @@ describe("GeneralSettings", () => {
 
     expect(lightTheme).toBeChecked();
     expect(darkTheme).not.toBeChecked();
+
+    await act(async () => {
+      fireEvent.click(systemTheme);
+      await Promise.resolve();
+    });
+
+    expect(systemTheme).toBeChecked();
+    expect(lightTheme).not.toBeChecked();
   });
 
   it("lets users toggle the autostart setting", async () => {
