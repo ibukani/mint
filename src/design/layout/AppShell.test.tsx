@@ -115,6 +115,38 @@ describe("AppShell", () => {
     expect(onTabChange).toHaveBeenCalledWith("voiceToText");
   });
 
+  it("jumps to result boundaries with Home, End, and page keys", () => {
+    render(
+      <AppShell
+        title="mint"
+        tabs={[
+          { id: "general", label: "一般設定" },
+          { id: "voiceToText", label: "音声入力" },
+          { id: "calendar", label: "カレンダー" },
+        ]}
+        activeTab="general"
+        onTabChange={() => undefined}
+      >
+        <p>設定コンテンツ</p>
+      </AppShell>,
+    );
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目、操作を検索",
+    });
+    const options = screen.getAllByRole("option");
+
+    fireEvent.keyDown(searchInput, { key: "End" });
+    expect(options[2]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(searchInput, { key: "PageUp" });
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(searchInput, { key: "PageDown" });
+    expect(options[2]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(searchInput, { key: "Home" });
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+  });
+
   it("finds an individual setting and forwards its focus target", () => {
     const onTabChange = vi.fn();
     render(
@@ -270,6 +302,53 @@ describe("AppShell", () => {
 
     expect(screen.getByText("最近使った項目")).toBeVisible();
     expect(screen.getAllByRole("option")[0]).toHaveTextContent("時計を開く");
+  });
+
+  it("clears persisted recent results from the quick switcher", async () => {
+    const onQuickAction = vi.fn().mockResolvedValue(undefined);
+    const renderShell = () =>
+      render(
+        <AppShell
+          title="mint"
+          tabs={[{ id: "general", label: "一般設定" }]}
+          activeTab="general"
+          onTabChange={() => undefined}
+          quickActions={[
+            {
+              id: "open-clock",
+              label: "時計を開く",
+              targetId: "clock",
+            },
+          ]}
+          onQuickAction={onQuickAction}
+        >
+          <p>設定コンテンツ</p>
+        </AppShell>,
+      );
+
+    const firstRender = renderShell();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    fireEvent.click(screen.getByRole("option", { name: /時計を開く/ }));
+    await waitFor(() => expect(onQuickAction).toHaveBeenCalledWith("clock"));
+
+    firstRender.unmount();
+    renderShell();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.getByText("最近使った項目")).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "最近使った項目を消去" }),
+    );
+
+    expect(screen.queryByText("最近使った項目")).toBeNull();
+    expect(
+      window.localStorage.getItem(
+        "mint.settings-quick-switcher.recent-results",
+      ),
+    ).toBeNull();
+    expect(
+      screen.getByRole("combobox", { name: "設定や項目、操作を検索" }),
+    ).toHaveFocus();
   });
 
   it("keeps the quick launcher open when an action fails", async () => {

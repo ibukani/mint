@@ -1,4 +1,4 @@
-import { Search, X } from "lucide-react";
+import { Search, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { TextInput } from "../components";
@@ -290,21 +290,43 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const handleSearchKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>,
   ) => {
+    if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(Math.max(0, orderedResults.length - 1));
+      return;
+    }
+    if (event.key === "PageDown") {
+      event.preventDefault();
+      setActiveIndex((current) =>
+        orderedResults.length === 0
+          ? 0
+          : Math.min(orderedResults.length - 1, current + 5),
+      );
+      return;
+    }
+    if (event.key === "PageUp") {
+      event.preventDefault();
+      setActiveIndex((current) => Math.max(0, current - 5));
+      return;
+    }
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((current) =>
-        filteredResults.length === 0
-          ? 0
-          : (current + 1) % filteredResults.length,
+        orderedResults.length === 0 ? 0 : (current + 1) % orderedResults.length,
       );
       return;
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
       setActiveIndex((current) =>
-        filteredResults.length === 0
+        orderedResults.length === 0
           ? 0
-          : (current - 1 + filteredResults.length) % filteredResults.length,
+          : (current - 1 + orderedResults.length) % orderedResults.length,
       );
       return;
     }
@@ -358,7 +380,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
             aria-expanded="true"
             aria-autocomplete="list"
             aria-haspopup="listbox"
-            aria-keyshortcuts="ArrowDown ArrowUp Enter Escape"
+            aria-keyshortcuts="ArrowDown ArrowUp Home End PageUp PageDown Enter Escape"
             aria-activedescendant={
               selectedResult ? `${resultsId}-${selectedResult.key}` : undefined
             }
@@ -389,7 +411,23 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
         </div>
 
         {recentResults.length > 0 && (
-          <div className="settings-switcher__section-label">最近使った項目</div>
+          <div className="settings-switcher__section-label">
+            <span>最近使った項目</span>
+            <button
+              type="button"
+              className="settings-switcher__clear-recent"
+              aria-label="最近使った項目を消去"
+              title="最近使った項目を消去"
+              onClick={() => {
+                setRecentKeys([]);
+                setActiveIndex(0);
+                inputRef.current?.focus();
+              }}
+            >
+              <Trash2 size={13} aria-hidden="true" />
+              履歴を消去
+            </button>
+          </div>
         )}
         <div
           ref={resultsRef}
