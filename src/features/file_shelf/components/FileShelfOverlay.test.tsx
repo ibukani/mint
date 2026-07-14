@@ -317,6 +317,21 @@ describe("FileShelfOverlay", () => {
     expect(actions.copyItem).toHaveBeenCalledWith(urlItem);
   });
 
+  it("restores the latest removal with the platform undo shortcut", () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      undoToken: "undo-token",
+    });
+    render(<FileShelfOverlay />);
+
+    fireEvent.keyDown(screen.getByRole("region", { name: "ファイルシェル" }), {
+      key: "z",
+      ctrlKey: true,
+    });
+
+    expect(actions.undo).toHaveBeenCalledOnce();
+  });
+
   it("marks clipboard history and can clear only that history", () => {
     const historyItem: FileShelfItem = {
       ...urlItem,

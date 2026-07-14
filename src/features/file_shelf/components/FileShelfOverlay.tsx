@@ -331,6 +331,9 @@ export const FileShelfOverlay: React.FC = () => {
       } else {
         void shelf.changeExpanded(false);
       }
+    } else if (modifierPressed && key === "z" && shelf.undoToken) {
+      event.preventDefault();
+      void shelf.undo();
     } else if (event.key === "Delete" && selectedIds.size > 0) {
       event.preventDefault();
       void shelf.removeItems([...selectedIds]);
