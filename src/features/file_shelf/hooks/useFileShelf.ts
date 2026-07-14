@@ -271,6 +271,22 @@ export const useFileShelf = () => {
     [fail],
   );
 
+  const copyItems = useCallback(
+    async (items: FileShelfItem[]) => {
+      const values = items
+        .map((item) => item.textContent ?? item.sourcePath)
+        .filter((value): value is string => Boolean(value));
+      if (!values.length) return;
+      try {
+        await navigator.clipboard.writeText(values.join("\n"));
+        setNotice(`${values.length}件をクリップボードへコピーしました`);
+      } catch (reason) {
+        fail(reason);
+      }
+    },
+    [fail],
+  );
+
   const openItem = useCallback(
     async (item: FileShelfItem) => {
       try {
@@ -336,6 +352,7 @@ export const useFileShelf = () => {
     undo,
     dragItems,
     copyItem,
+    copyItems,
     openItem,
     revealItem,
   };

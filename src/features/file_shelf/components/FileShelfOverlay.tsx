@@ -326,9 +326,13 @@ export const FileShelfOverlay: React.FC = () => {
     } else if (modifierPressed && key === "a") {
       event.preventDefault();
       setSelectedIds(new Set(visibleItems.map((item) => item.id)));
-    } else if (modifierPressed && key === "c" && selectedItems.length === 1) {
+    } else if (modifierPressed && key === "c" && selectedItems.length > 0) {
       event.preventDefault();
-      void shelf.copyItem(selectedItems[0]);
+      if (selectedItems.length === 1) {
+        void shelf.copyItem(selectedItems[0]);
+      } else {
+        void shelf.copyItems(selectedItems);
+      }
     } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
       event.preventDefault();
       const currentIndex = cursorEntries.findIndex(
@@ -677,6 +681,15 @@ export const FileShelfOverlay: React.FC = () => {
                   </button>
                 )}
               </>
+            )}
+            {selectedItems.length > 1 && (
+              <button
+                type="button"
+                onClick={() => void shelf.copyItems(selectedItems)}
+                aria-label="選択項目をコピー"
+              >
+                <Copy size={15} aria-hidden="true" />
+              </button>
             )}
             <button
               type="button"

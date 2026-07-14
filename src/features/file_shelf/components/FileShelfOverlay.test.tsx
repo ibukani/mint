@@ -51,6 +51,7 @@ const actions = {
   undo: vi.fn(),
   dragItems: vi.fn(),
   copyItem: vi.fn(),
+  copyItems: vi.fn(),
   openItem: vi.fn(),
   revealItem: vi.fn(),
   clearClipboardHistory: vi.fn(),
@@ -117,6 +118,8 @@ describe("FileShelfOverlay", () => {
 
     fireEvent.keyDown(shelf, { key: "a", ctrlKey: true });
     expect(screen.getByText("2件を選択")).toBeInTheDocument();
+    fireEvent.keyDown(shelf, { key: "c", ctrlKey: true });
+    expect(actions.copyItems).toHaveBeenCalledWith([first, second]);
     fireEvent.keyDown(shelf, { key: "Delete" });
     expect(actions.removeItems).toHaveBeenCalledWith(["first", "second"]);
   });
