@@ -167,6 +167,28 @@ describe("FileShelfOverlay", () => {
     expect(actions.changeExpanded).toHaveBeenCalledWith(false);
   });
 
+  it("keeps native editing and paste behavior inside the search field", () => {
+    render(<FileShelfOverlay />);
+
+    const shelf = screen.getByRole("region", { name: "ファイルシェル" });
+    fireEvent.keyDown(shelf, { key: "f", ctrlKey: true });
+    const search = screen.getByRole("searchbox", { name: "棚を検索" });
+
+    fireEvent.keyDown(search, { key: "a", ctrlKey: true });
+    fireEvent.keyDown(search, { key: "c", ctrlKey: true });
+    fireEvent.paste(search, {
+      clipboardData: {
+        items: [],
+        getData: () => "pasted into search",
+      },
+    });
+
+    expect(screen.queryByText("2件を選択")).not.toBeInTheDocument();
+    expect(actions.addContent).not.toHaveBeenCalled();
+    expect(actions.copyItem).not.toHaveBeenCalled();
+    expect(actions.copyItems).not.toHaveBeenCalled();
+  });
+
   it("moves to the last visible item and copies it with platform shortcuts", () => {
     vi.mocked(useFileShelf).mockReturnValue({
       ...expandedShelf(),

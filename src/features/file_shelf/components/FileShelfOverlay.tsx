@@ -216,6 +216,7 @@ export const FileShelfOverlay: React.FC = () => {
   };
 
   const handlePaste = async (event: React.ClipboardEvent) => {
+    if (isEditableTarget(event.target)) return;
     const image = Array.from(event.clipboardData.items)
       .find((item) => item.type.startsWith("image/"))
       ?.getAsFile();
@@ -293,6 +294,16 @@ export const FileShelfOverlay: React.FC = () => {
   const handleKeyDown = (event: React.KeyboardEvent) => {
     const modifierPressed = event.ctrlKey || event.metaKey;
     const key = event.key.toLocaleLowerCase();
+
+    if (
+      isEditableTarget(event.target) &&
+      event.key !== "Escape" &&
+      event.key !== "Enter" &&
+      !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) &&
+      !(modifierPressed && key === "f")
+    ) {
+      return;
+    }
 
     if (modifierPressed && key === "f") {
       event.preventDefault();
