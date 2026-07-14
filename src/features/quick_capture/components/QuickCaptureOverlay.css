@@ -125,12 +125,15 @@
   font-size: var(--font-size-xs);
 }
 .quick-capture__toolbar {
+  flex-wrap: wrap;
+  gap: var(--space-2);
   justify-content: space-between;
   padding-bottom: var(--space-2);
 }
 .quick-capture__toolbar-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-1);
 }
 .quick-capture__mode-switch {
@@ -142,6 +145,8 @@
 .quick-capture__toolbar-button {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
   color: var(--color-text-muted);
@@ -154,6 +159,8 @@
 .quick-capture__pin {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
