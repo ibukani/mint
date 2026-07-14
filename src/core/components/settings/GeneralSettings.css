@@ -31,9 +31,6 @@
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-control) 44%, transparent);
   color: var(--color-text-secondary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
   transition:
     border-color var(--transition-fast),
     background var(--transition-fast),
@@ -45,16 +42,6 @@
   border-color: var(--border-control-focus);
   background: var(--surface-control-hover);
   transform: translateY(-1px);
-}
-
-.feature-overview__card:active {
-  transform: translateY(0) scale(0.99);
-}
-
-.feature-overview__card:focus-visible {
-  border-color: var(--border-control-focus);
-  outline: none;
-  box-shadow: var(--shadow-focus);
 }
 
 .feature-overview__card.is-enabled {
@@ -124,6 +111,61 @@
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.feature-overview__actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.feature-overview__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.feature-overview__toggle-label {
+  min-width: 2.4rem;
+}
+
+.feature-overview__open {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.feature-overview__open:hover {
+  border-color: var(--border-control-focus);
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
+}
+
+.feature-overview__open:focus-visible {
+  border-color: var(--border-control-focus);
+  outline: none;
+  box-shadow: var(--shadow-focus);
 }
 
 .theme-choice-grid {

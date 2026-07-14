@@ -76,7 +76,7 @@ describe("GeneralSettings", () => {
     expect(autostartToggle).toBeChecked();
   });
 
-  it("summarizes feature availability and opens the selected feature settings", async () => {
+  it("toggles a feature and opens its detailed settings", async () => {
     const setActiveTab = vi.fn();
     render(
       <AppSettingsProvider>
@@ -97,15 +97,22 @@ describe("GeneralSettings", () => {
       screen.getByRole("heading", { name: "機能一覧" }),
     ).toBeInTheDocument();
     expect(screen.getByText("5 / 6 有効")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: /音声入力.*音声ファイルをテキストに変換/,
-      }),
-    ).toHaveTextContent("無効");
+    const voiceToTextToggle = screen.getByRole("switch", {
+      name: "音声入力を有効にする",
+    });
+    expect(voiceToTextToggle).not.toBeChecked();
+
+    await act(async () => {
+      fireEvent.click(voiceToTextToggle);
+      await Promise.resolve();
+    });
+
+    expect(voiceToTextToggle).toBeChecked();
+    expect(screen.getByText("6 / 6 有効")).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: /カレンダー.*予定をオーバーレイですぐ確認/,
+        name: "カレンダーの詳細設定を開く",
       }),
     );
 

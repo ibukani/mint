@@ -1,5 +1,6 @@
 import {
   Archive,
+  ArrowRight,
   CalendarDays,
   Check,
   Clock3,
@@ -129,7 +130,7 @@ export const GeneralSettings: React.FC = () => {
           <div className="settings-group__heading feature-overview__heading">
             <div>
               <h3 id="feature-overview-title">機能一覧</h3>
-              <p>使いたい機能を選ぶと、その設定をすぐに開けます。</p>
+              <p>有効化や詳細設定を、この画面からすぐに行えます。</p>
             </div>
             <StatusBadge tone={featureCountTone}>
               {featureCountLabel}
@@ -140,18 +141,21 @@ export const GeneralSettings: React.FC = () => {
               ({ id, settingsKey, label, description, icon: Icon }) => {
                 const isEnabled = settings[settingsKey].enabled;
                 return (
-                  <button
-                    type="button"
+                  <article
                     className={`feature-overview__card ${isEnabled ? "is-enabled" : "is-disabled"}`}
                     key={id}
-                    onClick={() => setActiveTab(id)}
+                    aria-labelledby={`feature-overview-${id}-label`}
                   >
                     <span className="feature-overview__icon" aria-hidden="true">
                       <Icon size={17} />
                     </span>
                     <span className="feature-overview__copy">
-                      <strong>{label}</strong>
-                      <small>{description}</small>
+                      <strong id={`feature-overview-${id}-label`}>
+                        {label}
+                      </strong>
+                      <small id={`feature-overview-${id}-description`}>
+                        {description}
+                      </small>
                     </span>
                     <span className="feature-overview__meta">
                       <StatusBadge tone={isEnabled ? "enabled" : "disabled"}>
@@ -159,7 +163,38 @@ export const GeneralSettings: React.FC = () => {
                       </StatusBadge>
                       <kbd>{settings[settingsKey].shortcut || "未設定"}</kbd>
                     </span>
-                  </button>
+                    <div className="feature-overview__actions">
+                      <span className="feature-overview__toggle">
+                        <Switch
+                          id={`feature-overview-${id}-enabled`}
+                          checked={isEnabled}
+                          aria-label={`${label}を有効にする`}
+                          aria-describedby={`feature-overview-${id}-description`}
+                          onChange={(event) =>
+                            updateSettings((previous) => ({
+                              ...previous,
+                              [settingsKey]: {
+                                ...previous[settingsKey],
+                                enabled: event.target.checked,
+                              },
+                            }))
+                          }
+                        />
+                        <span className="feature-overview__toggle-label">
+                          {isEnabled ? "有効" : "無効"}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        className="feature-overview__open"
+                        onClick={() => setActiveTab(id)}
+                        aria-label={`${label}の詳細設定を開く`}
+                      >
+                        詳細設定
+                        <ArrowRight size={14} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </article>
                 );
               },
             )}
