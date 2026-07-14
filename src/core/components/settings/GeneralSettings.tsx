@@ -1,13 +1,29 @@
-import { Check, Keyboard, MonitorCog, Moon, Power, Sun } from "lucide-react";
+import {
+  Archive,
+  CalendarDays,
+  Check,
+  Clock3,
+  Gamepad2,
+  Keyboard,
+  Mic2,
+  MonitorCog,
+  Moon,
+  NotebookPen,
+  Power,
+  Sun,
+} from "lucide-react";
 import "./GeneralSettings.css";
 import type React from "react";
 import {
   Field,
   SettingsSection,
   ShortcutInput,
+  StatusBadge,
   Switch,
 } from "../../../design/components";
 import { useAppSettings } from "../../context/AppSettings";
+import { useSettingsNavigation } from "../../context/SettingsNavigation";
+import type { FeatureSettingsKey } from "../../settingsModel";
 import { UpdaterSettings } from "./UpdaterSettings";
 
 const themeOptions = [
@@ -25,10 +41,73 @@ const themeOptions = [
   },
 ] as const;
 
+const featureOverview = [
+  {
+    id: "fileShelf",
+    settingsKey: "fileShelf",
+    label: "ファイルシェル",
+    description: "ファイルやコピーした内容を一時保存",
+    icon: Archive,
+  },
+  {
+    id: "quickCapture",
+    settingsKey: "quickCapture",
+    label: "クイックキャプチャー",
+    description: "思いつきをすぐに下書き保存",
+    icon: NotebookPen,
+  },
+  {
+    id: "gameLauncher",
+    settingsKey: "gameLauncher",
+    label: "ゲームランチャー",
+    description: "インストール済みゲームをすばやく起動",
+    icon: Gamepad2,
+  },
+  {
+    id: "clock",
+    settingsKey: "clock",
+    label: "時計オーバーレイ",
+    description: "必要なときだけ時刻を表示",
+    icon: Clock3,
+  },
+  {
+    id: "calendar",
+    settingsKey: "calendar",
+    label: "カレンダー",
+    description: "予定をオーバーレイですぐ確認",
+    icon: CalendarDays,
+  },
+  {
+    id: "voiceToText",
+    settingsKey: "voiceToText",
+    label: "音声入力",
+    description: "音声ファイルをテキストに変換",
+    icon: Mic2,
+  },
+] as const satisfies ReadonlyArray<{
+  id: Exclude<FeatureSettingsKey, "general">;
+  settingsKey: FeatureSettingsKey;
+  label: string;
+  description: string;
+  icon: typeof Archive;
+}>;
+
 export const GeneralSettings: React.FC = () => {
   const { settings, updateSettings, shortcutErrors } = useAppSettings();
+  const { setActiveTab } = useSettingsNavigation();
 
   if (!settings) return null;
+
+  const enabledFeatureCount = featureOverview.filter(
+    ({ settingsKey }) => settings[settingsKey].enabled,
+  ).length;
+  const featureCountLabel = `${enabledFeatureCount} / ${featureOverview.length} 有効`;
+  const featureCountTone =
+    enabledFeatureCount === 0
+      ? "disabled"
+      : enabledFeatureCount === featureOverview.length
+        ? "enabled"
+        : "info";
 
   return (
     <SettingsSection
@@ -36,6 +115,50 @@ export const GeneralSettings: React.FC = () => {
       description="mint の外観と、設定画面をすばやく呼び出す方法を管理します。"
     >
       <div className="general-settings-layout">
+        <section
+          className="settings-group feature-overview"
+          aria-labelledby="feature-overview-title"
+        >
+          <div className="settings-group__heading feature-overview__heading">
+            <div>
+              <h3 id="feature-overview-title">機能一覧</h3>
+              <p>使いたい機能を選ぶと、その設定をすぐに開けます。</p>
+            </div>
+            <StatusBadge tone={featureCountTone}>
+              {featureCountLabel}
+            </StatusBadge>
+          </div>
+          <div className="feature-overview__grid">
+            {featureOverview.map(
+              ({ id, settingsKey, label, description, icon: Icon }) => {
+                const isEnabled = settings[settingsKey].enabled;
+                return (
+                  <button
+                    type="button"
+                    className={`feature-overview__card ${isEnabled ? "is-enabled" : "is-disabled"}`}
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                  >
+                    <span className="feature-overview__icon" aria-hidden="true">
+                      <Icon size={17} />
+                    </span>
+                    <span className="feature-overview__copy">
+                      <strong>{label}</strong>
+                      <small>{description}</small>
+                    </span>
+                    <span className="feature-overview__meta">
+                      <StatusBadge tone={isEnabled ? "enabled" : "disabled"}>
+                        {isEnabled ? "有効" : "無効"}
+                      </StatusBadge>
+                      <kbd>{settings[settingsKey].shortcut || "未設定"}</kbd>
+                    </span>
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </section>
+
         <section className="settings-group" aria-labelledby="appearance-title">
           <div className="settings-group__heading">
             <MonitorCog size={18} aria-hidden="true" />
