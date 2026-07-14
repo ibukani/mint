@@ -43,6 +43,8 @@ function getArtworkLabel(title: string): string {
 const gameDomId = (game: InstalledGame) =>
   `game-launcher-game-${gameKey(game).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 
+const GAME_PAGE_STEP = 5;
+
 export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const [loadedSource, setLoadedSource] = useState<string | null>(null);
@@ -214,6 +216,14 @@ export const GameLauncherOverlay: React.FC = () => {
       event.preventDefault();
       event.stopPropagation();
       selectIndex((activeIndex - 1 + games.length) % games.length);
+    } else if (event.key === "PageDown" && games.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectIndex(Math.min(games.length - 1, activeIndex + GAME_PAGE_STEP));
+    } else if (event.key === "PageUp" && games.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectIndex(Math.max(0, activeIndex - GAME_PAGE_STEP));
     } else if (event.key === "Home" && games.length) {
       event.preventDefault();
       event.stopPropagation();
@@ -270,7 +280,7 @@ export const GameLauncherOverlay: React.FC = () => {
             aria-label="ゲームを検索"
             aria-controls="game-launcher-list"
             aria-activedescendant={selected ? gameDomId(selected) : undefined}
-            aria-keyshortcuts={`ArrowDown ArrowUp Home End Enter Escape ${searchShortcutModifier}+F`}
+            aria-keyshortcuts={`ArrowDown ArrowUp Home End PageUp PageDown Enter Escape ${searchShortcutModifier}+F`}
             value={query}
             onKeyDown={handleSearchKeyDown}
             onChange={(event) => {
@@ -295,8 +305,11 @@ export const GameLauncherOverlay: React.FC = () => {
               <X size={15} aria-hidden="true" />
             </button>
           ) : (
-            <kbd aria-label="上下、Home、Endキーで選択、Enterで起動">
-              ↑ ↓ Enter
+            <kbd
+              aria-label="上下、Home、End、PageUp、PageDownキーで選択、Enterで起動"
+              title="↑↓: 1件移動 / PageUp・PageDown: 5件移動 / Home・End: 先頭・末尾 / Enter: 起動"
+            >
+              ↑ ↓ PgUp PgDn Enter
             </kbd>
           )}
         </label>

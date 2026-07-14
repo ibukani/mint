@@ -147,9 +147,9 @@ describe("GameLauncherOverlay", () => {
     });
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
-      "ArrowDown ArrowUp Home End Enter Escape Control+F",
+      "ArrowDown ArrowUp Home End PageUp PageDown Enter Escape Control+F",
     );
-    expect(screen.getByText("↑ ↓ Enter")).toBeInTheDocument();
+    expect(screen.getByText("↑ ↓ PgUp PgDn Enter")).toBeInTheDocument();
 
     fireEvent.change(search, { target: { value: "valorant" } });
     expect(search).toHaveValue("valorant");
@@ -321,6 +321,51 @@ describe("GameLauncherOverlay", () => {
     expect(
       screen.getByRole("dialog", { name: "ゲームランチャー" }),
     ).toHaveClass("is-hiding");
+  });
+
+  it("PageUpとPageDownで5件単位にゲームを移動する", async () => {
+    apiMocks.list.mockResolvedValueOnce({
+      games: Array.from({ length: 8 }, (_, index) => ({
+        id: String(index + 1),
+        title: `Game ${String(index + 1).padStart(2, "0")}`,
+        store: "steam" as const,
+        imagePath: null,
+        fallbackImagePath: null,
+      })),
+      sources: [],
+    });
+
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
+    await screen.findByRole("button", { name: /Game 01Steam/ });
+    expect(search).toHaveAttribute(
+      "aria-keyshortcuts",
+      "ArrowDown ArrowUp Home End PageUp PageDown Enter Escape Control+F",
+    );
+    expect(screen.getByText("↑ ↓ PgUp PgDn Enter")).toBeInTheDocument();
+
+    fireEvent.keyDown(search, { key: "PageDown" });
+    await waitFor(() =>
+      expect(search).toHaveAttribute(
+        "aria-activedescendant",
+        "game-launcher-game-steam-6",
+      ),
+    );
+
+    fireEvent.keyDown(search, { key: "PageUp" });
+    await waitFor(() =>
+      expect(search).toHaveAttribute(
+        "aria-activedescendant",
+        "game-launcher-game-steam-1",
+      ),
+    );
   });
 
   it("アクションからも検索ショートカットへ戻れる", async () => {
