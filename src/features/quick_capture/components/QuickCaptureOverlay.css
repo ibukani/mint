@@ -31,7 +31,8 @@
 
 .quick-capture__header {
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3);
+  padding-right: calc(var(--space-4) + 32px);
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -77,11 +78,6 @@
 .quick-capture textarea:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
-}
-.quick-capture__icon-button {
-  display: grid;
-  padding: var(--space-2);
-  place-items: center;
 }
 
 .quick-capture__body {

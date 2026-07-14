@@ -380,6 +380,17 @@ export const QuickCaptureOverlay: React.FC = () => {
         aria-label="クイックキャプチャー"
         onKeyDown={handleKeyDown}
       >
+        <button
+          type="button"
+          className="overlay-close-button"
+          aria-label="クイックキャプチャーを閉じる"
+          aria-keyshortcuts="Escape Alt+2"
+          title="閉じる（Esc）"
+          onClick={() => void capture.close()}
+        >
+          <X size={15} aria-hidden="true" />
+        </button>
+
         <header className="quick-capture__header">
           <div className="quick-capture__heading">
             <FileText size={18} aria-hidden="true" />
@@ -418,16 +429,6 @@ export const QuickCaptureOverlay: React.FC = () => {
                 </button>
               </>
             )}
-            <button
-              type="button"
-              className="quick-capture__icon-button"
-              aria-label="クイックキャプチャーを閉じる"
-              aria-keyshortcuts="Escape Alt+2"
-              title="閉じる（Esc）"
-              onClick={() => void capture.close()}
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
           </div>
         </header>
 

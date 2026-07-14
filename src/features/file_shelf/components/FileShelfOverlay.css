@@ -95,6 +95,7 @@
 .file-shelf__header {
   justify-content: space-between;
   padding: var(--space-3);
+  padding-right: calc(var(--space-3) + 32px);
   border-bottom: 1px solid var(--border-subtle);
 }
 

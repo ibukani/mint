@@ -411,6 +411,17 @@ export const FileShelfOverlay: React.FC = () => {
 
   return (
     <OverlayFrame>
+      <button
+        type="button"
+        className="overlay-close-button"
+        aria-label="シェルフを折りたたむ"
+        aria-keyshortcuts="Escape"
+        title="折りたたむ（Esc）"
+        onClick={() => void shelf.changeExpanded(false)}
+      >
+        <X size={15} aria-hidden="true" />
+      </button>
+
       <section
         ref={containerRef}
         className={`file-shelf${shelf.isDropTarget ? " is-drop-target" : ""}`}
@@ -449,14 +460,6 @@ export const FileShelfOverlay: React.FC = () => {
               disabled={shelf.busy}
             >
               <Plus size={17} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => void shelf.changeExpanded(false)}
-              aria-label="シェルフを折りたたむ"
-              title="折りたたむ"
-            >
-              <X size={17} aria-hidden="true" />
             </button>
           </div>
         </header>
