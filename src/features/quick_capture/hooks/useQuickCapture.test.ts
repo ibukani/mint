@@ -5,6 +5,7 @@ import type { QuickCaptureNote, QuickCaptureState } from "../types";
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),
   importBackup: vi.fn(),
+  createNote: vi.fn(),
   promote: vi.fn(),
   saveDraft: vi.fn(),
   updateNote: vi.fn(),
@@ -15,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../api", () => ({
   addQuickCaptureAttachment: vi.fn(),
   chooseQuickCaptureAttachment: vi.fn(),
-  createQuickCaptureNote: vi.fn(),
+  createQuickCaptureNote: mocks.createNote,
   deleteQuickCaptureAttachment: vi.fn(),
   deleteQuickCaptureNote: vi.fn(),
   exportQuickCaptureBackup: vi.fn(),
@@ -74,6 +75,8 @@ describe("useQuickCapture", () => {
     }));
     mocks.listen.mockResolvedValue(() => undefined);
     mocks.importBackup.mockResolvedValue(state);
+    mocks.createNote.mockReset();
+    mocks.updateNote.mockReset();
   });
 
   it("keeps the draft open when selecting a note cannot save the latest edit", async () => {
@@ -155,6 +158,81 @@ describe("useQuickCapture", () => {
       tags: [],
     });
     expect(result.current.content).toBe("");
+  });
+
+  it("saves the latest edit before duplicating the active note", async () => {
+    const duplicatedNote = {
+      ...savedNote,
+      id: "note-2",
+      content: "テンプレートから作ったメモ",
+      tags: ["work"],
+      updatedAt: "2026-07-14T00:00:02.000Z",
+    };
+    mocks.updateNote.mockResolvedValue({
+      ...savedNote,
+      content: "テンプレートから作ったメモ",
+      tags: ["work"],
+      updatedAt: "2026-07-14T00:00:01.000Z",
+    });
+    mocks.createNote.mockResolvedValue(duplicatedNote);
+
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await act(async () => {
+      await result.current.selectNote(savedNote);
+    });
+    act(() => {
+      result.current.setContent("テンプレートから作ったメモ");
+      result.current.setTags("work");
+    });
+
+    await act(async () => {
+      await result.current.duplicateActive();
+    });
+
+    expect(mocks.updateNote).toHaveBeenCalledWith("note-1", {
+      content: "テンプレートから作ったメモ",
+      tags: ["work"],
+      pinned: false,
+    });
+    expect(mocks.createNote).toHaveBeenCalledWith({
+      content: "テンプレートから作ったメモ",
+      tags: ["work"],
+      pinned: false,
+    });
+    expect(result.current.activeId).toBe("note-2");
+    expect(result.current.content).toBe("テンプレートから作ったメモ");
+  });
+
+  it("keeps the active note and exposes a retryable error when duplication fails", async () => {
+    mocks.updateNote.mockResolvedValue(savedNote);
+    mocks.createNote.mockRejectedValueOnce(new Error("複製に失敗しました"));
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await act(async () => {
+      await result.current.selectNote(savedNote);
+    });
+    await waitFor(() => expect(result.current.activeId).toBe("note-1"));
+    await act(async () => {
+      await result.current.duplicateActive();
+    });
+
+    expect(result.current.activeId).toBe("note-1");
+    expect(result.current.error).toBe("複製に失敗しました");
+    expect(result.current.status).toBe("error");
+    expect(result.current.canRetryDuplicate).toBe(true);
+
+    mocks.createNote.mockResolvedValueOnce({
+      ...savedNote,
+      id: "note-2",
+      content: savedNote.content,
+    });
+    await act(async () => {
+      await result.current.retryDuplicate();
+    });
+
+    expect(result.current.activeId).toBe("note-2");
+    expect(result.current.canRetryDuplicate).toBe(false);
   });
 
   it("keeps a newer edit when promotion finishes after the user keeps typing", async () => {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addQuickCaptureAttachment,
   chooseQuickCaptureAttachment,
+  createQuickCaptureNote,
   deleteQuickCaptureAttachment,
   deleteQuickCaptureNote,
   exportQuickCaptureBackup,
@@ -34,6 +35,7 @@ export const useQuickCapture = () => {
   const [status, setStatus] = useState<CaptureSaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [canRetrySave, setCanRetrySave] = useState(false);
+  const [canRetryDuplicate, setCanRetryDuplicate] = useState(false);
   const [focusSequence, setFocusSequence] = useState(0);
   const loaded = useRef(false);
   const revision = useRef(0);
@@ -42,6 +44,7 @@ export const useQuickCapture = () => {
   const closeRef = useRef<() => Promise<void>>(async () => {});
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const promotionInFlightRef = useRef(false);
+  const duplicateInFlightRef = useRef(false);
   const updateContent = useCallback((value: string) => {
     revision.current += 1;
     setContent(value);
@@ -79,6 +82,7 @@ export const useQuickCapture = () => {
     setTags(nextDraft.tags);
     setPinned(false);
     setError(null);
+    setCanRetryDuplicate(false);
     setFocusSequence((value) => value + 1);
   }, []);
 
@@ -113,6 +117,7 @@ export const useQuickCapture = () => {
     setStatus("saving");
     setError(null);
     setCanRetrySave(false);
+    setCanRetryDuplicate(false);
     const operation = persistQueueRef.current.then(async () => {
       try {
         if (activeId) {
@@ -228,6 +233,44 @@ export const useQuickCapture = () => {
       promotionInFlightRef.current = false;
     }
   }, [activeId, clearPendingPersist, content, showDraft, sortNotes, tags]);
+
+  const duplicateActive = useCallback(async () => {
+    if (!activeId || duplicateInFlightRef.current) return false;
+    duplicateInFlightRef.current = true;
+    try {
+      const saved = await persist();
+      if (!saved) return false;
+
+      const duplicateRevision = ++revision.current;
+      setStatus("saving");
+      setError(null);
+      setCanRetrySave(false);
+      setCanRetryDuplicate(false);
+      const duplicated = await createQuickCaptureNote({
+        content,
+        tags: parseTags(tags),
+        pinned,
+      });
+      setNotes((current) => sortNotes([duplicated, ...current]));
+      if (duplicateRevision !== revision.current) return true;
+
+      setActiveId(duplicated.id);
+      setContent(duplicated.content);
+      setTags(tagsToText(duplicated.tags));
+      setPinned(duplicated.pinned);
+      setFocusSequence((value) => value + 1);
+      setStatus("saved");
+      return true;
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setStatus("error");
+      setCanRetrySave(false);
+      setCanRetryDuplicate(true);
+      return false;
+    } finally {
+      duplicateInFlightRef.current = false;
+    }
+  }, [activeId, content, persist, pinned, sortNotes, tags]);
 
   const removeActive = useCallback(async () => {
     if (!activeId) return null;
@@ -388,6 +431,7 @@ export const useQuickCapture = () => {
     close,
     content,
     draft,
+    duplicateActive,
     error,
     exportBackup,
     focusSequence,
@@ -406,7 +450,9 @@ export const useQuickCapture = () => {
     status,
     tags,
     canRetrySave,
+    canRetryDuplicate,
     importBackup,
+    retryDuplicate: duplicateActive,
     reload,
   };
 };

@@ -133,6 +133,39 @@ describe("QuickCaptureOverlay", () => {
     });
   });
 
+  it("duplicates a saved note with the keyboard shortcut", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "定型メモ" } });
+    fireEvent.change(screen.getByLabelText("タグ"), {
+      target: { value: "work" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /メモに保存/ }));
+
+    const note = await screen.findByRole("option", { name: /定型メモ/ });
+    fireEvent.click(note);
+    const duplicateButton = await screen.findByRole("button", {
+      name: "複製",
+    });
+    expect(duplicateButton).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+Shift+D Meta+Shift+D",
+    );
+
+    fireEvent.keyDown(screen.getByRole("dialog"), {
+      key: "d",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+
+    await waitFor(() =>
+      expect(screen.getAllByRole("option", { name: /定型メモ/ })).toHaveLength(
+        2,
+      ),
+    );
+    expect(screen.getByRole("heading", { name: "定型メモ" })).toBeVisible();
+  });
+
   it("persists the latest draft before exporting a backup", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

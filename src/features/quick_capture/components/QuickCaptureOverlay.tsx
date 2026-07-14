@@ -6,6 +6,7 @@ import {
   Check,
   ClipboardPaste,
   Copy,
+  CopyPlus,
   Download,
   Edit3,
   Eye,
@@ -186,6 +187,15 @@ export const QuickCaptureOverlay: React.FC = () => {
     ) {
       event.preventDefault();
       void capture.promote();
+    } else if (
+      event.key.toLocaleLowerCase() === "d" &&
+      (event.ctrlKey || event.metaKey) &&
+      event.shiftKey &&
+      capture.activeId &&
+      !isSaving
+    ) {
+      event.preventDefault();
+      void capture.duplicateActive();
     }
   };
 
@@ -352,9 +362,25 @@ export const QuickCaptureOverlay: React.FC = () => {
           </div>
           <div className="quick-capture__header-actions">
             {capture.activeId && (
-              <button type="button" onClick={() => void capture.openDraft()}>
-                下書きへ
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  aria-keyshortcuts="Control+Shift+D Meta+Shift+D"
+                  title={`メモを複製（${shortcutModifier}+Shift+D）`}
+                  onClick={() => void capture.duplicateActive()}
+                >
+                  <CopyPlus size={14} aria-hidden="true" />
+                  複製
+                </button>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void capture.openDraft()}
+                >
+                  下書きへ
+                </button>
+              </>
             )}
             <button
               type="button"
@@ -565,17 +591,27 @@ export const QuickCaptureOverlay: React.FC = () => {
                       : "")}
               </span>
               <div>
-                {capture.canRetrySave && capture.error && (
-                  <button
-                    type="button"
-                    className="quick-capture__retry"
-                    disabled={isSaving}
-                    onClick={() => void capture.retrySave()}
-                    title="保存を再試行"
-                  >
-                    <RefreshCw size={14} aria-hidden="true" /> 再試行
-                  </button>
-                )}
+                {capture.error &&
+                  (capture.canRetrySave || capture.canRetryDuplicate) && (
+                    <button
+                      type="button"
+                      className="quick-capture__retry"
+                      disabled={isSaving}
+                      onClick={() =>
+                        void (capture.canRetryDuplicate
+                          ? capture.retryDuplicate()
+                          : capture.retrySave())
+                      }
+                      title={
+                        capture.canRetryDuplicate
+                          ? "複製を再試行"
+                          : "保存を再試行"
+                      }
+                    >
+                      <RefreshCw size={14} aria-hidden="true" />
+                      {capture.canRetryDuplicate ? "複製を再試行" : "再試行"}
+                    </button>
+                  )}
                 {capture.activeId && (
                   <button
                     type="button"
