@@ -11,9 +11,14 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
+import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../../quick_capture/events";
 import { VoiceToTextSettings } from "./VoiceToTextSettings";
 
 const dialogMocks = vi.hoisted(() => ({ open: vi.fn() }));
+const eventMocks = vi.hoisted(() => ({
+  emit: vi.fn().mockResolvedValue(undefined),
+  listen: vi.fn().mockResolvedValue(() => undefined),
+}));
 type DropEventHandler = (event: { payload: DragDropEvent }) => void;
 const dragDropMocks = vi.hoisted(() => ({
   handler: null as DropEventHandler | null,
@@ -25,6 +30,11 @@ const silenceExpectedConsoleError = () =>
 // Mock invoke
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  emit: eventMocks.emit,
+  listen: eventMocks.listen,
 }));
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
@@ -43,6 +53,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 describe("VoiceToTextSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    eventMocks.emit.mockClear();
     dragDropMocks.handler = null;
     dialogMocks.open.mockResolvedValue(null);
     Object.assign(navigator, {
@@ -535,6 +546,15 @@ describe("VoiceToTextSettings", () => {
     ).toBeVisible();
     expect(saveButton).toBeDisabled();
     expect(invoke).toHaveBeenCalledTimes(4);
+    expect(eventMocks.emit).toHaveBeenCalledWith(
+      QUICK_CAPTURE_NOTE_CREATED_EVENT,
+      {
+        note: expect.objectContaining({
+          content: "保存する議事録",
+          tags: ["文字起こし"],
+        }),
+      },
+    );
   });
 
   it("keeps note saving retryable when quick capture rejects the note", async () => {

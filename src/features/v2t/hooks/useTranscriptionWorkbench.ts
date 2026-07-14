@@ -1,7 +1,9 @@
+import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createQuickCaptureNote } from "../../quick_capture/api";
+import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../../quick_capture/events";
 import {
   chooseAudioFile,
   isSupportedAudioFilePath,
@@ -440,11 +442,16 @@ export const useTranscriptionWorkbench = ({
     setSaveNoteStatus("");
 
     try {
-      await createQuickCaptureNote({
+      const createdNote = await createQuickCaptureNote({
         content: transcriptionText,
         tags: ["文字起こし"],
         pinned: false,
       });
+      void emit(QUICK_CAPTURE_NOTE_CREATED_EVENT, { note: createdNote }).catch(
+        (error) => {
+          console.warn("Failed to notify quick capture note creation", error);
+        },
+      );
       if (attempt !== saveNoteAttemptRef.current) return;
       setTranscriptionSaved(true);
       setSaveNoteStatus("クイックキャプチャーに保存しました");

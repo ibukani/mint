@@ -14,6 +14,8 @@ import {
   saveQuickCaptureDraft,
   updateQuickCaptureNote,
 } from "../api";
+import type { QuickCaptureNoteCreatedPayload } from "../events";
+import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../events";
 import type { QuickCaptureNote } from "../types";
 
 export type CaptureSaveStatus = "idle" | "saving" | "saved" | "error";
@@ -404,6 +406,16 @@ export const useQuickCapture = () => {
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
     const shown = listen("quick-capture-shown", () => showDraft());
+    const noteCreated = listen<QuickCaptureNoteCreatedPayload>(
+      QUICK_CAPTURE_NOTE_CREATED_EVENT,
+      ({ payload }) => {
+        const note = payload?.note;
+        if (!note) return;
+        setNotes((current) =>
+          sortNotes([note, ...current.filter((item) => item.id !== note.id)]),
+        );
+      },
+    );
     const hide = listen(
       "quick-capture-hide-requested",
       () => void closeRef.current(),
@@ -412,9 +424,10 @@ export const useQuickCapture = () => {
       document.body.classList.remove("is-overlay");
       document.documentElement.classList.remove("is-overlay");
       void shown.then((unlisten) => unlisten());
+      void noteCreated.then((unlisten) => unlisten());
       void hide.then((unlisten) => unlisten());
     };
-  }, [reload, showDraft]);
+  }, [reload, showDraft, sortNotes]);
 
   const allTags = useMemo(
     () =>

@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../events";
 import type { QuickCaptureNote, QuickCaptureState } from "../types";
 
 const mocks = vi.hoisted(() => ({
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   updateNote: vi.fn(),
   hide: vi.fn(),
   listen: vi.fn(),
+  listeners: new Map<string, (event: { payload?: unknown }) => void>(),
 }));
 
 vi.mock("../api", () => ({
@@ -59,6 +61,7 @@ const state: QuickCaptureState = {
 describe("useQuickCapture", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.listeners.clear();
     mocks.load.mockResolvedValue(state);
     mocks.promote.mockResolvedValue({
       note: savedNote,
@@ -73,7 +76,15 @@ describe("useQuickCapture", () => {
       tags: input.tags,
       updatedAt: "2026-07-13T00:00:00.000Z",
     }));
-    mocks.listen.mockResolvedValue(() => undefined);
+    mocks.listen.mockImplementation(
+      async (
+        event: string,
+        handler: (event: { payload?: unknown }) => void,
+      ) => {
+        mocks.listeners.set(event, handler);
+        return () => mocks.listeners.delete(event);
+      },
+    );
     mocks.importBackup.mockResolvedValue(state);
     mocks.createNote.mockReset();
     mocks.updateNote.mockReset();
@@ -93,6 +104,30 @@ describe("useQuickCapture", () => {
     expect(result.current.activeId).toBeNull();
     expect(result.current.content).toBe("保存できない最新の編集");
     expect(result.current.error).toBe("保存に失敗しました");
+  });
+
+  it("adds a note created in another window without replacing the current draft", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+
+    const externalNote: QuickCaptureNote = {
+      ...savedNote,
+      id: "note-from-transcription",
+      content: "別画面から保存された文字起こし",
+      tags: ["文字起こし"],
+      updatedAt: "2026-07-14T12:00:00.000Z",
+    };
+
+    await act(async () => {
+      mocks.listeners.get(QUICK_CAPTURE_NOTE_CREATED_EVENT)?.({
+        payload: { note: externalNote },
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.notes[0]).toEqual(externalNote);
+    expect(result.current.content).toBe("下書きの内容");
+    expect(result.current.activeId).toBeNull();
   });
 
   it("does not hide the window when closing cannot save the latest edit", async () => {
