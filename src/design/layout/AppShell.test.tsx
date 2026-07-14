@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -11,6 +11,10 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 describe("AppShell", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("provides a keyboard skip link to the main content", () => {
     render(
       <AppShell
@@ -230,6 +234,42 @@ describe("AppShell", () => {
     const options = screen.getAllByRole("option");
     expect(options[0]).toHaveTextContent("時計を開く");
     expect(options[0]).toHaveTextContent("最近");
+  });
+
+  it("restores successful quick actions after the shell is remounted", async () => {
+    const onQuickAction = vi.fn().mockResolvedValue(undefined);
+    const renderShell = () =>
+      render(
+        <AppShell
+          title="mint"
+          tabs={[{ id: "general", label: "一般設定" }]}
+          activeTab="general"
+          onTabChange={() => undefined}
+          quickActions={[
+            {
+              id: "open-clock",
+              label: "時計を開く",
+              description: "時計オーバーレイを表示",
+              targetId: "clock",
+            },
+          ]}
+          onQuickAction={onQuickAction}
+        >
+          <p>設定コンテンツ</p>
+        </AppShell>,
+      );
+
+    const firstRender = renderShell();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    fireEvent.click(screen.getByRole("option", { name: /時計を開く/ }));
+    await waitFor(() => expect(onQuickAction).toHaveBeenCalledWith("clock"));
+
+    firstRender.unmount();
+    renderShell();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+
+    expect(screen.getByText("最近使った項目")).toBeVisible();
+    expect(screen.getAllByRole("option")[0]).toHaveTextContent("時計を開く");
   });
 
   it("keeps the quick launcher open when an action fails", async () => {

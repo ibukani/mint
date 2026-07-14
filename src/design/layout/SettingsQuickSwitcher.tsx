@@ -41,6 +41,19 @@ const normalizeSearchText = (value: string) =>
   value.toLocaleLowerCase("ja").replace(/\s+/g, "");
 
 const MAX_RECENT_RESULTS = 4;
+const RECENT_RESULTS_STORAGE_KEY =
+  "mint.settings-quick-switcher.recent-results";
+
+const readRecentKeys = () => {
+  try {
+    const stored = window.localStorage.getItem(RECENT_RESULTS_STORAGE_KEY);
+    return stored
+      ? stored.split("\n").filter(Boolean).slice(0, MAX_RECENT_RESULTS)
+      : [];
+  } catch {
+    return [];
+  }
+};
 
 export const SettingsQuickSwitcher = <TTabId extends string>({
   tabs,
@@ -55,7 +68,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const [activeIndex, setActiveIndex] = useState(0);
   const [actionError, setActionError] = useState("");
   const [isSelecting, setIsSelecting] = useState(false);
-  const [recentKeys, setRecentKeys] = useState<string[]>([]);
+  const [recentKeys, setRecentKeys] = useState<string[]>(readRecentKeys);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
@@ -192,6 +205,21 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       revealElementVertically(results, activeOption, 8);
     }
   }, [isOpen, selectedResult]);
+
+  useEffect(() => {
+    try {
+      if (recentKeys.length === 0) {
+        window.localStorage.removeItem(RECENT_RESULTS_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(
+          RECENT_RESULTS_STORAGE_KEY,
+          recentKeys.join("\n"),
+        );
+      }
+    } catch {
+      // Recent navigation is optional; the launcher remains usable without storage.
+    }
+  }, [recentKeys]);
 
   if (!isOpen) return null;
 
