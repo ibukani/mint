@@ -18,7 +18,7 @@ interface AppShellProps<TTabId extends string> {
   title: string;
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
-  onTabChange: (tabId: TTabId) => void;
+  onTabChange: (tabId: TTabId, targetId?: string) => void;
   contextLabel?: string;
   statusLabel?: string;
   statusTone?: "neutral" | "pending" | "success" | "error";

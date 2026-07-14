@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsWindow } from "./useSettingsWindow";
 
@@ -60,5 +60,19 @@ describe("useSettingsWindow theme handling", () => {
     expect(matchMedia).not.toHaveBeenCalled();
 
     unmount();
+  });
+
+  it("records a focus target when navigating to an individual setting", () => {
+    const { result } = renderHook(() => useSettingsWindow("dark"));
+
+    act(() => {
+      result.current.setActiveTab("voiceToText", "v2t-api-key-input");
+    });
+
+    expect(result.current.activeTab).toBe("voiceToText");
+    expect(result.current.focusRequest).toEqual({
+      id: 1,
+      targetId: "v2t-api-key-input",
+    });
   });
 });

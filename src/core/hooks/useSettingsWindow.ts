@@ -41,12 +41,18 @@ export const useSettingsWindow = (theme: ThemeMode | undefined) => {
     id: number;
     targetId?: string;
   }>({ id: 0 });
-  const navigateToTab = useCallback((tabId: SettingsTabId) => {
-    setFocusRequest((current) =>
-      current.targetId ? { id: current.id } : current,
-    );
-    setActiveTab(tabId);
-  }, []);
+  const navigateToTab = useCallback(
+    (tabId: SettingsTabId, targetId?: string) => {
+      setFocusRequest((current) => {
+        if (targetId) {
+          return { id: current.id + 1, targetId };
+        }
+        return current.targetId ? { id: current.id } : current;
+      });
+      setActiveTab(tabId);
+    },
+    [],
+  );
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);

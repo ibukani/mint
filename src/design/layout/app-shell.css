@@ -607,6 +607,15 @@
   color: var(--color-accent);
 }
 
+.settings-switcher__option.is-setting .settings-switcher__option-icon {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: transparent;
+}
+
 .settings-switcher__option-copy {
   display: flex;
   min-width: 0;
@@ -637,6 +646,13 @@
   border-radius: 999px;
   background: var(--surface-success);
   color: var(--color-success);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.settings-switcher__scope {
+  flex: 0 0 auto;
+  color: var(--color-text-subtle);
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
 }

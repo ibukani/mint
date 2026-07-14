@@ -63,7 +63,7 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("dialog", { name: "設定を検索" })).toBeVisible();
     const searchInput = screen.getByRole("combobox", {
-      name: "設定カテゴリを検索",
+      name: "設定や項目を検索",
     });
     expect(searchInput).toHaveFocus();
 
@@ -95,7 +95,7 @@ describe("AppShell", () => {
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const searchInput = screen.getByRole("combobox", {
-      name: "設定カテゴリを検索",
+      name: "設定や項目を検索",
     });
     fireEvent.keyDown(searchInput, { key: "ArrowDown" });
 
@@ -103,6 +103,49 @@ describe("AppShell", () => {
     expect(options[1]).toHaveAttribute("aria-selected", "true");
     fireEvent.keyDown(searchInput, { key: "Enter" });
     expect(onTabChange).toHaveBeenCalledWith("voiceToText");
+  });
+
+  it("finds an individual setting and forwards its focus target", () => {
+    const onTabChange = vi.fn();
+    render(
+      <AppShell
+        title="mint"
+        tabs={[
+          { id: "general", label: "一般設定" },
+          {
+            id: "voiceToText",
+            label: "音声入力",
+            searchItems: [
+              {
+                id: "api-key",
+                label: "APIキー",
+                description: "音声認識APIの認証情報",
+                keywords: ["OpenAI", "Groq"],
+                targetId: "v2t-api-key-input",
+              },
+            ],
+          },
+        ]}
+        activeTab="general"
+        onTabChange={onTabChange}
+      >
+        <p>設定コンテンツ</p>
+      </AppShell>,
+    );
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目を検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "APIキー" } });
+
+    expect(screen.getByRole("option")).toHaveTextContent("APIキー");
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    expect(onTabChange).toHaveBeenCalledWith(
+      "voiceToText",
+      "v2t-api-key-input",
+    );
   });
 
   it("does not steal Ctrl+K from an editable control and can clear a query", () => {
@@ -123,7 +166,7 @@ describe("AppShell", () => {
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const searchInput = screen.getByRole("combobox", {
-      name: "設定カテゴリを検索",
+      name: "設定や項目を検索",
     });
     fireEvent.change(searchInput, { target: { value: "テーマ" } });
     fireEvent.click(screen.getByRole("button", { name: "設定検索をクリア" }));
@@ -147,7 +190,7 @@ describe("AppShell", () => {
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const searchInput = screen.getByRole("combobox", {
-      name: "設定カテゴリを検索",
+      name: "設定や項目を検索",
     });
     fireEvent.change(searchInput, { target: { value: "存在しない設定" } });
     expect(screen.queryAllByRole("option")).toHaveLength(0);

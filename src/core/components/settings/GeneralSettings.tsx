@@ -193,6 +193,7 @@ export const GeneralSettings: React.FC = () => {
                       name="theme"
                       value={value}
                       checked={isActive}
+                      id={value === "dark" ? "theme-dark-choice" : undefined}
                       aria-label={label}
                       onChange={() => updateSettings({ theme: value })}
                     />

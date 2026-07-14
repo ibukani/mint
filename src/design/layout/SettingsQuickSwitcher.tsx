@@ -2,15 +2,28 @@ import { Search, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { TextInput } from "../components";
-import type { SidebarTab } from "./Sidebar";
+import type { SidebarSearchItem, SidebarTab } from "./Sidebar";
 import { revealElementVertically } from "./scrollVisibility";
+
+type SettingsSearchResult<TTabId extends string> =
+  | {
+      kind: "tab";
+      key: string;
+      tab: SidebarTab<TTabId>;
+    }
+  | {
+      kind: "setting";
+      key: string;
+      item: SidebarSearchItem;
+      tab: SidebarTab<TTabId>;
+    };
 
 interface SettingsQuickSwitcherProps<TTabId extends string> {
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
   isOpen: boolean;
   onClose: () => void;
-  onTabChange: (tabId: TTabId) => void;
+  onTabChange: (tabId: TTabId, targetId?: string) => void;
 }
 
 const normalizeSearchText = (value: string) =>
@@ -34,10 +47,16 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
 
   const filteredTabs = useMemo(() => {
     const normalizedQuery = normalizeSearchText(query);
-    if (!normalizedQuery) return tabs;
+    if (!normalizedQuery) {
+      return tabs.map<SettingsSearchResult<TTabId>>((tab) => ({
+        kind: "tab",
+        key: `tab:${tab.id}`,
+        tab,
+      }));
+    }
 
-    return tabs.filter((tab) => {
-      const searchableText = [
+    return tabs.flatMap<SettingsSearchResult<TTabId>>((tab) => {
+      const tabSearchableText = [
         tab.label,
         tab.navigationLabel,
         tab.description,
@@ -45,10 +64,32 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       ]
         .filter(Boolean)
         .join(" ");
-      return normalizeSearchText(searchableText).includes(normalizedQuery);
+      const results: SettingsSearchResult<TTabId>[] = [];
+      if (normalizeSearchText(tabSearchableText).includes(normalizedQuery)) {
+        results.push({ kind: "tab", key: `tab:${tab.id}`, tab });
+      }
+
+      for (const item of tab.searchItems ?? []) {
+        const itemSearchableText = [
+          item.label,
+          item.description,
+          ...(item.keywords ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ");
+        if (normalizeSearchText(itemSearchableText).includes(normalizedQuery)) {
+          results.push({
+            kind: "setting",
+            key: `setting:${tab.id}:${item.id}`,
+            item,
+            tab,
+          });
+        }
+      }
+      return results;
     });
   }, [query, tabs]);
-  const selectedTab = filteredTabs[activeIndex];
+  const selectedResult = filteredTabs[activeIndex];
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -57,6 +98,16 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+
+    return () => {
+      const elementToRestore = previouslyFocusedElement.current;
+      previouslyFocusedElement.current = null;
+      elementToRestore?.focus();
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     setQuery("");
     setActiveIndex(
       Math.max(
@@ -65,12 +116,10 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       ),
     );
     inputRef.current?.focus();
-
-    return () => previouslyFocusedElement.current?.focus();
   }, [activeTab, isOpen, tabs]);
 
   useEffect(() => {
-    if (!isOpen || !selectedTab) return;
+    if (!isOpen || !selectedResult) return;
     const results = resultsRef.current;
     const activeOption = results?.querySelector<HTMLElement>(
       ".settings-switcher__option.is-active",
@@ -78,12 +127,16 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
     if (results && activeOption) {
       revealElementVertically(results, activeOption, 8);
     }
-  }, [isOpen, selectedTab]);
+  }, [isOpen, selectedResult]);
 
   if (!isOpen) return null;
 
-  const selectTab = (tabId: TTabId) => {
-    onTabChange(tabId);
+  const selectResult = (result: SettingsSearchResult<TTabId>) => {
+    if (result.kind === "setting") {
+      onTabChange(result.tab.id, result.item.targetId);
+    } else {
+      onTabChange(result.tab.id);
+    }
     onClose();
   };
 
@@ -132,9 +185,9 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       );
       return;
     }
-    if (event.key === "Enter" && selectedTab) {
+    if (event.key === "Enter" && selectedResult) {
       event.preventDefault();
-      selectTab(selectedTab.id);
+      selectResult(selectedResult);
     }
   };
 
@@ -177,16 +230,16 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
             ref={inputRef}
             value={query}
             role="combobox"
-            aria-label="設定カテゴリを検索"
+            aria-label="設定や項目を検索"
             aria-controls={resultsId}
             aria-expanded="true"
             aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-activedescendant={
-              selectedTab ? `${resultsId}-${selectedTab.id}` : undefined
+              selectedResult ? `${resultsId}-${selectedResult.key}` : undefined
             }
             autoComplete="off"
-            placeholder="機能名や設定内容を入力…"
+            placeholder="機能名や設定項目を入力…"
             onChange={(event) => {
               setQuery(event.target.value);
               setActiveIndex(0);
@@ -215,34 +268,50 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
           id={resultsId}
           className="settings-switcher__results"
           role="listbox"
-          aria-label="設定カテゴリ"
+          aria-label="設定カテゴリと項目"
         >
-          {filteredTabs.map((tab, index) => (
+          {filteredTabs.map((result, index) => (
             <button
               type="button"
               role="option"
-              id={`${resultsId}-${tab.id}`}
-              key={tab.id}
+              id={`${resultsId}-${result.key}`}
+              key={result.key}
               tabIndex={-1}
-              className={`settings-switcher__option ${
+              className={`settings-switcher__option${result.kind === "setting" ? " is-setting" : ""} ${
                 index === activeIndex ? "is-active" : ""
               }`}
               aria-selected={index === activeIndex}
-              onClick={() => selectTab(tab.id)}
+              onClick={() => selectResult(result)}
               onMouseEnter={() => setActiveIndex(index)}
             >
               <span
                 className="settings-switcher__option-icon"
                 aria-hidden="true"
               >
-                {tab.icon}
+                {result.tab.icon}
               </span>
               <span className="settings-switcher__option-copy">
-                <strong>{tab.label}</strong>
-                {tab.description && <small>{tab.description}</small>}
+                <strong>
+                  {result.kind === "setting"
+                    ? result.item.label
+                    : result.tab.label}
+                </strong>
+                <small>
+                  {result.kind === "setting"
+                    ? [
+                        result.tab.navigationLabel ?? result.tab.label,
+                        result.item.description,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : result.tab.description}
+                </small>
               </span>
-              {tab.id === activeTab && (
+              {result.kind === "tab" && result.tab.id === activeTab && (
                 <span className="settings-switcher__current">表示中</span>
+              )}
+              {result.kind === "setting" && (
+                <span className="settings-switcher__scope">項目</span>
               )}
             </button>
           ))}
@@ -256,7 +325,9 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
         </div>
 
         <div className="settings-switcher__footer">
-          <span aria-live="polite">{filteredTabs.length} 件のカテゴリ</span>
+          <span aria-live="polite">
+            {filteredTabs.length} 件の{query ? "候補" : "カテゴリ"}
+          </span>
           <span>
             <kbd>↑</kbd>
             <kbd>↓</kbd> 選択 <kbd>Enter</kbd> 移動

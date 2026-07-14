@@ -9,6 +9,15 @@ export interface SidebarTab<TTabId extends string = string> {
   description?: string;
   icon?: React.ReactNode;
   keywords?: readonly string[];
+  searchItems?: readonly SidebarSearchItem[];
+}
+
+export interface SidebarSearchItem {
+  id: string;
+  label: string;
+  description?: string;
+  keywords?: readonly string[];
+  targetId: string;
 }
 
 type SidebarStatusTone = "neutral" | "pending" | "success" | "error";
