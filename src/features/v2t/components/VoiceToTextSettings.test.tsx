@@ -126,6 +126,42 @@ describe("VoiceToTextSettings", () => {
     );
   });
 
+  it("applies a connection preset to the endpoint and model", async () => {
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const openAiPreset = screen.getByRole("button", { name: /OpenAI/ });
+    const groqPreset = screen.getByRole("button", { name: /Groq/ });
+    expect(openAiPreset).toHaveAttribute("aria-pressed", "true");
+    expect(groqPreset).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(groqPreset);
+
+    expect(screen.getByLabelText("API エンドポイント (Base URL)")).toHaveValue(
+      "https://api.groq.com/openai/v1",
+    );
+    expect(screen.getByLabelText("モデル名")).toHaveValue(
+      "whisper-large-v3-turbo",
+    );
+    expect(openAiPreset).toHaveAttribute("aria-pressed", "false");
+    expect(groqPreset).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("shows an error when saving the API key fails", async () => {
     const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings({

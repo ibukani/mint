@@ -19,12 +19,30 @@ import {
 } from "../settings";
 import { StatusToast } from "./StatusToast";
 
+const CONNECTION_PRESETS = [
+  {
+    id: "openai",
+    label: "OpenAI",
+    description: "標準のWhisper API",
+    baseUrl: "https://api.openai.com/v1",
+    model: "whisper-1",
+  },
+  {
+    id: "groq",
+    label: "Groq",
+    description: "高速なWhisper API",
+    baseUrl: "https://api.groq.com/openai/v1",
+    model: "whisper-large-v3-turbo",
+  },
+] as const;
+
 export const VoiceToTextConnectionSettings: React.FC<{
   controller: VoiceToTextController;
 }> = ({ controller }) => {
   const {
     voiceToText,
     handleChange,
+    updateFeatureSettings,
     shortcutError,
     apiKey,
     apiKeyLoaded,
@@ -84,6 +102,43 @@ export const VoiceToTextConnectionSettings: React.FC<{
             <p>OpenAI互換エンドポイントと認証情報</p>
           </div>
         </div>
+
+        <fieldset className="v2t-provider-presets">
+          <legend className="v2t-provider-presets__label">
+            <strong>接続先プリセット</strong>
+            <span>URLとモデル名をまとめて入力</span>
+          </legend>
+          <div className="v2t-provider-presets__options">
+            {CONNECTION_PRESETS.map((preset) => {
+              const isActive =
+                voiceToText.baseUrl === preset.baseUrl &&
+                voiceToText.model === preset.model;
+              return (
+                <Button
+                  key={preset.id}
+                  variant={isActive ? "primary" : "ghost"}
+                  className="v2t-provider-preset"
+                  aria-pressed={isActive}
+                  title={`${preset.label}の接続設定を適用`}
+                  onClick={() => {
+                    clearTranscriptionOutput();
+                    setBaseUrlError("");
+                    setModelError("");
+                    updateFeatureSettings({
+                      baseUrl: preset.baseUrl,
+                      model: preset.model,
+                    });
+                  }}
+                >
+                  <span className="v2t-provider-preset__copy">
+                    <strong>{preset.label}</strong>
+                    <small>{preset.description}</small>
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
+        </fieldset>
 
         <Field
           id="v2t-base-url-input"
