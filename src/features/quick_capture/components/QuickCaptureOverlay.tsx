@@ -19,10 +19,17 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { OverlayCard, OverlayFrame } from "../../../design/layout";
+import { ConfirmDialog } from "../../../design/components";
+import {
+  getPlatformShortcutModifier,
+  isApplePlatform,
+  OverlayCard,
+  OverlayFrame,
+  revealElementVertically,
+} from "../../../design/layout";
 import {
   chooseQuickCaptureBackupForOpen,
   chooseQuickCaptureBackupForSave,
@@ -55,14 +62,36 @@ const parseTags = (value: string) =>
 const safeFileName = (value: string) =>
   `${value.replace(/[\\/:*?"<>|]+/g, "-").trim() || "quick-capture"}.md`;
 
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
+
+type QuickCaptureConfirmation =
+  | { kind: "delete" }
+  | { kind: "import"; path: string };
+
 export const QuickCaptureOverlay: React.FC = () => {
   const capture = useQuickCapture();
   const [preview, setPreview] = useState(false);
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState("");
+  const [libraryCursorId, setLibraryCursorId] = useState<string | null>(null);
+  const [librarySearchFocused, setLibrarySearchFocused] = useState(false);
+  const [confirmation, setConfirmation] =
+    useState<QuickCaptureConfirmation | null>(null);
+  const [confirmationBusy, setConfirmationBusy] = useState(false);
+  const [confirmationError, setConfirmationError] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLElement | null>(null);
+  const librarySearchRef = useRef<HTMLInputElement>(null);
+  const librarySearchFocusedRef = useRef(false);
+  const noteListRef = useRef<HTMLDivElement>(null);
+  const noteListId = useId();
+  const shortcutModifier = getPlatformShortcutModifier();
+  const usesMetaShortcut = isApplePlatform();
   const { focusSequence } = capture;
   const isSaving = capture.status === "saving";
   const activeNote = capture.activeId
@@ -71,6 +100,7 @@ export const QuickCaptureOverlay: React.FC = () => {
 
   useEffect(() => {
     void focusSequence;
+    if (librarySearchFocusedRef.current) return;
     const focusTarget = preview ? previewRef.current : editorRef.current;
     focusTarget?.focus();
     if (!preview) {
@@ -101,15 +131,102 @@ export const QuickCaptureOverlay: React.FC = () => {
       .search(query)
       .map((result) => result.item);
   }, [capture.notes, query, tagFilter]);
+  const libraryCursorNote =
+    filteredNotes.find((note) => note.id === libraryCursorId) ??
+    filteredNotes[0] ??
+    null;
+
+  useEffect(() => {
+    if (!librarySearchFocused || !libraryCursorNote) return;
+    const activeOption = noteListRef.current?.querySelector<HTMLElement>(
+      ".quick-capture__note.is-keyboard-active",
+    );
+    if (noteListRef.current && activeOption) {
+      revealElementVertically(noteListRef.current, activeOption, 4);
+    }
+  }, [libraryCursorNote, librarySearchFocused]);
+
+  const focusLibrarySearch = () => {
+    const activeNote = filteredNotes.find(
+      (note) => note.id === capture.activeId,
+    );
+    setLibraryCursorId(activeNote?.id ?? filteredNotes[0]?.id ?? null);
+    librarySearchRef.current?.focus({ preventScroll: true });
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape" || (event.altKey && event.key === "2")) {
+    const hasSearchModifier = usesMetaShortcut
+      ? event.metaKey && !event.ctrlKey
+      : event.ctrlKey && !event.metaKey;
+    if (
+      hasSearchModifier &&
+      !event.altKey &&
+      !event.shiftKey &&
+      event.key.toLocaleLowerCase() === "f"
+    ) {
+      event.preventDefault();
+      focusLibrarySearch();
+    } else if (
+      event.key === "/" &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      !isEditableTarget(event.target)
+    ) {
+      event.preventDefault();
+      focusLibrarySearch();
+    } else if (event.key === "Escape" || (event.altKey && event.key === "2")) {
       event.preventDefault();
       void capture.close();
-    } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    } else if (
+      event.key === "Enter" &&
+      (event.ctrlKey || event.metaKey) &&
+      !isSaving
+    ) {
       event.preventDefault();
       void capture.promote();
     }
+  };
+
+  const handleLibrarySearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key === "Escape" && (query || tagFilter)) {
+      event.preventDefault();
+      event.stopPropagation();
+      setQuery("");
+      setTagFilter(null);
+      setLibraryCursorId(capture.notes[0]?.id ?? null);
+      return;
+    }
+
+    if (filteredNotes.length === 0) return;
+    const currentIndex = Math.max(
+      0,
+      filteredNotes.findIndex((note) => note.id === libraryCursorNote?.id),
+    );
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % filteredNotes.length;
+    } else if (event.key === "ArrowUp") {
+      nextIndex =
+        (currentIndex - 1 + filteredNotes.length) % filteredNotes.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = filteredNotes.length - 1;
+    } else if (event.key === "Enter" && libraryCursorNote) {
+      event.preventDefault();
+      event.stopPropagation();
+      librarySearchRef.current?.blur();
+      void capture.selectNote(libraryCursorNote);
+      return;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setLibraryCursorId(filteredNotes[nextIndex]?.id ?? null);
   };
 
   const pasteClipboard = async () => {
@@ -167,17 +284,34 @@ export const QuickCaptureOverlay: React.FC = () => {
     }
   };
 
-  const importBackup = async () => {
+  const requestImportBackup = async () => {
     try {
-      if (!window.confirm("現在の下書きと保存済みメモを置き換えますか？"))
-        return;
       const path = await chooseQuickCaptureBackupForOpen();
-      if (path && !Array.isArray(path)) await capture.importBackup(path);
+      if (path && !Array.isArray(path)) {
+        setConfirmationError("");
+        setConfirmation({ kind: "import", path });
+      }
     } catch (reason) {
       setActionStatus(
         reason instanceof Error ? reason.message : "復元に失敗しました",
       );
     }
+  };
+
+  const confirmDestructiveAction = async () => {
+    if (!confirmation) return;
+    setConfirmationBusy(true);
+    setConfirmationError("");
+    const operationError =
+      confirmation.kind === "delete"
+        ? await capture.removeActive()
+        : await capture.importBackup(confirmation.path);
+    if (operationError) {
+      setConfirmationError(operationError);
+    } else {
+      setConfirmation(null);
+    }
+    setConfirmationBusy(false);
   };
 
   return (
@@ -424,8 +558,8 @@ export const QuickCaptureOverlay: React.FC = () => {
                     className="quick-capture__danger"
                     disabled={isSaving}
                     onClick={() => {
-                      if (window.confirm("このメモを削除しますか？"))
-                        void capture.removeActive();
+                      setConfirmationError("");
+                      setConfirmation({ kind: "delete" });
                     }}
                   >
                     <Trash2 size={14} aria-hidden="true" /> 削除
@@ -440,7 +574,7 @@ export const QuickCaptureOverlay: React.FC = () => {
                     onClick={() => void capture.promote()}
                   >
                     <Check size={14} aria-hidden="true" /> メモに保存{" "}
-                    <kbd>Ctrl ↵</kbd>
+                    <kbd>{shortcutModifier} ↵</kbd>
                   </button>
                 )}
               </div>
@@ -451,6 +585,9 @@ export const QuickCaptureOverlay: React.FC = () => {
             <div className="quick-capture__library-header">
               <strong>
                 <Archive size={14} aria-hidden="true" /> 保存済みメモ
+                <span className="quick-capture__library-count">
+                  {capture.notes.length}
+                </span>
               </strong>
               <div>
                 <button
@@ -465,7 +602,7 @@ export const QuickCaptureOverlay: React.FC = () => {
                   type="button"
                   aria-label="バックアップから復元する"
                   title="バックアップから復元する"
-                  onClick={() => void importBackup()}
+                  onClick={() => void requestImportBackup()}
                 >
                   <Upload size={13} aria-hidden="true" />
                 </button>
@@ -474,11 +611,43 @@ export const QuickCaptureOverlay: React.FC = () => {
             <label className="quick-capture__search">
               <Search size={14} aria-hidden="true" />
               <input
+                ref={librarySearchRef}
+                role="combobox"
                 aria-label="保存済みメモを検索"
+                aria-controls={noteListId}
+                aria-expanded="true"
+                aria-autocomplete="list"
+                aria-haspopup="listbox"
+                aria-activedescendant={
+                  librarySearchFocused && libraryCursorNote
+                    ? `${noteListId}-${libraryCursorNote.id}`
+                    : undefined
+                }
+                aria-keyshortcuts={
+                  usesMetaShortcut ? "Meta+F /" : "Control+F /"
+                }
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onFocus={() => {
+                  librarySearchFocusedRef.current = true;
+                  setLibrarySearchFocused(true);
+                  setLibraryCursorId(
+                    libraryCursorNote?.id ?? filteredNotes[0]?.id ?? null,
+                  );
+                }}
+                onBlur={() => {
+                  librarySearchFocusedRef.current = false;
+                  setLibrarySearchFocused(false);
+                }}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setLibraryCursorId(null);
+                }}
+                onKeyDown={handleLibrarySearchKeyDown}
                 placeholder="メモを検索"
               />
+              <kbd className="quick-capture__search-shortcut">
+                {shortcutModifier} F
+              </kbd>
             </label>
             {capture.allTags.length > 0 && (
               <div className="quick-capture__tag-filters">
@@ -488,24 +657,38 @@ export const QuickCaptureOverlay: React.FC = () => {
                     key={tag}
                     className={tagFilter === tag ? "is-active" : ""}
                     aria-pressed={tagFilter === tag}
-                    onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
+                    onClick={() => {
+                      setTagFilter(tagFilter === tag ? null : tag);
+                      setLibraryCursorId(null);
+                    }}
                   >
                     #{tag}
                   </button>
                 ))}
               </div>
             )}
-            <div className="quick-capture__notes">
+            <div
+              id={noteListId}
+              ref={noteListRef}
+              className="quick-capture__notes"
+              role="listbox"
+              aria-label="保存済みメモ"
+            >
               {filteredNotes.length ? (
                 filteredNotes.map((note) => (
                   <button
                     type="button"
+                    role="option"
+                    id={`${noteListId}-${note.id}`}
                     key={note.id}
-                    className={`quick-capture__note${capture.activeId === note.id ? " is-active" : ""}`}
-                    aria-current={
-                      capture.activeId === note.id ? "true" : undefined
-                    }
-                    onClick={() => void capture.selectNote(note)}
+                    tabIndex={-1}
+                    className={`quick-capture__note${capture.activeId === note.id ? " is-active" : ""}${librarySearchFocused && libraryCursorNote?.id === note.id ? " is-keyboard-active" : ""}`}
+                    aria-selected={capture.activeId === note.id}
+                    onMouseEnter={() => setLibraryCursorId(note.id)}
+                    onClick={() => {
+                      setLibraryCursorId(note.id);
+                      void capture.selectNote(note);
+                    }}
                   >
                     <span className="quick-capture__note-title">
                       {note.pinned && (
@@ -530,6 +713,34 @@ export const QuickCaptureOverlay: React.FC = () => {
           </aside>
         </main>
       </OverlayCard>
+      <ConfirmDialog
+        open={confirmation !== null}
+        title={
+          confirmation?.kind === "import"
+            ? "バックアップから復元しますか？"
+            : "このメモを削除しますか？"
+        }
+        description={
+          confirmation?.kind === "import"
+            ? `現在の下書きと保存済みメモ${capture.notes.length}件を、選択したバックアップの内容で置き換えます。`
+            : `「${activeNote ? noteTitle(activeNote) : "このメモ"}」を削除します。添付ファイルも削除され、この操作は取り消せません。`
+        }
+        confirmLabel={
+          confirmation?.kind === "import" ? "置き換えて復元" : "削除する"
+        }
+        busy={confirmationBusy}
+        busyLabel={
+          confirmation?.kind === "import"
+            ? "復元しています…"
+            : "削除しています…"
+        }
+        error={confirmationError}
+        onCancel={() => {
+          setConfirmation(null);
+          setConfirmationError("");
+        }}
+        onConfirm={() => void confirmDestructiveAction()}
+      />
     </OverlayFrame>
   );
 };

@@ -26,6 +26,7 @@ interface CalendarEventEditorProps {
   showBackButton?: boolean;
   onCancel: () => void;
   onDirtyChange: (dirty: boolean) => void;
+  onSavingChange?: (saving: boolean) => void;
   onSaved: (event: CalendarEvent) => void;
 }
 
@@ -43,6 +44,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
   showBackButton = false,
   onCancel,
   onDirtyChange,
+  onSavingChange,
   onSaved,
 }) => {
   const initialDraft = useMemo(() => {
@@ -93,6 +95,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
     setValidationError(null);
     setSaveError("");
     setSaving(true);
+    onSavingChange?.(true);
     try {
       const input = draftToEventInput(draft);
       const saved = event
@@ -110,6 +113,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
       }
     } finally {
       setSaving(false);
+      onSavingChange?.(false);
     }
   };
 
@@ -266,7 +270,12 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
       </div>
 
       <footer className="calendar-screen__actions">
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={saving}
+          onClick={onCancel}
+        >
           キャンセル
         </Button>
         <Button

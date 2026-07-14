@@ -15,6 +15,16 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn<(command: string) => Promise<unknown>>(async (command) => {
     if (command === "list_calendar_events") return [];
     if (command === "get_next_calendar_event") return null;
+    if (command === "get_google_calendar_connection") {
+      return {
+        connected: false,
+        accountEmail: "",
+        lastSyncedAt: null,
+        pendingOperations: 0,
+        error: null,
+        syncing: false,
+      };
+    }
     if (command === "open_calendar_editor_window") {
       if (mocks.openEditorShouldFail) {
         throw new Error("editor window unavailable");
@@ -98,6 +108,16 @@ describe("CalendarOverlay window coordination", () => {
     mocks.invoke.mockImplementation(async (command: string) => {
       if (command === "list_calendar_events") return [];
       if (command === "get_next_calendar_event") return null;
+      if (command === "get_google_calendar_connection") {
+        return {
+          connected: false,
+          accountEmail: "",
+          lastSyncedAt: null,
+          pendingOperations: 0,
+          error: null,
+          syncing: false,
+        };
+      }
       if (command === "open_calendar_editor_window") {
         if (mocks.openEditorShouldFail) {
           throw new Error("editor window unavailable");
@@ -151,11 +171,11 @@ describe("CalendarOverlay window coordination", () => {
     render(<CalendarOverlay />);
     expect(mocks.listeners.has("calendar-shown")).toBe(true);
 
-    screen
-      .getByRole("button", {
+    fireEvent.click(
+      screen.getByRole("button", {
         name: "カレンダーオーバーレイを閉じる",
-      })
-      .click();
+      }),
+    );
     act(() => vi.advanceTimersByTime(240));
     await act(async () => Promise.resolve());
 
@@ -206,6 +226,9 @@ describe("CalendarOverlay window coordination", () => {
   });
 
   it("shows a retry action when the event editor cannot be opened", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     mocks.openEditorShouldFail = true;
     render(<CalendarOverlay />);
     await act(async () => {
@@ -236,6 +259,11 @@ describe("CalendarOverlay window coordination", () => {
     });
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to open calendar editor window:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("creates an event for the open day with the N shortcut", async () => {
@@ -282,6 +310,16 @@ describe("CalendarOverlay window coordination", () => {
     mocks.invoke.mockImplementation(async (command: string) => {
       if (command === "list_calendar_events") return [calendarEvent];
       if (command === "get_next_calendar_event") return calendarEvent;
+      if (command === "get_google_calendar_connection") {
+        return {
+          connected: false,
+          accountEmail: "",
+          lastSyncedAt: null,
+          pendingOperations: 0,
+          error: null,
+          syncing: false,
+        };
+      }
       return undefined;
     });
     render(<CalendarOverlay />);

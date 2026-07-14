@@ -11,9 +11,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { createMockSettings } from "./core/mocks/mockSettings";
 
+const silenceExpectedConsoleError = () =>
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+const eventMocks = vi.hoisted(() => ({
+  listeners: new Map<string, () => void | Promise<void>>(),
+}));
+
 // Mock invoke
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (event: string, handler: () => void | Promise<void>) => {
+    eventMocks.listeners.set(event, handler);
+    return () => eventMocks.listeners.delete(event);
+  }),
 }));
 
 // Mock getCurrentWindow
@@ -37,6 +51,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 describe("App Window Routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    eventMocks.listeners.clear();
     window.localStorage.clear();
     vi.mocked(getCurrentWindow).mockReturnValue({
       label: "main",
@@ -102,6 +117,7 @@ describe("App Window Routing", () => {
   });
 
   it("lets the user retry when settings loading fails", async () => {
+    const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings();
     vi.mocked(invoke)
       .mockRejectedValueOnce(new Error("settings unavailable"))
@@ -122,9 +138,15 @@ describe("App Window Routing", () => {
     expect(
       screen.queryByRole("heading", { name: "設定を読み込めませんでした" }),
     ).toBeNull();
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to load settings:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("keeps a single retry action for settings save failures", async () => {
+    const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings({ theme: "dark" });
     vi.mocked(invoke).mockImplementation(async (command: string) => {
       if (command === "load_settings") return mockSettings;
@@ -146,6 +168,11 @@ describe("App Window Routing", () => {
     expect(
       screen.queryByRole("button", { name: "もう一度保存" }),
     ).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to save settings:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("renders ClockOverlay when label=clock", async () => {
@@ -200,10 +227,26 @@ describe("App Window Routing", () => {
         label: "calendar",
         hide: vi.fn().mockResolvedValue(undefined),
         show: vi.fn().mockResolvedValue(undefined),
+        setPosition: vi.fn().mockResolvedValue(undefined),
+        setSize: vi.fn().mockResolvedValue(undefined),
       } as unknown as ReturnType<typeof getCurrentWindow>);
-      vi.mocked(invoke).mockResolvedValue(
-        createMockSettings() as unknown as ReturnType<typeof invoke>,
-      );
+      const settings = createMockSettings();
+      vi.mocked(invoke).mockImplementation(async (command: string) => {
+        if (command === "load_settings") return settings;
+        if (command === "get_google_calendar_connection") {
+          return {
+            connected: false,
+            accountEmail: "",
+            lastSyncedAt: null,
+            pendingOperations: 0,
+            error: null,
+            syncing: false,
+          };
+        }
+        if (command === "list_calendar_events") return [];
+        if (command === "get_next_calendar_event") return null;
+        return undefined;
+      });
 
       render(<App />);
 
@@ -318,6 +361,33 @@ describe("App Window Routing", () => {
     ).toBeInTheDocument();
     expect(calendarTab).toHaveAttribute("aria-current", "page");
     expect(shortcut).toContain(`Control+${shortcutNumber}`);
+  });
+
+  it("opens the transcription workflow and focuses its file field from the global shortcut event", async () => {
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+    await waitFor(() => {
+      expect(eventMocks.listeners.has("voice-to-text-shortcut")).toBe(true);
+    });
+
+    await act(async () => {
+      await eventMocks.listeners.get("voice-to-text-shortcut")?.();
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "音声入力設定" }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText("音声ファイルパス")).toHaveFocus();
+    });
+    expect(screen.getByRole("button", { name: "音声入力" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("does not steal Ctrl+number from an editable control", async () => {

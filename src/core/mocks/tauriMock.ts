@@ -45,6 +45,12 @@ import {
 } from "./quickCaptureMock";
 import { getMockWindowRegistration } from "./windowRegistration";
 
+const mockIPCWithEvents = (handler: Parameters<typeof mockIPC>[0]) =>
+  mockIPC(handler, { shouldMockEvents: true });
+
+const waitForMockOperation = (duration: number) =>
+  new Promise<void>((resolve) => window.setTimeout(resolve, duration));
+
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
 const isTauri =
   typeof window !== "undefined" &&
@@ -83,7 +89,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const defaultSettings = createMockSettings();
 
   // IPC（Rust側のコマンド呼び出し）をモック化
-  mockIPC(async (cmd, args) => {
+  mockIPCWithEvents(async (cmd, args) => {
     const typedArgs = args as Record<string, unknown> | undefined;
     switch (cmd) {
       case "load_settings": {
@@ -352,8 +358,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           lastSyncedAt: localStorage.getItem("mint_mock_google_last_sync"),
           pendingOperations: 0,
           error: null,
+          syncing: localStorage.getItem("mint_mock_google_syncing") === "true",
         };
       case "connect_google_calendar":
+        await waitForMockOperation(450);
         localStorage.setItem("mint_mock_google_connected", "true");
         return {
           connected: true,
@@ -361,6 +369,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           lastSyncedAt: null,
           pendingOperations: 0,
           error: null,
+          syncing: false,
         };
       case "list_google_calendars":
         return [
@@ -380,8 +389,11 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           },
         ];
       case "sync_google_calendars": {
+        localStorage.setItem("mint_mock_google_syncing", "true");
+        await waitForMockOperation(650);
         const syncedAt = new Date().toISOString();
         localStorage.setItem("mint_mock_google_last_sync", syncedAt);
+        localStorage.removeItem("mint_mock_google_syncing");
         return {
           syncedCalendars:
             (typedArgs?.calendarIds as string[] | undefined)?.length ?? 0,
@@ -391,8 +403,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         };
       }
       case "disconnect_google_calendar":
+        await waitForMockOperation(350);
         localStorage.removeItem("mint_mock_google_connected");
         localStorage.removeItem("mint_mock_google_last_sync");
+        localStorage.removeItem("mint_mock_google_syncing");
         return;
       case "load_api_key": {
         const service = typedArgs?.service as string | undefined;
@@ -417,14 +431,23 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       case "transcribe_audio_file": {
         const audioFilePath = typedArgs?.audio_file_path as string | undefined;
         const settings = typedArgs?.settings as
-          | { enabled?: boolean; model?: string }
+          | { enabled?: boolean; baseUrl?: string; model?: string }
           | undefined;
         if (!settings?.enabled) {
-          throw new Error("Voice to Text is disabled.");
+          throw new Error("音声入力を有効にしてください。");
         }
         if (!audioFilePath?.trim()) {
-          throw new Error("Audio file path is required.");
+          throw new Error("音声ファイルを選択してください。");
         }
+        if (!settings.baseUrl?.trim() || !settings.model?.trim()) {
+          throw new Error("API接続設定を確認してください。");
+        }
+        if (audioFilePath === "/missing/audio.wav") {
+          throw new Error(
+            "音声ファイルが見つかりません。移動または削除されていないか確認してください。",
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 350));
         return {
           text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,
         };

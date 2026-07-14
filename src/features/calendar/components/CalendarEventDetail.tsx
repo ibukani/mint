@@ -1,7 +1,7 @@
 import { ArrowLeft, CopyPlus, Pencil, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { Button } from "../../../design/components";
+import { Button, ConfirmDialog } from "../../../design/components";
 import {
   deleteCalendarEvent,
   formatEventDate,
@@ -25,17 +25,18 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
   onEdit,
 }) => {
   const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState("");
   const readOnly =
     event.source.kind === "google" &&
     !["writer", "owner"].includes(event.source.accessRole);
 
   const handleDelete = async () => {
-    if (!window.confirm(`「${event.title}」を削除しますか？`)) return;
     setDeleting(true);
     setError("");
     try {
       await deleteCalendarEvent(event.id);
+      setDeleteDialogOpen(false);
       onDeleted();
     } catch (deleteError) {
       console.error("Failed to delete calendar event:", deleteError);
@@ -68,11 +69,6 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           <p className="calendar-event-detail__notes">{event.notes}</p>
         )}
         {readOnly && <p>この予定表は読み取り専用です。</p>}
-        {error && (
-          <p className="calendar-screen__status is-error" role="alert">
-            {error}
-          </p>
-        )}
       </div>
 
       <footer className="calendar-screen__actions">
@@ -81,7 +77,10 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           variant="ghost"
           className="calendar-event-detail__delete"
           disabled={deleting || readOnly}
-          onClick={handleDelete}
+          onClick={() => {
+            setError("");
+            setDeleteDialogOpen(true);
+          }}
         >
           <Trash2 size={16} aria-hidden="true" />
           {deleting ? "削除中…" : "削除"}
@@ -107,6 +106,28 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           編集
         </Button>
       </footer>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="この予定を削除しますか？"
+        description={
+          <>
+            「{event.title}」を削除します。
+            {event.source.kind === "google"
+              ? "Google Calendarにも削除が反映されます。"
+              : "この操作は取り消せません。"}
+          </>
+        }
+        confirmLabel="削除する"
+        busy={deleting}
+        busyLabel="削除しています…"
+        error={error}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setError("");
+        }}
+        onConfirm={() => void handleDelete()}
+      />
     </article>
   );
 };

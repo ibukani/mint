@@ -70,7 +70,7 @@ describe("GameLauncherOverlay", () => {
     expect(
       (await screen.findAllByText("Counter-Strike 2")).length,
     ).toBeGreaterThan(0);
-    const search = screen.getByRole("textbox", { name: "ゲームを検索" });
+    const search = screen.getByRole("searchbox", { name: "ゲームを検索" });
     fireEvent.change(search, { target: { value: "valorant" } });
 
     expect(screen.queryByText("Counter-Strike 2")).not.toBeInTheDocument();
@@ -78,7 +78,10 @@ describe("GameLauncherOverlay", () => {
     fireEvent.keyDown(search, { key: "Enter" });
 
     await waitFor(() =>
-      expect(screen.queryByText("起動中…")).not.toBeInTheDocument(),
+      expect(apiMocks.launch).toHaveBeenCalledWith({
+        id: "valorant",
+        store: "riot",
+      }),
     );
   });
 
@@ -88,7 +91,9 @@ describe("GameLauncherOverlay", () => {
         <GameLauncherOverlay />
       </AppSettingsProvider>,
     );
-    const search = await screen.findByRole("textbox", { name: "ゲームを検索" });
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
     fireEvent.change(search, { target: { value: "missing-game" } });
     expect(screen.getByText("一致するゲームがありません")).toBeInTheDocument();
   });
@@ -99,7 +104,9 @@ describe("GameLauncherOverlay", () => {
         <GameLauncherOverlay />
       </AppSettingsProvider>,
     );
-    const search = await screen.findByRole("textbox", { name: "ゲームを検索" });
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
     fireEvent.keyDown(search, { key: "1", altKey: true });
     expect(
       screen.getByRole("dialog", { name: "ゲームランチャー" }),
@@ -114,10 +121,12 @@ describe("GameLauncherOverlay", () => {
       </AppSettingsProvider>,
     );
 
-    const search = await screen.findByRole("textbox", { name: "ゲームを検索" });
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
-      "ArrowDown ArrowUp Enter",
+      "ArrowDown ArrowUp Home End Enter Escape Control+F",
     );
     expect(screen.getByText("↑ ↓ Enter")).toBeInTheDocument();
 
@@ -217,5 +226,96 @@ describe("GameLauncherOverlay", () => {
     expect(
       container.querySelector(".game-launcher__launch strong"),
     ).toHaveTextContent("VALORANT");
+  });
+
+  it("お気に入りで並び替わっても操作中のゲームを選択し続ける", async () => {
+    const { container } = render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const favorite = await screen.findByRole("button", {
+      name: "VALORANTをお気に入りに追加",
+    });
+    const valorantRow = favorite.closest(".game-launcher__item");
+    if (!valorantRow) throw new Error("VALORANT row was not rendered");
+    const valorantLaunch = valorantRow.querySelector(".game-launcher__launch");
+    if (!valorantLaunch)
+      throw new Error("VALORANT launch action was not rendered");
+
+    fireEvent.mouseEnter(valorantLaunch);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "VALORANT", level: 2 }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(favorite);
+
+    await waitFor(() =>
+      expect(
+        container.querySelector(".game-launcher__launch strong"),
+      ).toHaveTextContent("VALORANT"),
+    );
+    expect(
+      screen.getByRole("heading", { name: "VALORANT", level: 2 }),
+    ).toBeInTheDocument();
+  });
+
+  it("HomeとEndで移動し、検索中のEscapeは閉じる前に検索だけを消す", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
+    await screen.findByRole("button", {
+      name: /VALORANTRiot Games/,
+    });
+
+    fireEvent.keyDown(search, { key: "End" });
+    await waitFor(() =>
+      expect(search).toHaveAttribute(
+        "aria-activedescendant",
+        "game-launcher-game-riot-valorant",
+      ),
+    );
+    fireEvent.keyDown(search, { key: "Home" });
+    await waitFor(() =>
+      expect(search).toHaveAttribute(
+        "aria-activedescendant",
+        "game-launcher-game-steam-730",
+      ),
+    );
+
+    fireEvent.change(search, { target: { value: "valorant" } });
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(search).toHaveValue("");
+    expect(
+      screen.getByRole("dialog", { name: "ゲームランチャー" }),
+    ).not.toHaveClass("is-hiding");
+
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(
+      screen.getByRole("dialog", { name: "ゲームランチャー" }),
+    ).toHaveClass("is-hiding");
+  });
+
+  it("アクションからも検索ショートカットへ戻れる", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const favorite = await screen.findByRole("button", {
+      name: "VALORANTをお気に入りに追加",
+    });
+    fireEvent.focus(favorite);
+    fireEvent.keyDown(favorite, { key: "f", ctrlKey: true });
+
+    expect(
+      screen.getByRole("searchbox", { name: "ゲームを検索" }),
+    ).toHaveFocus();
   });
 });

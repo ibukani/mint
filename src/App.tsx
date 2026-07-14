@@ -18,7 +18,10 @@ import {
 } from "./core/navigation/settingsTabs";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
-import { syncGoogleCalendars } from "./features/calendar/googleCalendar";
+import {
+  getGoogleCalendarConnection,
+  syncGoogleCalendars,
+} from "./features/calendar/googleCalendar";
 
 const saveSidebarLabels: Record<SaveStatus, string> = {
   idle: "変更時に自動保存",
@@ -49,7 +52,9 @@ const AppContent: React.FC = () => {
     reloadSettings,
     retrySaveSettings,
   } = useAppSettings();
-  const { label, activeTab, setActiveTab } = useSettingsWindow(settings?.theme);
+  const { label, activeTab, setActiveTab, focusRequest } = useSettingsWindow(
+    settings?.theme,
+  );
   const startupSyncStarted = useRef(false);
   const initialActiveTab = useRef(activeTab);
 
@@ -63,10 +68,14 @@ const AppContent: React.FC = () => {
       return;
     }
     startupSyncStarted.current = true;
-    syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds).catch(
-      (syncError) =>
+    getGoogleCalendarConnection()
+      .then((connection) => {
+        if (!connection.connected || connection.syncing) return undefined;
+        return syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
+      })
+      .catch((syncError) =>
         console.warn("Google Calendar startup sync was skipped:", syncError),
-    );
+      );
   }, [label, settings]);
 
   if (loading) return <AppLoading />;
@@ -111,8 +120,11 @@ const AppContent: React.FC = () => {
             <Suspense fallback={<AppLoading compact />}>
               <ActiveTabComponent />
               <AutoFocusTrigger
-                key={activeTab}
-                enabled={activeTab !== initialActiveTab.current}
+                key={`${activeTab}:${focusRequest.id}`}
+                enabled={
+                  activeTab !== initialActiveTab.current || focusRequest.id > 0
+                }
+                targetId={focusRequest.targetId}
               />
             </Suspense>
           )}

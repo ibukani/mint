@@ -43,6 +43,7 @@ export const TranscriptionWorkbench: React.FC<{
     pasteAudioFilePath,
     selectAudioFile,
     handleAudioFilePathKeyDown,
+    handleWorkbenchKeyDown,
     normalizeAudioFilePath,
   } = controller;
 
@@ -51,6 +52,7 @@ export const TranscriptionWorkbench: React.FC<{
       className="v2t-workbench"
       aria-labelledby="v2t-workbench-title"
       aria-busy={transcribing}
+      onKeyDown={handleWorkbenchKeyDown}
     >
       <div className="v2t-workbench__header">
         <div>
@@ -148,9 +150,11 @@ export const TranscriptionWorkbench: React.FC<{
 
         <Field id="v2t-transcribe-button" helpText={transcribeHelpText}>
           <Button
+            id="v2t-transcribe-button"
             className="v2t-transcribe-button"
             onClick={() => void transcribeAudioFile()}
             disabled={!canTranscribe}
+            aria-keyshortcuts="Control+Enter Meta+Enter"
           >
             {transcribing ? (
               <LoaderCircle

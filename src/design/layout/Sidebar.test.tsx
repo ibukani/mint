@@ -98,6 +98,81 @@ describe("Sidebar", () => {
     }
   });
 
+  it("reveals the active tab in a vertically scrolling sidebar", () => {
+    const scrollTo = vi.fn();
+    const descriptors = new Map(
+      [
+        "clientHeight",
+        "scrollHeight",
+        "scrollTo",
+        "offsetTop",
+        "offsetHeight",
+      ].map((property) => [
+        property,
+        Object.getOwnPropertyDescriptor(HTMLElement.prototype, property),
+      ]),
+    );
+
+    try {
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+        configurable: true,
+        get() {
+          return this.classList.contains("app-sidebar__navigation") ? 120 : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+        configurable: true,
+        get() {
+          return this.classList.contains("app-sidebar__navigation") ? 360 : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+        configurable: true,
+        value: scrollTo,
+      });
+      Object.defineProperty(HTMLElement.prototype, "offsetTop", {
+        configurable: true,
+        get() {
+          return this.classList.contains("app-sidebar__button--active")
+            ? 220
+            : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+        configurable: true,
+        get() {
+          return this.classList.contains("app-sidebar__button") ? 54 : 0;
+        },
+      });
+
+      render(
+        <Sidebar
+          title="mint"
+          tabs={[
+            { id: "general", label: "一般設定" },
+            { id: "clock", label: "時計オーバーレイ" },
+            { id: "voiceToText", label: "音声入力" },
+          ]}
+          activeTab="voiceToText"
+          onTabChange={() => undefined}
+        />,
+      );
+
+      expect(scrollTo).toHaveBeenCalledWith({
+        top: 187,
+        behavior: "smooth",
+      });
+    } finally {
+      for (const [property, descriptor] of descriptors) {
+        if (descriptor) {
+          Object.defineProperty(HTMLElement.prototype, property, descriptor);
+        } else {
+          Reflect.deleteProperty(HTMLElement.prototype, property);
+        }
+      }
+    }
+  });
+
   it("exposes the save state through matching text and visual tone", () => {
     const { container } = render(
       <Sidebar

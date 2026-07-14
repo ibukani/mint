@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { getPlatformShortcutModifier } from "./keyboard";
 
 export interface SidebarTab<TTabId extends string = string> {
   id: TTabId;
@@ -7,6 +8,7 @@ export interface SidebarTab<TTabId extends string = string> {
   navigationLabel?: string;
   description?: string;
   icon?: React.ReactNode;
+  keywords?: readonly string[];
 }
 
 type SidebarStatusTone = "neutral" | "pending" | "success" | "error";
@@ -29,24 +31,46 @@ const statusTitles: Record<SidebarStatusTone, string> = {
   error: "保存エラー",
 };
 
-const getShortcutModifier = () => {
-  if (typeof navigator === "undefined") return "Ctrl";
-  return /Mac|iPhone|iPad|iPod/.test(
-    `${navigator.platform} ${navigator.userAgent}`,
-  )
-    ? "⌘"
-    : "Ctrl";
-};
-
 const revealActiveTab = (activeTabButton: HTMLButtonElement) => {
   const navigation = activeTabButton.parentElement;
+  if (!navigation) return;
+
   if (
-    !navigation ||
+    navigation.clientHeight > 0 &&
+    navigation.scrollHeight > navigation.clientHeight
+  ) {
+    const tabTop = activeTabButton.offsetTop;
+    const tabBottom = tabTop + activeTabButton.offsetHeight;
+    const visibleTop = navigation.scrollTop;
+    const visibleBottom = visibleTop + navigation.clientHeight;
+    const isOutsideVisibleArea =
+      tabTop < visibleTop + NAVIGATION_SCROLL_PADDING ||
+      tabBottom > visibleBottom - NAVIGATION_SCROLL_PADDING;
+
+    if (isOutsideVisibleArea) {
+      const maxScrollTop = navigation.scrollHeight - navigation.clientHeight;
+      const centeredScrollTop =
+        tabTop + activeTabButton.offsetHeight / 2 - navigation.clientHeight / 2;
+      const nextScrollTop = Math.min(
+        maxScrollTop,
+        Math.max(0, centeredScrollTop),
+      );
+
+      if (nextScrollTop !== visibleTop) {
+        if (typeof navigation.scrollTo === "function") {
+          navigation.scrollTo({ top: nextScrollTop, behavior: "smooth" });
+        } else {
+          navigation.scrollTop = nextScrollTop;
+        }
+      }
+    }
+  }
+
+  if (
     navigation.clientWidth === 0 ||
     navigation.scrollWidth <= navigation.clientWidth
-  ) {
+  )
     return;
-  }
 
   const tabLeft = activeTabButton.offsetLeft;
   const tabRight = tabLeft + activeTabButton.offsetWidth;
@@ -83,7 +107,7 @@ export const Sidebar = <TTabId extends string>({
   statusTone = "neutral",
 }: SidebarProps<TTabId>) => {
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
-  const shortcutModifier = getShortcutModifier();
+  const shortcutModifier = getPlatformShortcutModifier();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: activeTab changes which button receives the ref.
   useEffect(() => {

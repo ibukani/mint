@@ -40,6 +40,8 @@ export const useQuickCapture = () => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef({ content: "", tags: "" });
   const closeRef = useRef<() => Promise<void>>(async () => {});
+  const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const promotionInFlightRef = useRef(false);
   const updateContent = useCallback((value: string) => {
     revision.current += 1;
     setContent(value);
@@ -94,61 +96,68 @@ export const useQuickCapture = () => {
       showDraft(nextDraft);
       setStatus("saved");
       setCanRetrySave(false);
+      return null;
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
       setStatus("error");
       setCanRetrySave(false);
+      return message;
     }
   }, [showDraft, sortNotes]);
 
-  const persist = useCallback(async (): Promise<boolean> => {
-    if (!loaded.current) return false;
+  const persist = useCallback((): Promise<boolean> => {
+    if (!loaded.current) return Promise.resolve(false);
     clearPendingPersist();
     const sequence = ++revision.current;
     setStatus("saving");
     setError(null);
     setCanRetrySave(false);
-    try {
-      if (activeId) {
-        const saved = await updateQuickCaptureNote(activeId, {
-          content,
-          tags: parseTags(tags),
-          pinned,
-        });
-        if (sequence === revision.current) {
-          setNotes((current) =>
-            sortNotes(
-              current.map((note) => (note.id === saved.id ? saved : note)),
-            ),
-          );
+    const operation = persistQueueRef.current.then(async () => {
+      try {
+        if (activeId) {
+          const saved = await updateQuickCaptureNote(activeId, {
+            content,
+            tags: parseTags(tags),
+            pinned,
+          });
+          if (sequence === revision.current) {
+            setNotes((current) =>
+              sortNotes(
+                current.map((note) => (note.id === saved.id ? saved : note)),
+              ),
+            );
+          }
+        } else {
+          const saved = await saveQuickCaptureDraft({
+            content,
+            tags: parseTags(tags),
+          });
+          if (sequence === revision.current) {
+            setDraft({ content: saved.content, tags: tagsToText(saved.tags) });
+            draftRef.current = {
+              content: saved.content,
+              tags: tagsToText(saved.tags),
+            };
+          }
         }
-      } else {
-        const saved = await saveQuickCaptureDraft({
-          content,
-          tags: parseTags(tags),
-        });
         if (sequence === revision.current) {
-          setDraft({ content: saved.content, tags: tagsToText(saved.tags) });
-          draftRef.current = {
-            content: saved.content,
-            tags: tagsToText(saved.tags),
-          };
+          setStatus("saved");
+          setCanRetrySave(false);
+          return true;
         }
+        return false;
+      } catch (reason) {
+        if (sequence === revision.current) {
+          setError(reason instanceof Error ? reason.message : String(reason));
+          setStatus("error");
+          setCanRetrySave(true);
+        }
+        return false;
       }
-      if (sequence === revision.current) {
-        setStatus("saved");
-        setCanRetrySave(false);
-        return true;
-      }
-      return false;
-    } catch (reason) {
-      if (sequence === revision.current) {
-        setError(reason instanceof Error ? reason.message : String(reason));
-        setStatus("error");
-        setCanRetrySave(true);
-      }
-      return false;
-    }
+    });
+    persistQueueRef.current = operation;
+    return operation;
   }, [activeId, clearPendingPersist, content, pinned, sortNotes, tags]);
 
   useEffect(() => {
@@ -187,7 +196,8 @@ export const useQuickCapture = () => {
   }, [persist, showDraft]);
 
   const promote = useCallback(async () => {
-    if (activeId || !content.trim()) return;
+    if (activeId || !content.trim() || promotionInFlightRef.current) return;
+    promotionInFlightRef.current = true;
     clearPendingPersist();
     const promotionRevision = ++revision.current;
     setStatus("saving");
@@ -214,11 +224,13 @@ export const useQuickCapture = () => {
       setError(reason instanceof Error ? reason.message : String(reason));
       setStatus("error");
       setCanRetrySave(false);
+    } finally {
+      promotionInFlightRef.current = false;
     }
   }, [activeId, clearPendingPersist, content, showDraft, sortNotes, tags]);
 
   const removeActive = useCallback(async () => {
-    if (!activeId) return;
+    if (!activeId) return null;
     setStatus("saving");
     setError(null);
     setCanRetrySave(false);
@@ -228,10 +240,13 @@ export const useQuickCapture = () => {
       showDraft();
       setStatus("saved");
       setCanRetrySave(false);
+      return null;
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
       setStatus("error");
       setCanRetrySave(false);
+      return message;
     }
   }, [activeId, showDraft]);
 
@@ -288,15 +303,20 @@ export const useQuickCapture = () => {
   const importBackup = useCallback(
     async (path: string) => {
       try {
+        clearPendingPersist();
+        await persistQueueRef.current;
         await importQuickCaptureBackup(path);
-        await reload();
+        return await reload();
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : String(reason));
+        const message =
+          reason instanceof Error ? reason.message : String(reason);
+        setError(message);
         setStatus("error");
         setCanRetrySave(false);
+        return message;
       }
     },
-    [reload],
+    [clearPendingPersist, reload],
   );
 
   const removeAttachment = useCallback(

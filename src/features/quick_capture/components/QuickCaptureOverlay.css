@@ -306,12 +306,14 @@
 
 .quick-capture__library {
   display: grid;
+  min-width: 0;
   min-height: 0;
   grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: var(--space-2);
   padding: var(--space-3);
   border-left: 1px solid var(--border-subtle);
   background: var(--surface-control);
+  overflow: hidden;
 }
 .quick-capture__library-header,
 .quick-capture__library-header > div {
@@ -328,6 +330,19 @@
   align-items: center;
   gap: var(--space-1);
 }
+.quick-capture__library-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0 5px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+}
 .quick-capture__library-header > div {
   gap: var(--space-1);
 }
@@ -337,8 +352,20 @@
   place-items: center;
 }
 .quick-capture__search {
+  min-width: 0;
   padding: var(--space-2);
   background: var(--surface-elevated);
+}
+.quick-capture__search-shortcut {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border: 1px solid var(--border-control);
+  border-radius: 5px;
+  background: var(--surface-control);
+  color: var(--color-text-subtle);
+  font-family: inherit;
+  font-size: 9px;
+  line-height: 1;
 }
 .quick-capture__tag-filters {
   display: flex;
@@ -357,12 +384,21 @@
   color: var(--color-accent);
 }
 .quick-capture__notes {
+  display: grid;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
+  align-content: start;
+  gap: 2px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--border-control) transparent;
+  scrollbar-width: thin;
 }
 .quick-capture__note {
   display: grid;
   width: 100%;
+  min-width: 0;
   gap: 2px;
   padding: var(--space-2);
   text-align: left;
@@ -370,6 +406,15 @@
 .quick-capture__note.is-active {
   background: var(--surface-accent-action);
   color: var(--color-text-primary);
+}
+.quick-capture__note.is-keyboard-active {
+  border-color: var(--border-control-focus);
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+.quick-capture__note.is-active.is-keyboard-active {
+  background: var(--surface-accent-action-hover);
 }
 .quick-capture__note-title {
   min-width: 0;

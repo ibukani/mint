@@ -33,7 +33,10 @@ describe("GeneralSettings", () => {
     expect(darkTheme).toBeChecked();
     expect(lightTheme).not.toBeChecked();
 
-    fireEvent.click(lightTheme);
+    await act(async () => {
+      fireEvent.click(lightTheme);
+      await Promise.resolve();
+    });
 
     expect(lightTheme).toBeChecked();
     expect(darkTheme).not.toBeChecked();
@@ -55,7 +58,10 @@ describe("GeneralSettings", () => {
     });
     expect(autostartToggle).not.toBeChecked();
 
-    fireEvent.click(autostartToggle);
+    await act(async () => {
+      fireEvent.click(autostartToggle);
+      await Promise.resolve();
+    });
     expect(autostartToggle).toBeChecked();
   });
 });

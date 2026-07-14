@@ -56,15 +56,15 @@ export const VoiceToTextConnectionSettings: React.FC<{
         <div className="settings-group__heading">
           <Mic2 size={18} aria-hidden="true" />
           <div>
-            <h3 id="v2t-launch-title">起動</h3>
-            <p>録音を開始するグローバルショートカット</p>
+            <h3 id="v2t-launch-title">呼び出し</h3>
+            <p>文字起こし画面を直接開くグローバルショートカット</p>
           </div>
         </div>
         <Field
           id="v2t-shortcut-input"
-          label="起動/録音ショートカットキー"
+          label="文字起こしショートカットキー"
           error={shortcutError}
-          helpText="入力欄をクリックしてキーを押すことでショートカットキーを変更できます。"
+          helpText="ショートカットを押すとこの画面を開き、音声ファイル欄へ移動します。入力欄をクリックしてキーを変更できます。"
         >
           <ShortcutInput
             id="v2t-shortcut-input"

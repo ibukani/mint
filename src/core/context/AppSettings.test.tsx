@@ -16,6 +16,9 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
+const silenceExpectedConsoleError = () =>
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+
 const eventMocks = vi.hoisted(() => ({
   listeners: new Map<string, () => void | Promise<void>>(),
 }));
@@ -313,6 +316,7 @@ describe("AppSettingsProvider", () => {
   });
 
   it("keeps the error status visible until the failed save is resolved", async () => {
+    const consoleError = silenceExpectedConsoleError();
     vi.useFakeTimers();
     const mockSettings = createMockSettings();
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
@@ -347,9 +351,15 @@ describe("AppSettingsProvider", () => {
     });
 
     expect(screen.getByTestId("save-status")).toHaveTextContent("error");
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to save settings:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("retries the exact failed settings and clears the error on success", async () => {
+    const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings();
     let saveAttempts = 0;
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
@@ -387,9 +397,15 @@ describe("AppSettingsProvider", () => {
       }),
     );
     expect(saveAttempts).toBe(2);
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to save settings:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("parses registration error and sets shortcut error state", async () => {
+    const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings();
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
       if (cmd === "load_settings") return mockSettings;
@@ -421,9 +437,15 @@ describe("AppSettingsProvider", () => {
       "ショートカットキーを確認してください。競合または登録できないキーがあります。",
     );
     expect(screen.getByTestId("save-status")).toHaveTextContent("error");
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to save settings:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("clears the top-level error when the user makes a new change", async () => {
+    const consoleError = silenceExpectedConsoleError();
     vi.useFakeTimers();
     const mockSettings = createMockSettings();
     let saveAttempts = 0;
@@ -473,6 +495,11 @@ describe("AppSettingsProvider", () => {
     });
 
     expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to save settings:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("does not overwrite a pending local edit with a stale settings-changed reload", async () => {

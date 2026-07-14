@@ -121,6 +121,137 @@ describe("FileShelfOverlay", () => {
     expect(actions.removeItems).toHaveBeenCalledWith(["first", "second"]);
   });
 
+  it("searches, navigates, and opens shelf items from the keyboard", () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: "group",
+            createdAt: "2026-07-13T00:00:00Z",
+            items: [first, second],
+          },
+          {
+            id: "url-group",
+            createdAt: "2026-07-13T00:00:00Z",
+            items: [urlItem],
+          },
+        ],
+      },
+      itemCount: 3,
+    });
+    render(<FileShelfOverlay />);
+
+    const shelf = screen.getByRole("region", { name: "ファイルシェル" });
+    fireEvent.keyDown(shelf, { key: "f", ctrlKey: true });
+
+    const search = screen.getByRole("searchbox", { name: "棚を検索" });
+    expect(search).toHaveFocus();
+    fireEvent.change(search, { target: { value: "assets" } });
+    expect(screen.getByText("1件")).toBeInTheDocument();
+    expect(screen.getByText("assets")).toBeInTheDocument();
+    expect(screen.queryByText("report.pdf")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(actions.openItem).toHaveBeenCalledWith(second);
+
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(search).toHaveValue("");
+    expect(actions.changeExpanded).not.toHaveBeenCalled();
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(actions.changeExpanded).not.toHaveBeenCalled();
+    fireEvent.keyDown(shelf, { key: "Escape" });
+    expect(actions.changeExpanded).toHaveBeenCalledWith(false);
+  });
+
+  it("moves to the last visible item and copies it with platform shortcuts", () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: "group",
+            createdAt: "2026-07-13T00:00:00Z",
+            items: [first, second],
+          },
+          {
+            id: "url-group",
+            createdAt: "2026-07-13T00:00:00Z",
+            items: [urlItem],
+          },
+        ],
+      },
+      itemCount: 3,
+    });
+    render(<FileShelfOverlay />);
+
+    const shelf = screen.getByRole("region", { name: "ファイルシェル" });
+    fireEvent.keyDown(shelf, { key: "End" });
+    fireEvent.keyDown(shelf, { key: "c", ctrlKey: true });
+
+    expect(actions.copyItem).toHaveBeenCalledWith(urlItem);
+  });
+
+  it("reveals an unchanged cursor again when selection actions reduce the list", () => {
+    const rect = (top: number, bottom: number) =>
+      ({
+        top,
+        bottom,
+        left: 0,
+        right: 320,
+        width: 320,
+        height: bottom - top,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains("file-shelf__content")) {
+          return rect(0, 100);
+        }
+        if (this.dataset.shelfCursorKey === "item:url") {
+          return rect(120, 170);
+        }
+        return rect(0, 40);
+      });
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: "first-group",
+            createdAt: "2026-07-13T00:00:00Z",
+            items: [first],
+          },
+          {
+            id: "url-group",
+            createdAt: "2026-07-13T00:00:00Z",
+            items: [urlItem],
+          },
+        ],
+      },
+      itemCount: 2,
+    });
+    render(<FileShelfOverlay />);
+
+    const shelf = screen.getByRole("region", { name: "ファイルシェル" });
+    fireEvent.keyDown(shelf, { key: "f", ctrlKey: true });
+    const search = screen.getByRole("searchbox", { name: "棚を検索" });
+    fireEvent.change(search, { target: { value: "example" } });
+    fireEvent.keyDown(search, { key: "Escape" });
+
+    const content = document.querySelector<HTMLElement>(".file-shelf__content");
+    expect(content).not.toBeNull();
+    if (!content) return;
+    content.scrollTop = 0;
+    fireEvent.keyDown(search, { key: "End" });
+
+    expect(content.scrollTop).toBe(78);
+    rectSpy.mockRestore();
+  });
+
   it("renders a compact count handle while collapsed", () => {
     vi.mocked(useFileShelf).mockReturnValue({
       ...expandedShelf(),

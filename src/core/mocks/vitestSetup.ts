@@ -55,11 +55,14 @@ mockWindows(
 
 import { createMockSettings } from "./mockSettings";
 
+const mockIPCWithEvents = (handler: Parameters<typeof mockIPC>[0]) =>
+  mockIPC(handler, { shouldMockEvents: true });
+
 // テスト用のデフォルト設定データ
 const defaultSettings = createMockSettings();
 
 // テスト中のIPC呼び出しの共通モック定義
-mockIPC(async (cmd, args) => {
+mockIPCWithEvents(async (cmd, args) => {
   const typedArgs = args as Record<string, unknown> | undefined;
 
   switch (cmd) {
@@ -222,6 +225,7 @@ mockIPC(async (cmd, args) => {
         lastSyncedAt: null,
         pendingOperations: 0,
         error: null,
+        syncing: false,
       };
     case "connect_google_calendar":
       return {
@@ -230,6 +234,7 @@ mockIPC(async (cmd, args) => {
         lastSyncedAt: null,
         pendingOperations: 0,
         error: null,
+        syncing: false,
       };
     case "list_google_calendars":
       return [
@@ -258,13 +263,21 @@ mockIPC(async (cmd, args) => {
     case "transcribe_audio_file": {
       const audioFilePath = typedArgs?.audio_file_path as string | undefined;
       const settings = typedArgs?.settings as
-        | { enabled?: boolean; model?: string }
+        | { enabled?: boolean; baseUrl?: string; model?: string }
         | undefined;
       if (!settings?.enabled) {
-        throw new Error("Voice to Text is disabled.");
+        throw new Error("音声入力を有効にしてください。");
       }
       if (!audioFilePath?.trim()) {
-        throw new Error("Audio file path is required.");
+        throw new Error("音声ファイルを選択してください。");
+      }
+      if (!settings.baseUrl?.trim() || !settings.model?.trim()) {
+        throw new Error("API接続設定を確認してください。");
+      }
+      if (audioFilePath === "/missing/audio.wav") {
+        throw new Error(
+          "音声ファイルが見つかりません。移動または削除されていないか確認してください。",
+        );
       }
       return {
         text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,

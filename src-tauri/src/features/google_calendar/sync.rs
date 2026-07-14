@@ -1,15 +1,16 @@
 use super::{
-    auth::{list_google_calendars, refresh_access_token},
-    EventListResponse, GoogleCalendarState, GoogleCalendarSyncResult, GoogleEvent, OutboxEvent,
-    OutboxSource, API_ROOT,
+    auth::{google_client, list_google_calendars_with_token, refresh_access_token},
+    run_blocking, EventListResponse, GoogleCalendarState, GoogleCalendarSyncResult, GoogleEvent,
+    OutboxEvent, OutboxSource, API_ROOT,
 };
 use chrono::{DateTime, SecondsFormat, Utc};
 use reqwest::blocking::Client;
 use rusqlite::{params, Connection, OptionalExtension};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use tauri::{AppHandle, Manager};
 
-use super::super::calendar::CalendarStoreState;
+use super::super::calendar::{database::open_store, CalendarStoreState};
 
 fn flush_outbox(client: &Client, token: &str, connection: &Connection) -> Result<(), String> {
     let mut statement = connection
@@ -127,9 +128,20 @@ fn flush_outbox(client: &Client, token: &str, connection: &Connection) -> Result
 }
 
 pub(super) fn pending_count(store: &CalendarStoreState) -> Result<u32, String> {
-    Connection::open(store.path())
-        .map_err(|error| error.to_string())?
-        .query_row("SELECT COUNT(*) FROM calendar_outbox", [], |row| row.get(0))
+    stored_sync_status(store).map(|(pending, _)| pending)
+}
+
+pub(super) fn stored_sync_status(
+    store: &CalendarStoreState,
+) -> Result<(u32, Option<String>), String> {
+    open_store(store.path())?
+        .query_row(
+            "SELECT
+               (SELECT COUNT(*) FROM calendar_outbox),
+               (SELECT MAX(last_synced_at) FROM google_calendar_sync)",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
         .map_err(|error| error.to_string())
 }
 
@@ -208,19 +220,60 @@ pub(super) fn upsert_event(
 }
 
 #[tauri::command]
-pub fn sync_google_calendars(
+pub async fn sync_google_calendars(
     calendar_ids: Vec<String>,
-    state: tauri::State<'_, GoogleCalendarState>,
-    store: tauri::State<'_, CalendarStoreState>,
+    app: AppHandle,
+) -> Result<GoogleCalendarSyncResult, String> {
+    run_blocking(move || sync_google_calendars_blocking(calendar_ids, app)).await
+}
+
+fn sync_google_calendars_blocking(
+    calendar_ids: Vec<String>,
+    app: AppHandle,
+) -> Result<GoogleCalendarSyncResult, String> {
+    let state = app.state::<GoogleCalendarState>();
+    let store = app.state::<CalendarStoreState>();
+    let _operation = state
+        .operation
+        .lock()
+        .map_err(|_| "Google Calendar operation state is unavailable.".to_string())?;
+    {
+        let mut runtime = state
+            .status
+            .lock()
+            .map_err(|_| "Google Calendar state is unavailable.".to_string())?;
+        runtime.syncing = true;
+        runtime.error = None;
+    }
+
+    let result = sync_google_calendars_inner(calendar_ids, store.inner());
+    let mut runtime = state
+        .status
+        .lock()
+        .map_err(|_| "Google Calendar state is unavailable.".to_string())?;
+    runtime.syncing = false;
+    match &result {
+        Ok(sync_result) => {
+            runtime.last_synced_at = Some(sync_result.synced_at.clone());
+            runtime.error = None;
+        }
+        Err(error) => runtime.error = Some(error.clone()),
+    }
+    result
+}
+
+fn sync_google_calendars_inner(
+    calendar_ids: Vec<String>,
+    store: &CalendarStoreState,
 ) -> Result<GoogleCalendarSyncResult, String> {
     let token = refresh_access_token()?;
-    let calendars = list_google_calendars()?;
+    let calendars = list_google_calendars_with_token(&token)?;
     let roles: HashMap<_, _> = calendars
         .into_iter()
         .map(|item| (item.id, item.access_role))
         .collect();
-    let client = Client::new();
-    let connection = Connection::open(store.path()).map_err(|error| error.to_string())?;
+    let client = google_client()?;
+    let connection = open_store(store.path())?;
     flush_outbox(&client, &token, &connection)?;
     let cached_calendar_ids = connection
         .prepare(
@@ -328,13 +381,7 @@ pub fn sync_google_calendars(
         connection.execute("INSERT INTO google_calendar_sync(calendar_id,sync_token,last_synced_at,last_error) VALUES(?1,?2,?3,NULL) ON CONFLICT(calendar_id) DO UPDATE SET sync_token=excluded.sync_token,last_synced_at=excluded.last_synced_at,last_error=NULL", params![calendar_id, next_sync_token, synced_at]).map_err(|error| error.to_string())?;
     }
     let synced_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    let pending = pending_count(&store)?;
-    let mut runtime = state
-        .status
-        .lock()
-        .map_err(|_| "Google Calendar state is unavailable.".to_string())?;
-    runtime.last_synced_at = Some(synced_at.clone());
-    runtime.error = None;
+    let pending = pending_count(store)?;
     Ok(GoogleCalendarSyncResult {
         synced_calendars: calendar_ids.len() as u32,
         changed_events: changed,

@@ -57,6 +57,7 @@ export const SETTINGS_TABS = [
     label: "ファイルシェル",
     navigationLabel: "シェルフ",
     description: "ファイルの一時置き場",
+    keywords: ["ファイル", "フォルダ", "クリップボード", "履歴", "Alt+3"],
     icon: React.createElement(Archive, { size: 18, "aria-hidden": true }),
   },
   {
@@ -64,12 +65,21 @@ export const SETTINGS_TABS = [
     label: "クイックキャプチャー",
     navigationLabel: "キャプチャー",
     description: "下書きとメモの呼び出し",
+    keywords: ["メモ", "ノート", "下書き", "タグ", "添付"],
     icon: React.createElement(NotebookPen, { size: 18, "aria-hidden": true }),
   },
   {
     id: "general",
     label: "一般設定",
     description: "テーマと起動操作",
+    keywords: [
+      "テーマ",
+      "ダーク",
+      "ライト",
+      "自動起動",
+      "ショートカット",
+      "アップデート",
+    ],
     icon: React.createElement(SlidersHorizontal, {
       size: 18,
       "aria-hidden": true,
@@ -79,6 +89,7 @@ export const SETTINGS_TABS = [
     id: "gameLauncher",
     label: "ゲームランチャー",
     description: "ゲームの検出と起動",
+    keywords: ["Steam", "Epic", "Riot", "ストア", "ゲーム"],
     icon: React.createElement(Gamepad2, { size: 18, "aria-hidden": true }),
   },
   {
@@ -86,18 +97,21 @@ export const SETTINGS_TABS = [
     label: "時計オーバーレイ",
     navigationLabel: "時計",
     description: "表示とスタイル",
+    keywords: ["時刻", "日付", "秒", "フォント", "オーバーレイ"],
     icon: React.createElement(Clock3, { size: 18, "aria-hidden": true }),
   },
   {
     id: "calendar",
     label: "カレンダー",
     description: "月表示と呼び出し操作",
+    keywords: ["予定", "イベント", "Google Calendar", "月表示"],
     icon: React.createElement(CalendarDays, { size: 18, "aria-hidden": true }),
   },
   {
     id: "voiceToText",
     label: "音声入力",
     description: "音声の文字起こし",
+    keywords: ["文字起こし", "音声ファイル", "API", "Whisper", "言語"],
     icon: React.createElement(Mic2, { size: 18, "aria-hidden": true }),
   },
 ] as const;

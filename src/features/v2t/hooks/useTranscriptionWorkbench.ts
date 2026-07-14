@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { chooseAudioFile, transcribeAudio } from "../api";
 import { focusAndSelect } from "../focus";
 import {
@@ -37,6 +37,8 @@ export const useTranscriptionWorkbench = ({
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
   const [transcribing, setTranscribing] = useState(false);
+  const transcriptionAttemptRef = useRef(0);
+  const transcribingRef = useRef(false);
   const [audioFilePasteStatus, setAudioFilePasteStatus, audioFilePasteTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
   const [copyStatus, setCopyStatus, copyTone] = useTransientStatus(
@@ -54,6 +56,9 @@ export const useTranscriptionWorkbench = ({
   }, [audioFilePasteStatus]);
 
   const clearTranscriptionOutput = useCallback(() => {
+    transcriptionAttemptRef.current += 1;
+    transcribingRef.current = false;
+    setTranscribing(false);
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
@@ -73,26 +78,38 @@ export const useTranscriptionWorkbench = ({
     !transcribing;
 
   const transcribeAudioFile = useCallback(async () => {
+    if (transcribingRef.current) return;
+
+    const attempt = transcriptionAttemptRef.current + 1;
+    transcriptionAttemptRef.current = attempt;
+    transcribingRef.current = true;
     setTranscribing(true);
-    clearTranscriptionOutput();
+    setTranscriptionText("");
+    setTranscriptionError("");
+    setCopyStatus("");
     clearApiKeyPasteStatus();
     setAudioFilePasteStatus("");
 
     try {
       const result = await transcribeAudio(settings, audioFilePath.trim());
+      if (attempt !== transcriptionAttemptRef.current) return;
       setTranscriptionText(result.text);
     } catch (error) {
+      if (attempt !== transcriptionAttemptRef.current) return;
       setTranscriptionError(
         error instanceof Error ? error.message : String(error),
       );
     } finally {
-      setTranscribing(false);
+      if (attempt === transcriptionAttemptRef.current) {
+        transcribingRef.current = false;
+        setTranscribing(false);
+      }
     }
   }, [
     audioFilePath,
     clearApiKeyPasteStatus,
-    clearTranscriptionOutput,
     setAudioFilePasteStatus,
+    setCopyStatus,
     settings,
   ]);
 
@@ -141,6 +158,7 @@ export const useTranscriptionWorkbench = ({
         clearApiKeyPasteStatus();
         return;
       }
+      clearTranscriptionOutput();
       setAudioFilePath(value);
       setAudioFilePasteStatus("音声ファイルパスを貼り付けました");
       clearApiKeyPasteStatus();
@@ -151,7 +169,11 @@ export const useTranscriptionWorkbench = ({
     } finally {
       focusAndSelect("v2t-audio-file-input");
     }
-  }, [clearApiKeyPasteStatus, setAudioFilePasteStatus]);
+  }, [
+    clearApiKeyPasteStatus,
+    clearTranscriptionOutput,
+    setAudioFilePasteStatus,
+  ]);
 
   const selectAudioFile = useCallback(async () => {
     setAudioFilePasteStatus("");
@@ -176,7 +198,33 @@ export const useTranscriptionWorkbench = ({
 
   const handleAudioFilePathKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key !== "Enter" || !canTranscribe) return;
+      if (
+        event.key !== "Enter" ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.shiftKey ||
+        !canTranscribe
+      ) {
+        return;
+      }
+      event.preventDefault();
+      void transcribeAudioFile();
+    },
+    [canTranscribe, transcribeAudioFile],
+  );
+
+  const handleWorkbenchKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (
+        event.key !== "Enter" ||
+        (!event.ctrlKey && !event.metaKey) ||
+        event.altKey ||
+        event.shiftKey ||
+        !canTranscribe
+      ) {
+        return;
+      }
       event.preventDefault();
       void transcribeAudioFile();
     },
@@ -198,7 +246,7 @@ export const useTranscriptionWorkbench = ({
           ? "実行するには、音声ファイルパスを入力してください。"
           : configurationError
             ? configurationError
-            : undefined;
+            : "ファイル欄のEnter、またはCtrl/Command+Enterで実行できます。";
 
   const setupSteps = [
     {
@@ -246,6 +294,7 @@ export const useTranscriptionWorkbench = ({
     pasteAudioFilePath,
     selectAudioFile,
     handleAudioFilePathKeyDown,
+    handleWorkbenchKeyDown,
     normalizeAudioFilePath: (value: string) => setAudioFilePath(value.trim()),
     resetTranscriptionUi,
   };

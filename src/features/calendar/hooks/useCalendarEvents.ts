@@ -32,7 +32,7 @@ export const useCalendarEvents = (
     loadSettings()
       .then(async (settings) => {
         const connection = await getGoogleCalendarConnection();
-        if (!connection.connected) return null;
+        if (!connection.connected || connection.syncing) return null;
         return syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
       })
       .then((result) => {

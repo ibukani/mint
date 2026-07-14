@@ -14,12 +14,18 @@ import {
   Link,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
-import { OverlayFrame } from "../../../design/layout";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  getPlatformShortcutModifier,
+  isApplePlatform,
+  OverlayFrame,
+  revealElementVertically,
+} from "../../../design/layout";
 import { useFileShelf } from "../hooks/useFileShelf";
 import type { FileShelfItem, FileShelfItemKind } from "../types";
 import "./FileShelfOverlay.css";
@@ -75,21 +81,120 @@ const supportedImageTypes = new Set([
   "image/webp",
 ]);
 
+type ShelfCursorEntry =
+  | { key: string; kind: "group"; groupId: string }
+  | { key: string; kind: "item"; item: FileShelfItem };
+
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
+
+const matchesQuery = (item: FileShelfItem, query: string) =>
+  [
+    item.displayName,
+    item.sourcePath,
+    item.textContent,
+    kindLabel[item.kind],
+    item.source === "clipboardHistory" ? "履歴" : "手動",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("ja")
+    .includes(query);
+
 export const FileShelfOverlay: React.FC = () => {
   const shelf = useFileShelf();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [cursorKey, setCursorKey] = useState("");
   const collapseTimer = useRef<number | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const shortcutModifier = getPlatformShortcutModifier();
+  const shortcutAriaModifier = isApplePlatform() ? "Meta" : "Control";
+  const normalizedQuery = query.trim().toLocaleLowerCase("ja");
+
+  const allItems = useMemo(
+    () => shelf.state.groups.flatMap((group) => group.items),
+    [shelf.state.groups],
+  );
+
+  const visibleGroups = useMemo(
+    () =>
+      normalizedQuery
+        ? shelf.state.groups.flatMap((group) => {
+            const items = group.items.filter((item) =>
+              matchesQuery(item, normalizedQuery),
+            );
+            return items.length ? [{ ...group, items }] : [];
+          })
+        : shelf.state.groups,
+    [normalizedQuery, shelf.state.groups],
+  );
+
+  const visibleItems = useMemo(
+    () => visibleGroups.flatMap((group) => group.items),
+    [visibleGroups],
+  );
+
+  const cursorEntries = useMemo(
+    () =>
+      visibleGroups.flatMap<ShelfCursorEntry>((group) => {
+        if (group.items.length === 1) {
+          const item = group.items[0];
+          return [{ key: `item:${item.id}`, kind: "item", item }];
+        }
+        const itemEntries = group.items.map<ShelfCursorEntry>((item) => ({
+          key: `item:${item.id}`,
+          kind: "item",
+          item,
+        }));
+        if (normalizedQuery) return itemEntries;
+        const groupEntry: ShelfCursorEntry = {
+          key: `group:${group.id}`,
+          kind: "group",
+          groupId: group.id,
+        };
+        return expandedGroups.has(group.id)
+          ? [groupEntry, ...itemEntries]
+          : [groupEntry];
+      }),
+    [expandedGroups, normalizedQuery, visibleGroups],
+  );
 
   useEffect(() => {
-    const activeIds = new Set(
-      shelf.state.groups.flatMap((group) => group.items.map((item) => item.id)),
-    );
+    const activeIds = new Set(allItems.map((item) => item.id));
     setSelectedIds(
       (previous) => new Set([...previous].filter((id) => activeIds.has(id))),
     );
-  }, [shelf.state.groups]);
+  }, [allItems]);
+
+  useEffect(() => {
+    setCursorKey((previous) =>
+      cursorEntries.some((entry) => entry.key === previous)
+        ? previous
+        : (cursorEntries[0]?.key ?? ""),
+    );
+  }, [cursorEntries]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content || !cursorKey) return;
+    const active = Array.from(
+      content.querySelectorAll<HTMLElement>("[data-shelf-cursor-key]"),
+    ).find((element) => element.dataset.shelfCursorKey === cursorKey);
+    if (!active) return;
+    revealElementVertically(content, active, 8);
+    if (selectedIds.size === 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      revealElementVertically(content, active, 8);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [cursorKey, selectedIds]);
 
   useEffect(() => {
     if (shelf.expanded) containerRef.current?.focus();
@@ -147,35 +252,110 @@ export const FileShelfOverlay: React.FC = () => {
     if (additive && next.has(item.id)) next.delete(item.id);
     else next.add(item.id);
     setSelectedIds(next);
+    setCursorKey(`item:${item.id}`);
   };
 
-  const selectedItems = shelf.state.groups
-    .flatMap((group) => group.items)
-    .filter((item) => selectedIds.has(item.id));
+  const selectedItems = allItems.filter((item) => selectedIds.has(item.id));
+
+  const toggleGroup = (groupId: string) => {
+    const next = new Set(expandedGroups);
+    if (next.has(groupId)) next.delete(groupId);
+    else next.add(groupId);
+    setExpandedGroups(next);
+  };
+
+  const focusSearch = () => {
+    searchRef.current?.focus({ preventScroll: true });
+    searchRef.current?.select();
+  };
+
+  const moveCursor = (nextIndex: number) => {
+    const entry = cursorEntries[nextIndex];
+    if (!entry) return;
+    setCursorKey(entry.key);
+    if (entry.kind === "item") setSelectedIds(new Set([entry.item.id]));
+    else setSelectedIds(new Set());
+  };
+
+  const activateCursor = () => {
+    const entry = cursorEntries.find(
+      (candidate) => candidate.key === cursorKey,
+    );
+    if (!entry) return;
+    if (entry.kind === "group") {
+      toggleGroup(entry.groupId);
+      return;
+    }
+    setSelectedIds(new Set([entry.item.id]));
+    void shelf.openItem(entry.item);
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    const modifierPressed = event.ctrlKey || event.metaKey;
+    const key = event.key.toLocaleLowerCase();
+
+    if (modifierPressed && key === "f") {
+      event.preventDefault();
+      focusSearch();
+      return;
+    }
+    if (
+      event.key === "/" &&
+      !modifierPressed &&
+      !event.altKey &&
+      !isEditableTarget(event.target)
+    ) {
+      event.preventDefault();
+      focusSearch();
+      return;
+    }
     if (event.key === "Escape") {
       event.preventDefault();
-      void shelf.changeExpanded(false);
+      if (query) {
+        setQuery("");
+        focusSearch();
+      } else if (selectedIds.size > 0) {
+        setSelectedIds(new Set());
+        containerRef.current?.focus({ preventScroll: true });
+      } else {
+        void shelf.changeExpanded(false);
+      }
     } else if (event.key === "Delete" && selectedIds.size > 0) {
       event.preventDefault();
       void shelf.removeItems([...selectedIds]);
-    } else if ((event.ctrlKey || event.metaKey) && event.key === "a") {
+    } else if (modifierPressed && key === "a") {
       event.preventDefault();
-      setSelectedIds(
-        new Set(
-          shelf.state.groups.flatMap((group) =>
-            group.items.map((item) => item.id),
-          ),
-        ),
-      );
-    } else if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key === "c" &&
-      selectedItems.length === 1
-    ) {
+      setSelectedIds(new Set(visibleItems.map((item) => item.id)));
+    } else if (modifierPressed && key === "c" && selectedItems.length === 1) {
       event.preventDefault();
       void shelf.copyItem(selectedItems[0]);
+    } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const currentIndex = cursorEntries.findIndex(
+        (entry) => entry.key === cursorKey,
+      );
+      if (event.key === "Home") moveCursor(0);
+      else if (event.key === "End") moveCursor(cursorEntries.length - 1);
+      else if (event.key === "ArrowDown") {
+        moveCursor(
+          currentIndex < 0 ? 0 : (currentIndex + 1) % cursorEntries.length,
+        );
+      } else {
+        moveCursor(
+          currentIndex <= 0 ? cursorEntries.length - 1 : currentIndex - 1,
+        );
+      }
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      activateCursor();
+    } else if (event.key === " " && cursorKey) {
+      const entry = cursorEntries.find(
+        (candidate) => candidate.key === cursorKey,
+      );
+      if (!entry) return;
+      event.preventDefault();
+      if (entry.kind === "group") toggleGroup(entry.groupId);
+      else selectItem(entry.item, true);
     }
   };
 
@@ -253,7 +433,43 @@ export const FileShelfOverlay: React.FC = () => {
           <span>ここへドロップ、または Ctrl+V で画像・URL・文章を追加</span>
         </div>
 
-        <div className="file-shelf__content" aria-live="polite">
+        <label className="file-shelf__search">
+          <Search size={15} aria-hidden="true" />
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="棚を検索"
+            aria-label="棚を検索"
+            aria-keyshortcuts={`${shortcutAriaModifier}+F`}
+          />
+          {query ? (
+            <>
+              <span className="file-shelf__search-count" aria-live="polite">
+                {visibleItems.length}件
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  focusSearch();
+                }}
+                aria-label="検索をクリア"
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            </>
+          ) : (
+            <kbd>{shortcutModifier} F</kbd>
+          )}
+        </label>
+
+        <div
+          ref={contentRef}
+          className="file-shelf__content"
+          aria-live="polite"
+        >
           {shelf.loading ? (
             <div className="file-shelf__empty">棚を読み込んでいます…</div>
           ) : shelf.state.groups.length === 0 ? (
@@ -262,10 +478,21 @@ export const FileShelfOverlay: React.FC = () => {
               <strong>棚は空です</strong>
               <span>Explorerからファイルを画面端へドラッグしてください</span>
             </div>
+          ) : visibleGroups.length === 0 ? (
+            <div className="file-shelf__empty file-shelf__empty--search">
+              <Search size={28} aria-hidden="true" />
+              <strong>一致する項目がありません</strong>
+              <span>名前、パス、URL、文章から検索しています</span>
+              <button type="button" onClick={() => setQuery("")}>
+                検索をクリア
+              </button>
+            </div>
           ) : (
-            shelf.state.groups.map((group) => {
+            visibleGroups.map((group) => {
               const isStack = group.items.length > 1;
-              const isOpen = expandedGroups.has(group.id);
+              const isOpen = normalizedQuery
+                ? true
+                : expandedGroups.has(group.id);
               const draggableItems = group.items.filter(
                 (item) =>
                   item.availability === "ready" && Boolean(item.sourcePath),
@@ -276,14 +503,12 @@ export const FileShelfOverlay: React.FC = () => {
                     {isStack ? (
                       <button
                         type="button"
-                        className="file-shelf__stack-toggle"
-                        onClick={() => {
-                          const next = new Set(expandedGroups);
-                          if (isOpen) next.delete(group.id);
-                          else next.add(group.id);
-                          setExpandedGroups(next);
-                        }}
+                        className={`file-shelf__stack-toggle${cursorKey === `group:${group.id}` ? " is-keyboard-active" : ""}`}
+                        onClick={() => toggleGroup(group.id)}
                         aria-expanded={isOpen}
+                        data-shelf-cursor-key={
+                          normalizedQuery ? undefined : `group:${group.id}`
+                        }
                       >
                         {isOpen ? (
                           <ChevronDown size={16} aria-hidden="true" />
@@ -307,7 +532,7 @@ export const FileShelfOverlay: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        className={`file-shelf__single${selectedIds.has(group.items[0].id) ? " is-selected" : ""}`}
+                        className={`file-shelf__single${selectedIds.has(group.items[0].id) ? " is-selected" : ""}${cursorKey === `item:${group.items[0].id}` ? " is-keyboard-active" : ""}`}
                         onClick={(event) =>
                           selectItem(
                             group.items[0],
@@ -318,6 +543,7 @@ export const FileShelfOverlay: React.FC = () => {
                           void shelf.openItem(group.items[0])
                         }
                         aria-pressed={selectedIds.has(group.items[0].id)}
+                        data-shelf-cursor-key={`item:${group.items[0].id}`}
                       >
                         <ItemIcon kind={group.items[0].kind} />
                         <span>
@@ -367,12 +593,13 @@ export const FileShelfOverlay: React.FC = () => {
                         >
                           <button
                             type="button"
-                            className="file-shelf__item-main"
+                            className={`file-shelf__item-main${cursorKey === `item:${item.id}` ? " is-keyboard-active" : ""}`}
                             onClick={(event) =>
                               selectItem(item, event.ctrlKey || event.metaKey)
                             }
                             onDoubleClick={() => void shelf.openItem(item)}
                             aria-pressed={selectedIds.has(item.id)}
+                            data-shelf-cursor-key={`item:${item.id}`}
                           >
                             <ItemIcon kind={item.kind} />
                             <span>

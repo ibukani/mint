@@ -1,5 +1,6 @@
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../navigation/settingsTabs";
 
 const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
@@ -35,6 +36,16 @@ export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     getInitialSettingsTab,
   );
+  const [focusRequest, setFocusRequest] = useState<{
+    id: number;
+    targetId?: string;
+  }>({ id: 0 });
+  const navigateToTab = useCallback((tabId: SettingsTabId) => {
+    setFocusRequest((current) =>
+      current.targetId ? { id: current.id } : current,
+    );
+    setActiveTab(tabId);
+  }, []);
 
   useEffect(() => {
     setLabel(getCurrentWindow().label);
@@ -80,12 +91,33 @@ export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
       if (!tab) return;
 
       event.preventDefault();
-      setActiveTab(tab.id);
+      navigateToTab(tab.id);
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [label, navigateToTab]);
+
+  useEffect(() => {
+    if (label !== "main") return undefined;
+
+    const unlistenPromise = listen("voice-to-text-shortcut", () => {
+      setActiveTab("voiceToText");
+      setFocusRequest((current) => ({
+        id: current.id + 1,
+        targetId: "v2t-audio-file-input",
+      }));
+    });
+
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
   }, [label]);
 
-  return { label, activeTab, setActiveTab };
+  return {
+    label,
+    activeTab,
+    setActiveTab: navigateToTab,
+    focusRequest,
+  };
 };

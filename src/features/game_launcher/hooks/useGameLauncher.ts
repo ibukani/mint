@@ -13,7 +13,7 @@ export const useGameLauncher = () => {
   const [result, setResult] = useState<GameScanResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [launchingId, setLaunchingId] = useState<string | null>(null);
+  const [launchingGameKey, setLaunchingGameKey] = useState<string | null>(null);
   const [openingStoreId, setOpeningStoreId] = useState<string | null>(null);
   const [visible, setVisible] = useState(true);
   const [hiding, setHiding] = useState(false);
@@ -70,7 +70,7 @@ export const useGameLauncher = () => {
     async (game: InstalledGame) => {
       if (launchingRef.current || closingRef.current) return;
       launchingRef.current = true;
-      setLaunchingId(game.id);
+      setLaunchingGameKey(gameKey(game));
       setError(null);
       try {
         await launchGame({ id: game.id, store: game.store });
@@ -91,7 +91,7 @@ export const useGameLauncher = () => {
         setError(reason instanceof Error ? reason.message : String(reason));
       } finally {
         launchingRef.current = false;
-        setLaunchingId(null);
+        setLaunchingGameKey(null);
       }
     },
     [close, updateSettings],
@@ -161,7 +161,7 @@ export const useGameLauncher = () => {
     animationClass: hiding ? "is-hiding" : visible ? "is-visible" : "",
     close,
     error,
-    launchingId,
+    launchingGameKey,
     openingStoreId,
     loading,
     result,
