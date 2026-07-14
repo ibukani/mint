@@ -105,6 +105,33 @@ describe("AppShell", () => {
     expect(onTabChange).toHaveBeenCalledWith("voiceToText");
   });
 
+  it("does not steal Ctrl+K from an editable control and can clear a query", () => {
+    render(
+      <AppShell
+        title="mint"
+        tabs={[{ id: "general", label: "一般設定" }]}
+        activeTab="general"
+        onTabChange={() => undefined}
+      >
+        <input aria-label="編集中の入力欄" />
+      </AppShell>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "編集中の入力欄" });
+    fireEvent.keyDown(input, { key: "k", ctrlKey: true });
+    expect(screen.queryByRole("dialog", { name: "設定を検索" })).toBeNull();
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定カテゴリを検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "テーマ" } });
+    fireEvent.click(screen.getByRole("button", { name: "設定検索をクリア" }));
+
+    expect(searchInput).toHaveValue("");
+    expect(searchInput).toHaveFocus();
+  });
+
   it("shows an empty state without navigating and closes with Escape", () => {
     const onTabChange = vi.fn();
     render(

@@ -523,6 +523,30 @@
   font-size: var(--font-size-md);
 }
 
+.settings-switcher__clear {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.settings-switcher__clear:hover,
+.settings-switcher__clear:focus-visible {
+  border-color: var(--border-subtle);
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
+}
+
 .settings-switcher__results {
   display: flex;
   min-height: 0;

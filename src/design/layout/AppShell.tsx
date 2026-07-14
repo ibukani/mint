@@ -8,6 +8,12 @@ import { Sidebar, type SidebarTab } from "./Sidebar";
 import { TitleBar } from "./TitleBar";
 import { useWindowDrag } from "./useWindowDrag";
 
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
+
 interface AppShellProps<TTabId extends string> {
   title: string;
   tabs: readonly SidebarTab<TTabId>[];
@@ -47,6 +53,7 @@ export const AppShell = <TTabId extends string>({
       ) {
         return;
       }
+      if (isEditableTarget(event.target)) return;
 
       event.preventDefault();
       setQuickSwitcherOpen(true);

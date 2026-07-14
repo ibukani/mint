@@ -193,6 +193,21 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
             }}
             onKeyDown={handleSearchKeyDown}
           />
+          {query && (
+            <button
+              type="button"
+              className="settings-switcher__clear"
+              aria-label="設定検索をクリア"
+              title="検索をクリア"
+              onClick={() => {
+                setQuery("");
+                setActiveIndex(0);
+                inputRef.current?.focus();
+              }}
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         <div
