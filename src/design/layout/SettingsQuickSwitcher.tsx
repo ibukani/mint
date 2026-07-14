@@ -234,6 +234,12 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
 
   const selectResult = async (result: SettingsSearchResult<TTabId>) => {
     if (result.kind === "action") {
+      if (result.action.disabled) {
+        setActionError(
+          result.action.disabledReason ?? "この操作は現在利用できません。",
+        );
+        return;
+      }
       if (!onQuickAction || isSelecting) return;
       setIsSelecting(true);
       setActionError("");
@@ -443,10 +449,20 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
               id={`${resultsId}-${result.key}`}
               key={result.key}
               tabIndex={-1}
-              className={`settings-switcher__option${result.kind === "setting" ? " is-setting" : ""}${result.kind === "action" ? " is-action" : ""}${recentResultKeys.has(result.key) ? " is-recent" : ""} ${
+              className={`settings-switcher__option${result.kind === "setting" ? " is-setting" : ""}${result.kind === "action" ? " is-action" : ""}${result.kind === "action" && result.action.disabled ? " is-disabled" : ""}${recentResultKeys.has(result.key) ? " is-recent" : ""} ${
                 index === activeIndex ? "is-active" : ""
               }`}
               aria-selected={index === activeIndex}
+              aria-disabled={
+                result.kind === "action" && result.action.disabled
+                  ? "true"
+                  : undefined
+              }
+              title={
+                result.kind === "action" && result.action.disabled
+                  ? result.action.disabledReason
+                  : undefined
+              }
               onClick={() => void selectResult(result)}
               onMouseEnter={() => setActiveIndex(index)}
               disabled={isSelecting}
@@ -476,14 +492,18 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
                         .filter(Boolean)
                         .join(" · ")
                     : result.kind === "action"
-                      ? result.action.description
+                      ? result.action.disabled
+                        ? result.action.disabledReason
+                        : result.action.description
                       : result.tab.description}
                 </small>
               </span>
               {result.kind === "tab" && result.tab.id === activeTab && (
                 <span className="settings-switcher__current">表示中</span>
               )}
-              {recentResultKeys.has(result.key) ? (
+              {result.kind === "action" && result.action.disabled ? (
+                <span className="settings-switcher__scope">無効</span>
+              ) : recentResultKeys.has(result.key) ? (
                 <span className="settings-switcher__scope">最近</span>
               ) : result.kind === "setting" ? (
                 <span className="settings-switcher__scope">項目</span>

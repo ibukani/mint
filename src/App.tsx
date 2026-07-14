@@ -46,6 +46,31 @@ const saveSidebarTones: Record<
   error: "error",
 };
 
+type OverlayFeatureSettingsKey =
+  | "clock"
+  | "calendar"
+  | "gameLauncher"
+  | "quickCapture"
+  | "fileShelf";
+
+const quickActionAvailability: Record<
+  string,
+  { settingsKey: OverlayFeatureSettingsKey; label: string }
+> = {
+  clock: { settingsKey: "clock", label: "時計オーバーレイ" },
+  calendar: { settingsKey: "calendar", label: "カレンダー" },
+  calendarCreateEvent: { settingsKey: "calendar", label: "カレンダー" },
+  gameLauncher: {
+    settingsKey: "gameLauncher",
+    label: "ゲームランチャー",
+  },
+  quickCapture: {
+    settingsKey: "quickCapture",
+    label: "クイックキャプチャー",
+  },
+  fileShelf: { settingsKey: "fileShelf", label: "ファイルシェル" },
+};
+
 const AppContent: React.FC = () => {
   const {
     settings,
@@ -98,6 +123,20 @@ const AppContent: React.FC = () => {
   const activeTabLabel =
     SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定";
   const settingsLoadError = !settings ? error : null;
+  const quickActions = settings
+    ? SETTINGS_QUICK_ACTIONS.map((action) => {
+        const availability = quickActionAvailability[action.targetId];
+        if (!availability || settings[availability.settingsKey].enabled) {
+          return action;
+        }
+
+        return {
+          ...action,
+          disabled: true,
+          disabledReason: `${availability.label}が無効です。詳細設定で有効にしてください。`,
+        };
+      })
+    : SETTINGS_QUICK_ACTIONS;
 
   return (
     <>
@@ -112,7 +151,7 @@ const AppContent: React.FC = () => {
           tabs={SETTINGS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          quickActions={SETTINGS_QUICK_ACTIONS}
+          quickActions={quickActions}
           onQuickAction={(targetId) => {
             if (
               targetId === "themeDark" ||

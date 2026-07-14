@@ -667,6 +667,27 @@
   background: color-mix(in srgb, var(--surface-accent) 34%, transparent);
 }
 
+.settings-switcher__option.is-disabled {
+  color: var(--color-text-muted);
+}
+
+.settings-switcher__option.is-disabled.is-active,
+.settings-switcher__option.is-disabled.is-recent:not(.is-active) {
+  border-color: var(--border-control);
+  background: var(--surface-control);
+  color: var(--color-text-secondary);
+}
+
+.settings-switcher__option.is-disabled .settings-switcher__option-icon {
+  border-color: var(--border-control);
+  background: var(--surface-control);
+  color: var(--color-text-subtle);
+}
+
+.settings-switcher__option.is-disabled .settings-switcher__option-copy small {
+  color: var(--color-text-muted);
+}
+
 .settings-switcher__option-copy {
   display: flex;
   min-width: 0;

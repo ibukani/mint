@@ -389,6 +389,51 @@ describe("AppShell", () => {
     ).toBeVisible();
   });
 
+  it("explains why a disabled quick action cannot run", async () => {
+    const onQuickAction = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AppShell
+        title="mint"
+        tabs={[{ id: "general", label: "一般設定" }]}
+        activeTab="general"
+        onTabChange={() => undefined}
+        quickActions={[
+          {
+            id: "open-clock",
+            label: "時計を開く",
+            description: "時計オーバーレイを表示",
+            targetId: "clock",
+            disabled: true,
+            disabledReason:
+              "時計オーバーレイが無効です。詳細設定で有効にしてください。",
+          },
+        ]}
+        onQuickAction={onQuickAction}
+      >
+        <p>設定コンテンツ</p>
+      </AppShell>,
+    );
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目、操作を検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "時計" } });
+    const option = screen.getByRole("option", { name: /時計を開く/ });
+
+    expect(option).toHaveAttribute("aria-disabled", "true");
+    expect(option).toHaveTextContent("無効");
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "時計オーバーレイが無効です。詳細設定で有効にしてください。",
+    );
+    expect(onQuickAction).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeVisible();
+  });
+
   it("does not steal Ctrl+K from an editable control and can clear a query", () => {
     render(
       <AppShell

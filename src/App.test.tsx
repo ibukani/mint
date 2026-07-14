@@ -145,6 +145,41 @@ describe("App Window Routing", () => {
     });
   });
 
+  it("marks disabled overlay actions before trying to open them", async () => {
+    const defaultSettings = createMockSettings();
+    const settings = createMockSettings({
+      clock: { ...defaultSettings.clock, enabled: false },
+    });
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === "load_settings") return settings;
+      return undefined;
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目、操作を検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "時計を開く" } });
+    const option = screen.getByRole("option", { name: /時計を開く/ });
+
+    expect(option).toHaveAttribute("aria-disabled", "true");
+    expect(option).toHaveTextContent("無効");
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "時計オーバーレイが無効です。詳細設定で有効にしてください。",
+    );
+    expect(invoke).not.toHaveBeenCalledWith("open_overlay", {
+      target: "clock",
+    });
+    expect(
+      screen.getByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeVisible();
+  });
+
   it("changes the theme directly from the quick launcher", async () => {
     const settings = createMockSettings({ theme: "dark" });
     vi.mocked(invoke).mockImplementation(async (command: string) => {

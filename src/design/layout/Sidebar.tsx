@@ -27,6 +27,8 @@ export interface SidebarQuickAction {
   keywords?: readonly string[];
   targetId: string;
   icon?: React.ReactNode;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 type SidebarStatusTone = "neutral" | "pending" | "success" | "error";
