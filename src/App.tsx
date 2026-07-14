@@ -13,9 +13,11 @@ import {
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
 import { useSettingsWindow } from "./core/hooks/useSettingsWindow";
 import {
+  SETTINGS_QUICK_ACTIONS,
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
 } from "./core/navigation/settingsTabs";
+import { isOverlayTarget, openOverlay } from "./core/windowCommands";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
 import {
@@ -107,6 +109,13 @@ const AppContent: React.FC = () => {
           tabs={SETTINGS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          quickActions={SETTINGS_QUICK_ACTIONS}
+          onQuickAction={(targetId) => {
+            if (!isOverlayTarget(targetId)) {
+              return Promise.reject(new Error("利用できない操作です。"));
+            }
+            return openOverlay(targetId);
+          }}
           statusLabel={saveSidebarLabels[saveStatus]}
           statusTone={saveSidebarTones[saveStatus]}
         >

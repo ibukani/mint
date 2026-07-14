@@ -4,7 +4,7 @@ import { Panel } from "../components/Panel";
 import { ContentArea } from "./ContentArea";
 import { getPlatformShortcutModifier, isApplePlatform } from "./keyboard";
 import { SettingsQuickSwitcher } from "./SettingsQuickSwitcher";
-import { Sidebar, type SidebarTab } from "./Sidebar";
+import { Sidebar, type SidebarQuickAction, type SidebarTab } from "./Sidebar";
 import { TitleBar } from "./TitleBar";
 import { useWindowDrag } from "./useWindowDrag";
 
@@ -19,6 +19,8 @@ interface AppShellProps<TTabId extends string> {
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
   onTabChange: (tabId: TTabId, targetId?: string) => void;
+  quickActions?: readonly SidebarQuickAction[];
+  onQuickAction?: (targetId: string) => Promise<void> | void;
   contextLabel?: string;
   statusLabel?: string;
   statusTone?: "neutral" | "pending" | "success" | "error";
@@ -30,6 +32,8 @@ export const AppShell = <TTabId extends string>({
   tabs,
   activeTab,
   onTabChange,
+  quickActions,
+  onQuickAction,
   contextLabel,
   statusLabel,
   statusTone,
@@ -92,6 +96,8 @@ export const AppShell = <TTabId extends string>({
         isOpen={isQuickSwitcherOpen}
         onClose={() => setQuickSwitcherOpen(false)}
         onTabChange={onTabChange}
+        quickActions={quickActions}
+        onQuickAction={onQuickAction}
       />
     </Panel>
   );

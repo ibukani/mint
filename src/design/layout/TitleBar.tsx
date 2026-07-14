@@ -59,13 +59,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           type="button"
           className="app-titlebar__search"
           onClick={onOpenQuickSwitcher}
-          aria-label="設定を検索"
+          aria-label="クイックランチャーを開く"
           aria-keyshortcuts={quickSwitcherAriaShortcut}
-          title={`${quickSwitcherShortcut} で設定を検索`}
+          title={`${quickSwitcherShortcut} でクイックランチャーを開く`}
           data-window-drag-block
         >
           <Search size={14} aria-hidden="true" />
-          <span>設定を検索</span>
+          <span>クイックランチャー</span>
           <kbd>{quickSwitcherShortcut}</kbd>
         </button>
       )}

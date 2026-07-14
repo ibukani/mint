@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
 
@@ -56,14 +56,18 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
-    const trigger = screen.getByRole("button", { name: "設定を検索" });
+    const trigger = screen.getByRole("button", {
+      name: "クイックランチャーを開く",
+    });
     expect(trigger).toHaveAttribute("aria-keyshortcuts", "Control+K");
     trigger.focus();
     fireEvent.click(trigger);
 
-    expect(screen.getByRole("dialog", { name: "設定を検索" })).toBeVisible();
+    expect(
+      screen.getByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeVisible();
     const searchInput = screen.getByRole("combobox", {
-      name: "設定や項目を検索",
+      name: "設定や項目、操作を検索",
     });
     expect(searchInput).toHaveFocus();
 
@@ -73,7 +77,9 @@ describe("AppShell", () => {
     fireEvent.keyDown(searchInput, { key: "Enter" });
 
     expect(onTabChange).toHaveBeenCalledWith("voiceToText");
-    expect(screen.queryByRole("dialog", { name: "設定を検索" })).toBeNull();
+    expect(
+      screen.queryByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeNull();
     expect(trigger).toHaveFocus();
   });
 
@@ -95,7 +101,7 @@ describe("AppShell", () => {
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const searchInput = screen.getByRole("combobox", {
-      name: "設定や項目を検索",
+      name: "設定や項目、操作を検索",
     });
     fireEvent.keyDown(searchInput, { key: "ArrowDown" });
 
@@ -135,7 +141,7 @@ describe("AppShell", () => {
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const searchInput = screen.getByRole("combobox", {
-      name: "設定や項目を検索",
+      name: "設定や項目、操作を検索",
     });
     fireEvent.change(searchInput, { target: { value: "APIキー" } });
 
@@ -146,6 +152,84 @@ describe("AppShell", () => {
       "voiceToText",
       "v2t-api-key-input",
     );
+  });
+
+  it("opens a quick action from the settings switcher", async () => {
+    const onQuickAction = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AppShell
+        title="mint"
+        tabs={[{ id: "general", label: "一般設定" }]}
+        activeTab="general"
+        onTabChange={() => undefined}
+        quickActions={[
+          {
+            id: "open-clock",
+            label: "時計を開く",
+            description: "時計オーバーレイを表示",
+            keywords: ["時刻"],
+            targetId: "clock",
+          },
+        ]}
+        onQuickAction={onQuickAction}
+      >
+        <p>設定コンテンツ</p>
+      </AppShell>,
+    );
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目、操作を検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "時計" } });
+    expect(screen.getByRole("option")).toHaveTextContent("時計を開く");
+
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(onQuickAction).toHaveBeenCalledWith("clock");
+      expect(
+        screen.queryByRole("dialog", { name: "クイックランチャー" }),
+      ).toBeNull();
+    });
+  });
+
+  it("keeps the quick launcher open when an action fails", async () => {
+    const onQuickAction = vi
+      .fn()
+      .mockRejectedValue(new Error("時計を表示できませんでした。"));
+    render(
+      <AppShell
+        title="mint"
+        tabs={[{ id: "general", label: "一般設定" }]}
+        activeTab="general"
+        onTabChange={() => undefined}
+        quickActions={[
+          {
+            id: "open-clock",
+            label: "時計を開く",
+            targetId: "clock",
+          },
+        ]}
+        onQuickAction={onQuickAction}
+      >
+        <p>設定コンテンツ</p>
+      </AppShell>,
+    );
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const searchInput = screen.getByRole("combobox", {
+      name: "設定や項目、操作を検索",
+    });
+    fireEvent.change(searchInput, { target: { value: "時計" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("時計を表示できませんでした。");
+    expect(alert).toBeVisible();
+    expect(
+      screen.getByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeVisible();
   });
 
   it("does not steal Ctrl+K from an editable control and can clear a query", () => {
@@ -162,14 +246,20 @@ describe("AppShell", () => {
 
     const input = screen.getByRole("textbox", { name: "編集中の入力欄" });
     fireEvent.keyDown(input, { key: "k", ctrlKey: true });
-    expect(screen.queryByRole("dialog", { name: "設定を検索" })).toBeNull();
+    expect(
+      screen.queryByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeNull();
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const searchInput = screen.getByRole("combobox", {
-      name: "設定や項目を検索",
+      name: "設定や項目、操作を検索",
     });
     fireEvent.change(searchInput, { target: { value: "テーマ" } });
-    fireEvent.click(screen.getByRole("button", { name: "設定検索をクリア" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "クイックランチャーの検索をクリア",
+      }),
+    );
 
     expect(searchInput).toHaveValue("");
     expect(searchInput).toHaveFocus();
@@ -190,16 +280,18 @@ describe("AppShell", () => {
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const searchInput = screen.getByRole("combobox", {
-      name: "設定や項目を検索",
+      name: "設定や項目、操作を検索",
     });
     fireEvent.change(searchInput, { target: { value: "存在しない設定" } });
     expect(screen.queryAllByRole("option")).toHaveLength(0);
-    expect(screen.getByText("一致する設定がありません")).toBeVisible();
+    expect(screen.getByText("一致する設定や操作がありません")).toBeVisible();
     fireEvent.keyDown(searchInput, { key: "Enter" });
     expect(onTabChange).not.toHaveBeenCalled();
     fireEvent.keyDown(searchInput, { key: "Escape" });
 
-    expect(screen.queryByRole("dialog", { name: "設定を検索" })).toBeNull();
+    expect(
+      screen.queryByRole("dialog", { name: "クイックランチャー" }),
+    ).toBeNull();
   });
 
   it("uses Cmd+K on Apple platforms without taking over Ctrl+K", () => {
@@ -219,13 +311,17 @@ describe("AppShell", () => {
       );
 
       expect(
-        screen.getByRole("button", { name: "設定を検索" }),
+        screen.getByRole("button", { name: "クイックランチャーを開く" }),
       ).toHaveAttribute("aria-keyshortcuts", "Meta+K");
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-      expect(screen.queryByRole("dialog", { name: "設定を検索" })).toBeNull();
+      expect(
+        screen.queryByRole("dialog", { name: "クイックランチャー" }),
+      ).toBeNull();
 
       fireEvent.keyDown(window, { key: "k", metaKey: true });
-      expect(screen.getByRole("dialog", { name: "設定を検索" })).toBeVisible();
+      expect(
+        screen.getByRole("dialog", { name: "クイックランチャー" }),
+      ).toBeVisible();
     } finally {
       platform.mockRestore();
     }

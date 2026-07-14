@@ -20,6 +20,15 @@ export interface SidebarSearchItem {
   targetId: string;
 }
 
+export interface SidebarQuickAction {
+  id: string;
+  label: string;
+  description?: string;
+  keywords?: readonly string[];
+  targetId: string;
+  icon?: React.ReactNode;
+}
+
 type SidebarStatusTone = "neutral" | "pending" | "success" | "error";
 
 interface SidebarProps<TTabId extends string> {

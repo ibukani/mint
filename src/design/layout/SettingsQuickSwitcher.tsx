@@ -2,7 +2,11 @@ import { Search, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { TextInput } from "../components";
-import type { SidebarSearchItem, SidebarTab } from "./Sidebar";
+import type {
+  SidebarQuickAction,
+  SidebarSearchItem,
+  SidebarTab,
+} from "./Sidebar";
 import { revealElementVertically } from "./scrollVisibility";
 
 type SettingsSearchResult<TTabId extends string> =
@@ -16,6 +20,11 @@ type SettingsSearchResult<TTabId extends string> =
       key: string;
       item: SidebarSearchItem;
       tab: SidebarTab<TTabId>;
+    }
+  | {
+      kind: "action";
+      key: string;
+      action: SidebarQuickAction;
     };
 
 interface SettingsQuickSwitcherProps<TTabId extends string> {
@@ -24,6 +33,8 @@ interface SettingsQuickSwitcherProps<TTabId extends string> {
   isOpen: boolean;
   onClose: () => void;
   onTabChange: (tabId: TTabId, targetId?: string) => void;
+  quickActions?: readonly SidebarQuickAction[];
+  onQuickAction?: (targetId: string) => Promise<void> | void;
 }
 
 const normalizeSearchText = (value: string) =>
@@ -35,9 +46,13 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   isOpen,
   onClose,
   onTabChange,
+  quickActions = [],
+  onQuickAction,
 }: SettingsQuickSwitcherProps<TTabId>) => {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [actionError, setActionError] = useState("");
+  const [isSelecting, setIsSelecting] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
@@ -45,17 +60,24 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const titleId = useId();
   const resultsId = useId();
 
-  const filteredTabs = useMemo(() => {
+  const filteredResults = useMemo(() => {
     const normalizedQuery = normalizeSearchText(query);
     if (!normalizedQuery) {
-      return tabs.map<SettingsSearchResult<TTabId>>((tab) => ({
-        kind: "tab",
-        key: `tab:${tab.id}`,
-        tab,
-      }));
+      return [
+        ...tabs.map<SettingsSearchResult<TTabId>>((tab) => ({
+          kind: "tab",
+          key: `tab:${tab.id}`,
+          tab,
+        })),
+        ...quickActions.map<SettingsSearchResult<TTabId>>((action) => ({
+          kind: "action",
+          key: `action:${action.id}`,
+          action,
+        })),
+      ];
     }
 
-    return tabs.flatMap<SettingsSearchResult<TTabId>>((tab) => {
+    const tabResults = tabs.flatMap<SettingsSearchResult<TTabId>>((tab) => {
       const tabSearchableText = [
         tab.label,
         tab.navigationLabel,
@@ -88,8 +110,25 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       }
       return results;
     });
-  }, [query, tabs]);
-  const selectedResult = filteredTabs[activeIndex];
+    const actionResults = quickActions
+      .filter((action) => {
+        const searchableText = [
+          action.label,
+          action.description,
+          ...(action.keywords ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ");
+        return normalizeSearchText(searchableText).includes(normalizedQuery);
+      })
+      .map<SettingsSearchResult<TTabId>>((action) => ({
+        kind: "action",
+        key: `action:${action.id}`,
+        action,
+      }));
+    return [...tabResults, ...actionResults];
+  }, [query, quickActions, tabs]);
+  const selectedResult = filteredResults[activeIndex];
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -109,6 +148,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   useEffect(() => {
     if (!isOpen) return;
     setQuery("");
+    setActionError("");
     setActiveIndex(
       Math.max(
         0,
@@ -131,7 +171,25 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
 
   if (!isOpen) return null;
 
-  const selectResult = (result: SettingsSearchResult<TTabId>) => {
+  const selectResult = async (result: SettingsSearchResult<TTabId>) => {
+    if (result.kind === "action") {
+      if (!onQuickAction || isSelecting) return;
+      setIsSelecting(true);
+      setActionError("");
+      try {
+        await onQuickAction(result.action.targetId);
+        onClose();
+      } catch (reason) {
+        setActionError(
+          reason instanceof Error
+            ? reason.message
+            : "操作を実行できませんでした。",
+        );
+      } finally {
+        setIsSelecting(false);
+      }
+      return;
+    }
     if (result.kind === "setting") {
       onTabChange(result.tab.id, result.item.targetId);
     } else {
@@ -172,22 +230,24 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((current) =>
-        filteredTabs.length === 0 ? 0 : (current + 1) % filteredTabs.length,
+        filteredResults.length === 0
+          ? 0
+          : (current + 1) % filteredResults.length,
       );
       return;
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
       setActiveIndex((current) =>
-        filteredTabs.length === 0
+        filteredResults.length === 0
           ? 0
-          : (current - 1 + filteredTabs.length) % filteredTabs.length,
+          : (current - 1 + filteredResults.length) % filteredResults.length,
       );
       return;
     }
     if (event.key === "Enter" && selectedResult) {
       event.preventDefault();
-      selectResult(selectedResult);
+      void selectResult(selectedResult);
     }
   };
 
@@ -210,8 +270,8 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       >
         <div className="settings-switcher__header">
           <div>
-            <span className="settings-switcher__eyebrow">QUICK SWITCH</span>
-            <h2 id={titleId}>設定を検索</h2>
+            <span className="settings-switcher__eyebrow">QUICK ACTIONS</span>
+            <h2 id={titleId}>クイックランチャー</h2>
           </div>
           <button
             type="button"
@@ -230,19 +290,21 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
             ref={inputRef}
             value={query}
             role="combobox"
-            aria-label="設定や項目を検索"
+            aria-label="設定や項目、操作を検索"
             aria-controls={resultsId}
             aria-expanded="true"
             aria-autocomplete="list"
             aria-haspopup="listbox"
+            aria-keyshortcuts="ArrowDown ArrowUp Enter Escape"
             aria-activedescendant={
               selectedResult ? `${resultsId}-${selectedResult.key}` : undefined
             }
             autoComplete="off"
-            placeholder="機能名や設定項目を入力…"
+            placeholder="機能名、設定、操作を入力…"
             onChange={(event) => {
               setQuery(event.target.value);
               setActiveIndex(0);
+              setActionError("");
             }}
             onKeyDown={handleSearchKeyDown}
           />
@@ -250,7 +312,7 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
             <button
               type="button"
               className="settings-switcher__clear"
-              aria-label="設定検索をクリア"
+              aria-label="クイックランチャーの検索をクリア"
               title="検索をクリア"
               onClick={() => {
                 setQuery("");
@@ -268,33 +330,38 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
           id={resultsId}
           className="settings-switcher__results"
           role="listbox"
-          aria-label="設定カテゴリと項目"
+          aria-label="設定カテゴリ・項目・操作"
         >
-          {filteredTabs.map((result, index) => (
+          {filteredResults.map((result, index) => (
             <button
               type="button"
               role="option"
               id={`${resultsId}-${result.key}`}
               key={result.key}
               tabIndex={-1}
-              className={`settings-switcher__option${result.kind === "setting" ? " is-setting" : ""} ${
+              className={`settings-switcher__option${result.kind === "setting" ? " is-setting" : ""}${result.kind === "action" ? " is-action" : ""} ${
                 index === activeIndex ? "is-active" : ""
               }`}
               aria-selected={index === activeIndex}
-              onClick={() => selectResult(result)}
+              onClick={() => void selectResult(result)}
               onMouseEnter={() => setActiveIndex(index)}
+              disabled={isSelecting}
             >
               <span
                 className="settings-switcher__option-icon"
                 aria-hidden="true"
               >
-                {result.tab.icon}
+                {result.kind === "action"
+                  ? result.action.icon
+                  : result.tab.icon}
               </span>
               <span className="settings-switcher__option-copy">
                 <strong>
                   {result.kind === "setting"
                     ? result.item.label
-                    : result.tab.label}
+                    : result.kind === "action"
+                      ? result.action.label
+                      : result.tab.label}
                 </strong>
                 <small>
                   {result.kind === "setting"
@@ -304,7 +371,9 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
                       ]
                         .filter(Boolean)
                         .join(" · ")
-                    : result.tab.description}
+                    : result.kind === "action"
+                      ? result.action.description
+                      : result.tab.description}
                 </small>
               </span>
               {result.kind === "tab" && result.tab.id === activeTab && (
@@ -313,24 +382,30 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
               {result.kind === "setting" && (
                 <span className="settings-switcher__scope">項目</span>
               )}
+              {result.kind === "action" && (
+                <span className="settings-switcher__scope">操作</span>
+              )}
             </button>
           ))}
-          {filteredTabs.length === 0 && (
+          {filteredResults.length === 0 && (
             <div className="settings-switcher__empty">
               <Search size={20} aria-hidden="true" />
-              <strong>一致する設定がありません</strong>
-              <span>別の機能名や設定内容で検索してください。</span>
+              <strong>一致する設定や操作がありません</strong>
+              <span>別の機能名、設定内容、操作名で検索してください。</span>
             </div>
           )}
         </div>
 
         <div className="settings-switcher__footer">
-          <span aria-live="polite">
-            {filteredTabs.length} 件の{query ? "候補" : "カテゴリ"}
-          </span>
+          {actionError && (
+            <span className="settings-switcher__action-error" role="alert">
+              {actionError}
+            </span>
+          )}
+          <span aria-live="polite">{filteredResults.length} 件の候補</span>
           <span>
             <kbd>↑</kbd>
-            <kbd>↓</kbd> 選択 <kbd>Enter</kbd> 移動
+            <kbd>↓</kbd> 選択 <kbd>Enter</kbd> 決定
           </span>
         </div>
       </div>

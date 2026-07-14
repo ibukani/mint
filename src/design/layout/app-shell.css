@@ -616,6 +616,12 @@
   background: transparent;
 }
 
+.settings-switcher__option.is-action .settings-switcher__option-icon {
+  border: 1px solid var(--border-accent);
+  background: var(--surface-accent-action);
+  color: var(--color-accent);
+}
+
 .settings-switcher__option-copy {
   display: flex;
   min-width: 0;
@@ -686,6 +692,14 @@
   border-top: 1px solid var(--border-subtle);
   color: var(--color-text-subtle);
   font-size: var(--font-size-2xs);
+}
+
+.settings-switcher__action-error {
+  overflow: hidden;
+  flex: 1 1 auto;
+  color: var(--color-error);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-switcher__footer > span:last-child {

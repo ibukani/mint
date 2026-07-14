@@ -206,6 +206,7 @@ pub fn run() {
             core::settings::save_settings,
             core::settings::load_api_key,
             core::settings::save_api_key,
+            core::window::open_overlay,
             features::calendar::repository::list_calendar_events,
             features::calendar::repository::get_next_calendar_event,
             features::calendar::repository::create_calendar_event,

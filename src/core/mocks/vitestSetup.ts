@@ -70,6 +70,20 @@ mockIPCWithEvents(async (cmd, args) => {
       return defaultSettings;
     case "save_settings":
       return;
+    case "open_overlay": {
+      const target = typedArgs?.target as string | undefined;
+      const allowedTargets = [
+        "clock",
+        "calendar",
+        "gameLauncher",
+        "quickCapture",
+        "fileShelf",
+      ];
+      if (!target || !allowedTargets.includes(target)) {
+        throw new Error("利用できないオーバーレイです。");
+      }
+      return;
+    }
     case "list_calendar_events": {
       const range = typedArgs?.range as CalendarEventRange | undefined;
       return range ? mockListCalendarEvents(range) : [];

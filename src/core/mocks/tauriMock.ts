@@ -145,6 +145,49 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         }
         return;
       }
+      case "open_overlay": {
+        const target = typedArgs?.target as string | undefined;
+        const enabledByTarget: Record<string, boolean> = {
+          clock: defaultSettings.clock.enabled,
+          calendar: defaultSettings.calendar.enabled,
+          gameLauncher: defaultSettings.gameLauncher.enabled,
+          quickCapture: defaultSettings.quickCapture.enabled,
+          fileShelf: defaultSettings.fileShelf.enabled,
+        };
+        if (!target || !(target in enabledByTarget)) {
+          throw new Error("利用できないオーバーレイです。");
+        }
+        let enabled = enabledByTarget[target];
+        const storedSettings = localStorage.getItem(STORAGE_KEY);
+        if (storedSettings) {
+          try {
+            const parsed = JSON.parse(storedSettings) as Record<
+              string,
+              unknown
+            >;
+            const featureSettings = parsed[target];
+            if (
+              featureSettings &&
+              typeof featureSettings === "object" &&
+              "enabled" in featureSettings
+            ) {
+              enabled = Boolean(
+                (featureSettings as { enabled?: unknown }).enabled,
+              );
+            }
+          } catch {
+            // Fall back to the default mock settings when storage is invalid.
+          }
+        }
+        if (!enabled) {
+          throw new Error("このオーバーレイは無効になっています。");
+        }
+        localStorage.setItem("mint_mock_last_overlay", target);
+        window.dispatchEvent(
+          new CustomEvent("mint-overlay-opened", { detail: { target } }),
+        );
+        return;
+      }
       case "list_calendar_events": {
         const range = typedArgs?.range as CalendarEventRange | undefined;
         if (!range) throw new Error("Calendar event range is required.");
