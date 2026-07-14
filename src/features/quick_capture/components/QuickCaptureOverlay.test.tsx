@@ -306,7 +306,10 @@ describe("QuickCaptureOverlay", () => {
       name: "保存済みメモを検索",
     });
     expect(search).toHaveFocus();
-    expect(search).toHaveAttribute("aria-keyshortcuts", "Control+F /");
+    expect(search).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
+    );
 
     const options = screen.getAllByRole("option");
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
@@ -320,6 +323,49 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() =>
       expect(screen.getByLabelText("メモ本文")).toHaveFocus(),
     );
+  });
+
+  it("moves through a long note list with PageUp and PageDown", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: {
+          content: "編集中の下書き",
+          tags: [],
+          updatedAt: "2026-07-14T09:00:00.000Z",
+        },
+        notes: Array.from({ length: 8 }, (_, index) => ({
+          id: `page-note-${index}`,
+          content: `ページ移動メモ${index + 1}`,
+          tags: [],
+          pinned: false,
+          createdAt: `2026-07-${String(14 - index).padStart(2, "0")}T08:00:00.000Z`,
+          updatedAt: `2026-07-${String(14 - index).padStart(2, "0")}T08:00:00.000Z`,
+          attachments: [],
+        })),
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const editor = await screen.findByLabelText("メモ本文");
+    await screen.findByRole("option", { name: /ページ移動メモ1/ });
+    fireEvent.keyDown(editor, { key: "f", ctrlKey: true });
+
+    const search = screen.getByRole("combobox", {
+      name: "保存済みメモを検索",
+    });
+    const options = screen.getAllByRole("option");
+    expect(options).toHaveLength(8);
+    expect(search).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
+    );
+    expect(screen.getByText("Ctrl F · PgUp/PgDn")).toBeInTheDocument();
+
+    fireEvent.keyDown(search, { key: "PageDown" });
+    expect(search).toHaveAttribute("aria-activedescendant", options[5].id);
+    fireEvent.keyDown(search, { key: "PageUp" });
+    expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
   });
 
   it("clears library filters before Escape closes the overlay", async () => {

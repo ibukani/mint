@@ -70,6 +70,8 @@ const isEditableTarget = (target: EventTarget | null) =>
   target instanceof HTMLSelectElement ||
   (target instanceof HTMLElement && target.isContentEditable);
 
+const QUICK_CAPTURE_PAGE_STEP = 5;
+
 type QuickCaptureConfirmation =
   | { kind: "delete" }
   | { kind: "import"; path: string };
@@ -250,6 +252,13 @@ export const QuickCaptureOverlay: React.FC = () => {
       nextIndex = 0;
     } else if (event.key === "End") {
       nextIndex = filteredNotes.length - 1;
+    } else if (event.key === "PageDown") {
+      nextIndex = Math.min(
+        filteredNotes.length - 1,
+        currentIndex + QUICK_CAPTURE_PAGE_STEP,
+      );
+    } else if (event.key === "PageUp") {
+      nextIndex = Math.max(0, currentIndex - QUICK_CAPTURE_PAGE_STEP);
     } else if (event.key === "Enter" && libraryCursorNote) {
       event.preventDefault();
       event.stopPropagation();
@@ -718,9 +727,7 @@ export const QuickCaptureOverlay: React.FC = () => {
                     ? `${noteListId}-${libraryCursorNote.id}`
                     : undefined
                 }
-                aria-keyshortcuts={
-                  usesMetaShortcut ? "Meta+F /" : "Control+F /"
-                }
+                aria-keyshortcuts={`${usesMetaShortcut ? "Meta+F" : "Control+F"} / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape`}
                 value={query}
                 onFocus={() => {
                   librarySearchFocusedRef.current = true;
@@ -740,8 +747,11 @@ export const QuickCaptureOverlay: React.FC = () => {
                 onKeyDown={handleLibrarySearchKeyDown}
                 placeholder="メモを検索"
               />
-              <kbd className="quick-capture__search-shortcut">
-                {shortcutModifier} F
+              <kbd
+                className="quick-capture__search-shortcut"
+                title={`検索へ移動（${shortcutModifier}+F /）・↑↓: 1件移動・PageUp/PageDown: 5件移動`}
+              >
+                {shortcutModifier} F · PgUp/PgDn
               </kbd>
             </label>
             {capture.allTags.length > 0 && (
