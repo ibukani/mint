@@ -6,6 +6,8 @@ import {
   FileAudio,
   FolderOpen,
   LoaderCircle,
+  Mic,
+  Square,
   Trash2,
 } from "lucide-react";
 import type React from "react";
@@ -34,10 +36,15 @@ export const TranscriptionWorkbench: React.FC<{
     copyStatus,
     copyTone,
     transcribing,
+    recording,
+    recordingSeconds,
     canTranscribe,
+    canRecord,
     transcribeHelpText,
     setupSteps,
     transcribeAudioFile,
+    startRecording,
+    stopRecording,
     copyTranscriptionText,
     clearTranscriptionText,
     updateAudioFilePath,
@@ -48,6 +55,8 @@ export const TranscriptionWorkbench: React.FC<{
     handleWorkbenchKeyDown,
     normalizeAudioFilePath,
   } = controller;
+
+  const formattedRecordingDuration = `${String(Math.floor(recordingSeconds / 60)).padStart(2, "0")}:${String(recordingSeconds % 60).padStart(2, "0")}`;
 
   return (
     <section
@@ -62,13 +71,46 @@ export const TranscriptionWorkbench: React.FC<{
           <span className="v2t-workbench__kicker">ワークベンチ</span>
           <h3 id="v2t-workbench-title">文字起こし</h3>
         </div>
-        <span
-          className={`v2t-readiness ${canTranscribe ? "is-ready" : ""}`}
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {canTranscribe ? "実行可能" : "準備中"}
-        </span>
+        <div className="v2t-workbench__header-actions">
+          {recording && (
+            <span className="v2t-recording-status" role="status">
+              録音中 {formattedRecordingDuration}
+            </span>
+          )}
+          <span
+            className={`v2t-readiness ${canTranscribe ? "is-ready" : ""}`}
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {canTranscribe ? "実行可能" : "準備中"}
+          </span>
+          <Button
+            variant={recording ? "danger" : "ghost"}
+            className="v2t-record-button"
+            disabled={!recording && !canRecord}
+            onClick={() =>
+              recording ? stopRecording() : void startRecording()
+            }
+            aria-label={
+              recording ? "録音を停止して文字起こし" : "マイク録音を開始"
+            }
+            title={
+              recording
+                ? "録音を停止して文字起こし"
+                : "マイクから録音して文字起こし"
+            }
+          >
+            {recording ? (
+              <>
+                <Square size={14} aria-hidden="true" /> 録音を停止
+              </>
+            ) : (
+              <>
+                <Mic size={15} aria-hidden="true" /> マイク録音
+              </>
+            )}
+          </Button>
+        </div>
       </div>
       {isDropTarget && (
         <div className="v2t-workbench__drop-overlay" role="status">
@@ -103,7 +145,7 @@ export const TranscriptionWorkbench: React.FC<{
         <Field
           id="v2t-audio-file-input"
           label="音声ファイルパス"
-          helpText="ボタンからファイルを選ぶか、パスを貼り付けて指定します。ワークベンチへドラッグ＆ドロップすることもできます。Enter でも文字起こしを開始できます。"
+          helpText="ファイルを選ぶ、パスを貼り付ける、ワークベンチへドロップする、またはマイクから録音できます。Enter でも文字起こしを開始できます。"
         >
           <div className="v2t-control-with-status">
             <FieldRow className="v2t-file-row">

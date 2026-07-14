@@ -39,6 +39,17 @@ export const transcribeAudio = (
     audio_file_path: audioFilePath,
   });
 
+export const transcribeAudioRecording = (
+  settings: VoiceToTextSettings,
+  audioData: number[],
+  fileName: string,
+) =>
+  invoke<TranscriptionResult>("transcribe_audio_recording", {
+    settings,
+    audio_data: audioData,
+    file_name: fileName,
+  });
+
 export const chooseAudioFile = () =>
   open({
     title: "文字起こしする音声ファイルを選択",

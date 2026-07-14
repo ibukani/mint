@@ -452,6 +452,26 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,
         };
       }
+      case "transcribe_audio_recording": {
+        const audioData = typedArgs?.audio_data as number[] | undefined;
+        const fileName = typedArgs?.file_name as string | undefined;
+        const settings = typedArgs?.settings as
+          | { enabled?: boolean; baseUrl?: string; model?: string }
+          | undefined;
+        if (!settings?.enabled) {
+          throw new Error("音声入力を有効にしてください。");
+        }
+        if (!audioData?.length || !fileName?.trim()) {
+          throw new Error("録音データがありません。もう一度録音してください。");
+        }
+        if (!settings.baseUrl?.trim() || !settings.model?.trim()) {
+          throw new Error("API接続設定を確認してください。");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        return {
+          text: `[MOCK] マイク録音（${fileName}）を ${settings.model || "default"} で文字起こししました。`,
+        };
+      }
       case "plugin:updater|check":
         return mockUpdateAvailable
           ? {

@@ -1,5 +1,5 @@
 use crate::core::settings::{load_api_key, VoiceToTextSettings};
-use reqwest::StatusCode;
+use reqwest::{multipart, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::Duration;
@@ -8,6 +8,7 @@ use tauri::{AppHandle, Emitter, Manager};
 const API_SERVICE: &str = "voice_to_text";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const TRANSCRIPTION_TIMEOUT: Duration = Duration::from_secs(10 * 60);
+const MAX_RECORDING_BYTES: usize = 25 * 1024 * 1024;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -30,7 +31,7 @@ fn transcription_url(base_url: &str) -> Result<url::Url, String> {
     Ok(url)
 }
 
-fn validate_settings(settings: &VoiceToTextSettings, audio_file_path: &str) -> Result<(), String> {
+fn validate_common_settings(settings: &VoiceToTextSettings) -> Result<(), String> {
     if !settings.enabled {
         return Err("音声入力を有効にしてください。".to_string());
     }
@@ -43,6 +44,11 @@ fn validate_settings(settings: &VoiceToTextSettings, audio_file_path: &str) -> R
     if settings.model.trim().is_empty() {
         return Err("音声認識モデル名を入力してください。".to_string());
     }
+    Ok(())
+}
+
+fn validate_settings(settings: &VoiceToTextSettings, audio_file_path: &str) -> Result<(), String> {
+    validate_common_settings(settings)?;
     if audio_file_path.trim().is_empty() {
         return Err("音声ファイルを選択してください。".to_string());
     }
@@ -51,6 +57,17 @@ fn validate_settings(settings: &VoiceToTextSettings, audio_file_path: &str) -> R
             "音声ファイルが見つかりません。移動または削除されていないか確認してください。"
                 .to_string(),
         );
+    }
+    Ok(())
+}
+
+fn validate_recording(settings: &VoiceToTextSettings, audio_data: &[u8]) -> Result<(), String> {
+    validate_common_settings(settings)?;
+    if audio_data.is_empty() {
+        return Err("録音データがありません。もう一度録音してください。".to_string());
+    }
+    if audio_data.len() > MAX_RECORDING_BYTES {
+        return Err("録音データが25MBを超えています。短い音声で再試行してください。".to_string());
     }
     Ok(())
 }
@@ -91,31 +108,53 @@ fn request_error_message(error: &reqwest::Error) -> String {
     }
 }
 
-#[tauri::command]
-pub async fn transcribe_audio_file(
-    settings: VoiceToTextSettings,
-    audio_file_path: String,
+fn recording_file_name(file_name: &str) -> String {
+    let candidate = Path::new(file_name)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("mint-recording.webm");
+    let extension = Path::new(candidate)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if matches!(
+        extension.as_str(),
+        "aac" | "flac" | "m4a" | "mp3" | "ogg" | "wav" | "webm"
+    ) {
+        candidate.to_string()
+    } else {
+        "mint-recording.webm".to_string()
+    }
+}
+
+fn recording_mime_type(file_name: &str) -> &'static str {
+    match Path::new(file_name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "ogg" => "audio/ogg",
+        "wav" => "audio/wav",
+        "mp3" => "audio/mpeg",
+        "m4a" => "audio/mp4",
+        "aac" => "audio/aac",
+        "flac" => "audio/flac",
+        _ => "audio/webm",
+    }
+}
+
+async fn send_transcription_request(
+    settings: &VoiceToTextSettings,
+    form: multipart::Form,
 ) -> Result<TranscriptionResult, String> {
-    validate_settings(&settings, &audio_file_path)?;
     let endpoint = transcription_url(&settings.base_url)?;
 
     let api_key = load_api_key(API_SERVICE.to_string())?;
     if api_key.trim().is_empty() {
         return Err("APIキーを入力してください。".to_string());
-    }
-
-    let mut form = reqwest::multipart::Form::new()
-        .text("model", settings.model.trim().to_string())
-        .file("file", &audio_file_path)
-        .await
-        .map_err(|_| {
-            "音声ファイルを読み込めませんでした。ファイルのアクセス権を確認してください。"
-                .to_string()
-        })?;
-
-    let language = settings.language.trim();
-    if !language.is_empty() {
-        form = form.text("language", language.to_string());
     }
 
     let client = reqwest::Client::builder()
@@ -148,6 +187,54 @@ pub async fn transcribe_audio_file(
     Ok(TranscriptionResult {
         text: text.to_string(),
     })
+}
+
+#[tauri::command]
+pub async fn transcribe_audio_file(
+    settings: VoiceToTextSettings,
+    audio_file_path: String,
+) -> Result<TranscriptionResult, String> {
+    validate_settings(&settings, &audio_file_path)?;
+
+    let mut form = reqwest::multipart::Form::new()
+        .text("model", settings.model.trim().to_string())
+        .file("file", &audio_file_path)
+        .await
+        .map_err(|_| {
+            "音声ファイルを読み込めませんでした。ファイルのアクセス権を確認してください。"
+                .to_string()
+        })?;
+
+    let language = settings.language.trim();
+    if !language.is_empty() {
+        form = form.text("language", language.to_string());
+    }
+
+    send_transcription_request(&settings, form).await
+}
+
+#[tauri::command]
+pub async fn transcribe_audio_recording(
+    settings: VoiceToTextSettings,
+    audio_data: Vec<u8>,
+    file_name: String,
+) -> Result<TranscriptionResult, String> {
+    validate_recording(&settings, &audio_data)?;
+    let safe_file_name = recording_file_name(&file_name);
+    let part = multipart::Part::bytes(audio_data)
+        .file_name(safe_file_name.clone())
+        .mime_str(recording_mime_type(&safe_file_name))
+        .map_err(|_| "録音データの形式を準備できませんでした。".to_string())?;
+    let form = multipart::Form::new()
+        .text("model", settings.model.trim().to_string())
+        .part("file", part);
+    let form = if settings.language.trim().is_empty() {
+        form
+    } else {
+        form.text("language", settings.language.trim().to_string())
+    };
+
+    send_transcription_request(&settings, form).await
 }
 
 pub fn handle_voice_to_text_shortcut(app: &AppHandle) {
@@ -199,5 +286,19 @@ mod tests {
 
         assert!(validate_settings(&settings, source_file.to_str().unwrap()).is_ok());
         assert!(validate_settings(&settings, "/missing/audio.wav").is_err());
+    }
+
+    #[test]
+    fn validates_recording_size_and_normalizes_file_names() {
+        let settings = VoiceToTextSettings {
+            enabled: true,
+            ..VoiceToTextSettings::default()
+        };
+
+        assert!(validate_recording(&settings, b"audio").is_ok());
+        assert!(validate_recording(&settings, &vec![0; MAX_RECORDING_BYTES + 1]).is_err());
+        assert_eq!(recording_file_name("/tmp/recording.webm"), "recording.webm");
+        assert_eq!(recording_file_name("recording.exe"), "mint-recording.webm");
+        assert_eq!(recording_mime_type("recording.ogg"), "audio/ogg");
     }
 }

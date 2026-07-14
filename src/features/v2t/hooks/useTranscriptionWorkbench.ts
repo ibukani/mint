@@ -5,6 +5,7 @@ import {
   chooseAudioFile,
   isSupportedAudioFilePath,
   transcribeAudio,
+  transcribeAudioRecording,
 } from "../api";
 import { focusAndSelect } from "../focus";
 import {
@@ -25,6 +26,28 @@ const DROPPED_FILE_ERROR_STATUS =
   "対応していない形式です。音声ファイルをドロップしてください";
 const MULTIPLE_DROPPED_FILES_STATUS =
   "音声ファイルは1つずつドロップしてください";
+const MAX_RECORDING_SECONDS = 5 * 60;
+const RECORDER_MIME_TYPES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/ogg;codecs=opus",
+  "audio/ogg",
+] as const;
+
+const getRecorderMimeType = () => {
+  if (typeof MediaRecorder === "undefined") return "";
+  if (typeof MediaRecorder.isTypeSupported !== "function") {
+    return "audio/webm";
+  }
+  return (
+    RECORDER_MIME_TYPES.find((mimeType) =>
+      MediaRecorder.isTypeSupported(mimeType),
+    ) ?? ""
+  );
+};
+
+const recordingFileName = (mimeType: string) =>
+  mimeType.includes("ogg") ? "mint-recording.ogg" : "mint-recording.webm";
 
 const getCopyStatusDuration = (status: string) =>
   status === "コピーしました" ? STATUS_VISIBLE_MS : COPY_ERROR_VISIBLE_MS;
@@ -46,10 +69,19 @@ export const useTranscriptionWorkbench = ({
   const [transcriptionText, setTranscriptionText] = useState("");
   const [transcriptionError, setTranscriptionError] = useState("");
   const [transcribing, setTranscribing] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const workbenchRef = useRef<HTMLElement | null>(null);
   const transcriptionAttemptRef = useRef(0);
   const transcribingRef = useRef(false);
+  const recordingRef = useRef(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingStartedAtRef = useRef<number | null>(null);
+  const recordingDiscardedRef = useRef(false);
   const [audioFilePasteStatus, setAudioFilePasteStatus, audioFilePasteTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
   const [copyStatus, setCopyStatus, copyTone] = useTransientStatus(
@@ -90,6 +122,24 @@ export const useTranscriptionWorkbench = ({
     setTranscriptionError("");
     setCopyStatus("");
   }, [setCopyStatus]);
+
+  const stopRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
+
+  const releaseRecordingResources = useCallback(() => {
+    stopRecordingTimer();
+    recordingStreamRef.current?.getTracks().forEach((track) => {
+      track.stop();
+    });
+    recordingStreamRef.current = null;
+    recorderRef.current = null;
+    recordingChunksRef.current = [];
+    recordingStartedAtRef.current = null;
+  }, [stopRecordingTimer]);
 
   const configurationError =
     validateBaseUrl(settings.baseUrl) ??
@@ -139,6 +189,163 @@ export const useTranscriptionWorkbench = ({
     setCopyStatus,
     settings,
   ]);
+
+  const transcribeRecordedAudio = useCallback(
+    async (audioBlob: Blob, fileName: string) => {
+      if (transcribingRef.current || !audioBlob.size) return;
+
+      const attempt = transcriptionAttemptRef.current + 1;
+      transcriptionAttemptRef.current = attempt;
+      transcribingRef.current = true;
+      setTranscribing(true);
+      setTranscriptionText("");
+      setTranscriptionError("");
+      setCopyStatus("");
+      clearApiKeyPasteStatus();
+      setAudioFilePasteStatus("");
+
+      try {
+        const audioData = Array.from(
+          new Uint8Array(await audioBlob.arrayBuffer()),
+        );
+        const result = await transcribeAudioRecording(
+          settings,
+          audioData,
+          fileName,
+        );
+        if (attempt !== transcriptionAttemptRef.current) return;
+        setTranscriptionText(result.text);
+      } catch (error) {
+        if (attempt !== transcriptionAttemptRef.current) return;
+        setTranscriptionError(
+          error instanceof Error ? error.message : String(error),
+        );
+      } finally {
+        if (attempt === transcriptionAttemptRef.current) {
+          transcribingRef.current = false;
+          setTranscribing(false);
+        }
+      }
+    },
+    [clearApiKeyPasteStatus, setAudioFilePasteStatus, setCopyStatus, settings],
+  );
+
+  const canRecord =
+    settings.enabled &&
+    apiKeyLoaded &&
+    Boolean(apiKey.trim()) &&
+    !configurationError &&
+    !transcribing;
+
+  const startRecording = useCallback(async () => {
+    if (recordingRef.current || transcribingRef.current) return;
+    if (!canRecord) return;
+    if (
+      typeof MediaRecorder === "undefined" ||
+      !navigator.mediaDevices ||
+      typeof navigator.mediaDevices.getUserMedia !== "function"
+    ) {
+      setTranscriptionError("この環境ではマイク録音を利用できません。");
+      return;
+    }
+
+    clearTranscriptionOutput();
+    setTranscriptionError("");
+    setAudioFilePasteStatus("");
+    recordingDiscardedRef.current = false;
+
+    let stream: MediaStream | undefined;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        recordingDiscardedRef.current = true;
+        recordingRef.current = false;
+        setRecording(false);
+        releaseRecordingResources();
+        setTranscriptionError(
+          "マイク録音に失敗しました。権限を確認してください。",
+        );
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(recordingChunksRef.current, {
+          type: recorder.mimeType || mimeType || "audio/webm",
+        });
+        const shouldTranscribe = !recordingDiscardedRef.current;
+        recordingRef.current = false;
+        setRecording(false);
+        releaseRecordingResources();
+        if (shouldTranscribe) {
+          void transcribeRecordedAudio(
+            audioBlob,
+            recordingFileName(recorder.mimeType || mimeType),
+          );
+        }
+      };
+      recorder.start(250);
+      recordingRef.current = true;
+      setRecording(true);
+      setRecordingSeconds(0);
+      recordingStartedAtRef.current = Date.now();
+      recordingTimerRef.current = setInterval(() => {
+        const startedAt = recordingStartedAtRef.current;
+        const elapsed = startedAt
+          ? Math.floor((Date.now() - startedAt) / 1000)
+          : 0;
+        setRecordingSeconds(elapsed);
+        if (elapsed >= MAX_RECORDING_SECONDS) {
+          const activeRecorder = recorderRef.current;
+          if (activeRecorder && activeRecorder.state !== "inactive") {
+            activeRecorder.stop();
+          }
+        }
+      }, 1000);
+    } catch (error) {
+      stream?.getTracks().forEach((track) => {
+        track.stop();
+      });
+      releaseRecordingResources();
+      setTranscriptionError(
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? "マイクへのアクセスが拒否されました。OSのマイク権限を確認してください。"
+          : "マイクを開始できませんでした。入力デバイスと権限を確認してください。",
+      );
+    }
+  }, [
+    canRecord,
+    clearTranscriptionOutput,
+    releaseRecordingResources,
+    setAudioFilePasteStatus,
+    transcribeRecordedAudio,
+  ]);
+
+  const stopRecording = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    recorder.stop();
+  }, []);
+
+  useEffect(
+    () => () => {
+      recordingDiscardedRef.current = true;
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.stop();
+      } else {
+        releaseRecordingResources();
+      }
+    },
+    [releaseRecordingResources],
+  );
 
   const copyTranscriptionText = useCallback(async () => {
     if (!transcriptionText) return;
@@ -374,6 +581,7 @@ export const useTranscriptionWorkbench = ({
     audioFilePath,
     audioFilePasteStatus,
     audioFilePasteTone,
+    canRecord,
     isDropTarget,
     workbenchRef,
     transcriptionText,
@@ -381,12 +589,16 @@ export const useTranscriptionWorkbench = ({
     copyStatus,
     copyTone,
     transcribing,
+    recording,
+    recordingSeconds,
     canTranscribe,
     transcribeHelpText,
     setupSteps,
     setAudioFilePasteStatus,
     clearTranscriptionOutput,
     transcribeAudioFile,
+    startRecording,
+    stopRecording,
     copyTranscriptionText,
     clearTranscriptionText,
     updateAudioFilePath,
