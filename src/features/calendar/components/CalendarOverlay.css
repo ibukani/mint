@@ -508,7 +508,7 @@ button.month-calendar__next-event {
 
 .calendar-screen__header {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-2);
   min-height: 36px;
@@ -528,6 +528,12 @@ button.month-calendar__next-event {
 
 .calendar-screen__header-spacer {
   width: 34px;
+}
+
+.calendar-screen__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .calendar-icon-button {

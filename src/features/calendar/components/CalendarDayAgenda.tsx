@@ -1,4 +1,10 @@
-import { ArrowLeft, Plus, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatEventTime } from "../events";
@@ -11,6 +17,8 @@ interface CalendarDayAgendaProps {
   error: string;
   onAdd: () => void;
   onBack: () => void;
+  onNextDay: () => void;
+  onPreviousDay: () => void;
   onRetry: () => void;
   onSelect: (event: CalendarEvent) => void;
 }
@@ -33,6 +41,8 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
   error,
   onAdd,
   onBack,
+  onNextDay,
+  onPreviousDay,
   onRetry,
   onSelect,
 }) => {
@@ -74,6 +84,14 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
     );
     if (currentIndex < 0) return;
 
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.key === "ArrowLeft") onPreviousDay();
+      else onNextDay();
+      return;
+    }
+
     let nextIndex: number | null = null;
     if (event.key === "ArrowDown") {
       nextIndex = Math.min(events.length - 1, currentIndex + 1);
@@ -110,21 +128,43 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
           <ArrowLeft size={18} aria-hidden="true" />
         </button>
         <h2>{formatDateHeading(date)}</h2>
-        <button
-          ref={addButtonRef}
-          type="button"
-          className="calendar-icon-button"
-          aria-label="この日に予定を追加"
-          aria-keyshortcuts="N"
-          title="この日に予定を追加（N）"
-          onClick={onAdd}
-        >
-          <Plus size={18} aria-hidden="true" />
-        </button>
+        <div className="calendar-screen__header-actions">
+          <button
+            type="button"
+            className="calendar-icon-button"
+            aria-label="前の日"
+            aria-keyshortcuts="ArrowLeft"
+            title="前の日（←）"
+            onClick={onPreviousDay}
+          >
+            <ChevronLeft size={18} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="calendar-icon-button"
+            aria-label="次の日"
+            aria-keyshortcuts="ArrowRight"
+            title="次の日（→）"
+            onClick={onNextDay}
+          >
+            <ChevronRight size={18} aria-hidden="true" />
+          </button>
+          <button
+            ref={addButtonRef}
+            type="button"
+            className="calendar-icon-button"
+            aria-label="この日に予定を追加"
+            aria-keyshortcuts="N"
+            title="この日に予定を追加（N）"
+            onClick={onAdd}
+          >
+            <Plus size={18} aria-hidden="true" />
+          </button>
+        </div>
       </header>
 
       <p id={dayAgendaHintId} className="calendar-day-agenda__hint">
-        予定にフォーカスして ↑↓で移動、Home/Endで先頭・末尾、Enterで詳細
+        ←→で前後の日へ移動、予定にフォーカスして↑↓で移動、Home/Endで先頭・末尾、Enterで詳細
       </p>
 
       <div
@@ -164,7 +204,7 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
               key={event.id}
               data-event-id={event.id}
               tabIndex={event.id === focusableEventId ? 0 : -1}
-              aria-keyshortcuts="ArrowUp ArrowDown Home End Enter"
+              aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home End Enter"
               onFocus={() => setFocusedEventId(event.id)}
               onKeyDown={moveFocus}
               onClick={() => onSelect(event)}

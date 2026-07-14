@@ -476,6 +476,49 @@ describe("CalendarOverlay window coordination", () => {
     expect(screen.getByRole("button", { name: "7月11日" })).toHaveFocus();
   });
 
+  it("moves across month boundaries and reloads the visible event range", async () => {
+    render(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const listCallCount = () =>
+      mocks.invoke.mock.calls.filter(
+        ([command]) => command === "list_calendar_events",
+      ).length;
+    const beforeMonthChange = listCallCount();
+
+    fireEvent.click(screen.getByRole("button", { name: "7月31日" }));
+    expect(
+      screen.getByRole("heading", { name: /7月31日/ }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "次の日" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("heading", { name: /8月1日/ })).toBeInTheDocument();
+    expect(listCallCount()).toBeGreaterThan(beforeMonthChange);
+    const listCalls = mocks.invoke.mock.calls.filter(
+      ([command]) => command === "list_calendar_events",
+    );
+    const latestListCall = listCalls[listCalls.length - 1] as unknown as
+      | [string, unknown]
+      | undefined;
+    expect(latestListCall?.[1]).toEqual({
+      range: expect.objectContaining({
+        startDate: "2026-07-26",
+        endDateExclusive: "2026-09-06",
+      }),
+    });
+  });
+
   it("opens a reusable copy from event detail with the D shortcut", async () => {
     mocks.invoke.mockImplementation(async (command: string) => {
       if (command === "list_calendar_events") return [calendarEvent];

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  addDays,
   adjustEndTimeForStartChange,
   CalendarEventValidationError,
   createDefaultEventDraft,
@@ -38,6 +39,11 @@ describe("calendar event helpers", () => {
       endTime: "11:30",
       allDay: false,
     });
+  });
+
+  it("moves adjacent dates across month and year boundaries", () => {
+    expect(addDays("2026-07-31", 1)).toBe("2026-08-01");
+    expect(addDays("2026-01-01", -1)).toBe("2025-12-31");
   });
 
   it("creates an exclusive end date for all-day events", () => {

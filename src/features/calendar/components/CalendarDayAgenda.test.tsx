@@ -39,6 +39,8 @@ describe("CalendarDayAgenda", () => {
         error=""
         onAdd={vi.fn()}
         onBack={vi.fn()}
+        onNextDay={vi.fn()}
+        onPreviousDay={vi.fn()}
         onRetry={vi.fn()}
         onSelect={onSelect}
       />,
@@ -57,6 +59,8 @@ describe("CalendarDayAgenda", () => {
         error=""
         onAdd={vi.fn()}
         onBack={vi.fn()}
+        onNextDay={vi.fn()}
+        onPreviousDay={vi.fn()}
         onRetry={vi.fn()}
         onSelect={vi.fn()}
       />,
@@ -79,6 +83,34 @@ describe("CalendarDayAgenda", () => {
     expect(secondEvent).toHaveFocus();
   });
 
+  it("offers adjacent day navigation from buttons and event focus", () => {
+    const onNextDay = vi.fn();
+    const onPreviousDay = vi.fn();
+    render(
+      <CalendarDayAgenda
+        date="2026-07-11"
+        events={[event]}
+        loading={false}
+        error=""
+        onAdd={vi.fn()}
+        onBack={vi.fn()}
+        onNextDay={onNextDay}
+        onPreviousDay={onPreviousDay}
+        onRetry={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "前の日" }));
+    fireEvent.click(screen.getByRole("button", { name: "次の日" }));
+    const agendaEvent = screen.getByRole("button", { name: /設計レビュー/ });
+    fireEvent.keyDown(agendaEvent, { key: "ArrowLeft" });
+    fireEvent.keyDown(agendaEvent, { key: "ArrowRight" });
+
+    expect(onPreviousDay).toHaveBeenCalledTimes(2);
+    expect(onNextDay).toHaveBeenCalledTimes(2);
+  });
+
   it("offers event creation for an empty day", () => {
     const onAdd = vi.fn();
     render(
@@ -89,6 +121,8 @@ describe("CalendarDayAgenda", () => {
         error=""
         onAdd={onAdd}
         onBack={vi.fn()}
+        onNextDay={vi.fn()}
+        onPreviousDay={vi.fn()}
         onRetry={vi.fn()}
         onSelect={vi.fn()}
       />,
@@ -109,6 +143,8 @@ describe("CalendarDayAgenda", () => {
         error="予定を読み込めませんでした"
         onAdd={vi.fn()}
         onBack={vi.fn()}
+        onNextDay={vi.fn()}
+        onPreviousDay={vi.fn()}
         onRetry={onRetry}
         onSelect={vi.fn()}
       />,

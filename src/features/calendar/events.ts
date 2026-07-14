@@ -15,7 +15,7 @@ export interface CalendarEventsChangedPayload {
   event: CalendarEvent;
 }
 
-const parseMachineDate = (value: string) => {
+export const parseMachineDate = (value: string) => {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
 };

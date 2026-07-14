@@ -4,7 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { startOfMonth, toMachineDate } from "../calendar";
-import { eventsForDate, openCalendarEditor } from "../events";
+import {
+  addDays,
+  eventsForDate,
+  openCalendarEditor,
+  parseMachineDate,
+} from "../events";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
 import { useCalendarOverlay } from "../hooks/useCalendarOverlay";
 import type { CalendarEditorPayload, CalendarEvent } from "../types";
@@ -22,6 +27,10 @@ const eventStartDate = (event: CalendarEvent) =>
   event.schedule.kind === "allDay"
     ? event.schedule.startDate
     : toMachineDate(new Date(event.schedule.startsAt));
+
+const isSameMonth = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth();
 
 export const CalendarOverlay: React.FC = () => {
   const {
@@ -129,6 +138,23 @@ export const CalendarOverlay: React.FC = () => {
     }
   }, [screen, closeCalendar]);
 
+  const openDay = useCallback((date: string) => {
+    const nextMonth = startOfMonth(parseMachineDate(date));
+    setSelectedDate(date);
+    setViewMonth((currentMonth) =>
+      isSameMonth(currentMonth, nextMonth) ? currentMonth : nextMonth,
+    );
+    setScreen({ kind: "day", date });
+  }, []);
+
+  const moveDay = useCallback(
+    (delta: number) => {
+      if (screen.kind !== "day") return;
+      openDay(addDays(screen.date, delta));
+    },
+    [openDay, screen],
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -177,8 +203,10 @@ export const CalendarOverlay: React.FC = () => {
             loading={loading}
             error={error}
             onBack={handleBack}
-            onRetry={refresh}
             onAdd={() => void openEditor({ mode: "create", date: screen.date })}
+            onNextDay={() => moveDay(1)}
+            onPreviousDay={() => moveDay(-1)}
+            onRetry={refresh}
             onSelect={(event) =>
               setScreen({
                 kind: "detail",
@@ -222,7 +250,7 @@ export const CalendarOverlay: React.FC = () => {
             today={today}
             viewMonth={viewMonth}
             onViewMonthChange={setViewMonth}
-            onOpenDay={(date) => setScreen({ kind: "day", date })}
+            onOpenDay={openDay}
             onOpenEvent={(event) => setScreen({ kind: "detail", event })}
             onCreate={(date) => void openEditor({ mode: "create", date })}
             onRetry={refresh}
