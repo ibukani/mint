@@ -367,12 +367,13 @@ describe("CalendarOverlay window coordination", () => {
     expect(listCallCount()).toBe(initialListCallCount + 1);
   });
 
-  it("updates the open event detail after an external save", async () => {
+  it("updates open detail when an external save moves the event out of view", async () => {
     let currentEvent = calendarEvent;
+    let listedEvents: CalendarEvent[] = [calendarEvent];
     mocks.invoke.mockImplementation(async (command: string) => {
       if (command === "load_settings") return createMockSettings();
-      if (command === "list_calendar_events") return [currentEvent];
-      if (command === "get_next_calendar_event") return currentEvent;
+      if (command === "list_calendar_events") return listedEvents;
+      if (command === "get_next_calendar_event") return listedEvents[0] ?? null;
       if (command === "get_google_calendar_connection") {
         return {
           connected: false,
@@ -403,9 +404,20 @@ describe("CalendarOverlay window coordination", () => {
       ...calendarEvent,
       title: "更新されたレビュー",
       notes: "保存後の内容",
+      schedule: {
+        kind: "allDay",
+        startDate: "2026-08-02",
+        endDateExclusive: "2026-08-03",
+      },
     };
+    listedEvents = [];
     await act(async () => {
-      mocks.listeners.get(CALENDAR_EVENTS_CHANGED_EVENT)?.({});
+      mocks.listeners.get(CALENDAR_EVENTS_CHANGED_EVENT)?.({
+        payload: { event: currentEvent },
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
@@ -415,6 +427,13 @@ describe("CalendarOverlay window coordination", () => {
       screen.getByRole("heading", { name: "更新されたレビュー" }),
     ).toBeInTheDocument();
     expect(screen.getByText("保存後の内容")).toBeInTheDocument();
+    expect(screen.getByText(/8月2日/)).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "戻る" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("heading", { name: /8月2日/ })).toBeInTheDocument();
   });
 
   it("creates an event for the open day with the N shortcut", async () => {

@@ -18,6 +18,11 @@ type CalendarScreen =
   | { kind: "day"; date: string }
   | { kind: "detail"; event: CalendarEvent; returnDate?: string };
 
+const eventStartDate = (event: CalendarEvent) =>
+  event.schedule.kind === "allDay"
+    ? event.schedule.startDate
+    : toMachineDate(new Date(event.schedule.startsAt));
+
 export const CalendarOverlay: React.FC = () => {
   const {
     animationClass,
@@ -39,6 +44,7 @@ export const CalendarOverlay: React.FC = () => {
   const editorAttemptRef = useRef(0);
   const {
     events,
+    lastChangedEvent,
     nextEvent,
     loading,
     error,
@@ -95,14 +101,16 @@ export const CalendarOverlay: React.FC = () => {
 
   useEffect(() => {
     if (screen.kind !== "detail") return;
-    const updatedEvent = events.find((event) => event.id === screen.event.id);
+    const updatedEvent =
+      (lastChangedEvent?.id === screen.event.id && lastChangedEvent) ||
+      events.find((event) => event.id === screen.event.id);
     if (!updatedEvent || updatedEvent === screen.event) return;
     setScreen({
       kind: "detail",
       event: updatedEvent,
-      returnDate: screen.returnDate,
+      returnDate: screen.returnDate ? eventStartDate(updatedEvent) : undefined,
     });
-  }, [events, screen]);
+  }, [events, lastChangedEvent, screen]);
 
   const handleBack = useCallback(() => {
     switch (screen.kind) {

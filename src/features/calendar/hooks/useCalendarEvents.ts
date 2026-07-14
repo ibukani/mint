@@ -5,6 +5,7 @@ import {
   buildEventCursor,
   buildEventRange,
   CALENDAR_EVENTS_CHANGED_EVENT,
+  type CalendarEventsChangedPayload,
   getNextCalendarEvent,
   listCalendarEvents,
 } from "../events";
@@ -26,6 +27,8 @@ export const useCalendarEvents = (
   const [error, setError] = useState("");
   const [syncError, setSyncError] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [lastChangedEvent, setLastChangedEvent] =
+    useState<CalendarEvent | null>(null);
   const [revision, setRevision] = useState(0);
   const requestSequenceRef = useRef(0);
   const syncSequenceRef = useRef(0);
@@ -72,9 +75,13 @@ export const useCalendarEvents = (
   useEffect(() => {
     let isMounted = true;
     let unlisten: (() => void) | undefined;
-    const unlistenPromise = listen(CALENDAR_EVENTS_CHANGED_EVENT, () => {
-      refresh();
-    });
+    const unlistenPromise = listen<CalendarEventsChangedPayload>(
+      CALENDAR_EVENTS_CHANGED_EVENT,
+      ({ payload }) => {
+        if (payload?.event) setLastChangedEvent(payload.event);
+        refresh();
+      },
+    );
 
     void unlistenPromise.then((cleanup) => {
       if (isMounted) unlisten = cleanup;
@@ -116,6 +123,7 @@ export const useCalendarEvents = (
 
   return {
     events,
+    lastChangedEvent,
     nextEvent,
     loading,
     error,
