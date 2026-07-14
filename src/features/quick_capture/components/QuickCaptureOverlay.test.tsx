@@ -166,6 +166,41 @@ describe("QuickCaptureOverlay", () => {
     expect(screen.getByRole("heading", { name: "定型メモ" })).toBeVisible();
   });
 
+  it("toggles pinning and opens a new draft with keyboard shortcuts", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "ショートカット用メモ" } });
+    fireEvent.click(screen.getByRole("button", { name: /メモに保存/ }));
+
+    const note = await screen.findByRole("option", {
+      name: /ショートカット用メモ/,
+    });
+    fireEvent.click(note);
+    const dialog = screen.getByRole("dialog");
+    const pinButton = await screen.findByRole("button", { name: "ピン留め" });
+    expect(pinButton).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+Shift+P Meta+Shift+P",
+    );
+
+    fireEvent.keyDown(dialog, { key: "p", ctrlKey: true, shiftKey: true });
+    await waitFor(() =>
+      expect(pinButton).toHaveAttribute("aria-pressed", "true"),
+    );
+
+    const draftButton = screen.getByRole("button", { name: "下書きへ" });
+    expect(draftButton).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+N Meta+N",
+    );
+    fireEvent.keyDown(dialog, { key: "n", ctrlKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("メモ本文")).toHaveValue("");
+      expect(screen.getByText("自動保存される下書き")).toBeVisible();
+    });
+  });
+
   it("persists the latest draft before exporting a backup", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

@@ -188,6 +188,26 @@ export const QuickCaptureOverlay: React.FC = () => {
       event.preventDefault();
       void capture.promote();
     } else if (
+      event.key.toLocaleLowerCase() === "n" &&
+      (event.ctrlKey || event.metaKey) &&
+      !event.altKey &&
+      !event.shiftKey &&
+      capture.activeId &&
+      !isSaving
+    ) {
+      event.preventDefault();
+      void capture.openDraft();
+    } else if (
+      event.key.toLocaleLowerCase() === "p" &&
+      (event.ctrlKey || event.metaKey) &&
+      event.shiftKey &&
+      !event.altKey &&
+      capture.activeId &&
+      !isSaving
+    ) {
+      event.preventDefault();
+      capture.setPinned(!capture.pinned);
+    } else if (
       event.key.toLocaleLowerCase() === "d" &&
       (event.ctrlKey || event.metaKey) &&
       event.shiftKey &&
@@ -376,6 +396,8 @@ export const QuickCaptureOverlay: React.FC = () => {
                 <button
                   type="button"
                   disabled={isSaving}
+                  aria-keyshortcuts="Control+N Meta+N"
+                  title={`新しい下書きを開く（${shortcutModifier}+N）`}
                   onClick={() => void capture.openDraft()}
                 >
                   下書きへ
@@ -465,6 +487,8 @@ export const QuickCaptureOverlay: React.FC = () => {
                       type="button"
                       className={`quick-capture__pin${capture.pinned ? " is-active" : ""}`}
                       aria-pressed={capture.pinned}
+                      aria-keyshortcuts="Control+Shift+P Meta+Shift+P"
+                      title={`ピン留めを切り替え（${shortcutModifier}+Shift+P）`}
                       onClick={() => capture.setPinned(!capture.pinned)}
                     >
                       <Pin size={14} aria-hidden="true" /> ピン留め
