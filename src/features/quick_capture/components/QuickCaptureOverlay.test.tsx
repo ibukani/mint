@@ -201,6 +201,63 @@ describe("QuickCaptureOverlay", () => {
     });
   });
 
+  it("filters the library to pinned notes and restores the full list", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: {
+          content: "編集中の下書き",
+          tags: [],
+          updatedAt: "2026-07-14T09:00:00.000Z",
+        },
+        notes: [
+          {
+            id: "pinned-note",
+            content: "いつもの定型文",
+            tags: ["template"],
+            pinned: true,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+          {
+            id: "regular-note",
+            content: "通常のメモ",
+            tags: ["work"],
+            pinned: false,
+            createdAt: "2026-07-14T07:00:00.000Z",
+            updatedAt: "2026-07-14T07:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    await screen.findByRole("option", { name: /いつもの定型文/ });
+    const pinnedFilter = screen.getByRole("button", {
+      name: "ピン留めしたメモ（1件）",
+    });
+    const allFilter = screen.getByRole("button", {
+      name: "すべてのメモ（2件）",
+    });
+
+    fireEvent.click(pinnedFilter);
+
+    expect(pinnedFilter).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("option", { name: /いつもの定型文/ }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("option", { name: /通常のメモ/ }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(allFilter);
+
+    expect(allFilter).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("option", { name: /通常のメモ/ })).toBeVisible();
+  });
+
   it("persists the latest draft before exporting a backup", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

@@ -81,6 +81,7 @@ export const QuickCaptureOverlay: React.FC = () => {
   const [preview, setPreview] = useState(false);
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [pinnedOnly, setPinnedOnly] = useState(false);
   const [actionStatus, setActionStatus] = useState("");
   const [libraryCursorId, setLibraryCursorId] = useState<string | null>(null);
   const [librarySearchFocused, setLibrarySearchFocused] = useState(false);
@@ -119,13 +120,16 @@ export const QuickCaptureOverlay: React.FC = () => {
     setPreview(false);
     setQuery("");
     setTagFilter(null);
+    setPinnedOnly(false);
     setActionStatus("");
   }, [capture.activeId, focusSequence]);
 
   const filteredNotes = useMemo(() => {
-    const tagged = tagFilter
-      ? capture.notes.filter((note) => note.tags.includes(tagFilter))
-      : capture.notes;
+    const tagged = capture.notes.filter(
+      (note) =>
+        (!pinnedOnly || note.pinned) &&
+        (!tagFilter || note.tags.includes(tagFilter)),
+    );
     if (!query.trim()) return tagged;
     return new Fuse(tagged, {
       keys: ["content", "tags"],
@@ -134,11 +138,12 @@ export const QuickCaptureOverlay: React.FC = () => {
     })
       .search(query)
       .map((result) => result.item);
-  }, [capture.notes, query, tagFilter]);
+  }, [capture.notes, pinnedOnly, query, tagFilter]);
   const libraryCursorNote =
     filteredNotes.find((note) => note.id === libraryCursorId) ??
     filteredNotes[0] ??
     null;
+  const pinnedCount = capture.notes.filter((note) => note.pinned).length;
 
   useEffect(() => {
     if (!librarySearchFocused || !libraryCursorNote) return;
@@ -754,24 +759,53 @@ export const QuickCaptureOverlay: React.FC = () => {
                 {shortcutModifier} F · PgUp/PgDn
               </kbd>
             </label>
-            {capture.allTags.length > 0 && (
-              <div className="quick-capture__tag-filters">
-                {capture.allTags.map((tag) => (
-                  <button
-                    type="button"
-                    key={tag}
-                    className={tagFilter === tag ? "is-active" : ""}
-                    aria-pressed={tagFilter === tag}
-                    onClick={() => {
-                      setTagFilter(tagFilter === tag ? null : tag);
-                      setLibraryCursorId(null);
-                    }}
-                  >
-                    #{tag}
-                  </button>
-                ))}
-              </div>
-            )}
+            <fieldset
+              className="quick-capture__library-filters"
+              aria-label="メモの絞り込み"
+            >
+              <button
+                type="button"
+                className={!pinnedOnly && !tagFilter ? "is-active" : ""}
+                aria-label={`すべてのメモ（${capture.notes.length}件）`}
+                aria-pressed={!pinnedOnly && !tagFilter}
+                onClick={() => {
+                  setPinnedOnly(false);
+                  setTagFilter(null);
+                  setLibraryCursorId(null);
+                }}
+              >
+                すべて
+                <span aria-hidden="true">{capture.notes.length}</span>
+              </button>
+              <button
+                type="button"
+                className={pinnedOnly ? "is-active" : ""}
+                aria-label={`ピン留めしたメモ（${pinnedCount}件）`}
+                aria-pressed={pinnedOnly}
+                onClick={() => {
+                  setPinnedOnly((value) => !value);
+                  setLibraryCursorId(null);
+                }}
+              >
+                <Pin size={11} aria-hidden="true" />
+                ピン留め
+                <span aria-hidden="true">{pinnedCount}</span>
+              </button>
+              {capture.allTags.map((tag) => (
+                <button
+                  type="button"
+                  key={tag}
+                  className={tagFilter === tag ? "is-active" : ""}
+                  aria-pressed={tagFilter === tag}
+                  onClick={() => {
+                    setTagFilter(tagFilter === tag ? null : tag);
+                    setLibraryCursorId(null);
+                  }}
+                >
+                  #{tag}
+                </button>
+              ))}
+            </fieldset>
             <div
               id={noteListId}
               ref={noteListRef}
@@ -809,7 +843,7 @@ export const QuickCaptureOverlay: React.FC = () => {
                 ))
               ) : (
                 <div className="quick-capture__empty">
-                  {query || tagFilter
+                  {query || tagFilter || pinnedOnly
                     ? "一致するメモがありません"
                     : "保存したメモがここに並びます"}
                 </div>
