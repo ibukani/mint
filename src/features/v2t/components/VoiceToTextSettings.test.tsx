@@ -569,6 +569,7 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("focuses the transcription error after a failed request", async () => {
+    let transcriptionAttempts = 0;
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
@@ -584,7 +585,11 @@ describe("VoiceToTextSettings", () => {
       if (cmd === "load_settings") return mockSettings;
       if (cmd === "load_api_key") return "mocked-api-key";
       if (cmd === "transcribe_audio_file") {
-        throw new Error("文字起こしに失敗しました");
+        transcriptionAttempts += 1;
+        if (transcriptionAttempts === 1) {
+          throw new Error("文字起こしに失敗しました");
+        }
+        return { text: "再試行で復旧した結果" };
       }
       return undefined;
     });
@@ -610,6 +615,19 @@ describe("VoiceToTextSettings", () => {
     });
 
     expect(screen.getByText("文字起こしに失敗しました")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "再試行" }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
+        "再試行で復旧した結果",
+      );
+    });
+    expect(transcriptionAttempts).toBe(2);
   });
 
   it("clears the audio file path from the clear button", async () => {

@@ -49,6 +49,10 @@ const getRecorderMimeType = () => {
 const recordingFileName = (mimeType: string) =>
   mimeType.includes("ogg") ? "mint-recording.ogg" : "mint-recording.webm";
 
+type TranscriptionRetry =
+  | { type: "file" }
+  | { type: "recording"; audioBlob: Blob; fileName: string };
+
 const getCopyStatusDuration = (status: string) =>
   status === "コピーしました" ? STATUS_VISIBLE_MS : COPY_ERROR_VISIBLE_MS;
 
@@ -82,6 +86,7 @@ export const useTranscriptionWorkbench = ({
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartedAtRef = useRef<number | null>(null);
   const recordingDiscardedRef = useRef(false);
+  const transcriptionRetryRef = useRef<TranscriptionRetry | null>(null);
   const [audioFilePasteStatus, setAudioFilePasteStatus, audioFilePasteTone] =
     useTransientStatus(STATUS_VISIBLE_MS);
   const [copyStatus, setCopyStatus, copyTone] = useTransientStatus(
@@ -117,6 +122,7 @@ export const useTranscriptionWorkbench = ({
   const clearTranscriptionOutput = useCallback(() => {
     transcriptionAttemptRef.current += 1;
     transcribingRef.current = false;
+    transcriptionRetryRef.current = null;
     setTranscribing(false);
     setTranscriptionText("");
     setTranscriptionError("");
@@ -164,6 +170,7 @@ export const useTranscriptionWorkbench = ({
     setTranscriptionText("");
     setTranscriptionError("");
     setCopyStatus("");
+    transcriptionRetryRef.current = { type: "file" };
     clearApiKeyPasteStatus();
     setAudioFilePasteStatus("");
 
@@ -194,6 +201,11 @@ export const useTranscriptionWorkbench = ({
     async (audioBlob: Blob, fileName: string) => {
       if (transcribingRef.current || !audioBlob.size) return;
 
+      transcriptionRetryRef.current = {
+        type: "recording",
+        audioBlob,
+        fileName,
+      };
       const attempt = transcriptionAttemptRef.current + 1;
       transcriptionAttemptRef.current = attempt;
       transcribingRef.current = true;
@@ -229,6 +241,22 @@ export const useTranscriptionWorkbench = ({
     },
     [clearApiKeyPasteStatus, setAudioFilePasteStatus, setCopyStatus, settings],
   );
+
+  const canRetryTranscription =
+    Boolean(transcriptionRetryRef.current) &&
+    Boolean(transcriptionError) &&
+    !transcribing;
+
+  const retryTranscription = useCallback(async () => {
+    const retry = transcriptionRetryRef.current;
+    if (!retry || transcribingRef.current) return;
+
+    if (retry.type === "file") {
+      await transcribeAudioFile();
+      return;
+    }
+    await transcribeRecordedAudio(retry.audioBlob, retry.fileName);
+  }, [transcribeAudioFile, transcribeRecordedAudio]);
 
   const canRecord =
     settings.enabled &&
@@ -582,6 +610,7 @@ export const useTranscriptionWorkbench = ({
     audioFilePasteStatus,
     audioFilePasteTone,
     canRecord,
+    canRetryTranscription,
     isDropTarget,
     workbenchRef,
     transcriptionText,
@@ -597,6 +626,7 @@ export const useTranscriptionWorkbench = ({
     setAudioFilePasteStatus,
     clearTranscriptionOutput,
     transcribeAudioFile,
+    retryTranscription,
     startRecording,
     stopRecording,
     copyTranscriptionText,

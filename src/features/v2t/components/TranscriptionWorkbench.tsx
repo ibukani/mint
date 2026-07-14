@@ -7,6 +7,7 @@ import {
   FolderOpen,
   LoaderCircle,
   Mic,
+  RefreshCw,
   Square,
   Trash2,
 } from "lucide-react";
@@ -40,9 +41,11 @@ export const TranscriptionWorkbench: React.FC<{
     recordingSeconds,
     canTranscribe,
     canRecord,
+    canRetryTranscription,
     transcribeHelpText,
     setupSteps,
     transcribeAudioFile,
+    retryTranscription,
     startRecording,
     stopRecording,
     copyTranscriptionText,
@@ -222,7 +225,19 @@ export const TranscriptionWorkbench: React.FC<{
         </Field>
 
         {transcriptionError && (
-          <ErrorMessage autoFocus>{transcriptionError}</ErrorMessage>
+          <div className="v2t-transcription-error">
+            <ErrorMessage autoFocus>{transcriptionError}</ErrorMessage>
+            {canRetryTranscription && (
+              <Button
+                variant="ghost"
+                className="v2t-retry-button"
+                onClick={() => void retryTranscription()}
+              >
+                <RefreshCw size={15} aria-hidden="true" />
+                再試行
+              </Button>
+            )}
+          </div>
         )}
 
         {transcriptionText ? (

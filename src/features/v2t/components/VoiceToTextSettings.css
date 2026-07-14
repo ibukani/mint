@@ -230,6 +230,17 @@
   width: 100%;
 }
 
+.v2t-transcription-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.v2t-retry-button {
+  flex: 0 0 auto;
+}
+
 .v2t-empty-state {
   display: flex;
   min-height: 150px;
@@ -274,6 +285,15 @@
   .v2t-workbench__body {
     min-height: 320px;
     padding: var(--space-4);
+  }
+
+  .v2t-transcription-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .v2t-retry-button {
+    align-self: flex-start;
   }
 }
 

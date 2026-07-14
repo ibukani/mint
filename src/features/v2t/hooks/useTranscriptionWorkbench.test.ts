@@ -129,4 +129,36 @@ describe("useTranscriptionWorkbench microphone recording", () => {
       "マイクへのアクセスが拒否されました",
     );
   });
+
+  it("keeps a failed recording available for retry", async () => {
+    apiMocks.transcribeRecording
+      .mockRejectedValueOnce(new Error("temporarily unavailable"))
+      .mockResolvedValueOnce({ text: "再試行後の結果" });
+    const { result } = renderHook(() =>
+      useTranscriptionWorkbench({
+        settings: createSettings(),
+        apiKey: "test-api-key",
+        apiKeyLoaded: true,
+        clearApiKeyPasteStatus: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+    act(() => result.current.stopRecording());
+
+    await waitFor(() => {
+      expect(result.current.transcriptionError).toBe("temporarily unavailable");
+      expect(result.current.canRetryTranscription).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.retryTranscription();
+    });
+
+    expect(result.current.transcriptionText).toBe("再試行後の結果");
+    expect(result.current.transcriptionError).toBe("");
+    expect(apiMocks.transcribeRecording).toHaveBeenCalledTimes(2);
+  });
 });
