@@ -81,6 +81,8 @@ const supportedImageTypes = new Set([
   "image/webp",
 ]);
 
+const PAGE_MOVE_SIZE = 5;
+
 type ShelfCursorEntry =
   | { key: string; kind: "group"; groupId: string }
   | { key: string; kind: "item"; item: FileShelfItem };
@@ -299,7 +301,9 @@ export const FileShelfOverlay: React.FC = () => {
       isEditableTarget(event.target) &&
       event.key !== "Escape" &&
       event.key !== "Enter" &&
-      !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) &&
+      !["ArrowDown", "ArrowUp", "Home", "End", "PageUp", "PageDown"].includes(
+        event.key,
+      ) &&
       !(modifierPressed && key === "f")
     ) {
       return;
@@ -363,6 +367,17 @@ export const FileShelfOverlay: React.FC = () => {
           currentIndex <= 0 ? cursorEntries.length - 1 : currentIndex - 1,
         );
       }
+    } else if (event.key === "PageDown" || event.key === "PageUp") {
+      event.preventDefault();
+      const currentIndex = cursorEntries.findIndex(
+        (entry) => entry.key === cursorKey,
+      );
+      const safeIndex = Math.max(0, currentIndex);
+      const nextIndex =
+        event.key === "PageDown"
+          ? Math.min(cursorEntries.length - 1, safeIndex + PAGE_MOVE_SIZE)
+          : Math.max(0, safeIndex - PAGE_MOVE_SIZE);
+      moveCursor(nextIndex);
     } else if (event.key === "Enter") {
       event.preventDefault();
       activateCursor();
@@ -468,7 +483,7 @@ export const FileShelfOverlay: React.FC = () => {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="棚を検索"
             aria-label="棚を検索"
-            aria-keyshortcuts={`${shortcutAriaModifier}+F`}
+            aria-keyshortcuts={`${shortcutAriaModifier}+F ArrowDown ArrowUp Home End PageUp PageDown Enter Escape`}
           />
           {query ? (
             <>
@@ -732,7 +747,8 @@ export const FileShelfOverlay: React.FC = () => {
               </span>
             ) : (
               <span>
-                {shelf.notice || "Shiftを押しながら取り出すと移動します"}
+                {shelf.notice ||
+                  "↑↓: 1件 · PgUp/PgDn: 5件 · Home/End · Shiftで移動"}
               </span>
             )}
           </div>

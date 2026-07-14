@@ -182,6 +182,46 @@ describe("FileShelfOverlay", () => {
     expect(actions.changeExpanded).toHaveBeenCalledWith(false);
   });
 
+  it("moves five shelf items at a time with PageUp and PageDown", () => {
+    const items = Array.from({ length: 8 }, (_, index) => ({
+      ...first,
+      id: `item-${index}`,
+      groupId: `group-${index}`,
+      displayName: `file-${index}.txt`,
+    }));
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: items.map((item) => ({
+          id: item.groupId,
+          createdAt: item.createdAt,
+          items: [item],
+        })),
+      },
+      itemCount: items.length,
+    });
+    render(<FileShelfOverlay />);
+
+    const search = screen.getByRole("searchbox", { name: "棚を検索" });
+    expect(search).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+F ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
+    );
+    expect(
+      screen.getByText("↑↓: 1件 · PgUp/PgDn: 5件 · Home/End · Shiftで移動"),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(search, { key: "PageDown" });
+    expect(
+      screen.getByRole("button", { name: /file-5\.txt.*ファイル/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.keyDown(search, { key: "PageUp" });
+    expect(
+      screen.getByRole("button", { name: /file-0\.txt.*ファイル/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("keeps native editing and paste behavior inside the search field", () => {
     render(<FileShelfOverlay />);
 
