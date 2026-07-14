@@ -382,7 +382,7 @@ export const FileShelfOverlay: React.FC = () => {
       <OverlayFrame>
         <button
           type="button"
-          className="file-shelf-handle"
+          className={`file-shelf-handle${shelf.isDropTarget ? " is-drop-target" : ""}`}
           onClick={() => void shelf.changeExpanded(true)}
           aria-label={`ファイルシェルを開く、${shelf.itemCount}件`}
         >
@@ -398,7 +398,7 @@ export const FileShelfOverlay: React.FC = () => {
     <OverlayFrame>
       <section
         ref={containerRef}
-        className="file-shelf"
+        className={`file-shelf${shelf.isDropTarget ? " is-drop-target" : ""}`}
         aria-label="ファイルシェル"
         tabIndex={-1}
         onPaste={(event) => void handlePaste(event)}
@@ -446,9 +446,17 @@ export const FileShelfOverlay: React.FC = () => {
           </div>
         </header>
 
-        <div className="file-shelf__paste-zone">
+        <div
+          className={`file-shelf__paste-zone${shelf.isDropTarget ? " is-drop-target" : ""}`}
+          role={shelf.isDropTarget ? "status" : undefined}
+          aria-live="polite"
+        >
           <Clipboard size={16} aria-hidden="true" />
-          <span>ここへドロップ、または Ctrl+V で画像・URL・文章を追加</span>
+          <span>
+            {shelf.isDropTarget
+              ? "ここにドロップしてファイルを追加"
+              : "ここへドロップ、または Ctrl+V で画像・URL・文章を追加"}
+          </span>
         </div>
 
         <label className="file-shelf__search">

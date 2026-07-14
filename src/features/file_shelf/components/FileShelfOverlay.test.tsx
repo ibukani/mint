@@ -73,6 +73,7 @@ const expandedShelf = () => ({
   error: "",
   notice: "",
   undoToken: "",
+  isDropTarget: false,
   itemCount: 2,
   clipboardHistoryCount: 0,
   reportError: vi.fn(),
@@ -100,6 +101,20 @@ describe("FileShelfOverlay", () => {
       { button: 0, shiftKey: true },
     );
     expect(actions.dragItems).toHaveBeenCalledWith([first, second], true);
+  });
+
+  it("shows a clear drop target state while files are being dragged in", () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      isDropTarget: true,
+    });
+    render(<FileShelfOverlay />);
+
+    const shelf = screen.getByRole("region", { name: "ファイルシェル" });
+    const pasteZone = screen.getByRole("status");
+    expect(shelf).toHaveClass("is-drop-target");
+    expect(pasteZone).toHaveClass("is-drop-target");
+    expect(pasteZone).toHaveTextContent("ここにドロップしてファイルを追加");
   });
 
   it("supports paste and keyboard selection removal", () => {

@@ -34,6 +34,7 @@ export const useFileShelf = () => {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [undoToken, setUndoToken] = useState("");
+  const [isDropTarget, setIsDropTarget] = useState(false);
   const loadRevision = useRef(0);
 
   const fail = useCallback((reason: unknown) => {
@@ -111,9 +112,15 @@ export const useFileShelf = () => {
     });
     void getCurrentWebview()
       .onDragDropEvent((event) => {
-        if (event.payload.type === "enter") {
-          void changeExpanded(true, false);
+        if (event.payload.type === "enter" || event.payload.type === "over") {
+          setIsDropTarget(true);
+          if (event.payload.type === "enter") {
+            void changeExpanded(true, false);
+          }
+        } else if (event.payload.type === "leave") {
+          setIsDropTarget(false);
         } else if (event.payload.type === "drop") {
+          setIsDropTarget(false);
           void addPaths(event.payload.paths);
         }
       })
@@ -124,6 +131,7 @@ export const useFileShelf = () => {
       unlistenMode?.();
       unlistenDrop?.();
       unlistenState?.();
+      setIsDropTarget(false);
     };
   }, [addPaths, changeExpanded]);
 
@@ -339,6 +347,7 @@ export const useFileShelf = () => {
     error,
     notice,
     undoToken,
+    isDropTarget,
     itemCount,
     clipboardHistoryCount,
     reportError: fail,

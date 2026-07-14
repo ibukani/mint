@@ -10,6 +10,20 @@
   color: var(--color-accent);
   cursor: pointer;
   place-items: center;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.file-shelf-handle.is-drop-target {
+  border-color: var(--border-action-hover);
+  background: var(--surface-accent-action);
+  box-shadow:
+    var(--shadow-overlay),
+    0 0 0 2px var(--border-action);
+  transform: scale(1.02);
 }
 
 .file-shelf-handle strong {
@@ -37,6 +51,16 @@
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
   backdrop-filter: blur(var(--blur-lg));
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.file-shelf.is-drop-target {
+  border-color: var(--border-action-hover);
+  box-shadow:
+    var(--shadow-overlay),
+    0 0 0 2px var(--border-action);
 }
 
 .file-shelf button {
@@ -127,6 +151,20 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
   line-height: 1.5;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.file-shelf__paste-zone.is-drop-target {
+  border-color: var(--border-action-hover);
+  background: var(--surface-accent-action);
+  box-shadow: var(--shadow-focus);
+  color: var(--color-accent);
+  transform: translateY(-1px);
 }
 
 .file-shelf__search {
@@ -200,6 +238,11 @@
 .file-shelf__paste-zone > svg {
   flex: 0 0 auto;
   color: var(--color-accent);
+  transition: transform var(--transition-fast);
+}
+
+.file-shelf__paste-zone.is-drop-target > svg {
+  transform: scale(1.12);
 }
 
 .file-shelf__content {
@@ -390,6 +433,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .file-shelf-handle,
   .file-shelf * {
     scroll-behavior: auto;
     transition: none;
