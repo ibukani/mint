@@ -41,30 +41,10 @@ import {
 } from "../api";
 import { useQuickCapture } from "../hooks/useQuickCapture";
 import type { QuickCaptureNote } from "../types";
+import { formatUpdatedAt, noteTitle, parseTags, safeFileName } from "../utils";
 import "./QuickCaptureOverlay.css";
 
-export const noteTitle = (note: Pick<QuickCaptureNote, "content">) =>
-  note.content
-    .split("\n")
-    .find((line) => line.trim())
-    ?.trim() || "無題のメモ";
-
-const formatUpdatedAt = (value: string) =>
-  new Intl.DateTimeFormat("ja-JP", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-
-const parseTags = (value: string) =>
-  value
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
-const safeFileName = (value: string) =>
-  `${value.replace(/[\\/:*?"<>|]+/g, "-").trim() || "quick-capture"}.md`;
+export { noteTitle };
 
 const isEditableTarget = (target: EventTarget | null) =>
   target instanceof HTMLInputElement ||

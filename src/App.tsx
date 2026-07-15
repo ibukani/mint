@@ -12,11 +12,10 @@ import {
 } from "./core/context/AppSettings";
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
 import { useSettingsWindow } from "./core/hooks/useSettingsWindow";
+import { getAvailableQuickActions } from "./core/navigation/quickActions";
 import {
-  SETTINGS_QUICK_ACTIONS,
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
-  type SettingsTabId,
 } from "./core/navigation/settingsTabs";
 import { isOverlayTarget, openOverlay } from "./core/windowCommands";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
@@ -45,59 +44,6 @@ const saveSidebarTones: Record<
   saving: "pending",
   saved: "success",
   error: "error",
-};
-
-type OverlayFeatureSettingsKey =
-  | "clock"
-  | "calendar"
-  | "gameLauncher"
-  | "quickCapture"
-  | "fileShelf";
-
-type QuickActionAvailability = {
-  settingsKey: OverlayFeatureSettingsKey;
-  tabId: SettingsTabId;
-  targetId: string;
-  label: string;
-};
-
-const quickActionAvailability: Record<string, QuickActionAvailability> = {
-  clock: {
-    settingsKey: "clock",
-    tabId: "clock",
-    targetId: "clock-enabled-checkbox",
-    label: "時計オーバーレイ",
-  },
-  calendar: {
-    settingsKey: "calendar",
-    tabId: "calendar",
-    targetId: "calendar-enabled-checkbox",
-    label: "カレンダー",
-  },
-  calendarCreateEvent: {
-    settingsKey: "calendar",
-    tabId: "calendar",
-    targetId: "calendar-enabled-checkbox",
-    label: "カレンダー",
-  },
-  gameLauncher: {
-    settingsKey: "gameLauncher",
-    tabId: "gameLauncher",
-    targetId: "game-launcher-enabled",
-    label: "ゲームランチャー",
-  },
-  quickCapture: {
-    settingsKey: "quickCapture",
-    tabId: "quickCapture",
-    targetId: "quick-capture-enabled",
-    label: "クイックキャプチャー",
-  },
-  fileShelf: {
-    settingsKey: "fileShelf",
-    tabId: "fileShelf",
-    targetId: "file-shelf-enabled",
-    label: "ファイルシェル",
-  },
 };
 
 const AppContent: React.FC = () => {
@@ -152,24 +98,7 @@ const AppContent: React.FC = () => {
   const activeTabLabel =
     SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定";
   const settingsLoadError = !settings ? error : null;
-  const quickActions = settings
-    ? SETTINGS_QUICK_ACTIONS.map((action) => {
-        const availability = quickActionAvailability[action.targetId];
-        if (!availability || settings[availability.settingsKey].enabled) {
-          return action;
-        }
-
-        return {
-          ...action,
-          disabled: true,
-          disabledReason: `${availability.label}が無効です。詳細設定で有効にしてください。`,
-          disabledSettingsTarget: {
-            tabId: availability.tabId,
-            targetId: availability.targetId,
-          },
-        };
-      })
-    : SETTINGS_QUICK_ACTIONS;
+  const quickActions = getAvailableQuickActions(settings);
 
   return (
     <>

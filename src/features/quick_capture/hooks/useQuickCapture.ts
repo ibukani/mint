@@ -17,15 +17,11 @@ import {
 import type { QuickCaptureNoteCreatedPayload } from "../events";
 import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../events";
 import type { QuickCaptureNote } from "../types";
+import { parseTags } from "../utils";
 
 export type CaptureSaveStatus = "idle" | "saving" | "saved" | "error";
 
 const tagsToText = (tags: string[]) => tags.join(", ");
-const parseTags = (value: string) =>
-  value
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
 
 export const useQuickCapture = () => {
   const [notes, setNotes] = useState<QuickCaptureNote[]>([]);

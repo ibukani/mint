@@ -39,15 +39,14 @@ import { loadFileShelfPreview } from "../api";
 import { useFileShelf } from "../hooks/useFileShelf";
 import { useFileShelfDragGesture } from "../hooks/useFileShelfDragGesture";
 import type { FileShelfItem, FileShelfItemKind } from "../types";
+import {
+  formatBytes,
+  isSupportedUrl,
+  kindLabel,
+  matchesQuery,
+  supportedImageTypes,
+} from "../utils";
 import "./FileShelfOverlay.css";
-
-const kindLabel: Record<FileShelfItemKind, string> = {
-  file: "ファイル",
-  folder: "フォルダ",
-  image: "画像",
-  text: "文章",
-  url: "URL",
-};
 
 const ItemIcon = ({
   kind,
@@ -67,13 +66,6 @@ const ItemIcon = ({
   return <File className={className} size={18} aria-hidden="true" />;
 };
 
-const formatBytes = (value: number | null) => {
-  if (value === null) return null;
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-};
-
 const imageAsBase64 = (file: globalThis.File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -87,23 +79,6 @@ const imageAsBase64 = (file: globalThis.File) =>
     reader.readAsDataURL(file);
   });
 
-const isSupportedUrl = (value: string) => {
-  try {
-    return ["http:", "https:", "mailto:", "tel:"].includes(
-      new URL(value).protocol,
-    );
-  } catch {
-    return false;
-  }
-};
-
-const supportedImageTypes = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-]);
-
 const PAGE_MOVE_SIZE = 5;
 
 type ShelfCursorEntry =
@@ -115,19 +90,6 @@ const isEditableTarget = (target: EventTarget | null) =>
   target instanceof HTMLTextAreaElement ||
   target instanceof HTMLSelectElement ||
   (target instanceof HTMLElement && target.isContentEditable);
-
-const matchesQuery = (item: FileShelfItem, query: string) =>
-  [
-    item.displayName,
-    item.sourcePath,
-    item.textContent,
-    kindLabel[item.kind],
-    item.source === "clipboardHistory" ? "履歴" : "手動",
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLocaleLowerCase("ja")
-    .includes(query);
 
 export const FileShelfOverlay: React.FC = () => {
   const { settings } = useAppSettings();
