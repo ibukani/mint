@@ -567,7 +567,19 @@ for (const sourceFile of listFilesRecursive(path.join(ROOT_DIR, "src"), {
 
 function checkMockIPCCase(mockPath, _isVitest = false) {
   if (fs.existsSync(mockPath)) {
-    const mockContent = fs.readFileSync(mockPath, "utf-8");
+    const mockSources = [
+      mockPath,
+      ...listFilesRecursive(path.join(ROOT_DIR, "src/core/mocks"), {
+        extensions: [".ts"],
+        ignoredDirs: new Set(["node_modules", "dist"]),
+      }),
+    ];
+    const mockContent = mockSources
+      .filter(
+        (sourceFile, index, sources) => sources.indexOf(sourceFile) === index,
+      )
+      .map((sourceFile) => fs.readFileSync(sourceFile, "utf-8"))
+      .join("\n");
     for (const cmd of frontendInvokes) {
       const caseRegex = new RegExp(`case\\s+["']${cmd}["']\\s*:`);
       if (!caseRegex.test(mockContent)) {

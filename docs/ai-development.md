@@ -90,7 +90,7 @@ The scaffolder creates the frontend feature module, Rust feature module, AppSett
 - 検証ログは通常 `rtk npm run check:quick`、`rtk npm run check:ai-context`、`rtk npm run check:ai-foundation`、`rtk npm run check` のように `rtk` 経由で取得し、失敗箇所中心の短い出力にしてください。アーキテクチャ検証の成功詳細が必要な場合だけ `npm run verify:architecture:verbose` を使ってください。
 
 ### 1. Browser-Only Development & Mocking
-- 本アプリはブラウザ単体での動作確認用のTauri API自動モック環境 (`src/core/mocks/tauriMock.ts`) を備えています。
+- 本アプリはブラウザ単体での動作確認用のTauri API自動モック環境 (`src/core/mocks/tauriMock.ts`) を備えています。feature 別の IPC mock handler は `src/core/mocks/*IpcMock.ts` に分離され、Vitest の setup と共有されます。
 - 通常のWebブラウザで動作している場合は、設定の読み込みや保存などのIPC呼び出しが自動的に `localStorage` を使うモックに切り替わります。
 - クエリパラメータ `?label=<label>` をURLに付与することで、特定のウィンドウ（例: `?label=clock`）のレンダリングや動作確認がブラウザ上で直接行えます。
 
