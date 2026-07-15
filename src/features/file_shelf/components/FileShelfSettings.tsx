@@ -12,6 +12,7 @@ import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
   Button,
+  ColorPresetPicker,
   FeatureSettingsHeader,
   Field,
   Select,
@@ -21,15 +22,6 @@ import {
 } from "../../../design/components";
 import { chooseIgnoredFileShelfApplication } from "../api";
 import "./FileShelfSettings.css";
-
-const PRESET_COLORS = [
-  { value: "#818cf8", label: "インディゴ" },
-  { value: "#38bdf8", label: "スカイ" },
-  { value: "#34d399", label: "ミント" },
-  { value: "#fbbf24", label: "アンバー" },
-  { value: "#fb7185", label: "ローズ" },
-  { value: "#f8fafc", label: "ホワイト" },
-] as const;
 
 export const FileShelfSettings: React.FC = () => {
   const [ignoredApplicationError, setIgnoredApplicationError] = useState("");
@@ -121,22 +113,11 @@ export const FileShelfSettings: React.FC = () => {
             id="file-shelf-theme-color-picker"
             label="ファイルシェルのテーマカラー"
           >
-            <div className="color-picker-palette">
-              {PRESET_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  className={`color-picker-badge ${settings.themeColor === color.value ? "is-active" : ""}`}
-                  style={
-                    { "--swatch-color": color.value } as React.CSSProperties
-                  }
-                  title={color.label}
-                  onClick={() => handleChange("themeColor", color.value)}
-                  aria-label={color.label}
-                  aria-pressed={settings.themeColor === color.value}
-                />
-              ))}
-            </div>
+            <ColorPresetPicker
+              value={settings.themeColor}
+              onChange={(value) => handleChange("themeColor", value)}
+              ariaLabel="ファイルシェルのテーマカラー"
+            />
           </Field>
         </section>
 
