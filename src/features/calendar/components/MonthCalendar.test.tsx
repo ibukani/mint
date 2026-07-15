@@ -11,6 +11,8 @@ interface HarnessProps {
   onCreate?: () => void;
   onOpenDay?: (date: string) => void;
   onOpenEvent?: (event: CalendarEvent) => void;
+  error?: string;
+  onRetry?: () => void;
 }
 
 const MonthCalendarHarness = ({
@@ -19,12 +21,14 @@ const MonthCalendarHarness = ({
   onCreate = vi.fn(),
   onOpenDay = vi.fn(),
   onOpenEvent = vi.fn(),
+  error = "",
+  onRetry = vi.fn(),
 }: HarnessProps) => {
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(today));
   return (
     <MonthCalendar
-      error=""
+      error={error}
       events={events}
       loading={false}
       nextEvent={nextEvent}
@@ -33,6 +37,7 @@ const MonthCalendarHarness = ({
       onCreate={onCreate}
       onOpenDay={onOpenDay}
       onOpenEvent={onOpenEvent}
+      onRetry={onRetry}
       onViewMonthChange={setViewMonth}
     />
   );
@@ -75,11 +80,20 @@ describe("MonthCalendar", () => {
     expect(
       screen.getByRole("heading", { name: "2026年 8月" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "8月10日" })).toHaveFocus();
 
     fireEvent.click(screen.getByRole("button", { name: "今日" }));
     expect(
       screen.getByRole("heading", { name: "2026年 7月" }),
     ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("日付へ移動"), {
+      target: { value: "2026-10-03" },
+    });
+    expect(
+      screen.getByRole("heading", { name: "2026年 10月" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "10月3日" })).toHaveFocus();
   });
 
   it("supports keyboard date navigation and month paging", () => {
@@ -120,6 +134,22 @@ describe("MonthCalendar", () => {
       screen.getByRole("heading", { name: "2026年 1月" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1月15日" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByLabelText("月間カレンダー"), { key: "g" });
+    expect(screen.getByLabelText("日付へ移動")).toHaveFocus();
+  });
+
+  it("clamps the focused date when the next month is shorter", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 0, 31, 9, 0, 0));
+    render(<MonthCalendarHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "次の月" }));
+
+    expect(
+      screen.getByRole("heading", { name: "2026年 2月" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2月28日" })).toHaveFocus();
   });
 
   it("shows a subtle event marker and opens event entry points", () => {
@@ -154,5 +184,21 @@ describe("MonthCalendar", () => {
       screen.getByRole("button", { name: "次の予定、設計レビュー" }),
     );
     expect(onOpenEvent).toHaveBeenCalledWith(calendarEvent);
+  });
+
+  it("offers a retry action when events cannot be loaded", () => {
+    const onRetry = vi.fn();
+    render(
+      <MonthCalendarHarness
+        error="予定を読み込めませんでした"
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "予定を読み込めませんでした",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "再読み込み" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });

@@ -714,6 +714,22 @@ const designBoundaryAllowlist = new Map([
     "src/features/game_launcher/components/GameLauncherSettings.tsx",
     new Set(["inline-style", "color-literal"]),
   ],
+  [
+    "src/features/file_shelf/components/FileShelfOverlay.tsx",
+    new Set(["inline-style"]),
+  ],
+  [
+    "src/features/file_shelf/components/FileShelfSettings.tsx",
+    new Set(["inline-style", "color-literal"]),
+  ],
+  [
+    "src/features/quick_capture/components/QuickCaptureOverlay.tsx",
+    new Set(["inline-style"]),
+  ],
+  [
+    "src/features/quick_capture/components/QuickCaptureSettings.tsx",
+    new Set(["inline-style", "color-literal"]),
+  ],
 ]);
 
 function isDesignBoundaryAllowed(relativeFile, rule) {

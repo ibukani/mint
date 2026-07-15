@@ -1,10 +1,11 @@
 use super::{
-    sync::pending_count, CalendarListResponse, GoogleCalendarConnection, GoogleCalendarInfo,
-    GoogleCalendarState, TokenResponse, UserInfoResponse, API_ROOT,
+    run_blocking,
+    sync::{pending_count, stored_sync_status},
+    CalendarListResponse, GoogleCalendarConnection, GoogleCalendarInfo, GoogleCalendarState,
+    TokenResponse, UserInfoResponse, API_ROOT,
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use reqwest::blocking::Client;
-use rusqlite::Connection;
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
@@ -12,17 +13,28 @@ use std::{
     net::TcpListener,
     time::{Duration, Instant},
 };
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 use url::Url;
 use uuid::Uuid;
 
-use super::super::calendar::CalendarStoreState;
+use super::super::calendar::{database::open_store, CalendarStoreState};
 
 const TOKEN_SERVICE: &str = "com.ibuibu.mint.google_calendar";
 const TOKEN_USER: &str = "refresh_token";
+const ACCOUNT_USER: &str = "account_email";
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
+const GOOGLE_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+const GOOGLE_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+
+pub(super) fn google_client() -> Result<Client, String> {
+    Client::builder()
+        .connect_timeout(GOOGLE_CONNECT_TIMEOUT)
+        .timeout(GOOGLE_REQUEST_TIMEOUT)
+        .build()
+        .map_err(|_| "Google Calendarへの接続を準備できませんでした。".to_string())
+}
 
 fn client_id() -> Result<&'static str, String> {
     option_env!("GOOGLE_CALENDAR_CLIENT_ID")
@@ -30,8 +42,16 @@ fn client_id() -> Result<&'static str, String> {
         .ok_or_else(|| "GOOGLE_CALENDAR_CLIENT_ID is not configured for this build.".to_string())
 }
 
+fn credential_entry(user: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(TOKEN_SERVICE, user).map_err(|error| error.to_string())
+}
+
 fn token_entry() -> Result<keyring::Entry, String> {
-    keyring::Entry::new(TOKEN_SERVICE, TOKEN_USER).map_err(|error| error.to_string())
+    credential_entry(TOKEN_USER)
+}
+
+fn account_entry() -> Result<keyring::Entry, String> {
+    credential_entry(ACCOUNT_USER)
 }
 
 fn load_refresh_token() -> Result<Option<String>, String> {
@@ -42,10 +62,25 @@ fn load_refresh_token() -> Result<Option<String>, String> {
     }
 }
 
+fn load_account_email() -> Option<String> {
+    account_entry().ok()?.get_password().ok()
+}
+
+fn write_oauth_response(stream: &mut std::net::TcpStream, status: &str, message: &str) {
+    let body = format!(
+        "<!doctype html><html lang=\"ja\"><meta charset=\"utf-8\"><title>Mint</title><body><p>{message}</p></body></html>"
+    );
+    let response = format!(
+        "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    let _ = stream.write_all(response.as_bytes());
+}
+
 pub(super) fn refresh_access_token() -> Result<String, String> {
     let refresh_token =
         load_refresh_token()?.ok_or_else(|| "Google Calendar is not connected.".to_string())?;
-    let response = Client::new()
+    let response = google_client()?
         .post(TOKEN_URL)
         .form(&[
             ("client_id", client_id()?),
@@ -62,29 +97,52 @@ pub(super) fn refresh_access_token() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn get_google_calendar_connection(
-    state: tauri::State<'_, GoogleCalendarState>,
-    store: tauri::State<'_, CalendarStoreState>,
+pub async fn get_google_calendar_connection(
+    app: AppHandle,
+) -> Result<GoogleCalendarConnection, String> {
+    run_blocking(move || {
+        let state = app.state::<GoogleCalendarState>();
+        let store = app.state::<CalendarStoreState>();
+        get_google_calendar_connection_blocking(state.inner(), store.inner())
+    })
+    .await
+}
+
+fn get_google_calendar_connection_blocking(
+    state: &GoogleCalendarState,
+    store: &CalendarStoreState,
 ) -> Result<GoogleCalendarConnection, String> {
     let connected = load_refresh_token()?.is_some();
+    let (pending_operations, stored_last_synced_at) = stored_sync_status(store)?;
     let status = state
         .status
         .lock()
         .map_err(|_| "Google Calendar state is unavailable.".to_string())?;
     Ok(GoogleCalendarConnection {
         connected,
-        account_email: status.account_email.clone(),
-        last_synced_at: status.last_synced_at.clone(),
-        pending_operations: pending_count(&store)?,
+        account_email: if status.account_email.is_empty() {
+            load_account_email().unwrap_or_default()
+        } else {
+            status.account_email.clone()
+        },
+        last_synced_at: status.last_synced_at.clone().or(stored_last_synced_at),
+        pending_operations,
         error: status.error.clone(),
+        syncing: status.syncing,
     })
 }
 
 #[tauri::command]
-pub fn connect_google_calendar(
-    app: AppHandle,
-    state: tauri::State<'_, GoogleCalendarState>,
-) -> Result<GoogleCalendarConnection, String> {
+pub async fn connect_google_calendar(app: AppHandle) -> Result<GoogleCalendarConnection, String> {
+    run_blocking(move || connect_google_calendar_blocking(app)).await
+}
+
+fn connect_google_calendar_blocking(app: AppHandle) -> Result<GoogleCalendarConnection, String> {
+    let state = app.state::<GoogleCalendarState>();
+    let _operation = state
+        .operation
+        .lock()
+        .map_err(|_| "Google Calendar operation state is unavailable.".to_string())?;
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
     listener
         .set_nonblocking(true)
@@ -146,16 +204,31 @@ pub fn connect_google_calendar(
         Url::parse(&format!("http://127.0.0.1{target}")).map_err(|error| error.to_string())?;
     let query: HashMap<_, _> = callback.query_pairs().into_owned().collect();
     if query.get("state") != Some(&csrf_state) {
+        write_oauth_response(
+            &mut stream,
+            "400 Bad Request",
+            "認証情報を確認できませんでした。Mintに戻って接続をやり直してください。",
+        );
         return Err("OAuth state validation failed.".to_string());
     }
-    let code = query.get("code").ok_or_else(|| {
-        query
+    let Some(code) = query.get("code") else {
+        let error = query
             .get("error")
             .cloned()
-            .unwrap_or_else(|| "Authorization was cancelled.".to_string())
-    })?;
-    let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\nGoogle Calendar connected. You can close this window.");
-    let token = Client::new()
+            .unwrap_or_else(|| "Authorization was cancelled.".to_string());
+        write_oauth_response(
+            &mut stream,
+            "400 Bad Request",
+            "Googleアカウントの接続は完了していません。Mintに戻ってもう一度お試しください。",
+        );
+        return Err(error);
+    };
+    write_oauth_response(
+        &mut stream,
+        "200 OK",
+        "認証を受け付けました。この画面を閉じてMintに戻ってください。",
+    );
+    let token = google_client()?
         .post(TOKEN_URL)
         .form(&[
             ("client_id", client_id()?),
@@ -173,10 +246,7 @@ pub fn connect_google_calendar(
     let refresh_token = token
         .refresh_token
         .ok_or_else(|| "Google did not return a refresh token.".to_string())?;
-    token_entry()?
-        .set_password(&refresh_token)
-        .map_err(|error| error.to_string())?;
-    let profile = Client::new()
+    let profile = google_client()?
         .get("https://openidconnect.googleapis.com/v1/userinfo")
         .bearer_auth(&token.access_token)
         .send()
@@ -185,6 +255,17 @@ pub fn connect_google_calendar(
         .map_err(|error| error.to_string())?
         .json::<UserInfoResponse>()
         .map_err(|error| error.to_string())?;
+    token_entry()?
+        .set_password(&refresh_token)
+        .map_err(|error| error.to_string())?;
+    if !profile.email.is_empty() {
+        let _ = account_entry().and_then(|entry| {
+            entry
+                .set_password(&profile.email)
+                .map_err(|error| error.to_string())
+        });
+    }
+    let pending_operations = pending_count(app.state::<CalendarStoreState>().inner())?;
     let mut runtime = state
         .status
         .lock()
@@ -195,21 +276,40 @@ pub fn connect_google_calendar(
         connected: true,
         account_email: runtime.account_email.clone(),
         last_synced_at: runtime.last_synced_at.clone(),
-        pending_operations: 0,
+        pending_operations,
         error: None,
+        syncing: false,
     })
 }
 
 #[tauri::command]
-pub fn list_google_calendars() -> Result<Vec<GoogleCalendarInfo>, String> {
+pub async fn list_google_calendars(app: AppHandle) -> Result<Vec<GoogleCalendarInfo>, String> {
+    run_blocking(move || {
+        let state = app.state::<GoogleCalendarState>();
+        let _operation = state
+            .operation
+            .lock()
+            .map_err(|_| "Google Calendar operation state is unavailable.".to_string())?;
+        list_google_calendars_blocking()
+    })
+    .await
+}
+
+pub(super) fn list_google_calendars_blocking() -> Result<Vec<GoogleCalendarInfo>, String> {
     let token = refresh_access_token()?;
-    let client = Client::new();
+    list_google_calendars_with_token(&token)
+}
+
+pub(super) fn list_google_calendars_with_token(
+    token: &str,
+) -> Result<Vec<GoogleCalendarInfo>, String> {
+    let client = google_client()?;
     let mut page_token: Option<String> = None;
     let mut result = Vec::new();
     loop {
         let mut request = client
             .get(format!("{API_ROOT}/users/me/calendarList"))
-            .bearer_auth(&token);
+            .bearer_auth(token);
         if let Some(value) = &page_token {
             request = request.query(&[("pageToken", value)]);
         }
@@ -236,28 +336,54 @@ pub fn list_google_calendars() -> Result<Vec<GoogleCalendarInfo>, String> {
 }
 
 #[tauri::command]
-pub fn disconnect_google_calendar(
-    store: tauri::State<'_, CalendarStoreState>,
-) -> Result<(), String> {
-    if pending_count(&store)? > 0 {
-        return Err("Unsynced calendar changes must be resolved before disconnecting.".to_string());
+pub async fn disconnect_google_calendar(app: AppHandle) -> Result<(), String> {
+    run_blocking(move || disconnect_google_calendar_blocking(app)).await
+}
+
+fn disconnect_google_calendar_blocking(app: AppHandle) -> Result<(), String> {
+    let state = app.state::<GoogleCalendarState>();
+    let store = app.state::<CalendarStoreState>();
+    let _operation = state
+        .operation
+        .lock()
+        .map_err(|_| "Google Calendar operation state is unavailable.".to_string())?;
+    if pending_count(store.inner())? > 0 {
+        return Err(
+            "未同期の予定が残っているため、接続を解除できません。先に同期してください。"
+                .to_string(),
+        );
     }
     if let Some(token) = load_refresh_token()? {
-        let _ = Client::new()
-            .post("https://oauth2.googleapis.com/revoke")
-            .form(&[("token", token)])
-            .send();
+        std::thread::spawn(move || {
+            if let Ok(client) = google_client() {
+                let _ = client
+                    .post("https://oauth2.googleapis.com/revoke")
+                    .form(&[("token", token)])
+                    .send();
+            }
+        });
     }
     match token_entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => {}
         Err(error) => return Err(error.to_string()),
     }
-    let connection = Connection::open(store.path()).map_err(|error| error.to_string())?;
+    if let Ok(entry) = account_entry() {
+        let _ = entry.delete_credential();
+    }
+    let connection = open_store(store.path())?;
     connection
         .execute("DELETE FROM calendar_events WHERE source_kind='google'", [])
         .map_err(|error| error.to_string())?;
     connection
         .execute("DELETE FROM google_calendar_sync", [])
         .map_err(|error| error.to_string())?;
+    let mut runtime = state
+        .status
+        .lock()
+        .map_err(|_| "Google Calendar state is unavailable.".to_string())?;
+    runtime.account_email.clear();
+    runtime.last_synced_at = None;
+    runtime.error = None;
+    runtime.syncing = false;
     Ok(())
 }

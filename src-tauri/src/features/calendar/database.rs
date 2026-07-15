@@ -18,7 +18,7 @@ pub fn initialize_store(app: &AppHandle) -> Result<CalendarStoreState, String> {
     Ok(state)
 }
 
-pub(super) fn open_store(path: &Path) -> Result<Connection, String> {
+pub(crate) fn open_store(path: &Path) -> Result<Connection, String> {
     let connection = Connection::open(path).map_err(|error| error.to_string())?;
     connection
         .busy_timeout(Duration::from_secs(5))

@@ -1,15 +1,21 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, X } from "lucide-react";
+import { Minus, Search, X } from "lucide-react";
 import type React from "react";
 
 interface TitleBarProps {
   title?: string;
   contextLabel?: string;
+  quickSwitcherShortcut?: string;
+  quickSwitcherAriaShortcut?: string;
+  onOpenQuickSwitcher?: () => void;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
   title = "mint",
   contextLabel = "設定",
+  quickSwitcherShortcut = "Ctrl K",
+  quickSwitcherAriaShortcut = "Control+K",
+  onOpenQuickSwitcher,
 }) => {
   const handleMinimize = async () => {
     try {
@@ -48,6 +54,21 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         </span>
         <span className="app-titlebar__context">{contextLabel}</span>
       </div>
+      {onOpenQuickSwitcher && (
+        <button
+          type="button"
+          className="app-titlebar__search"
+          onClick={onOpenQuickSwitcher}
+          aria-label="クイックランチャーを開く"
+          aria-keyshortcuts={quickSwitcherAriaShortcut}
+          title={`${quickSwitcherShortcut} でクイックランチャーを開く`}
+          data-window-drag-block
+        >
+          <Search size={14} aria-hidden="true" />
+          <span>クイックランチャー</span>
+          <kbd>{quickSwitcherShortcut}</kbd>
+        </button>
+      )}
       <div className="app-titlebar__controls">
         <button
           type="button"

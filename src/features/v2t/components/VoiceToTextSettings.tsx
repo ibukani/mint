@@ -12,7 +12,12 @@ export const VoiceToTextSettings: React.FC = () => {
   const controller = useVoiceToTextController();
   if (!controller) return null;
 
-  const { voiceToText, handleChange, resetVoiceToTextSettings } = controller;
+  const {
+    voiceToText,
+    handleChange,
+    clearTranscriptionOutput,
+    resetVoiceToTextSettings,
+  } = controller;
 
   return (
     <SettingsSection
@@ -23,7 +28,10 @@ export const VoiceToTextSettings: React.FC = () => {
         switchId="v2t-enabled-checkbox"
         label="音声入力"
         enabled={voiceToText.enabled}
-        onChange={(event) => handleChange("enabled", event.target.checked)}
+        onChange={(event) => {
+          clearTranscriptionOutput();
+          handleChange("enabled", event.target.checked);
+        }}
         onReset={resetVoiceToTextSettings}
         ariaLabel="音声入力を有効にする"
       />

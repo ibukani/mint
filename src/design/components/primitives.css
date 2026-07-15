@@ -197,6 +197,27 @@
   color: var(--color-text-primary);
 }
 
+.design-button--danger {
+  border: 1px solid var(--surface-danger-solid);
+  background: var(--surface-danger-solid);
+  color: var(--color-on-danger);
+  box-shadow: var(--shadow-feedback-error);
+}
+
+.design-button--danger:hover:not(:disabled) {
+  border-color: color-mix(
+    in srgb,
+    var(--surface-danger-solid) 78%,
+    var(--color-on-danger)
+  );
+  background: color-mix(
+    in srgb,
+    var(--surface-danger-solid) 88%,
+    var(--color-on-danger)
+  );
+  transform: translateY(-1px);
+}
+
 .design-button:active:not(:disabled) {
   transform: scale(0.975);
 }

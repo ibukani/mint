@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { ClockSettings } from "./ClockSettings";
@@ -101,17 +107,19 @@ describe("ClockSettings component", () => {
       "ネオングロー効果を有効にする",
     ) as HTMLInputElement;
 
-    fireEvent.click(enabledCheckbox); // 有効をオフにする
-    fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
-    fireEvent.change(secondsInput, { target: { value: "12" } });
-    fireEvent.click(showDateCheckbox);
-    fireEvent.click(showSecondsCheckbox);
-    fireEvent.click(blinkColonCheckbox);
-    fireEvent.change(sizePercentInput, { target: { value: "150" } });
-    fireEvent.change(displayModeSelect, { target: { value: "analog" } });
-    fireEvent.click(glowEffectCheckbox);
-
-    fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+    await act(async () => {
+      fireEvent.click(enabledCheckbox); // 有効をオフにする
+      fireEvent.change(shortcutInput, { target: { value: "Ctrl+Shift+T" } });
+      fireEvent.change(secondsInput, { target: { value: "12" } });
+      fireEvent.click(showDateCheckbox);
+      fireEvent.click(showSecondsCheckbox);
+      fireEvent.click(blinkColonCheckbox);
+      fireEvent.change(sizePercentInput, { target: { value: "150" } });
+      fireEvent.change(displayModeSelect, { target: { value: "analog" } });
+      fireEvent.click(glowEffectCheckbox);
+      fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+      await Promise.resolve();
+    });
 
     expect(enabledCheckbox.checked).toBe(true);
     expect(shortcutInput.value).toBe("Alt+Left");
@@ -236,11 +244,14 @@ describe("ClockSettings component", () => {
       "起動ショートカットキー",
     ) as HTMLInputElement;
 
-    fireEvent.focus(shortcutInput);
-    fireEvent.keyDown(shortcutInput, {
-      key: "t",
-      ctrlKey: true,
-      shiftKey: true,
+    await act(async () => {
+      fireEvent.focus(shortcutInput);
+      fireEvent.keyDown(shortcutInput, {
+        key: "t",
+        ctrlKey: true,
+        shiftKey: true,
+      });
+      await Promise.resolve();
     });
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+T");

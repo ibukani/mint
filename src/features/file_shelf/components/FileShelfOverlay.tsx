@@ -1,26 +1,43 @@
 import {
   Archive,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clipboard,
   Copy,
   ExternalLink,
+  Eye,
   File,
   FileImage,
   Folder,
+  FolderPlus,
   FolderSearch,
   GripVertical,
   History,
   Link,
+  LoaderCircle,
+  Pencil,
+  Pin,
+  PinOff,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
-import { OverlayFrame } from "../../../design/layout";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
+import {
+  getPlatformShortcutModifier,
+  isApplePlatform,
+  OverlayFrame,
+  revealElementVertically,
+} from "../../../design/layout";
+import { loadFileShelfPreview } from "../api";
 import { useFileShelf } from "../hooks/useFileShelf";
+import { useFileShelfDragGesture } from "../hooks/useFileShelfDragGesture";
 import type { FileShelfItem, FileShelfItemKind } from "../types";
 import "./FileShelfOverlay.css";
 
@@ -32,12 +49,22 @@ const kindLabel: Record<FileShelfItemKind, string> = {
   url: "URL",
 };
 
-const ItemIcon = ({ kind }: { kind: FileShelfItemKind }) => {
-  if (kind === "folder") return <Folder size={18} aria-hidden="true" />;
-  if (kind === "image") return <FileImage size={18} aria-hidden="true" />;
-  if (kind === "url") return <Link size={18} aria-hidden="true" />;
-  if (kind === "text") return <Clipboard size={18} aria-hidden="true" />;
-  return <File size={18} aria-hidden="true" />;
+const ItemIcon = ({
+  kind,
+  className,
+}: {
+  kind: FileShelfItemKind;
+  className?: string;
+}) => {
+  if (kind === "folder")
+    return <Folder className={className} size={18} aria-hidden="true" />;
+  if (kind === "image")
+    return <FileImage className={className} size={18} aria-hidden="true" />;
+  if (kind === "url")
+    return <Link className={className} size={18} aria-hidden="true" />;
+  if (kind === "text")
+    return <Clipboard className={className} size={18} aria-hidden="true" />;
+  return <File className={className} size={18} aria-hidden="true" />;
 };
 
 const formatBytes = (value: number | null) => {
@@ -60,9 +87,11 @@ const imageAsBase64 = (file: globalThis.File) =>
     reader.readAsDataURL(file);
   });
 
-const isHttpUrl = (value: string) => {
+const isSupportedUrl = (value: string) => {
   try {
-    return ["http:", "https:"].includes(new URL(value).protocol);
+    return ["http:", "https:", "mailto:", "tel:"].includes(
+      new URL(value).protocol,
+    );
   } catch {
     return false;
   }
@@ -75,21 +104,218 @@ const supportedImageTypes = new Set([
   "image/webp",
 ]);
 
+const PAGE_MOVE_SIZE = 5;
+
+type ShelfCursorEntry =
+  | { key: string; kind: "group"; groupId: string }
+  | { key: string; kind: "item"; item: FileShelfItem };
+
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
+
+const matchesQuery = (item: FileShelfItem, query: string) =>
+  [
+    item.displayName,
+    item.sourcePath,
+    item.textContent,
+    kindLabel[item.kind],
+    item.source === "clipboardHistory" ? "履歴" : "手動",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("ja")
+    .includes(query);
+
 export const FileShelfOverlay: React.FC = () => {
+  const { settings } = useAppSettings();
   const shelf = useFileShelf();
+  const rowDrag = useFileShelfDragGesture({
+    disabled: shelf.busy,
+    onDrag: shelf.dragItems,
+  });
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [cursorKey, setCursorKey] = useState("");
+  const [previewItemId, setPreviewItemId] = useState("");
+  const [previewPinned, setPreviewPinned] = useState(false);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [editingItemId, setEditingItemId] = useState("");
+  const [editingName, setEditingName] = useState("");
   const collapseTimer = useRef<number | null>(null);
+  const knownGroupIds = useRef<Set<string> | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const previewCloseRef = useRef<HTMLButtonElement | null>(null);
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const previewRevision = useRef(0);
+  const shortcutModifier = getPlatformShortcutModifier();
+  const shortcutAriaModifier = isApplePlatform() ? "Meta" : "Control";
+  const normalizedQuery = query.trim().toLocaleLowerCase("ja");
+
+  const allItems = useMemo(
+    () => shelf.state.groups.flatMap((group) => group.items),
+    [shelf.state.groups],
+  );
+
+  const visibleGroups = useMemo(
+    () =>
+      normalizedQuery
+        ? shelf.state.groups.flatMap((group) => {
+            const items = group.items.filter((item) =>
+              matchesQuery(item, normalizedQuery),
+            );
+            return items.length ? [{ ...group, items }] : [];
+          })
+        : shelf.state.groups,
+    [normalizedQuery, shelf.state.groups],
+  );
+
+  const visibleItems = useMemo(
+    () => visibleGroups.flatMap((group) => group.items),
+    [visibleGroups],
+  );
+
+  const previewItem = useMemo(
+    () => allItems.find((item) => item.id === previewItemId) ?? null,
+    [allItems, previewItemId],
+  );
+
+  const editingItem = useMemo(
+    () => allItems.find((item) => item.id === editingItemId) ?? null,
+    [allItems, editingItemId],
+  );
+
+  const cursorEntries = useMemo(
+    () =>
+      visibleGroups.flatMap<ShelfCursorEntry>((group) => {
+        if (group.items.length === 1) {
+          const item = group.items[0];
+          return [{ key: `item:${item.id}`, kind: "item", item }];
+        }
+        const itemEntries = group.items.map<ShelfCursorEntry>((item) => ({
+          key: `item:${item.id}`,
+          kind: "item",
+          item,
+        }));
+        if (normalizedQuery) return itemEntries;
+        const groupEntry: ShelfCursorEntry = {
+          key: `group:${group.id}`,
+          kind: "group",
+          groupId: group.id,
+        };
+        return expandedGroups.has(group.id)
+          ? [groupEntry, ...itemEntries]
+          : [groupEntry];
+      }),
+    [expandedGroups, normalizedQuery, visibleGroups],
+  );
 
   useEffect(() => {
-    const activeIds = new Set(
-      shelf.state.groups.flatMap((group) => group.items.map((item) => item.id)),
-    );
+    const activeIds = new Set(allItems.map((item) => item.id));
     setSelectedIds(
       (previous) => new Set([...previous].filter((id) => activeIds.has(id))),
     );
+  }, [allItems]);
+
+  useEffect(() => {
+    if (editingItemId && !editingItem) {
+      setEditingItemId("");
+      setEditingName("");
+    }
+  }, [editingItem, editingItemId]);
+
+  useEffect(() => {
+    if (!editingItem) return;
+    renameInputRef.current?.focus({ preventScroll: true });
+    renameInputRef.current?.select();
+  }, [editingItem]);
+
+  useEffect(() => {
+    const nextIds = new Set(shelf.state.groups.map((group) => group.id));
+    if (knownGroupIds.current) {
+      const addedStackIds = shelf.state.groups
+        .filter(
+          (group) =>
+            group.items.length > 1 && !knownGroupIds.current?.has(group.id),
+        )
+        .map((group) => group.id);
+      if (addedStackIds.length) {
+        setExpandedGroups(
+          (previous) => new Set([...previous, ...addedStackIds]),
+        );
+      }
+    }
+    knownGroupIds.current = nextIds;
   }, [shelf.state.groups]);
+
+  useEffect(() => {
+    if (previewItemId && !previewItem) {
+      setPreviewItemId("");
+      setPreviewPinned(false);
+    }
+  }, [previewItem, previewItemId]);
+
+  useEffect(() => {
+    const revision = ++previewRevision.current;
+    setPreviewDataUrl(null);
+    setPreviewError("");
+    if (previewItem?.kind !== "image" || previewItem.availability !== "ready") {
+      setPreviewLoading(false);
+      return;
+    }
+    setPreviewLoading(true);
+    void loadFileShelfPreview(previewItem.id)
+      .then((preview) => {
+        if (revision === previewRevision.current) {
+          setPreviewDataUrl(preview.dataUrl);
+        }
+      })
+      .catch((reason: unknown) => {
+        if (revision === previewRevision.current) {
+          setPreviewError(
+            reason instanceof Error ? reason.message : String(reason),
+          );
+        }
+      })
+      .finally(() => {
+        if (revision === previewRevision.current) setPreviewLoading(false);
+      });
+  }, [previewItem]);
+
+  useEffect(() => {
+    if (!previewItem) return;
+    previewCloseRef.current?.focus({ preventScroll: true });
+  }, [previewItem]);
+
+  useEffect(() => {
+    setCursorKey((previous) =>
+      cursorEntries.some((entry) => entry.key === previous)
+        ? previous
+        : (cursorEntries[0]?.key ?? ""),
+    );
+  }, [cursorEntries]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content || !cursorKey) return;
+    const active = Array.from(
+      content.querySelectorAll<HTMLElement>("[data-shelf-cursor-key]"),
+    ).find((element) => element.dataset.shelfCursorKey === cursorKey);
+    if (!active) return;
+    revealElementVertically(content, active, 8);
+    if (selectedIds.size === 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      revealElementVertically(content, active, 8);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [cursorKey, selectedIds]);
 
   useEffect(() => {
     if (shelf.expanded) containerRef.current?.focus();
@@ -104,13 +330,14 @@ export const FileShelfOverlay: React.FC = () => {
 
   const scheduleCollapse = () => {
     stopCollapseTimer();
-    if (shelf.busy) return;
+    if (shelf.busy || !shelf.transientExpanded || previewPinned) return;
     collapseTimer.current = window.setTimeout(() => {
       void shelf.changeExpanded(false);
-    }, 700);
+    }, 1_200);
   };
 
   const handlePaste = async (event: React.ClipboardEvent) => {
+    if (isEditableTarget(event.target)) return;
     const image = Array.from(event.clipboardData.items)
       .find((item) => item.type.startsWith("image/"))
       ?.getAsFile();
@@ -138,7 +365,9 @@ export const FileShelfOverlay: React.FC = () => {
     if (!text) return;
     event.preventDefault();
     await shelf.addContent(
-      isHttpUrl(text) ? { kind: "url", url: text } : { kind: "text", text },
+      isSupportedUrl(text)
+        ? { kind: "url", url: text }
+        : { kind: "text", text },
     );
   };
 
@@ -147,46 +376,225 @@ export const FileShelfOverlay: React.FC = () => {
     if (additive && next.has(item.id)) next.delete(item.id);
     else next.add(item.id);
     setSelectedIds(next);
+    setCursorKey(`item:${item.id}`);
   };
 
-  const selectedItems = shelf.state.groups
-    .flatMap((group) => group.items)
-    .filter((item) => selectedIds.has(item.id));
+  const selectedItems = allItems.filter((item) => selectedIds.has(item.id));
+  const removableSelectedItems = selectedItems.filter((item) => !item.pinned);
+
+  const closePreview = () => {
+    setPreviewItemId("");
+    setPreviewPinned(false);
+  };
+
+  const togglePreview = (item: FileShelfItem) => {
+    if (previewItemId === item.id) {
+      closePreview();
+      return;
+    }
+    setPreviewItemId(item.id);
+    setPreviewPinned(false);
+  };
+
+  const startRenaming = (item: FileShelfItem) => {
+    setEditingItemId(item.id);
+    setEditingName(item.displayName);
+  };
+
+  const cancelRenaming = () => {
+    setEditingItemId("");
+    setEditingName("");
+    containerRef.current?.focus({ preventScroll: true });
+  };
+
+  const commitRename = async () => {
+    if (!editingItem) return;
+    const renamed = await shelf.renameItem(editingItem, editingName);
+    if (renamed) cancelRenaming();
+  };
+
+  const toggleGroup = (groupId: string) => {
+    const next = new Set(expandedGroups);
+    if (next.has(groupId)) next.delete(groupId);
+    else next.add(groupId);
+    setExpandedGroups(next);
+  };
+
+  const focusSearch = () => {
+    searchRef.current?.focus({ preventScroll: true });
+    searchRef.current?.select();
+  };
+
+  const moveCursor = (nextIndex: number) => {
+    const entry = cursorEntries[nextIndex];
+    if (!entry) return;
+    setCursorKey(entry.key);
+    if (entry.kind === "item") setSelectedIds(new Set([entry.item.id]));
+    else setSelectedIds(new Set());
+  };
+
+  const activateCursor = () => {
+    const entry = cursorEntries.find(
+      (candidate) => candidate.key === cursorKey,
+    );
+    if (!entry) return;
+    if (entry.kind === "group") {
+      toggleGroup(entry.groupId);
+      return;
+    }
+    setSelectedIds(new Set([entry.item.id]));
+    void shelf.openItem(entry.item);
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
+    const modifierPressed = event.ctrlKey || event.metaKey;
+    const key = event.key.toLocaleLowerCase();
+
+    if (
+      isEditableTarget(event.target) &&
+      event.key !== "Escape" &&
+      event.key !== "Enter" &&
+      !["ArrowDown", "ArrowUp", "Home", "End", "PageUp", "PageDown"].includes(
+        event.key,
+      ) &&
+      !(modifierPressed && key === "f")
+    ) {
+      return;
+    }
+
+    if (modifierPressed && key === "f") {
       event.preventDefault();
-      void shelf.changeExpanded(false);
-    } else if (event.key === "Delete" && selectedIds.size > 0) {
+      focusSearch();
+      return;
+    }
+    if (event.key === "F2" && !modifierPressed && !event.altKey) {
+      const cursorItem = cursorEntries.find(
+        (entry): entry is Extract<ShelfCursorEntry, { kind: "item" }> =>
+          entry.key === cursorKey && entry.kind === "item",
+      )?.item;
+      const target = selectedItems.length === 1 ? selectedItems[0] : cursorItem;
+      if (target) {
+        event.preventDefault();
+        startRenaming(target);
+      }
+      return;
+    }
+    if (!modifierPressed && !event.altKey && key === "q") {
+      const cursorItem = cursorEntries.find(
+        (entry): entry is Extract<ShelfCursorEntry, { kind: "item" }> =>
+          entry.key === cursorKey && entry.kind === "item",
+      )?.item;
+      const target = selectedItems.length === 1 ? selectedItems[0] : cursorItem;
+      if (target) {
+        event.preventDefault();
+        togglePreview(target);
+      }
+      return;
+    }
+    if (previewItemId && !modifierPressed && !event.altKey && key === "p") {
       event.preventDefault();
-      void shelf.removeItems([...selectedIds]);
-    } else if ((event.ctrlKey || event.metaKey) && event.key === "a") {
-      event.preventDefault();
-      setSelectedIds(
-        new Set(
-          shelf.state.groups.flatMap((group) =>
-            group.items.map((item) => item.id),
-          ),
-        ),
-      );
-    } else if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key === "c" &&
-      selectedItems.length === 1
+      setPreviewPinned((current) => !current);
+      return;
+    }
+    if (
+      event.key === "/" &&
+      !modifierPressed &&
+      !event.altKey &&
+      !isEditableTarget(event.target)
     ) {
       event.preventDefault();
-      void shelf.copyItem(selectedItems[0]);
+      focusSearch();
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (previewItemId) {
+        closePreview();
+        containerRef.current?.focus({ preventScroll: true });
+      } else if (query) {
+        setQuery("");
+        focusSearch();
+      } else if (selectedIds.size > 0) {
+        setSelectedIds(new Set());
+        containerRef.current?.focus({ preventScroll: true });
+      } else {
+        void shelf.changeExpanded(false);
+      }
+    } else if (modifierPressed && key === "z" && shelf.undoToken) {
+      event.preventDefault();
+      void shelf.undo();
+    } else if (event.key === "Delete" && selectedIds.size > 0) {
+      event.preventDefault();
+      if (removableSelectedItems.length) {
+        void shelf.removeItems(removableSelectedItems.map((item) => item.id));
+      } else {
+        shelf.reportError(
+          new Error("固定中の項目は、固定を解除してから棚から外してください。"),
+        );
+      }
+    } else if (modifierPressed && key === "a") {
+      event.preventDefault();
+      setSelectedIds(new Set(visibleItems.map((item) => item.id)));
+    } else if (modifierPressed && key === "c" && selectedItems.length > 0) {
+      event.preventDefault();
+      if (selectedItems.length === 1) {
+        void shelf.copyItem(selectedItems[0]);
+      } else {
+        void shelf.copyItems(selectedItems);
+      }
+    } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const currentIndex = cursorEntries.findIndex(
+        (entry) => entry.key === cursorKey,
+      );
+      if (event.key === "Home") moveCursor(0);
+      else if (event.key === "End") moveCursor(cursorEntries.length - 1);
+      else if (event.key === "ArrowDown") {
+        moveCursor(
+          currentIndex < 0 ? 0 : (currentIndex + 1) % cursorEntries.length,
+        );
+      } else {
+        moveCursor(
+          currentIndex <= 0 ? cursorEntries.length - 1 : currentIndex - 1,
+        );
+      }
+    } else if (event.key === "PageDown" || event.key === "PageUp") {
+      event.preventDefault();
+      const currentIndex = cursorEntries.findIndex(
+        (entry) => entry.key === cursorKey,
+      );
+      const safeIndex = Math.max(0, currentIndex);
+      const nextIndex =
+        event.key === "PageDown"
+          ? Math.min(cursorEntries.length - 1, safeIndex + PAGE_MOVE_SIZE)
+          : Math.max(0, safeIndex - PAGE_MOVE_SIZE);
+      moveCursor(nextIndex);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      activateCursor();
+    } else if (event.key === " " && cursorKey) {
+      const entry = cursorEntries.find(
+        (candidate) => candidate.key === cursorKey,
+      );
+      if (!entry) return;
+      event.preventDefault();
+      if (entry.kind === "group") toggleGroup(entry.groupId);
+      else selectItem(entry.item, true);
     }
   };
+
+  const themeColor =
+    settings?.fileShelf.themeColor || defaultAppSettings.fileShelf.themeColor;
 
   if (!shelf.expanded) {
     return (
       <OverlayFrame>
         <button
           type="button"
-          className="file-shelf-handle"
+          className={`file-shelf-handle theme-accent-scope${shelf.isDropTarget ? " is-drop-target" : ""}`}
           onClick={() => void shelf.changeExpanded(true)}
           aria-label={`ファイルシェルを開く、${shelf.itemCount}件`}
+          style={{ "--color-accent": themeColor } as React.CSSProperties}
         >
           <Archive size={17} aria-hidden="true" />
           <strong>{shelf.itemCount}</strong>
@@ -198,15 +606,28 @@ export const FileShelfOverlay: React.FC = () => {
 
   return (
     <OverlayFrame>
+      <button
+        type="button"
+        className="overlay-close-button"
+        aria-label="シェルフを折りたたむ"
+        aria-keyshortcuts="Escape"
+        title="折りたたむ（Esc）"
+        onClick={() => void shelf.changeExpanded(false)}
+      >
+        <X size={15} aria-hidden="true" />
+      </button>
+
       <section
         ref={containerRef}
-        className="file-shelf"
+        className={`file-shelf theme-accent-scope${shelf.isDropTarget ? " is-drop-target" : ""}`}
         aria-label="ファイルシェル"
+        aria-keyshortcuts="F2"
         tabIndex={-1}
         onPaste={(event) => void handlePaste(event)}
         onKeyDown={handleKeyDown}
         onMouseEnter={stopCollapseTimer}
         onMouseLeave={scheduleCollapse}
+        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <header className="file-shelf__header">
           <div className="file-shelf__title">
@@ -217,6 +638,15 @@ export const FileShelfOverlay: React.FC = () => {
             </div>
           </div>
           <div className="file-shelf__header-actions">
+            <button
+              type="button"
+              onClick={() => void shelf.restoreRecent()}
+              aria-label="最近外した項目を戻す"
+              title="最近外した項目を戻す（ショートカット長押し）"
+              disabled={shelf.busy}
+            >
+              <RotateCcw size={17} aria-hidden="true" />
+            </button>
             {shelf.clipboardHistoryCount > 0 && (
               <button
                 type="button"
@@ -239,33 +669,104 @@ export const FileShelfOverlay: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => void shelf.changeExpanded(false)}
-              aria-label="シェルフを折りたたむ"
-              title="折りたたむ"
+              onClick={() => void shelf.chooseFolders()}
+              aria-label="フォルダを追加"
+              title="フォルダを追加"
+              disabled={shelf.busy}
             >
-              <X size={17} aria-hidden="true" />
+              <FolderPlus size={17} aria-hidden="true" />
             </button>
           </div>
         </header>
 
-        <div className="file-shelf__paste-zone">
+        <div
+          className={`file-shelf__paste-zone${shelf.isDropTarget ? " is-drop-target" : ""}`}
+          role={shelf.isDropTarget ? "status" : undefined}
+          aria-live="polite"
+        >
           <Clipboard size={16} aria-hidden="true" />
-          <span>ここへドロップ、または Ctrl+V で画像・URL・文章を追加</span>
+          <span>
+            {shelf.isDropTarget
+              ? "ここにドロップしてファイルを追加"
+              : "ここへドロップ、または Ctrl+V で画像・URL・文章を追加"}
+          </span>
         </div>
 
-        <div className="file-shelf__content" aria-live="polite">
+        <label className="file-shelf__search">
+          <Search size={15} aria-hidden="true" />
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="棚を検索"
+            aria-label="棚を検索"
+            aria-keyshortcuts={`${shortcutAriaModifier}+F ArrowDown ArrowUp Home End PageUp PageDown Enter Escape`}
+          />
+          {query ? (
+            <>
+              <span className="file-shelf__search-count" aria-live="polite">
+                {visibleItems.length}件
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  focusSearch();
+                }}
+                aria-label="検索をクリア"
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            </>
+          ) : (
+            <kbd>{shortcutModifier} F</kbd>
+          )}
+        </label>
+
+        <div
+          ref={contentRef}
+          className="file-shelf__content"
+          aria-live="polite"
+        >
           {shelf.loading ? (
             <div className="file-shelf__empty">棚を読み込んでいます…</div>
           ) : shelf.state.groups.length === 0 ? (
             <div className="file-shelf__empty">
               <Archive size={32} aria-hidden="true" />
               <strong>棚は空です</strong>
-              <span>Explorerからファイルを画面端へドラッグしてください</span>
+              <span>
+                Explorerから画面端へドラッグするか、下から選んで追加できます
+              </span>
+              <div className="file-shelf__empty-actions">
+                <button type="button" onClick={() => void shelf.choosePaths()}>
+                  <Plus size={14} aria-hidden="true" />
+                  ファイル
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void shelf.chooseFolders()}
+                >
+                  <FolderPlus size={14} aria-hidden="true" />
+                  フォルダ
+                </button>
+              </div>
+            </div>
+          ) : visibleGroups.length === 0 ? (
+            <div className="file-shelf__empty file-shelf__empty--search">
+              <Search size={28} aria-hidden="true" />
+              <strong>一致する項目がありません</strong>
+              <span>名前、パス、URL、文章から検索しています</span>
+              <button type="button" onClick={() => setQuery("")}>
+                検索をクリア
+              </button>
             </div>
           ) : (
-            shelf.state.groups.map((group) => {
+            visibleGroups.map((group) => {
               const isStack = group.items.length > 1;
-              const isOpen = expandedGroups.has(group.id);
+              const isOpen = normalizedQuery
+                ? true
+                : expandedGroups.has(group.id);
               const draggableItems = group.items.filter(
                 (item) =>
                   item.availability === "ready" && Boolean(item.sourcePath),
@@ -276,14 +777,29 @@ export const FileShelfOverlay: React.FC = () => {
                     {isStack ? (
                       <button
                         type="button"
-                        className="file-shelf__stack-toggle"
-                        onClick={() => {
-                          const next = new Set(expandedGroups);
-                          if (isOpen) next.delete(group.id);
-                          else next.add(group.id);
-                          setExpandedGroups(next);
+                        className={`file-shelf__stack-toggle${draggableItems.length ? " is-draggable" : ""}${cursorKey === `group:${group.id}` ? " is-keyboard-active" : ""}`}
+                        onClick={(event) => {
+                          if (rowDrag.consumeSuppressedClick()) {
+                            event.preventDefault();
+                            return;
+                          }
+                          toggleGroup(group.id);
                         }}
+                        onPointerDown={(event) =>
+                          rowDrag.begin(event, draggableItems)
+                        }
+                        onPointerMove={rowDrag.move}
+                        onPointerUp={rowDrag.end}
+                        onPointerCancel={rowDrag.end}
                         aria-expanded={isOpen}
+                        title={
+                          draggableItems.length
+                            ? "行をドラッグして取り出す"
+                            : undefined
+                        }
+                        data-shelf-cursor-key={
+                          normalizedQuery ? undefined : `group:${group.id}`
+                        }
                       >
                         {isOpen ? (
                           <ChevronDown size={16} aria-hidden="true" />
@@ -307,17 +823,33 @@ export const FileShelfOverlay: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        className={`file-shelf__single${selectedIds.has(group.items[0].id) ? " is-selected" : ""}`}
-                        onClick={(event) =>
+                        className={`file-shelf__single${draggableItems.length ? " is-draggable" : ""}${selectedIds.has(group.items[0].id) ? " is-selected" : ""}${cursorKey === `item:${group.items[0].id}` ? " is-keyboard-active" : ""}`}
+                        onClick={(event) => {
+                          if (rowDrag.consumeSuppressedClick()) {
+                            event.preventDefault();
+                            return;
+                          }
                           selectItem(
                             group.items[0],
                             event.ctrlKey || event.metaKey,
-                          )
+                          );
+                        }}
+                        onPointerDown={(event) =>
+                          rowDrag.begin(event, draggableItems)
                         }
+                        onPointerMove={rowDrag.move}
+                        onPointerUp={rowDrag.end}
+                        onPointerCancel={rowDrag.end}
                         onDoubleClick={() =>
                           void shelf.openItem(group.items[0])
                         }
+                        title={
+                          draggableItems.length
+                            ? "クリックで選択、ドラッグで取り出す"
+                            : undefined
+                        }
                         aria-pressed={selectedIds.has(group.items[0].id)}
+                        data-shelf-cursor-key={`item:${group.items[0].id}`}
                       >
                         <ItemIcon kind={group.items[0].kind} />
                         <span>
@@ -329,6 +861,7 @@ export const FileShelfOverlay: React.FC = () => {
                                   group.items[0].source === "clipboardHistory"
                                     ? "履歴"
                                     : null,
+                                  group.items[0].pinned ? "固定" : null,
                                   kindLabel[group.items[0].kind],
                                   formatBytes(group.items[0].sizeBytes),
                                 ]
@@ -367,12 +900,28 @@ export const FileShelfOverlay: React.FC = () => {
                         >
                           <button
                             type="button"
-                            className="file-shelf__item-main"
-                            onClick={(event) =>
-                              selectItem(item, event.ctrlKey || event.metaKey)
+                            className={`file-shelf__item-main${item.availability === "ready" && item.sourcePath ? " is-draggable" : ""}${cursorKey === `item:${item.id}` ? " is-keyboard-active" : ""}`}
+                            onClick={(event) => {
+                              if (rowDrag.consumeSuppressedClick()) {
+                                event.preventDefault();
+                                return;
+                              }
+                              selectItem(item, event.ctrlKey || event.metaKey);
+                            }}
+                            onPointerDown={(event) =>
+                              rowDrag.begin(event, [item])
                             }
+                            onPointerMove={rowDrag.move}
+                            onPointerUp={rowDrag.end}
+                            onPointerCancel={rowDrag.end}
                             onDoubleClick={() => void shelf.openItem(item)}
+                            title={
+                              item.availability === "ready" && item.sourcePath
+                                ? "クリックで選択、ドラッグで取り出す"
+                                : undefined
+                            }
                             aria-pressed={selectedIds.has(item.id)}
+                            data-shelf-cursor-key={`item:${item.id}`}
                           >
                             <ItemIcon kind={item.kind} />
                             <span>
@@ -384,6 +933,7 @@ export const FileShelfOverlay: React.FC = () => {
                                       item.source === "clipboardHistory"
                                         ? "履歴"
                                         : null,
+                                      item.pinned ? "固定" : null,
                                       kindLabel[item.kind],
                                     ]
                                       .filter(Boolean)
@@ -418,49 +968,291 @@ export const FileShelfOverlay: React.FC = () => {
           )}
         </div>
 
-        {selectedItems.length > 0 && (
-          <div className="file-shelf__selection-actions">
-            <span>{selectedItems.length}件を選択</span>
-            {selectedItems.length === 1 && (
-              <>
+        {previewItem && (
+          <aside
+            className="file-shelf__preview"
+            role="dialog"
+            aria-label={`${previewItem.displayName}のクイックプレビュー`}
+          >
+            <header className="file-shelf__preview-header">
+              <div className="file-shelf__preview-title">
+                <ItemIcon
+                  className="file-shelf__preview-icon"
+                  kind={previewItem.kind}
+                />
+                <span>
+                  <strong>{previewItem.displayName}</strong>
+                  <small>
+                    {previewPinned ? "プレビュー固定 · " : ""}
+                    {previewItem.pinned ? "固定 · " : ""}
+                    {kindLabel[previewItem.kind]}
+                  </small>
+                </span>
+              </div>
+              <div className="file-shelf__preview-header-actions">
                 <button
                   type="button"
-                  onClick={() => void shelf.copyItem(selectedItems[0])}
+                  className={previewPinned ? "is-active" : undefined}
+                  onClick={() => setPreviewPinned((current) => !current)}
+                  aria-label={
+                    previewPinned
+                      ? "クイックプレビューの固定を解除"
+                      : "クイックプレビューを固定"
+                  }
+                  aria-pressed={previewPinned}
+                  title={previewPinned ? "固定を解除（P）" : "固定する（P）"}
+                >
+                  {previewPinned ? (
+                    <PinOff size={16} aria-hidden="true" />
+                  ) : (
+                    <Pin size={16} aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  ref={previewCloseRef}
+                  type="button"
+                  onClick={closePreview}
+                  aria-label="クイックプレビューを閉じる"
+                  title="閉じる（Esc）"
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </div>
+            </header>
+            <div className="file-shelf__preview-body">
+              {previewLoading ? (
+                <div className="file-shelf__preview-state">
+                  <LoaderCircle
+                    className="is-spinning"
+                    size={28}
+                    aria-hidden="true"
+                  />
+                  画像を読み込んでいます…
+                </div>
+              ) : previewError ? (
+                <div className="file-shelf__preview-state is-error">
+                  <ItemIcon
+                    className="file-shelf__preview-hero-icon"
+                    kind={previewItem.kind}
+                  />
+                  {previewError}
+                </div>
+              ) : previewDataUrl ? (
+                <img src={previewDataUrl} alt={previewItem.displayName} />
+              ) : previewItem.textContent ? (
+                <pre>{previewItem.textContent}</pre>
+              ) : (
+                <div className="file-shelf__preview-state">
+                  <ItemIcon
+                    className="file-shelf__preview-hero-icon"
+                    kind={previewItem.kind}
+                  />
+                  <strong>{previewItem.displayName}</strong>
+                  <span>
+                    {previewItem.availability === "missing"
+                      ? "元の場所に見つかりません"
+                      : previewItem.sourcePath || "内容プレビューはありません"}
+                  </span>
+                </div>
+              )}
+            </div>
+            <footer className="file-shelf__preview-actions">
+              <span>Pで固定 · Q / Escで閉じる</span>
+              <button
+                type="button"
+                onClick={() => void shelf.copyItem(previewItem)}
+              >
+                <Copy size={14} aria-hidden="true" />
+                コピー
+              </button>
+              {(previewItem.sourcePath || previewItem.kind === "url") && (
+                <button
+                  type="button"
+                  onClick={() => void shelf.openItem(previewItem)}
+                >
+                  <ExternalLink size={14} aria-hidden="true" />
+                  開く
+                </button>
+              )}
+            </footer>
+          </aside>
+        )}
+
+        {editingItem && (
+          <form
+            className="file-shelf__rename"
+            aria-label="棚での表示名を変更"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void commitRename();
+            }}
+          >
+            <Pencil size={15} aria-hidden="true" />
+            <input
+              ref={renameInputRef}
+              value={editingName}
+              maxLength={120}
+              aria-label="棚で表示する名前"
+              onChange={(event) => setEditingName(event.target.value)}
+              onKeyDown={(event) => {
+                event.stopPropagation();
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancelRenaming();
+                }
+              }}
+            />
+            <button type="submit" disabled={shelf.busy || !editingName.trim()}>
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={cancelRenaming}
+              aria-label="名前の変更をキャンセル"
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          </form>
+        )}
+
+        {shelf.pendingDragCount > 0 && !editingItem && (
+          <div
+            className="file-shelf__drag-confirmation"
+            role="status"
+            aria-live="polite"
+          >
+            <CheckCircle2 size={17} aria-hidden="true" />
+            <span>
+              <strong>ドロップ先を確認</strong>
+              <small>
+                {shelf.pendingDragCount}件が追加できていたら棚から外します
+              </small>
+            </span>
+            <div className="file-shelf__drag-confirmation-actions">
+              <button
+                type="button"
+                onClick={shelf.keepDraggedItems}
+                disabled={shelf.busy}
+              >
+                棚に残す
+              </button>
+              <button
+                type="button"
+                className="is-primary"
+                onClick={() => void shelf.confirmDraggedItems()}
+                disabled={shelf.busy}
+              >
+                棚から外す
+              </button>
+            </div>
+          </div>
+        )}
+
+        {selectedItems.length > 0 &&
+          !editingItem &&
+          shelf.pendingDragCount === 0 && (
+            <div className="file-shelf__selection-actions">
+              <span>{selectedItems.length}件を選択</span>
+              {selectedItems.length === 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => startRenaming(selectedItems[0])}
+                    aria-label="棚での表示名を変更"
+                    title="棚での表示名を変更（F2）"
+                  >
+                    <Pencil size={15} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => togglePreview(selectedItems[0])}
+                    aria-label="選択項目をプレビュー"
+                    title="クイックプレビュー（Q）"
+                  >
+                    <Eye size={15} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void shelf.copyItem(selectedItems[0])}
+                    aria-label="選択項目をコピー"
+                  >
+                    <Copy size={15} aria-hidden="true" />
+                  </button>
+                  {(selectedItems[0].sourcePath ||
+                    selectedItems[0].kind === "url") && (
+                    <button
+                      type="button"
+                      onClick={() => void shelf.openItem(selectedItems[0])}
+                      aria-label="選択項目を開く"
+                    >
+                      <ExternalLink size={15} aria-hidden="true" />
+                    </button>
+                  )}
+                  {selectedItems[0].sourcePath && (
+                    <button
+                      type="button"
+                      onClick={() => void shelf.revealItem(selectedItems[0])}
+                      aria-label="Explorerで表示"
+                    >
+                      <FolderSearch size={15} aria-hidden="true" />
+                    </button>
+                  )}
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  void shelf.pinItems(
+                    selectedItems,
+                    !selectedItems.every((item) => item.pinned),
+                  )
+                }
+                aria-label={
+                  selectedItems.every((item) => item.pinned)
+                    ? "選択項目の固定を解除"
+                    : "選択項目を棚に固定"
+                }
+                title={
+                  selectedItems.every((item) => item.pinned)
+                    ? "固定を解除"
+                    : "取り出しや全消去後も棚に残す"
+                }
+              >
+                {selectedItems.every((item) => item.pinned) ? (
+                  <PinOff size={15} aria-hidden="true" />
+                ) : (
+                  <Pin size={15} aria-hidden="true" />
+                )}
+              </button>
+              {selectedItems.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => void shelf.copyItems(selectedItems)}
                   aria-label="選択項目をコピー"
                 >
                   <Copy size={15} aria-hidden="true" />
                 </button>
-                {(selectedItems[0].sourcePath ||
-                  selectedItems[0].kind === "url") && (
-                  <button
-                    type="button"
-                    onClick={() => void shelf.openItem(selectedItems[0])}
-                    aria-label="選択項目を開く"
-                  >
-                    <ExternalLink size={15} aria-hidden="true" />
-                  </button>
-                )}
-                {selectedItems[0].sourcePath && (
-                  <button
-                    type="button"
-                    onClick={() => void shelf.revealItem(selectedItems[0])}
-                    aria-label="Explorerで表示"
-                  >
-                    <FolderSearch size={15} aria-hidden="true" />
-                  </button>
-                )}
-              </>
-            )}
-            <button
-              type="button"
-              className="is-danger"
-              onClick={() => void shelf.removeItems([...selectedIds])}
-              aria-label="選択項目を棚から外す"
-            >
-              <Trash2 size={15} aria-hidden="true" />
-            </button>
-          </div>
-        )}
+              )}
+              {removableSelectedItems.length > 0 && (
+                <button
+                  type="button"
+                  className="is-danger"
+                  onClick={() =>
+                    void shelf.removeItems(
+                      removableSelectedItems.map((item) => item.id),
+                    )
+                  }
+                  aria-label={
+                    removableSelectedItems.length === selectedItems.length
+                      ? "選択項目を棚から外す"
+                      : "固定されていない選択項目を棚から外す"
+                  }
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
 
         <footer className="file-shelf__footer">
           <div className="file-shelf__feedback">
@@ -470,7 +1262,8 @@ export const FileShelfOverlay: React.FC = () => {
               </span>
             ) : (
               <span>
-                {shelf.notice || "Shiftを押しながら取り出すと移動します"}
+                {shelf.notice ||
+                  "F2: 名前 · Q: プレビュー · ↑↓: 移動 · Shiftで取り出し"}
               </span>
             )}
           </div>
@@ -480,14 +1273,14 @@ export const FileShelfOverlay: React.FC = () => {
               元に戻す
             </button>
           ) : (
-            shelf.itemCount > 0 && (
+            shelf.itemCount > shelf.pinnedCount && (
               <button
                 type="button"
                 onClick={() => void shelf.clear()}
                 disabled={shelf.busy}
               >
                 <Trash2 size={14} aria-hidden="true" />
-                すべて外す
+                {shelf.pinnedCount > 0 ? "固定以外を外す" : "すべて外す"}
               </button>
             )
           )}

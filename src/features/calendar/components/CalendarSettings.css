@@ -9,6 +9,47 @@
   grid-column: 1 / -1;
 }
 
+.calendar-google-state,
+.calendar-google-list-state {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 72px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-info);
+  border-radius: var(--radius-md);
+  background: var(--surface-info);
+  color: var(--color-info);
+}
+
+.calendar-google-state.is-error {
+  border-color: var(--border-error);
+  background: var(--surface-error);
+  color: var(--color-error);
+}
+
+.calendar-google-state > div,
+.calendar-google-list-state > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.calendar-google-state strong,
+.calendar-google-list-state strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.calendar-google-state span,
+.calendar-google-list-state span {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
 .calendar-google-onboarding {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -95,11 +136,70 @@
   font-size: var(--font-size-sm);
 }
 
-.calendar-google-account span {
+.calendar-google-account > div > span {
   overflow: hidden;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   text-overflow: ellipsis;
+}
+
+.calendar-google-account .design-status-badge {
+  margin-left: auto;
+}
+
+.calendar-google-activity,
+.calendar-google-pending,
+.calendar-google-notice,
+.calendar-google-last-sync {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.calendar-google-activity {
+  padding: var(--space-3);
+  border: 1px solid var(--border-info);
+  border-radius: var(--radius-sm);
+  background: var(--surface-info);
+  color: var(--color-info);
+  font-weight: var(--font-weight-semibold);
+}
+
+.calendar-google-pending {
+  padding: var(--space-3);
+  border: 1px solid var(--border-warning);
+  border-radius: var(--radius-sm);
+  background: var(--surface-warning);
+  color: var(--color-warning);
+}
+
+.calendar-google-pending > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calendar-google-pending strong {
+  color: var(--color-text-primary);
+}
+
+.calendar-google-pending span {
+  color: var(--color-text-subtle);
+}
+
+.calendar-google-notice {
+  padding: var(--space-3);
+  border: 1px solid var(--border-success);
+  border-radius: var(--radius-sm);
+  background: var(--surface-success);
+  color: var(--color-success);
+  font-weight: var(--font-weight-semibold);
+}
+
+.calendar-google-last-sync {
+  color: var(--color-text-subtle);
 }
 
 .calendar-behavior-flow {
@@ -177,6 +277,17 @@
   .calendar-google-onboarding .design-button {
     width: 100%;
   }
+
+  .calendar-google-state,
+  .calendar-google-list-state {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .calendar-google-state .design-button,
+  .calendar-google-list-state .design-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
 }
 
 @media (max-width: 460px) {
@@ -228,6 +339,11 @@
   box-shadow: 0 0 0 3px var(--surface-accent);
 }
 
+.calendar-google-row__color:not(.is-primary) {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px var(--surface-success);
+}
+
 .calendar-google-row__copy {
   display: flex;
   min-width: 0;
@@ -268,6 +384,12 @@
   background: color-mix(in srgb, var(--surface-control) 38%, transparent);
 }
 
+.calendar-google-list-state {
+  border-color: var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-control) 38%, transparent);
+  color: var(--color-text-muted);
+}
+
 .calendar-google-actions {
   display: flex;
   flex-wrap: wrap;
@@ -275,6 +397,10 @@
 }
 
 .calendar-google-error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
   margin: 0;
   padding: var(--space-3);
   border: 1px solid var(--border-error);
@@ -282,4 +408,23 @@
   background: var(--surface-error);
   color: var(--color-error);
   font-size: var(--font-size-xs);
+}
+
+@media (max-width: 680px) {
+  .calendar-google-account {
+    align-items: flex-start;
+  }
+
+  .calendar-google-account .design-status-badge {
+    margin-left: 0;
+  }
+
+  .calendar-google-error {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .calendar-google-error .design-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
 }

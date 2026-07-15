@@ -1,24 +1,60 @@
 import { type InvokeArgs, invoke } from "@tauri-apps/api/core";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import type { DragDropEvent } from "@tauri-apps/api/window";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { createMockSettings } from "../../../core/mocks/mockSettings";
+import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../../quick_capture/events";
 import { VoiceToTextSettings } from "./VoiceToTextSettings";
 
 const dialogMocks = vi.hoisted(() => ({ open: vi.fn() }));
+const eventMocks = vi.hoisted(() => ({
+  emit: vi.fn().mockResolvedValue(undefined),
+  listen: vi.fn().mockResolvedValue(() => undefined),
+}));
+type DropEventHandler = (event: { payload: DragDropEvent }) => void;
+const dragDropMocks = vi.hoisted(() => ({
+  handler: null as DropEventHandler | null,
+}));
+
+const silenceExpectedConsoleError = () =>
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
 
 // Mock invoke
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
+vi.mock("@tauri-apps/api/event", () => ({
+  emit: eventMocks.emit,
+  listen: eventMocks.listen,
+}));
+
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: dialogMocks.open,
+}));
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    onDragDropEvent: async (handler: DropEventHandler) => {
+      dragDropMocks.handler = handler;
+      return vi.fn();
+    },
+  }),
 }));
 
 describe("VoiceToTextSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    eventMocks.emit.mockClear();
+    dragDropMocks.handler = null;
     dialogMocks.open.mockResolvedValue(null);
     Object.assign(navigator, {
       clipboard: {
@@ -90,7 +126,44 @@ describe("VoiceToTextSettings", () => {
     );
   });
 
+  it("applies a connection preset to the endpoint and model", async () => {
+    const mockSettings = createMockSettings();
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const openAiPreset = screen.getByRole("button", { name: /OpenAI/ });
+    const groqPreset = screen.getByRole("button", { name: /Groq/ });
+    expect(openAiPreset).toHaveAttribute("aria-pressed", "true");
+    expect(groqPreset).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(groqPreset);
+
+    expect(screen.getByLabelText("API エンドポイント (Base URL)")).toHaveValue(
+      "https://api.groq.com/openai/v1",
+    );
+    expect(screen.getByLabelText("モデル名")).toHaveValue(
+      "whisper-large-v3-turbo",
+    );
+    expect(openAiPreset).toHaveAttribute("aria-pressed", "false");
+    expect(groqPreset).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("shows an error when saving the API key fails", async () => {
+    const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
@@ -130,6 +203,11 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "APIキーの保存に失敗しました。もう一度お試しください。",
     );
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to save API key:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("toggles API key visibility", async () => {
@@ -317,6 +395,7 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("shows an error when the API key cannot be read from the clipboard", async () => {
+    const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
@@ -364,6 +443,11 @@ describe("VoiceToTextSettings", () => {
       "クリップボードから貼り付けられませんでした",
     );
     expect(status).toHaveClass("status-toast-label--error");
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to paste API key:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("transcribes an audio file with the typed backend command", async () => {
@@ -425,6 +509,140 @@ describe("VoiceToTextSettings", () => {
 
     expect(screen.getByLabelText("文字起こし結果")).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent("コピーしました");
+  });
+
+  it("saves a transcription result as a quick capture note once", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(
+      async (cmd: string, args?: InvokeArgs) => {
+        if (cmd === "load_settings") return mockSettings;
+        if (cmd === "load_api_key") return "mocked-api-key";
+        if (cmd === "transcribe_audio_file") return { text: "保存する議事録" };
+        if (cmd === "create_quick_capture_note") {
+          expect(args).toEqual({
+            input: {
+              content: "保存する議事録",
+              tags: ["文字起こし"],
+              pinned: false,
+            },
+          });
+          return {
+            id: "note-1",
+            content: "保存する議事録",
+            tags: ["文字起こし"],
+            pinned: false,
+            createdAt: "2026-07-14T12:00:00Z",
+            updatedAt: "2026-07-14T12:00:00Z",
+            attachments: [],
+          };
+        }
+        return undefined;
+      },
+    );
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+      await Promise.resolve();
+    });
+
+    const saveButton = screen.getByRole("button", {
+      name: "クイックキャプチャーに保存",
+    });
+    await act(async () => {
+      fireEvent.click(saveButton);
+      await Promise.resolve();
+    });
+
+    expect(
+      await screen.findByText("クイックキャプチャーに保存しました"),
+    ).toBeVisible();
+    expect(saveButton).toBeDisabled();
+    expect(invoke).toHaveBeenCalledTimes(4);
+    expect(eventMocks.emit).toHaveBeenCalledWith(
+      QUICK_CAPTURE_NOTE_CREATED_EVENT,
+      {
+        note: expect.objectContaining({
+          content: "保存する議事録",
+          tags: ["文字起こし"],
+        }),
+      },
+    );
+  });
+
+  it("keeps note saving retryable when quick capture rejects the note", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") return { text: "保存失敗を試す" };
+      if (cmd === "create_quick_capture_note") {
+        throw new Error("クイックキャプチャーを保存できませんでした");
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByLabelText("音声ファイルパス"), {
+      target: { value: "/tmp/audio.wav" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+      await Promise.resolve();
+    });
+
+    const saveButton = screen.getByRole("button", {
+      name: "クイックキャプチャーに保存",
+    });
+    fireEvent.click(saveButton);
+
+    expect(
+      await screen.findByText("クイックキャプチャーを保存できませんでした"),
+    ).toBeVisible();
+    expect(saveButton).toBeEnabled();
   });
 
   it("requires an API key before transcription", async () => {
@@ -532,6 +750,7 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("focuses the transcription error after a failed request", async () => {
+    let transcriptionAttempts = 0;
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
@@ -547,7 +766,11 @@ describe("VoiceToTextSettings", () => {
       if (cmd === "load_settings") return mockSettings;
       if (cmd === "load_api_key") return "mocked-api-key";
       if (cmd === "transcribe_audio_file") {
-        throw new Error("文字起こしに失敗しました");
+        transcriptionAttempts += 1;
+        if (transcriptionAttempts === 1) {
+          throw new Error("文字起こしに失敗しました");
+        }
+        return { text: "再試行で復旧した結果" };
       }
       return undefined;
     });
@@ -573,6 +796,19 @@ describe("VoiceToTextSettings", () => {
     });
 
     expect(screen.getByText("文字起こしに失敗しました")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "再試行" }));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
+        "再試行で復旧した結果",
+      );
+    });
+    expect(transcriptionAttempts).toBe(2);
   });
 
   it("clears the audio file path from the clear button", async () => {
@@ -686,6 +922,7 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("clears the copy error message after a short delay", async () => {
+    const consoleError = silenceExpectedConsoleError();
     vi.useFakeTimers();
     try {
       const mockSettings = createMockSettings({
@@ -752,6 +989,11 @@ describe("VoiceToTextSettings", () => {
       expect(
         screen.queryByText("コピーに失敗しました"),
       ).not.toBeInTheDocument();
+      expect(consoleError).toHaveBeenCalledWith(
+        "Failed to copy transcription text:",
+        expect.any(Error),
+      );
+      consoleError.mockRestore();
     } finally {
       vi.useRealTimers();
     }
@@ -810,6 +1052,60 @@ describe("VoiceToTextSettings", () => {
     expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
   });
 
+  it("ignores an in-flight transcription result after the source file changes", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    let resolveTranscription: ((result: { text: string }) => void) | undefined;
+    const pendingTranscription = new Promise<{ text: string }>((resolve) => {
+      resolveTranscription = resolve;
+    });
+
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") return pendingTranscription;
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const audioFileInput = screen.getByLabelText("音声ファイルパス");
+    fireEvent.change(audioFileInput, { target: { value: "/tmp/old.wav" } });
+    fireEvent.click(screen.getByRole("button", { name: "文字起こしを実行" }));
+    expect(
+      screen.getByRole("button", { name: "文字起こし中..." }),
+    ).toBeDisabled();
+
+    fireEvent.change(audioFileInput, { target: { value: "/tmp/new.wav" } });
+    expect(
+      screen.getByRole("button", { name: "文字起こしを実行" }),
+    ).toBeEnabled();
+
+    await act(async () => {
+      resolveTranscription?.({ text: "古いファイルの結果" });
+      await pendingTranscription;
+    });
+
+    expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
+    expect(audioFileInput).toHaveValue("/tmp/new.wav");
+  });
+
   it("starts transcription from the audio file field when Enter is pressed", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
@@ -863,6 +1159,55 @@ describe("VoiceToTextSettings", () => {
     expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
       "これはテスト音声です",
     );
+  });
+
+  it("starts transcription with Ctrl+Enter from the workbench", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    let transcriptionCalls = 0;
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      if (cmd === "transcribe_audio_file") {
+        transcriptionCalls += 1;
+        return { text: "ショートカットで実行しました" };
+      }
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const audioFileInput = screen.getByLabelText("音声ファイルパス");
+    fireEvent.change(audioFileInput, { target: { value: "/tmp/audio.wav" } });
+    await act(async () => {
+      fireEvent.keyDown(audioFileInput, { key: "Enter", ctrlKey: true });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(transcriptionCalls).toBe(1);
+    expect(screen.getByLabelText("文字起こし結果")).toHaveValue(
+      "ショートカットで実行しました",
+    );
+    expect(
+      screen.getByRole("button", { name: "文字起こしを実行" }),
+    ).toHaveAttribute("aria-keyshortcuts", "Control+Enter Meta+Enter");
   });
 
   it("mentions Enter in the audio file help text", async () => {
@@ -1029,6 +1374,153 @@ describe("VoiceToTextSettings", () => {
     );
   });
 
+  it("accepts a supported audio file dropped on the transcription workbench", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(dragDropMocks.handler).not.toBeNull());
+
+    const workbench = screen.getByRole("region", { name: "文字起こし" });
+    workbench.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 0,
+          right: 500,
+          bottom: 600,
+          left: 0,
+          width: 500,
+          height: 600,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "drop",
+          paths: ["/tmp/outside.wav"],
+          position: new PhysicalPosition(700, 100),
+        },
+      });
+    });
+    expect(screen.getByLabelText("音声ファイルパス")).toHaveValue("");
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "enter",
+          paths: ["C:\\Recordings\\INTERVIEW.M4A"],
+          position: new PhysicalPosition(100, 100),
+        },
+      });
+    });
+    expect(workbench).toHaveClass("is-drop-target");
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "drop",
+          paths: ["C:\\Recordings\\INTERVIEW.M4A"],
+          position: new PhysicalPosition(100, 100),
+        },
+      });
+    });
+
+    expect(workbench).not.toHaveClass("is-drop-target");
+    expect(screen.getByLabelText("音声ファイルパス")).toHaveValue(
+      "C:\\Recordings\\INTERVIEW.M4A",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "音声ファイルをドロップしました",
+    );
+  });
+
+  it("keeps the current path and explains unsupported dropped files", async () => {
+    const mockSettings = createMockSettings({
+      voiceToText: {
+        enabled: true,
+        shortcut: "Alt+End",
+        baseUrl: "http://api",
+        model: "whisper-1",
+        language: "ja",
+        status: "available",
+      },
+    });
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "load_settings") return mockSettings;
+      if (cmd === "load_api_key") return "mocked-api-key";
+      return undefined;
+    });
+
+    render(
+      <AppSettingsProvider>
+        <VoiceToTextSettings />
+      </AppSettingsProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(dragDropMocks.handler).not.toBeNull());
+
+    const input = screen.getByLabelText("音声ファイルパス");
+    fireEvent.change(input, { target: { value: "/tmp/current.wav" } });
+    const workbench = screen.getByRole("region", { name: "文字起こし" });
+    workbench.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 0,
+          right: 500,
+          bottom: 600,
+          left: 0,
+          width: 500,
+          height: 600,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+
+    await act(async () => {
+      dragDropMocks.handler?.({
+        payload: {
+          type: "drop",
+          paths: ["/tmp/notes.txt"],
+          position: new PhysicalPosition(100, 100),
+        },
+      });
+    });
+
+    expect(input).toHaveValue("/tmp/current.wav");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "対応していない形式です",
+    );
+  });
+
   it("keeps the current file when the picker is cancelled", async () => {
     const mockSettings = createMockSettings({
       voiceToText: {
@@ -1139,6 +1631,7 @@ describe("VoiceToTextSettings", () => {
   });
 
   it("shows an error when the audio file path cannot be read from the clipboard", async () => {
+    const consoleError = silenceExpectedConsoleError();
     const mockSettings = createMockSettings({
       voiceToText: {
         enabled: true,
@@ -1186,6 +1679,11 @@ describe("VoiceToTextSettings", () => {
       "クリップボードから貼り付けられませんでした",
     );
     expect(status).toHaveClass("status-toast-label--error");
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to paste audio file path:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("trims the audio file path when leaving the field", async () => {
@@ -1274,7 +1772,10 @@ describe("VoiceToTextSettings", () => {
       "これはテスト音声です",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+      await Promise.resolve();
+    });
 
     expect(screen.queryByLabelText("文字起こし結果")).not.toBeInTheDocument();
     expect(screen.queryByText("コピーしました")).not.toBeInTheDocument();
@@ -1417,10 +1918,13 @@ describe("VoiceToTextSettings", () => {
       await Promise.resolve();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+      await Promise.resolve();
+    });
 
     expect(screen.getByLabelText("音声入力を有効にする")).not.toBeChecked();
-    expect(screen.getByLabelText("起動/録音ショートカットキー")).toHaveValue(
+    expect(screen.getByLabelText("文字起こしショートカットキー")).toHaveValue(
       "Alt+End",
     );
     expect(screen.getByLabelText("API エンドポイント (Base URL)")).toHaveValue(
@@ -1461,10 +1965,13 @@ describe("VoiceToTextSettings", () => {
       await Promise.resolve();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "デフォルトに戻す" }));
+      await Promise.resolve();
+    });
 
     const shortcutInput = screen.getByLabelText(
-      "起動/録音ショートカットキー",
+      "文字起こしショートカットキー",
     ) as HTMLInputElement;
     expect(shortcutInput).toHaveFocus();
     expect(shortcutInput.selectionStart).toBe(0);
@@ -1502,14 +2009,17 @@ describe("VoiceToTextSettings", () => {
     });
 
     const shortcutInput = screen.getByLabelText(
-      "起動/録音ショートカットキー",
+      "文字起こしショートカットキー",
     ) as HTMLInputElement;
 
-    fireEvent.focus(shortcutInput);
-    fireEvent.keyDown(shortcutInput, {
-      key: "v",
-      ctrlKey: true,
-      shiftKey: true,
+    await act(async () => {
+      fireEvent.focus(shortcutInput);
+      fireEvent.keyDown(shortcutInput, {
+        key: "v",
+        ctrlKey: true,
+        shiftKey: true,
+      });
+      await Promise.resolve();
     });
 
     expect(shortcutInput.value).toBe("Ctrl+Shift+V");

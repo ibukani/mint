@@ -1,15 +1,26 @@
 import type React from "react";
+import { useEffect, useState } from "react";
 import { Panel } from "../components/Panel";
 import { ContentArea } from "./ContentArea";
-import { Sidebar, type SidebarTab } from "./Sidebar";
+import { getPlatformShortcutModifier, isApplePlatform } from "./keyboard";
+import { SettingsQuickSwitcher } from "./SettingsQuickSwitcher";
+import { Sidebar, type SidebarQuickAction, type SidebarTab } from "./Sidebar";
 import { TitleBar } from "./TitleBar";
 import { useWindowDrag } from "./useWindowDrag";
+
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
 
 interface AppShellProps<TTabId extends string> {
   title: string;
   tabs: readonly SidebarTab<TTabId>[];
   activeTab: TTabId;
-  onTabChange: (tabId: TTabId) => void;
+  onTabChange: (tabId: TTabId, targetId?: string) => void;
+  quickActions?: readonly SidebarQuickAction<TTabId>[];
+  onQuickAction?: (targetId: string) => Promise<void> | void;
   contextLabel?: string;
   statusLabel?: string;
   statusTone?: "neutral" | "pending" | "success" | "error";
@@ -21,18 +32,53 @@ export const AppShell = <TTabId extends string>({
   tabs,
   activeTab,
   onTabChange,
+  quickActions,
+  onQuickAction,
   contextLabel,
   statusLabel,
   statusTone,
   children,
 }: AppShellProps<TTabId>) => {
   const windowDragHandlers = useWindowDrag();
+  const [isQuickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
+  const shortcutModifier = getPlatformShortcutModifier();
+  const usesMetaShortcut = isApplePlatform();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const hasPlatformModifier = usesMetaShortcut
+        ? event.metaKey && !event.ctrlKey
+        : event.ctrlKey && !event.metaKey;
+      if (
+        !hasPlatformModifier ||
+        event.altKey ||
+        event.shiftKey ||
+        event.key.toLocaleLowerCase() !== "k"
+      ) {
+        return;
+      }
+      if (isEditableTarget(event.target)) return;
+
+      event.preventDefault();
+      setQuickSwitcherOpen(true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [usesMetaShortcut]);
+
   return (
     <Panel className="app-shell" {...windowDragHandlers}>
       <a className="app-skip-link" href="#main-content">
         メインコンテンツへ移動
       </a>
-      <TitleBar title={title} contextLabel={contextLabel} />
+      <TitleBar
+        title={title}
+        contextLabel={contextLabel}
+        quickSwitcherShortcut={`${shortcutModifier} K`}
+        quickSwitcherAriaShortcut={usesMetaShortcut ? "Meta+K" : "Control+K"}
+        onOpenQuickSwitcher={() => setQuickSwitcherOpen(true)}
+      />
       <div className="app-shell__body">
         <Sidebar
           title={title}
@@ -44,6 +90,15 @@ export const AppShell = <TTabId extends string>({
         />
         <ContentArea>{children}</ContentArea>
       </div>
+      <SettingsQuickSwitcher
+        tabs={tabs}
+        activeTab={activeTab}
+        isOpen={isQuickSwitcherOpen}
+        onClose={() => setQuickSwitcherOpen(false)}
+        onTabChange={onTabChange}
+        quickActions={quickActions}
+        onQuickAction={onQuickAction}
+      />
     </Panel>
   );
 };

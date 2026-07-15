@@ -43,13 +43,25 @@ export const defaultAppSettings: AppSettings = {
   quickCapture: {
     enabled: true,
     shortcut: "Alt+2",
+    themeColor: "#818cf8",
   },
   fileShelf: {
     enabled: true,
     shortcut: "Alt+3",
     edge: "right",
+    verticalPosition: "center",
     edgeHandleEnabled: true,
     clipboardHistoryEnabled: false,
     clipboardHistoryLimit: 25,
+    ignoredApplications: [
+      "1Password.exe",
+      "Bitwarden.exe",
+      "Dashlane.exe",
+      "Enpass.exe",
+      "KeePass.exe",
+      "KeePassXC.exe",
+      "LastPass.exe",
+    ],
+    themeColor: "#818cf8",
   },
 };

@@ -11,9 +11,11 @@ vi.mock("../hooks/useQuickCapture", () => ({
     addAttachment: vi.fn(),
     allTags: [],
     canRetrySave: true,
+    canRetryDuplicate: false,
     close: vi.fn(),
     content: "保存できなかった入力",
     draft: { content: "保存できなかった入力", tags: "" },
+    duplicateActive: vi.fn(),
     error: "保存に失敗しました",
     exportBackup: vi.fn(),
     focusSequence: 0,
@@ -23,22 +25,32 @@ vi.mock("../hooks/useQuickCapture", () => ({
     pinned: false,
     promote: vi.fn(),
     removeActive: vi.fn(),
+    removeNote: vi.fn(),
     removeAttachment: vi.fn(),
+    retryDuplicate: vi.fn(),
     retrySave: mocks.retrySave,
     selectNote: vi.fn(),
     setContent: vi.fn(),
     setPinned: vi.fn(),
+    setWindowPinned: vi.fn(),
     setTags: vi.fn(),
     showDraft: vi.fn(),
     status: "error",
     tags: "",
     reload: vi.fn(),
+    windowPinned: false,
+    withAutoHideSuspended: async <Result,>(operation: () => Promise<Result>) =>
+      operation(),
   }),
 }));
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn(),
   save: vi.fn(),
+}));
+
+vi.mock("../../../core/context/AppSettings", () => ({
+  useAppSettings: () => ({ settings: undefined }),
 }));
 
 vi.mock("@tauri-apps/plugin-opener", () => ({

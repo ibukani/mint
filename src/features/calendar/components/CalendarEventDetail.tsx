@@ -1,13 +1,29 @@
-import { ArrowLeft, CopyPlus, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ClipboardCopy,
+  CopyPlus,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import type React from "react";
-import { useState } from "react";
-import { Button } from "../../../design/components";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, ConfirmDialog } from "../../../design/components";
 import {
   deleteCalendarEvent,
   formatEventDate,
+  formatEventForClipboard,
   formatEventTime,
 } from "../events";
 import type { CalendarEvent } from "../types";
+
+type CopyStatus = "success" | "error" | null;
+
+const isEditableTarget = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  target instanceof HTMLSelectElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
 
 interface CalendarEventDetailProps {
   event: CalendarEvent;
@@ -25,17 +41,32 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
   onEdit,
 }) => {
   const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState("");
+  const [copying, setCopying] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>(null);
+  const detailRef = useRef<HTMLElement | null>(null);
   const readOnly =
     event.source.kind === "google" &&
     !["writer", "owner"].includes(event.source.accessRole);
 
+  useEffect(() => {
+    if (!event.id) return;
+    detailRef.current?.focus({ preventScroll: true });
+  }, [event.id]);
+
+  useEffect(() => {
+    if (!copyStatus) return undefined;
+    const timer = window.setTimeout(() => setCopyStatus(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [copyStatus]);
+
   const handleDelete = async () => {
-    if (!window.confirm(`「${event.title}」を削除しますか？`)) return;
     setDeleting(true);
     setError("");
     try {
       await deleteCalendarEvent(event.id);
+      setDeleteDialogOpen(false);
       onDeleted();
     } catch (deleteError) {
       console.error("Failed to delete calendar event:", deleteError);
@@ -45,8 +76,50 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
     }
   };
 
+  const handleCopy = useCallback(async () => {
+    if (copying) return;
+    setCopying(true);
+    setCopyStatus(null);
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API is unavailable.");
+      }
+      await navigator.clipboard.writeText(formatEventForClipboard(event));
+      setCopyStatus("success");
+    } catch (copyError) {
+      console.error("Failed to copy calendar event:", copyError);
+      setCopyStatus("error");
+    } finally {
+      setCopying(false);
+    }
+  }, [copying, event]);
+
+  const handleKeyDown = (keyboardEvent: React.KeyboardEvent<HTMLElement>) => {
+    if (
+      deleteDialogOpen ||
+      isEditableTarget(keyboardEvent.target) ||
+      keyboardEvent.ctrlKey ||
+      keyboardEvent.metaKey ||
+      keyboardEvent.altKey ||
+      keyboardEvent.shiftKey
+    ) {
+      return;
+    }
+
+    const key = keyboardEvent.key.toLowerCase();
+    if (key === "c") {
+      keyboardEvent.preventDefault();
+      void handleCopy();
+    }
+  };
+
   return (
-    <article className="calendar-screen calendar-event-detail">
+    <article
+      ref={detailRef}
+      className="calendar-screen calendar-event-detail"
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       <header className="calendar-screen__header">
         <button
           type="button"
@@ -68,20 +141,44 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           <p className="calendar-event-detail__notes">{event.notes}</p>
         )}
         {readOnly && <p>この予定表は読み取り専用です。</p>}
-        {error && (
-          <p className="calendar-screen__status is-error" role="alert">
-            {error}
-          </p>
-        )}
       </div>
 
       <footer className="calendar-screen__actions">
+        {copyStatus && (
+          <span
+            className={`calendar-event-detail__copy-status is-${copyStatus}`}
+            role={copyStatus === "error" ? "alert" : "status"}
+          >
+            {copyStatus === "success"
+              ? "予定の詳細をコピーしました"
+              : "予定の詳細をコピーできませんでした"}
+          </span>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          className="calendar-event-detail__copy"
+          aria-keyshortcuts="C"
+          title="予定の詳細をコピー（C）"
+          disabled={copying}
+          onClick={() => void handleCopy()}
+        >
+          {copyStatus === "success" ? (
+            <Check size={16} aria-hidden="true" />
+          ) : (
+            <ClipboardCopy size={16} aria-hidden="true" />
+          )}
+          {copying ? "コピー中…" : "詳細をコピー"}
+        </Button>
         <Button
           type="button"
           variant="ghost"
           className="calendar-event-detail__delete"
           disabled={deleting || readOnly}
-          onClick={handleDelete}
+          onClick={() => {
+            setError("");
+            setDeleteDialogOpen(true);
+          }}
         >
           <Trash2 size={16} aria-hidden="true" />
           {deleting ? "削除中…" : "削除"}
@@ -107,6 +204,28 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
           編集
         </Button>
       </footer>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="この予定を削除しますか？"
+        description={
+          <>
+            「{event.title}」を削除します。
+            {event.source.kind === "google"
+              ? "Google Calendarにも削除が反映されます。"
+              : "この操作は取り消せません。"}
+          </>
+        }
+        confirmLabel="削除する"
+        busy={deleting}
+        busyLabel="削除しています…"
+        error={error}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setError("");
+        }}
+        onConfirm={() => void handleDelete()}
+      />
     </article>
   );
 };

@@ -30,10 +30,12 @@ export const useVoiceToTextController = () => {
   });
 
   const pasteApiKey = useCallback(async () => {
-    await apiKeyController.pasteApiKey();
+    const didPaste = await apiKeyController.pasteApiKey();
+    if (didPaste) transcriptionController.clearTranscriptionOutput();
     transcriptionController.setAudioFilePasteStatus("");
   }, [
     apiKeyController.pasteApiKey,
+    transcriptionController.clearTranscriptionOutput,
     transcriptionController.setAudioFilePasteStatus,
   ]);
 

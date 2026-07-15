@@ -9,7 +9,12 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { OverlayCard, OverlayFrame } from "../../../design/layout";
+import {
+  isApplePlatform,
+  OverlayCard,
+  OverlayFrame,
+  revealElementVertically,
+} from "../../../design/layout";
 import { useGameLauncher } from "../hooks/useGameLauncher";
 import { type GameStore, gameKey, type InstalledGame } from "../types";
 import "./GameLauncherOverlay.css";
@@ -34,6 +39,11 @@ function getArtworkLabel(title: string): string {
     ? acronym.slice(0, 3)
     : title.trim().slice(0, 1).toUpperCase();
 }
+
+const gameDomId = (game: InstalledGame) =>
+  `game-launcher-game-${gameKey(game).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+
+const GAME_PAGE_STEP = 5;
 
 export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
   const [failedSource, setFailedSource] = useState<string | null>(null);
@@ -78,7 +88,7 @@ export const GameLauncherOverlay: React.FC = () => {
     animationClass,
     close,
     error,
-    launchingId,
+    launchingGameKey,
     openingStoreId,
     loading,
     result,
@@ -92,9 +102,11 @@ export const GameLauncherOverlay: React.FC = () => {
     themeColor,
   } = useGameLauncher();
   const [query, setQuery] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedGameKey, setSelectedGameKey] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const searchShortcutModifier = isApplePlatform() ? "Meta" : "Control";
 
   const games = useMemo(() => {
     const rawGames = result?.games ?? [];
@@ -125,35 +137,104 @@ export const GameLauncherOverlay: React.FC = () => {
   useEffect(() => {
     void showSequence;
     setQuery("");
-    setSelectedIndex(0);
-    inputRef.current?.focus();
+    setSelectedGameKey(null);
+    inputRef.current?.focus({ preventScroll: true });
   }, [showSequence]);
-  const activeIndex = games.length ? selectedIndex % games.length : 0;
+
+  const activeIndex = games.length
+    ? Math.max(
+        0,
+        games.findIndex((game) => gameKey(game) === selectedGameKey),
+      )
+    : 0;
+  const selected = games[activeIndex];
+
   useEffect(() => {
-    itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+    if (!games.length) {
+      if (selectedGameKey !== null) setSelectedGameKey(null);
+      return;
+    }
+    if (
+      !selectedGameKey ||
+      !games.some((game) => gameKey(game) === selectedGameKey)
+    ) {
+      setSelectedGameKey(gameKey(games[0]));
+    }
+  }, [games, selectedGameKey]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    const item = itemRefs.current[activeIndex];
+    if (list && item) revealElementVertically(list, item, 4);
   }, [activeIndex]);
 
-  const selected = games[activeIndex];
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const selectIndex = (index: number) => {
+    const game = games[index];
+    if (game) setSelectedGameKey(gameKey(game));
+  };
+
+  const handleOverlayKeyDown = (event: React.KeyboardEvent) => {
+    const key = event.key.toLocaleLowerCase();
+    const modifierPressed = event.ctrlKey || event.metaKey;
     if (event.altKey && event.key === "1") {
       event.preventDefault();
       event.stopPropagation();
       close();
+    } else if (modifierPressed && key === "f") {
+      event.preventDefault();
+      inputRef.current?.focus({ preventScroll: true });
+      inputRef.current?.select();
+    } else if (
+      event.key === "/" &&
+      event.target !== inputRef.current &&
+      !modifierPressed &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      inputRef.current?.focus({ preventScroll: true });
+      inputRef.current?.select();
     } else if (event.key === "Escape") {
       event.preventDefault();
-      close();
-    } else if (event.target !== inputRef.current) {
-      return;
-    } else if (event.key === "ArrowDown" && games.length) {
+      if (query) {
+        setQuery("");
+        setSelectedGameKey(null);
+        inputRef.current?.focus({ preventScroll: true });
+      } else {
+        close();
+      }
+    }
+  };
+
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key === "ArrowDown" && games.length) {
       event.preventDefault();
-      setSelectedIndex((current) => (current + 1) % games.length);
+      event.stopPropagation();
+      selectIndex((activeIndex + 1) % games.length);
     } else if (event.key === "ArrowUp" && games.length) {
       event.preventDefault();
-      setSelectedIndex(
-        (current) => (current - 1 + games.length) % games.length,
-      );
+      event.stopPropagation();
+      selectIndex((activeIndex - 1 + games.length) % games.length);
+    } else if (event.key === "PageDown" && games.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectIndex(Math.min(games.length - 1, activeIndex + GAME_PAGE_STEP));
+    } else if (event.key === "PageUp" && games.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectIndex(Math.max(0, activeIndex - GAME_PAGE_STEP));
+    } else if (event.key === "Home" && games.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectIndex(0);
+    } else if (event.key === "End" && games.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectIndex(games.length - 1);
     } else if (event.key === "Enter" && selected) {
       event.preventDefault();
+      event.stopPropagation();
       void startGame(selected);
     }
   };
@@ -164,7 +245,7 @@ export const GameLauncherOverlay: React.FC = () => {
         className={`${animationClass} game-launcher theme-accent-scope`}
         role="dialog"
         aria-label="ゲームランチャー"
-        onKeyDown={handleKeyDown}
+        onKeyDown={handleOverlayKeyDown}
         style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <header className="game-launcher__header">
@@ -172,7 +253,11 @@ export const GameLauncherOverlay: React.FC = () => {
             <Gamepad2 size={20} aria-hidden="true" />
             <div>
               <h1>ゲームランチャー</h1>
-              <p>{result?.games.length ?? 0}本のゲーム</p>
+              <p>
+                {query
+                  ? `${games.length}/${result?.games.length ?? 0}本に絞り込み`
+                  : `${result?.games.length ?? 0}本のゲーム`}
+              </p>
             </div>
           </div>
           <button
@@ -191,23 +276,48 @@ export const GameLauncherOverlay: React.FC = () => {
           <Search size={18} aria-hidden="true" />
           <input
             ref={inputRef}
+            type="search"
             aria-label="ゲームを検索"
             aria-controls="game-launcher-list"
-            aria-keyshortcuts="ArrowDown ArrowUp Enter"
+            aria-activedescendant={selected ? gameDomId(selected) : undefined}
+            aria-keyshortcuts={`ArrowDown ArrowUp Home End PageUp PageDown Enter Escape ${searchShortcutModifier}+F`}
             value={query}
+            onKeyDown={handleSearchKeyDown}
             onChange={(event) => {
               setQuery(event.target.value);
-              setSelectedIndex(0);
+              setSelectedGameKey(null);
             }}
             placeholder="ゲームまたはストアを検索"
             autoComplete="off"
           />
-          <kbd aria-label="上下キーで選択、Enterで起動">↑ ↓ Enter</kbd>
+          {query ? (
+            <button
+              type="button"
+              className="game-launcher__search-clear"
+              aria-label="ゲーム検索をクリア"
+              title="検索をクリア"
+              onClick={() => {
+                setQuery("");
+                setSelectedGameKey(null);
+                inputRef.current?.focus({ preventScroll: true });
+              }}
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          ) : (
+            <kbd
+              aria-label="上下、Home、End、PageUp、PageDownキーで選択、Enterで起動"
+              title="↑↓: 1件移動 / PageUp・PageDown: 5件移動 / Home・End: 先頭・末尾 / Enter: 起動"
+            >
+              ↑ ↓ PgUp PgDn Enter
+            </kbd>
+          )}
         </label>
 
         <div className="game-launcher__body">
           <section
             id="game-launcher-list"
+            ref={listRef}
             className="game-launcher__list"
             aria-label="ゲーム一覧"
             data-window-drag-block
@@ -231,11 +341,13 @@ export const GameLauncherOverlay: React.FC = () => {
                         itemRefs.current[index] = element;
                       }}
                       type="button"
+                      id={gameDomId(game)}
                       className="game-launcher__launch"
                       aria-current={index === activeIndex ? "true" : undefined}
-                      onMouseEnter={() => setSelectedIndex(index)}
+                      onMouseEnter={() => setSelectedGameKey(key)}
+                      onFocus={() => setSelectedGameKey(key)}
                       onClick={() => void startGame(game)}
-                      disabled={launchingId !== null}
+                      disabled={launchingGameKey !== null}
                     >
                       <GameArtwork
                         key={`${key}:${game.imagePath}:${game.fallbackImagePath}`}
@@ -254,7 +366,11 @@ export const GameLauncherOverlay: React.FC = () => {
                     <button
                       type="button"
                       className={`game-launcher__action${favorite ? " is-favorite" : ""}`}
-                      onClick={() => toggleFavorite(game)}
+                      onFocus={() => setSelectedGameKey(key)}
+                      onClick={() => {
+                        setSelectedGameKey(key);
+                        toggleFavorite(game);
+                      }}
                       aria-label={`${game.title}を${favorite ? "お気に入りから削除" : "お気に入りに追加"}`}
                       aria-pressed={favorite}
                     >
@@ -267,7 +383,11 @@ export const GameLauncherOverlay: React.FC = () => {
                     <button
                       type="button"
                       className="game-launcher__action"
-                      onClick={() => void openStorePage(game)}
+                      onFocus={() => setSelectedGameKey(key)}
+                      onClick={() => {
+                        setSelectedGameKey(key);
+                        void openStorePage(game);
+                      }}
                       aria-label={`${game.title}のストア管理画面を開く`}
                       disabled={openingStoreId === key}
                     >
@@ -309,15 +429,19 @@ export const GameLauncherOverlay: React.FC = () => {
                 <div className="game-launcher__preview-actions">
                   <button
                     type="button"
-                    disabled={launchingId !== null}
+                    disabled={launchingGameKey !== null}
                     onClick={() => void startGame(selected)}
                   >
                     <Play size={15} aria-hidden="true" />
-                    {launchingId === selected.id ? "起動中…" : "起動"}
+                    {launchingGameKey === gameKey(selected)
+                      ? "起動中…"
+                      : "起動"}
                   </button>
                   <button
                     type="button"
-                    disabled={openingStoreId !== null || launchingId !== null}
+                    disabled={
+                      openingStoreId !== null || launchingGameKey !== null
+                    }
                     onClick={() => void openStorePage(selected)}
                   >
                     <ExternalLink size={15} aria-hidden="true" /> 管理画面

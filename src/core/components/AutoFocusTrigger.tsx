@@ -1,12 +1,15 @@
 import type React from "react";
 import { useEffect } from "react";
+import { revealElementVertically } from "../../design/layout/scrollVisibility";
 
 interface AutoFocusTriggerProps {
   enabled?: boolean;
+  targetId?: string;
 }
 
 export const AutoFocusTrigger: React.FC<AutoFocusTriggerProps> = ({
   enabled = true,
+  targetId,
 }) => {
   useEffect(() => {
     if (!enabled) return undefined;
@@ -16,13 +19,27 @@ export const AutoFocusTrigger: React.FC<AutoFocusTriggerProps> = ({
       const title = content?.querySelector<HTMLElement>(
         ".design-settings-section__title",
       );
+      const requestedTarget = targetId
+        ? document.getElementById(targetId)
+        : null;
+      const focusTarget = requestedTarget ?? title;
 
-      if (content) content.scrollTop = 0;
-      title?.focus({ preventScroll: true });
+      if (content && requestedTarget) {
+        revealElementVertically(content, requestedTarget, 24);
+      } else if (content) {
+        content.scrollTop = 0;
+      }
+      focusTarget?.focus({ preventScroll: true });
+      if (
+        requestedTarget instanceof HTMLInputElement ||
+        requestedTarget instanceof HTMLTextAreaElement
+      ) {
+        requestedTarget.select();
+      }
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [enabled]);
+  }, [enabled, targetId]);
 
   return null;
 };

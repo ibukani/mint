@@ -63,14 +63,16 @@ export const useVoiceToTextApiKey = () => {
       const value = (await navigator.clipboard.readText()).trim();
       if (!value) {
         setApiKeyPasteStatus(EMPTY_PASTE_STATUS, "warning");
-        return;
+        return false;
       }
       setApiKey(value);
       setApiKeySaveStatus("");
       setApiKeyPasteStatus("API キーを貼り付けました");
+      return true;
     } catch (error) {
       console.error("Failed to paste API key:", error);
       setApiKeyPasteStatus(CLIPBOARD_READ_ERROR_STATUS, "error");
+      return false;
     } finally {
       focusAndSelect("v2t-api-key-input");
     }

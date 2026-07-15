@@ -103,6 +103,42 @@ describe("CalendarEventEditor", () => {
     expect(onSaved).toHaveBeenCalledWith(savedEvent);
   });
 
+  it("prevents closing while a save is still in progress", async () => {
+    let resolveSave: (event: CalendarEvent) => void = () => undefined;
+    mocks.create.mockImplementationOnce(
+      () =>
+        new Promise<CalendarEvent>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const onCancel = vi.fn();
+    const onSavingChange = vi.fn();
+    render(
+      <CalendarEventEditor
+        initialDate="2026-07-11"
+        onCancel={onCancel}
+        onDirtyChange={vi.fn()}
+        onSavingChange={onSavingChange}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("タイトル"), {
+      target: { value: "保存中の予定" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    const cancel = screen.getByRole("button", { name: "キャンセル" });
+    expect(cancel).toBeDisabled();
+    fireEvent.click(cancel);
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onSavingChange).toHaveBeenCalledWith(true);
+
+    resolveSave(savedEvent);
+    await waitFor(() => expect(cancel).toBeEnabled());
+    expect(onSavingChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("preserves the event duration when the start time changes", () => {
     render(
       <CalendarEventEditor
@@ -156,6 +192,9 @@ describe("CalendarEventEditor", () => {
   });
 
   it("shows backend failures separately from field validation", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     mocks.create.mockRejectedValueOnce(new Error("database unavailable"));
     render(
       <CalendarEventEditor
@@ -179,6 +218,11 @@ describe("CalendarEventEditor", () => {
       "aria-invalid",
       "false",
     );
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to save calendar event:",
+      expect.any(Error),
+    );
+    consoleError.mockRestore();
   });
 
   it("creates a new event from a reusable template", async () => {

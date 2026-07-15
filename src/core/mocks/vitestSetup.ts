@@ -28,9 +28,13 @@ import {
   mockAddFileShelfPaths,
   mockClearFileShelf,
   mockClearFileShelfClipboardHistory,
+  mockLoadFileShelfPreview,
   mockLoadFileShelfState,
   mockRemoveFileShelfItems,
+  mockRenameFileShelfItem,
   mockRestoreFileShelfRemoval,
+  mockRestoreRecentFileShelfRemoval,
+  mockSetFileShelfItemsPinned,
 } from "./fileShelfMock";
 import {
   mockAddQuickCaptureAttachment,
@@ -55,11 +59,14 @@ mockWindows(
 
 import { createMockSettings } from "./mockSettings";
 
+const mockIPCWithEvents = (handler: Parameters<typeof mockIPC>[0]) =>
+  mockIPC(handler, { shouldMockEvents: true });
+
 // テスト用のデフォルト設定データ
 const defaultSettings = createMockSettings();
 
 // テスト中のIPC呼び出しの共通モック定義
-mockIPC(async (cmd, args) => {
+mockIPCWithEvents(async (cmd, args) => {
   const typedArgs = args as Record<string, unknown> | undefined;
 
   switch (cmd) {
@@ -67,6 +74,20 @@ mockIPC(async (cmd, args) => {
       return defaultSettings;
     case "save_settings":
       return;
+    case "open_overlay": {
+      const target = typedArgs?.target as string | undefined;
+      const allowedTargets = [
+        "clock",
+        "calendar",
+        "gameLauncher",
+        "quickCapture",
+        "fileShelf",
+      ];
+      if (!target || !allowedTargets.includes(target)) {
+        throw new Error("利用できないオーバーレイです。");
+      }
+      return;
+    }
     case "list_calendar_events": {
       const range = typedArgs?.range as CalendarEventRange | undefined;
       return range ? mockListCalendarEvents(range) : [];
@@ -112,6 +133,11 @@ mockIPC(async (cmd, args) => {
       return mockLoadQuickCaptureState();
     case "load_file_shelf_state":
       return mockLoadFileShelfState();
+    case "load_file_shelf_preview": {
+      const itemId = typedArgs?.itemId as string | undefined;
+      if (!itemId) throw new Error("File shelf item id is required.");
+      return mockLoadFileShelfPreview(itemId);
+    }
     case "add_file_shelf_paths": {
       const input = typedArgs?.input as AddFileShelfPathsInput | undefined;
       if (!input) throw new Error("File shelf paths are required.");
@@ -127,15 +153,35 @@ mockIPC(async (cmd, args) => {
       if (!itemIds) throw new Error("File shelf item ids are required.");
       return mockRemoveFileShelfItems(itemIds);
     }
+    case "set_file_shelf_items_pinned": {
+      const itemIds = typedArgs?.itemIds as string[] | undefined;
+      const pinned = typedArgs?.pinned as boolean | undefined;
+      if (!itemIds || pinned === undefined) {
+        throw new Error("File shelf pin state is required.");
+      }
+      return mockSetFileShelfItemsPinned(itemIds, pinned);
+    }
+    case "rename_file_shelf_item": {
+      const itemId = typedArgs?.itemId as string | undefined;
+      const displayName = typedArgs?.displayName as string | undefined;
+      if (!itemId || displayName === undefined) {
+        throw new Error("File shelf rename input is required.");
+      }
+      return mockRenameFileShelfItem(itemId, displayName);
+    }
     case "restore_file_shelf_removal": {
       const undoToken = typedArgs?.undoToken as string | undefined;
       if (!undoToken) throw new Error("File shelf undo token is required.");
       return mockRestoreFileShelfRemoval(undoToken);
     }
+    case "restore_recent_file_shelf_removal":
+      return mockRestoreRecentFileShelfRemoval();
     case "clear_file_shelf":
       return mockClearFileShelf();
     case "clear_file_shelf_clipboard_history":
       return mockClearFileShelfClipboardHistory();
+    case "should_auto_expand_file_shelf":
+      return true;
     case "set_file_shelf_expanded":
       return;
     case "save_quick_capture_draft": {
@@ -222,6 +268,7 @@ mockIPC(async (cmd, args) => {
         lastSyncedAt: null,
         pendingOperations: 0,
         error: null,
+        syncing: false,
       };
     case "connect_google_calendar":
       return {
@@ -230,6 +277,7 @@ mockIPC(async (cmd, args) => {
         lastSyncedAt: null,
         pendingOperations: 0,
         error: null,
+        syncing: false,
       };
     case "list_google_calendars":
       return [
@@ -258,16 +306,43 @@ mockIPC(async (cmd, args) => {
     case "transcribe_audio_file": {
       const audioFilePath = typedArgs?.audio_file_path as string | undefined;
       const settings = typedArgs?.settings as
-        | { enabled?: boolean; model?: string }
+        | { enabled?: boolean; baseUrl?: string; model?: string }
         | undefined;
       if (!settings?.enabled) {
-        throw new Error("Voice to Text is disabled.");
+        throw new Error("音声入力を有効にしてください。");
       }
       if (!audioFilePath?.trim()) {
-        throw new Error("Audio file path is required.");
+        throw new Error("音声ファイルを選択してください。");
+      }
+      if (!settings.baseUrl?.trim() || !settings.model?.trim()) {
+        throw new Error("API接続設定を確認してください。");
+      }
+      if (audioFilePath === "/missing/audio.wav") {
+        throw new Error(
+          "音声ファイルが見つかりません。移動または削除されていないか確認してください。",
+        );
       }
       return {
         text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,
+      };
+    }
+    case "transcribe_audio_recording": {
+      const audioData = typedArgs?.audio_data as number[] | undefined;
+      const fileName = typedArgs?.file_name as string | undefined;
+      const settings = typedArgs?.settings as
+        | { enabled?: boolean; baseUrl?: string; model?: string }
+        | undefined;
+      if (!settings?.enabled) {
+        throw new Error("音声入力を有効にしてください。");
+      }
+      if (!audioData?.length || !fileName?.trim()) {
+        throw new Error("録音データがありません。もう一度録音してください。");
+      }
+      if (!settings.baseUrl?.trim() || !settings.model?.trim()) {
+        throw new Error("API接続設定を確認してください。");
+      }
+      return {
+        text: `[MOCK] マイク録音（${fileName}）を ${settings.model || "default"} で文字起こししました。`,
       };
     }
     case "plugin:updater|check":

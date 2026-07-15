@@ -1,6 +1,8 @@
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../navigation/settingsTabs";
+import type { ThemeMode } from "../settingsModel";
 
 const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
 
@@ -30,10 +32,26 @@ const getInitialSettingsTab = (): SettingsTabId => {
   }
 };
 
-export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
+export const useSettingsWindow = (theme: ThemeMode | undefined) => {
   const [label, setLabel] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     getInitialSettingsTab,
+  );
+  const [focusRequest, setFocusRequest] = useState<{
+    id: number;
+    targetId?: string;
+  }>({ id: 0 });
+  const navigateToTab = useCallback(
+    (tabId: SettingsTabId, targetId?: string) => {
+      setFocusRequest((current) => {
+        if (targetId) {
+          return { id: current.id + 1, targetId };
+        }
+        return current.targetId ? { id: current.id } : current;
+      });
+      setActiveTab(tabId);
+    },
+    [],
   );
 
   useEffect(() => {
@@ -41,7 +59,24 @@ export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
   }, []);
 
   useEffect(() => {
-    if (theme) document.documentElement.dataset.theme = theme;
+    if (!theme) return undefined;
+
+    const mediaQuery =
+      theme === "system" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-color-scheme: light)")
+        : null;
+    const applyTheme = () => {
+      const resolvedTheme =
+        theme === "system" ? (mediaQuery?.matches ? "light" : "dark") : theme;
+      document.documentElement.dataset.theme = resolvedTheme;
+    };
+
+    applyTheme();
+    if (!mediaQuery) return undefined;
+
+    const handleThemeChange = () => applyTheme();
+    mediaQuery.addEventListener("change", handleThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleThemeChange);
   }, [theme]);
 
   useEffect(() => {
@@ -80,12 +115,33 @@ export const useSettingsWindow = (theme: "dark" | "light" | undefined) => {
       if (!tab) return;
 
       event.preventDefault();
-      setActiveTab(tab.id);
+      navigateToTab(tab.id);
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [label, navigateToTab]);
+
+  useEffect(() => {
+    if (label !== "main") return undefined;
+
+    const unlistenPromise = listen("voice-to-text-shortcut", () => {
+      setActiveTab("voiceToText");
+      setFocusRequest((current) => ({
+        id: current.id + 1,
+        targetId: "v2t-audio-file-input",
+      }));
+    });
+
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
   }, [label]);
 
-  return { label, activeTab, setActiveTab };
+  return {
+    label,
+    activeTab,
+    setActiveTab: navigateToTab,
+    focusRequest,
+  };
 };

@@ -28,9 +28,13 @@ import {
   mockCaptureFileShelfClipboardText,
   mockClearFileShelf,
   mockClearFileShelfClipboardHistory,
+  mockLoadFileShelfPreview,
   mockLoadFileShelfState,
   mockRemoveFileShelfItems,
+  mockRenameFileShelfItem,
   mockRestoreFileShelfRemoval,
+  mockRestoreRecentFileShelfRemoval,
+  mockSetFileShelfItemsPinned,
 } from "./fileShelfMock";
 import { createMockSettings } from "./mockSettings";
 import {
@@ -44,6 +48,12 @@ import {
   mockUpdateQuickCaptureNote,
 } from "./quickCaptureMock";
 import { getMockWindowRegistration } from "./windowRegistration";
+
+const mockIPCWithEvents = (handler: Parameters<typeof mockIPC>[0]) =>
+  mockIPC(handler, { shouldMockEvents: true });
+
+const waitForMockOperation = (duration: number) =>
+  new Promise<void>((resolve) => window.setTimeout(resolve, duration));
 
 // Tauri環境内かどうかを判定（window.__TAURI_INTERNALS__ が存在しない場合はブラウザ環境とみなす）
 const isTauri =
@@ -83,7 +93,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const defaultSettings = createMockSettings();
 
   // IPC（Rust側のコマンド呼び出し）をモック化
-  mockIPC(async (cmd, args) => {
+  mockIPCWithEvents(async (cmd, args) => {
     const typedArgs = args as Record<string, unknown> | undefined;
     switch (cmd) {
       case "load_settings": {
@@ -139,6 +149,49 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         }
         return;
       }
+      case "open_overlay": {
+        const target = typedArgs?.target as string | undefined;
+        const enabledByTarget: Record<string, boolean> = {
+          clock: defaultSettings.clock.enabled,
+          calendar: defaultSettings.calendar.enabled,
+          gameLauncher: defaultSettings.gameLauncher.enabled,
+          quickCapture: defaultSettings.quickCapture.enabled,
+          fileShelf: defaultSettings.fileShelf.enabled,
+        };
+        if (!target || !(target in enabledByTarget)) {
+          throw new Error("利用できないオーバーレイです。");
+        }
+        let enabled = enabledByTarget[target];
+        const storedSettings = localStorage.getItem(STORAGE_KEY);
+        if (storedSettings) {
+          try {
+            const parsed = JSON.parse(storedSettings) as Record<
+              string,
+              unknown
+            >;
+            const featureSettings = parsed[target];
+            if (
+              featureSettings &&
+              typeof featureSettings === "object" &&
+              "enabled" in featureSettings
+            ) {
+              enabled = Boolean(
+                (featureSettings as { enabled?: unknown }).enabled,
+              );
+            }
+          } catch {
+            // Fall back to the default mock settings when storage is invalid.
+          }
+        }
+        if (!enabled) {
+          throw new Error("このオーバーレイは無効になっています。");
+        }
+        localStorage.setItem("mint_mock_last_overlay", target);
+        window.dispatchEvent(
+          new CustomEvent("mint-overlay-opened", { detail: { target } }),
+        );
+        return;
+      }
       case "list_calendar_events": {
         const range = typedArgs?.range as CalendarEventRange | undefined;
         if (!range) throw new Error("Calendar event range is required.");
@@ -186,6 +239,11 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         return mockLoadQuickCaptureState();
       case "load_file_shelf_state":
         return mockLoadFileShelfState();
+      case "load_file_shelf_preview": {
+        const itemId = typedArgs?.itemId as string | undefined;
+        if (!itemId) throw new Error("File shelf item id is required.");
+        return mockLoadFileShelfPreview(itemId);
+      }
       case "add_file_shelf_paths": {
         const input = typedArgs?.input as AddFileShelfPathsInput | undefined;
         if (!input) throw new Error("File shelf paths are required.");
@@ -201,15 +259,58 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         if (!itemIds) throw new Error("File shelf item ids are required.");
         return mockRemoveFileShelfItems(itemIds);
       }
+      case "set_file_shelf_items_pinned": {
+        const itemIds = typedArgs?.itemIds as string[] | undefined;
+        const pinned = typedArgs?.pinned as boolean | undefined;
+        if (!itemIds || pinned === undefined) {
+          throw new Error("File shelf pin state is required.");
+        }
+        return mockSetFileShelfItemsPinned(itemIds, pinned);
+      }
+      case "rename_file_shelf_item": {
+        const itemId = typedArgs?.itemId as string | undefined;
+        const displayName = typedArgs?.displayName as string | undefined;
+        if (!itemId || displayName === undefined) {
+          throw new Error("File shelf rename input is required.");
+        }
+        return mockRenameFileShelfItem(itemId, displayName);
+      }
       case "restore_file_shelf_removal": {
         const undoToken = typedArgs?.undoToken as string | undefined;
         if (!undoToken) throw new Error("File shelf undo token is required.");
         return mockRestoreFileShelfRemoval(undoToken);
       }
+      case "restore_recent_file_shelf_removal":
+        return mockRestoreRecentFileShelfRemoval();
       case "clear_file_shelf":
         return mockClearFileShelf();
       case "clear_file_shelf_clipboard_history":
         return mockClearFileShelfClipboardHistory();
+      case "should_auto_expand_file_shelf": {
+        const sourceApplication = params.get("mockShelfSourceApp");
+        if (!sourceApplication) return true;
+        let ignoredApplications = defaultSettings.fileShelf.ignoredApplications;
+        const storedSettings = localStorage.getItem(STORAGE_KEY);
+        if (storedSettings) {
+          try {
+            const parsed = JSON.parse(storedSettings) as {
+              fileShelf?: { ignoredApplications?: unknown };
+            };
+            if (Array.isArray(parsed.fileShelf?.ignoredApplications)) {
+              ignoredApplications = parsed.fileShelf.ignoredApplications.filter(
+                (value): value is string => typeof value === "string",
+              );
+            }
+          } catch {
+            // Invalid settings use the same defaults as load_settings.
+          }
+        }
+        return !ignoredApplications.some(
+          (application) =>
+            application.toLocaleLowerCase() ===
+            sourceApplication.toLocaleLowerCase(),
+        );
+      }
       case "set_file_shelf_expanded":
         return;
       case "save_quick_capture_draft": {
@@ -352,8 +453,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           lastSyncedAt: localStorage.getItem("mint_mock_google_last_sync"),
           pendingOperations: 0,
           error: null,
+          syncing: localStorage.getItem("mint_mock_google_syncing") === "true",
         };
       case "connect_google_calendar":
+        await waitForMockOperation(450);
         localStorage.setItem("mint_mock_google_connected", "true");
         return {
           connected: true,
@@ -361,6 +464,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           lastSyncedAt: null,
           pendingOperations: 0,
           error: null,
+          syncing: false,
         };
       case "list_google_calendars":
         return [
@@ -380,8 +484,11 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           },
         ];
       case "sync_google_calendars": {
+        localStorage.setItem("mint_mock_google_syncing", "true");
+        await waitForMockOperation(650);
         const syncedAt = new Date().toISOString();
         localStorage.setItem("mint_mock_google_last_sync", syncedAt);
+        localStorage.removeItem("mint_mock_google_syncing");
         return {
           syncedCalendars:
             (typedArgs?.calendarIds as string[] | undefined)?.length ?? 0,
@@ -391,8 +498,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         };
       }
       case "disconnect_google_calendar":
+        await waitForMockOperation(350);
         localStorage.removeItem("mint_mock_google_connected");
         localStorage.removeItem("mint_mock_google_last_sync");
+        localStorage.removeItem("mint_mock_google_syncing");
         return;
       case "load_api_key": {
         const service = typedArgs?.service as string | undefined;
@@ -417,16 +526,45 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       case "transcribe_audio_file": {
         const audioFilePath = typedArgs?.audio_file_path as string | undefined;
         const settings = typedArgs?.settings as
-          | { enabled?: boolean; model?: string }
+          | { enabled?: boolean; baseUrl?: string; model?: string }
           | undefined;
         if (!settings?.enabled) {
-          throw new Error("Voice to Text is disabled.");
+          throw new Error("音声入力を有効にしてください。");
         }
         if (!audioFilePath?.trim()) {
-          throw new Error("Audio file path is required.");
+          throw new Error("音声ファイルを選択してください。");
         }
+        if (!settings.baseUrl?.trim() || !settings.model?.trim()) {
+          throw new Error("API接続設定を確認してください。");
+        }
+        if (audioFilePath === "/missing/audio.wav") {
+          throw new Error(
+            "音声ファイルが見つかりません。移動または削除されていないか確認してください。",
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 350));
         return {
           text: `[MOCK] ${audioFilePath} を ${settings.model || "default"} で文字起こししました。`,
+        };
+      }
+      case "transcribe_audio_recording": {
+        const audioData = typedArgs?.audio_data as number[] | undefined;
+        const fileName = typedArgs?.file_name as string | undefined;
+        const settings = typedArgs?.settings as
+          | { enabled?: boolean; baseUrl?: string; model?: string }
+          | undefined;
+        if (!settings?.enabled) {
+          throw new Error("音声入力を有効にしてください。");
+        }
+        if (!audioData?.length || !fileName?.trim()) {
+          throw new Error("録音データがありません。もう一度録音してください。");
+        }
+        if (!settings.baseUrl?.trim() || !settings.model?.trim()) {
+          throw new Error("API接続設定を確認してください。");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        return {
+          text: `[MOCK] マイク録音（${fileName}）を ${settings.model || "default"} で文字起こししました。`,
         };
       }
       case "plugin:updater|check":

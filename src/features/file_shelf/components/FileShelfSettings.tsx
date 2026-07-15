@@ -1,8 +1,17 @@
-import { History, Keyboard, PanelRightOpen } from "lucide-react";
+import {
+  AppWindow,
+  History,
+  Keyboard,
+  PanelRightOpen,
+  Plus,
+  X,
+} from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
+  Button,
   FeatureSettingsHeader,
   Field,
   Select,
@@ -10,9 +19,20 @@ import {
   ShortcutInput,
   Switch,
 } from "../../../design/components";
+import { chooseIgnoredFileShelfApplication } from "../api";
 import "./FileShelfSettings.css";
 
+const PRESET_COLORS = [
+  { value: "#818cf8", label: "インディゴ" },
+  { value: "#38bdf8", label: "スカイ" },
+  { value: "#34d399", label: "ミント" },
+  { value: "#fbbf24", label: "アンバー" },
+  { value: "#fb7185", label: "ローズ" },
+  { value: "#f8fafc", label: "ホワイト" },
+] as const;
+
 export const FileShelfSettings: React.FC = () => {
+  const [ignoredApplicationError, setIgnoredApplicationError] = useState("");
   const {
     featureSettings: settings,
     handleChange,
@@ -21,6 +41,41 @@ export const FileShelfSettings: React.FC = () => {
   } = useFeatureSettings("fileShelf");
 
   if (!settings) return null;
+
+  const addIgnoredApplication = async () => {
+    setIgnoredApplicationError("");
+    try {
+      const application = await chooseIgnoredFileShelfApplication();
+      if (!application) return;
+      if (
+        settings.ignoredApplications.some(
+          (current) =>
+            current.toLocaleLowerCase() === application.toLocaleLowerCase(),
+        )
+      ) {
+        setIgnoredApplicationError(`${application} はすでに除外されています。`);
+        return;
+      }
+      handleChange("ignoredApplications", [
+        ...settings.ignoredApplications,
+        application,
+      ]);
+    } catch (reason) {
+      setIgnoredApplicationError(
+        reason instanceof Error
+          ? reason.message
+          : "アプリを選択できませんでした。",
+      );
+    }
+  };
+
+  const removeIgnoredApplication = (application: string) => {
+    setIgnoredApplicationError("");
+    handleChange(
+      "ignoredApplications",
+      settings.ignoredApplications.filter((current) => current !== application),
+    );
+  };
 
   return (
     <SettingsSection
@@ -52,7 +107,7 @@ export const FileShelfSettings: React.FC = () => {
             id="file-shelf-shortcut"
             label="起動ショートカットキー"
             error={shortcutError}
-            helpText="同じキーをもう一度押すか、Escで折りたたみます。"
+            helpText="1回で展開・折りたたみ、すばやく2回でクリップボードを保存、800ms以上の長押しで最近外した項目を戻します。"
           >
             <ShortcutInput
               id="file-shelf-shortcut"
@@ -61,6 +116,27 @@ export const FileShelfSettings: React.FC = () => {
               onChange={(value) => handleChange("shortcut", value)}
               placeholderText="例: Alt+3"
             />
+          </Field>
+          <Field
+            id="file-shelf-theme-color-picker"
+            label="ファイルシェルのテーマカラー"
+          >
+            <div className="color-picker-palette">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  className={`color-picker-badge ${settings.themeColor === color.value ? "is-active" : ""}`}
+                  style={
+                    { "--swatch-color": color.value } as React.CSSProperties
+                  }
+                  title={color.label}
+                  onClick={() => handleChange("themeColor", color.value)}
+                  aria-label={color.label}
+                  aria-pressed={settings.themeColor === color.value}
+                />
+              ))}
+            </div>
           </Field>
         </section>
 
@@ -100,6 +176,23 @@ export const FileShelfSettings: React.FC = () => {
             >
               <option value="right">画面の右端</option>
               <option value="left">画面の左端</option>
+            </Select>
+          </Field>
+          <Field id="file-shelf-vertical-position" label="縦の位置">
+            <Select
+              id="file-shelf-vertical-position"
+              value={settings.verticalPosition}
+              onChange={(event) =>
+                handleChange(
+                  "verticalPosition",
+                  event.target.value as "top" | "center" | "bottom" | "cursor",
+                )
+              }
+            >
+              <option value="cursor">ポインター付近</option>
+              <option value="top">上</option>
+              <option value="center">中央</option>
+              <option value="bottom">下</option>
             </Select>
           </Field>
           <p className="file-shelf-settings-note">
@@ -155,6 +248,59 @@ export const FileShelfSettings: React.FC = () => {
           </Field>
           <p className="file-shelf-settings-note">
             履歴はこのPC内だけに保存されます。パスワードなどの機密情報をコピーする場合は無効にしてください。
+          </p>
+        </section>
+
+        <section
+          className="settings-group file-shelf-settings-ignored"
+          aria-labelledby="file-shelf-ignored-title"
+        >
+          <div className="settings-group__heading">
+            <AppWindow size={18} aria-hidden="true" />
+            <div>
+              <h3 id="file-shelf-ignored-title">除外するアプリ</h3>
+              <p>
+                指定したアプリでは、ドラッグ時の自動展開とクリップボード履歴の自動取得を止めます。
+              </p>
+            </div>
+          </div>
+          {settings.ignoredApplications.length ? (
+            <ul className="file-shelf-settings-apps">
+              {settings.ignoredApplications.map((application) => (
+                <li className="file-shelf-settings-app" key={application}>
+                  <AppWindow size={15} aria-hidden="true" />
+                  <span>{application}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeIgnoredApplication(application)}
+                    aria-label={`${application} を除外から外す`}
+                    title="除外から外す"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="file-shelf-settings-apps-empty">
+              除外しているアプリはありません。
+            </p>
+          )}
+          <Button
+            variant="ghost"
+            className="file-shelf-settings-add-app"
+            onClick={() => void addIgnoredApplication()}
+          >
+            <Plus size={15} aria-hidden="true" />
+            アプリを追加
+          </Button>
+          {ignoredApplicationError && (
+            <p className="file-shelf-settings-app-error" role="alert">
+              {ignoredApplicationError}
+            </p>
+          )}
+          <p className="file-shelf-settings-note">
+            初期状態では主要なパスワード管理アプリを除外します。ショートカットからの手動表示や2連打での明示的な取り込みは引き続き使えます。
           </p>
         </section>
       </div>

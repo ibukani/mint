@@ -172,6 +172,7 @@ export const GameLauncherSettings: React.FC = () => {
             </div>
           </div>
           <Button
+            id="game-launcher-sources-refresh"
             variant="ghost"
             className="game-launcher-sources-refresh"
             onClick={() => void scanGameSources()}

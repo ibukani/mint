@@ -21,6 +21,7 @@ export interface GoogleCalendarConnection {
   lastSyncedAt: string | null;
   pendingOperations: number;
   error: string | null;
+  syncing: boolean;
 }
 
 export interface GoogleCalendarSyncResult {

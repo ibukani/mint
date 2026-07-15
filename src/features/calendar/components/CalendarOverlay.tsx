@@ -1,10 +1,15 @@
-import { X } from "lucide-react";
+import { CircleAlert, RefreshCw, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { startOfMonth, toMachineDate } from "../calendar";
-import { eventsForDate, openCalendarEditor } from "../events";
+import {
+  addDays,
+  eventsForDate,
+  openCalendarEditor,
+  parseMachineDate,
+} from "../events";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
 import { useCalendarOverlay } from "../hooks/useCalendarOverlay";
 import type { CalendarEditorPayload, CalendarEvent } from "../types";
@@ -17,6 +22,15 @@ type CalendarScreen =
   | { kind: "month" }
   | { kind: "day"; date: string }
   | { kind: "detail"; event: CalendarEvent; returnDate?: string };
+
+const eventStartDate = (event: CalendarEvent) =>
+  event.schedule.kind === "allDay"
+    ? event.schedule.startDate
+    : toMachineDate(new Date(event.schedule.startsAt));
+
+const isSameMonth = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth();
 
 export const CalendarOverlay: React.FC = () => {
   const {
@@ -37,11 +51,17 @@ export const CalendarOverlay: React.FC = () => {
   const [editorRetryPayload, setEditorRetryPayload] =
     useState<CalendarEditorPayload | null>(null);
   const editorAttemptRef = useRef(0);
-  const { events, nextEvent, loading, error, refresh } = useCalendarEvents(
-    viewMonth,
-    today,
-    showSequence,
-  );
+  const {
+    events,
+    lastChangedEvent,
+    nextEvent,
+    loading,
+    error,
+    refresh,
+    syncError,
+    syncing,
+    retrySync,
+  } = useCalendarEvents(viewMonth, today, showSequence);
 
   const openEditor = useCallback(async (payload: CalendarEditorPayload) => {
     const attempt = ++editorAttemptRef.current;
@@ -88,6 +108,19 @@ export const CalendarOverlay: React.FC = () => {
     }
   }, [openMode, openEditor, showSequence]);
 
+  useEffect(() => {
+    if (screen.kind !== "detail") return;
+    const updatedEvent =
+      (lastChangedEvent?.id === screen.event.id && lastChangedEvent) ||
+      events.find((event) => event.id === screen.event.id);
+    if (!updatedEvent || updatedEvent === screen.event) return;
+    setScreen({
+      kind: "detail",
+      event: updatedEvent,
+      returnDate: screen.returnDate ? eventStartDate(updatedEvent) : undefined,
+    });
+  }, [events, lastChangedEvent, screen]);
+
   const handleBack = useCallback(() => {
     switch (screen.kind) {
       case "day":
@@ -104,6 +137,30 @@ export const CalendarOverlay: React.FC = () => {
         closeCalendar();
     }
   }, [screen, closeCalendar]);
+
+  const openDay = useCallback((date: string) => {
+    const nextMonth = startOfMonth(parseMachineDate(date));
+    setSelectedDate(date);
+    setViewMonth((currentMonth) =>
+      isSameMonth(currentMonth, nextMonth) ? currentMonth : nextMonth,
+    );
+    setScreen({ kind: "day", date });
+  }, []);
+
+  const openMonthEvent = useCallback((event: CalendarEvent) => {
+    const eventDate = eventStartDate(event);
+    setSelectedDate(eventDate);
+    setViewMonth(startOfMonth(parseMachineDate(eventDate)));
+    setScreen({ kind: "detail", event });
+  }, []);
+
+  const moveDay = useCallback(
+    (delta: number) => {
+      if (screen.kind !== "day") return;
+      openDay(addDays(screen.date, delta));
+    },
+    [openDay, screen],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -154,6 +211,9 @@ export const CalendarOverlay: React.FC = () => {
             error={error}
             onBack={handleBack}
             onAdd={() => void openEditor({ mode: "create", date: screen.date })}
+            onNextDay={() => moveDay(1)}
+            onPreviousDay={() => moveDay(-1)}
+            onRetry={refresh}
             onSelect={(event) =>
               setScreen({
                 kind: "detail",
@@ -197,11 +257,13 @@ export const CalendarOverlay: React.FC = () => {
             today={today}
             viewMonth={viewMonth}
             onViewMonthChange={setViewMonth}
-            onOpenDay={(date) => setScreen({ kind: "day", date })}
-            onOpenEvent={(event) => setScreen({ kind: "detail", event })}
+            onOpenDay={openDay}
+            onOpenEvent={openMonthEvent}
             onCreate={(date) => void openEditor({ mode: "create", date })}
+            onRetry={refresh}
             selectedDate={selectedDate}
             onSelectedDateChange={setSelectedDate}
+            syncing={syncing}
           />
         );
     }
@@ -225,6 +287,22 @@ export const CalendarOverlay: React.FC = () => {
         >
           <X size={15} aria-hidden="true" />
         </button>
+
+        {syncError && (
+          <div className="calendar-overlay__sync-error" role="alert">
+            <CircleAlert size={16} aria-hidden="true" />
+            <span>Google Calendarとの同期に失敗しました。{syncError}</span>
+            <Button
+              variant="ghost"
+              className="calendar-overlay__action-error-retry"
+              disabled={syncing}
+              onClick={() => void retrySync()}
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              再同期
+            </Button>
+          </div>
+        )}
         {editorActionError && editorRetryPayload && (
           <div className="calendar-overlay__action-error" role="alert">
             <span>{editorActionError}</span>

@@ -22,7 +22,7 @@
         "transparent": false,
         "shadow": true,
         "maximizable": false,
-        "resizable": true
+        "resizable": false
       },
       {
         "label": "clock",

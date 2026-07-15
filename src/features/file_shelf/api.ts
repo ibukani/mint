@@ -6,6 +6,7 @@ import type {
   AddFileShelfContentInput,
   AddFileShelfPathsInput,
   FileShelfMutation,
+  FileShelfPreview,
   FileShelfRemoval,
   FileShelfState,
 } from "./types";
@@ -20,6 +21,9 @@ const isBrowserMock = () =>
 export const loadFileShelfState = () =>
   invoke<FileShelfState>("load_file_shelf_state");
 
+export const loadFileShelfPreview = (itemId: string) =>
+  invoke<FileShelfPreview>("load_file_shelf_preview", { itemId });
+
 export const addFileShelfPaths = (input: AddFileShelfPathsInput) =>
   invoke<FileShelfMutation>("add_file_shelf_paths", { input });
 
@@ -29,8 +33,17 @@ export const addFileShelfContent = (input: AddFileShelfContentInput) =>
 export const removeFileShelfItems = (itemIds: string[]) =>
   invoke<FileShelfRemoval>("remove_file_shelf_items", { itemIds });
 
+export const setFileShelfItemsPinned = (itemIds: string[], pinned: boolean) =>
+  invoke<FileShelfState>("set_file_shelf_items_pinned", { itemIds, pinned });
+
+export const renameFileShelfItem = (itemId: string, displayName: string) =>
+  invoke<FileShelfState>("rename_file_shelf_item", { itemId, displayName });
+
 export const restoreFileShelfRemoval = (undoToken: string) =>
   invoke<FileShelfState>("restore_file_shelf_removal", { undoToken });
+
+export const restoreRecentFileShelfRemoval = () =>
+  invoke<FileShelfState>("restore_recent_file_shelf_removal");
 
 export const clearFileShelf = () =>
   invoke<FileShelfRemoval>("clear_file_shelf");
@@ -41,12 +54,38 @@ export const clearFileShelfClipboardHistory = () =>
 export const setFileShelfExpanded = (expanded: boolean, focus = expanded) =>
   invoke<void>("set_file_shelf_expanded", { expanded, focus });
 
+export const shouldAutoExpandFileShelf = () =>
+  invoke<boolean>("should_auto_expand_file_shelf");
+
 export const chooseFileShelfPaths = () =>
   open({
     title: "ファイルシェルへ追加",
     multiple: true,
     directory: false,
   });
+
+export const chooseFileShelfFolders = () =>
+  open({
+    title: "ファイルシェルへフォルダを追加",
+    multiple: true,
+    directory: true,
+  });
+
+export const applicationNameFromPath = (path: string) => {
+  const name = path.trim().split(/[\\/]/).pop()?.trim();
+  return name || null;
+};
+
+export const chooseIgnoredFileShelfApplication = async () => {
+  const selection = await open({
+    title: "ファイルシェルで除外するアプリを選択",
+    multiple: false,
+    directory: false,
+    filters: [{ name: "Windows アプリ", extensions: ["exe"] }],
+  });
+  const path = Array.isArray(selection) ? selection[0] : selection;
+  return path ? applicationNameFromPath(path) : null;
+};
 
 export const openFileShelfPath = (path: string) => openPath(path);
 

@@ -2485,6 +2485,7 @@ version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
+ "image",
  "keyring",
  "reqwest",
  "rusqlite",
@@ -2506,6 +2507,7 @@ dependencies = [
  "tauri-plugin-updater",
  "url",
  "uuid",
+ "windows-sys 0.61.2",
  "zip",
 ]
 

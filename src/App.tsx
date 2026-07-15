@@ -13,12 +13,20 @@ import {
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
 import { useSettingsWindow } from "./core/hooks/useSettingsWindow";
 import {
+  SETTINGS_QUICK_ACTIONS,
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
+  type SettingsTabId,
 } from "./core/navigation/settingsTabs";
+import { isOverlayTarget, openOverlay } from "./core/windowCommands";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
-import { syncGoogleCalendars } from "./features/calendar/googleCalendar";
+import { toMachineDate } from "./features/calendar/calendar";
+import { openCalendarEditor } from "./features/calendar/events";
+import {
+  getGoogleCalendarConnection,
+  syncGoogleCalendars,
+} from "./features/calendar/googleCalendar";
 
 const saveSidebarLabels: Record<SaveStatus, string> = {
   idle: "変更時に自動保存",
@@ -39,6 +47,59 @@ const saveSidebarTones: Record<
   error: "error",
 };
 
+type OverlayFeatureSettingsKey =
+  | "clock"
+  | "calendar"
+  | "gameLauncher"
+  | "quickCapture"
+  | "fileShelf";
+
+type QuickActionAvailability = {
+  settingsKey: OverlayFeatureSettingsKey;
+  tabId: SettingsTabId;
+  targetId: string;
+  label: string;
+};
+
+const quickActionAvailability: Record<string, QuickActionAvailability> = {
+  clock: {
+    settingsKey: "clock",
+    tabId: "clock",
+    targetId: "clock-enabled-checkbox",
+    label: "時計オーバーレイ",
+  },
+  calendar: {
+    settingsKey: "calendar",
+    tabId: "calendar",
+    targetId: "calendar-enabled-checkbox",
+    label: "カレンダー",
+  },
+  calendarCreateEvent: {
+    settingsKey: "calendar",
+    tabId: "calendar",
+    targetId: "calendar-enabled-checkbox",
+    label: "カレンダー",
+  },
+  gameLauncher: {
+    settingsKey: "gameLauncher",
+    tabId: "gameLauncher",
+    targetId: "game-launcher-enabled",
+    label: "ゲームランチャー",
+  },
+  quickCapture: {
+    settingsKey: "quickCapture",
+    tabId: "quickCapture",
+    targetId: "quick-capture-enabled",
+    label: "クイックキャプチャー",
+  },
+  fileShelf: {
+    settingsKey: "fileShelf",
+    tabId: "fileShelf",
+    targetId: "file-shelf-enabled",
+    label: "ファイルシェル",
+  },
+};
+
 const AppContent: React.FC = () => {
   const {
     settings,
@@ -48,8 +109,11 @@ const AppContent: React.FC = () => {
     clearError,
     reloadSettings,
     retrySaveSettings,
+    updateSettings,
   } = useAppSettings();
-  const { label, activeTab, setActiveTab } = useSettingsWindow(settings?.theme);
+  const { label, activeTab, setActiveTab, focusRequest } = useSettingsWindow(
+    settings?.theme,
+  );
   const startupSyncStarted = useRef(false);
   const initialActiveTab = useRef(activeTab);
 
@@ -63,10 +127,14 @@ const AppContent: React.FC = () => {
       return;
     }
     startupSyncStarted.current = true;
-    syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds).catch(
-      (syncError) =>
+    getGoogleCalendarConnection()
+      .then((connection) => {
+        if (!connection.connected || connection.syncing) return undefined;
+        return syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
+      })
+      .catch((syncError) =>
         console.warn("Google Calendar startup sync was skipped:", syncError),
-    );
+      );
   }, [label, settings]);
 
   if (loading) return <AppLoading />;
@@ -84,6 +152,24 @@ const AppContent: React.FC = () => {
   const activeTabLabel =
     SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定";
   const settingsLoadError = !settings ? error : null;
+  const quickActions = settings
+    ? SETTINGS_QUICK_ACTIONS.map((action) => {
+        const availability = quickActionAvailability[action.targetId];
+        if (!availability || settings[availability.settingsKey].enabled) {
+          return action;
+        }
+
+        return {
+          ...action,
+          disabled: true,
+          disabledReason: `${availability.label}が無効です。詳細設定で有効にしてください。`,
+          disabledSettingsTarget: {
+            tabId: availability.tabId,
+            targetId: availability.targetId,
+          },
+        };
+      })
+    : SETTINGS_QUICK_ACTIONS;
 
   return (
     <>
@@ -98,6 +184,39 @@ const AppContent: React.FC = () => {
           tabs={SETTINGS_TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          quickActions={quickActions}
+          onQuickAction={(targetId) => {
+            if (
+              targetId === "themeDark" ||
+              targetId === "themeLight" ||
+              targetId === "themeSystem"
+            ) {
+              updateSettings({
+                theme:
+                  targetId === "themeDark"
+                    ? "dark"
+                    : targetId === "themeLight"
+                      ? "light"
+                      : "system",
+              });
+              return;
+            }
+            if (targetId === "calendarCreateEvent") {
+              if (!settings?.calendar.enabled) {
+                return Promise.reject(
+                  new Error("カレンダーが無効になっています。"),
+                );
+              }
+              return openCalendarEditor({
+                mode: "create",
+                date: toMachineDate(new Date()),
+              });
+            }
+            if (!isOverlayTarget(targetId)) {
+              return Promise.reject(new Error("利用できない操作です。"));
+            }
+            return openOverlay(targetId);
+          }}
           statusLabel={saveSidebarLabels[saveStatus]}
           statusTone={saveSidebarTones[saveStatus]}
         >
@@ -111,8 +230,11 @@ const AppContent: React.FC = () => {
             <Suspense fallback={<AppLoading compact />}>
               <ActiveTabComponent />
               <AutoFocusTrigger
-                key={activeTab}
-                enabled={activeTab !== initialActiveTab.current}
+                key={`${activeTab}:${focusRequest.id}`}
+                enabled={
+                  activeTab !== initialActiveTab.current || focusRequest.id > 0
+                }
+                targetId={focusRequest.targetId}
               />
             </Suspense>
           )}

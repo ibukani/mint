@@ -80,7 +80,8 @@
   transform: scale(0.985) translateY(4px);
 }
 
-.overlay-card .overlay-close-button {
+.overlay-card .overlay-close-button,
+.overlay-frame .overlay-close-button {
   position: absolute;
   z-index: 10;
   top: 8px;
@@ -103,13 +104,15 @@
     transform var(--transition-fast);
 }
 
-.overlay-card .overlay-close-button:hover {
+.overlay-card .overlay-close-button:hover,
+.overlay-frame .overlay-close-button:hover {
   border-color: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
   background: color-mix(in srgb, var(--surface-control-hover) 70%, transparent);
   color: var(--color-text-primary);
 }
 
-.overlay-card .overlay-close-button:active {
+.overlay-card .overlay-close-button:active,
+.overlay-frame .overlay-close-button:active {
   transform: scale(0.94);
 }
 
@@ -151,7 +154,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .overlay-card,
-  .overlay-card .overlay-close-button {
+  .overlay-card .overlay-close-button,
+  .overlay-frame .overlay-close-button {
     transition: none;
   }
 }

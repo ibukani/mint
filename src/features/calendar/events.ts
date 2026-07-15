@@ -9,7 +9,13 @@ import type {
   CalendarEventRange,
 } from "./types";
 
-const parseMachineDate = (value: string) => {
+export const CALENDAR_EVENTS_CHANGED_EVENT = "calendar-events-changed";
+
+export interface CalendarEventsChangedPayload {
+  event: CalendarEvent;
+}
+
+export const parseMachineDate = (value: string) => {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
 };
@@ -296,4 +302,34 @@ export const formatEventDate = (event: CalendarEvent) => {
     day: "numeric",
     weekday: "short",
   }).format(value);
+};
+
+const formatClipboardDate = (value: Date) =>
+  new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(value);
+
+export const formatEventForClipboard = (event: CalendarEvent) => {
+  let dateLabel: string;
+  if (event.schedule.kind === "allDay") {
+    const start = parseMachineDate(event.schedule.startDate);
+    const end = parseMachineDate(addDays(event.schedule.endDateExclusive, -1));
+    const startLabel = formatClipboardDate(start);
+    const endLabel = formatClipboardDate(end);
+    dateLabel =
+      startLabel === endLabel ? startLabel : `${startLabel}〜${endLabel}`;
+  } else {
+    dateLabel = formatClipboardDate(new Date(event.schedule.startsAt));
+  }
+
+  return [
+    event.title,
+    `${dateLabel} ${formatEventTime(event)}`,
+    event.notes.trim(),
+  ]
+    .filter(Boolean)
+    .join("\n");
 };

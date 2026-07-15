@@ -102,7 +102,11 @@ export const UpdaterSettings: React.FC = () => {
             <p>{update.body}</p>
           </section>
         )}
-        {error && <p className="updater-settings__error">{error}</p>}
+        {error && (
+          <p className="updater-settings__error" role="alert">
+            {error}
+          </p>
+        )}
         {(status === "downloading" || status === "installing") && (
           <div
             className={`updater-settings__progress ${progress === null ? "is-indeterminate" : ""}`}

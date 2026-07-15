@@ -12,12 +12,14 @@ const API_ROOT: &str = "https://www.googleapis.com/calendar/v3";
 
 pub struct GoogleCalendarState {
     status: Mutex<RuntimeStatus>,
+    operation: Mutex<()>,
 }
 
 impl Default for GoogleCalendarState {
     fn default() -> Self {
         Self {
             status: Mutex::new(RuntimeStatus::default()),
+            operation: Mutex::new(()),
         }
     }
 }
@@ -27,6 +29,7 @@ struct RuntimeStatus {
     account_email: String,
     last_synced_at: Option<String>,
     error: Option<String>,
+    syncing: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -37,6 +40,17 @@ pub struct GoogleCalendarConnection {
     last_synced_at: Option<String>,
     pending_operations: u32,
     error: Option<String>,
+    syncing: bool,
+}
+
+pub(super) async fn run_blocking<T, F>(task: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(task)
+        .await
+        .map_err(|error| format!("Google Calendar background task failed: {error}"))?
 }
 
 #[derive(Clone, Debug, Serialize)]

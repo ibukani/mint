@@ -1,12 +1,15 @@
-import { CalendarClock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  CalendarClock,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  LoaderCircle,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  buildCalendarDays,
-  shiftMonth,
-  startOfMonth,
-  toMachineDate,
-} from "../calendar";
+import { buildCalendarDays, startOfMonth, toMachineDate } from "../calendar";
 import { eventsForDate, formatEventDate, formatEventTime } from "../events";
 import type { CalendarEvent } from "../types";
 
@@ -20,11 +23,13 @@ interface MonthCalendarProps {
   onCreate: (date: string) => void;
   onOpenDay: (date: string) => void;
   onOpenEvent: (event: CalendarEvent) => void;
+  onRetry: () => void;
   onViewMonthChange: (month: Date) => void;
   selectedDate?: string;
   onSelectedDateChange?: (date: string) => void;
   today: Date;
   viewMonth: Date;
+  syncing?: boolean;
 }
 
 export const MonthCalendar: React.FC<MonthCalendarProps> = ({
@@ -35,15 +40,18 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onCreate,
   onOpenDay,
   onOpenEvent,
+  onRetry,
   onViewMonthChange,
   selectedDate: selectedDateProp,
   onSelectedDateChange,
   today,
   viewMonth,
+  syncing,
 }) => {
   const [internalSelectedDate, setInternalSelectedDate] = useState(() =>
     toMachineDate(today),
   );
+  const dateJumpRef = useRef<HTMLInputElement>(null);
   const dayRefs = useRef(new Map<string, HTMLButtonElement>());
   const shouldFocusSelectedRef = useRef(false);
   const hasFocusedInitialDateRef = useRef(false);
@@ -104,6 +112,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
   };
 
+  const selectDateFromPicker = (machineDate: string) => {
+    if (!machineDate) return;
+    const [year, month, day] = machineDate.split("-").map(Number);
+    const date = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+    if (Number.isNaN(date.getTime())) return;
+    selectAndFocusDate(date);
+  };
+
   const shiftSelectedMonth = (delta: number) => {
     const current = activeFocusDateValue();
     const targetMonth = new Date(
@@ -121,8 +137,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   };
 
   const moveMonth = (delta: number) => {
-    const targetMonth = shiftMonth(viewMonth, delta);
-    onViewMonthChange(targetMonth);
+    shiftSelectedMonth(delta);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -161,6 +176,13 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     ) {
       event.preventDefault();
       onCreate(selectedDate);
+    } else if (
+      event.key.toLowerCase() === "g" &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      dateJumpRef.current?.focus({ preventScroll: true });
     }
   };
 
@@ -176,35 +198,60 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       onKeyDown={handleKeyDown}
     >
       <header className="month-calendar__header">
-        <h2 aria-live="polite" aria-label={monthLabel}>
+        <h2
+          aria-live="polite"
+          aria-label={monthLabel}
+          className="month-calendar__title-container"
+        >
           <span className="month-calendar__year">
             {viewMonth.getFullYear()}年
           </span>
           <strong className="month-calendar__month">
             {viewMonth.getMonth() + 1}月
           </strong>
+          {syncing && (
+            <LoaderCircle
+              className="month-calendar__sync-spinner spinner-icon"
+              size={15}
+              aria-hidden="true"
+            />
+          )}
         </h2>
-        <div className="month-calendar__switcher">
-          <button
-            type="button"
-            className="month-calendar__nav-button"
-            aria-label="前の月"
-            aria-keyshortcuts="PageUp"
-            title="前の月（Page Up）"
-            onClick={() => moveMonth(-1)}
-          >
-            <ChevronLeft size={18} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="month-calendar__nav-button"
-            aria-label="次の月"
-            aria-keyshortcuts="PageDown"
-            title="次の月（Page Down）"
-            onClick={() => moveMonth(1)}
-          >
-            <ChevronRight size={18} aria-hidden="true" />
-          </button>
+        <div className="month-calendar__header-actions">
+          <label className="month-calendar__date-jump" title="日付へ移動（G）">
+            <CalendarDays size={15} aria-hidden="true" />
+            <span>日付</span>
+            <input
+              ref={dateJumpRef}
+              type="date"
+              value={selectedDate}
+              aria-label="日付へ移動"
+              aria-keyshortcuts="G"
+              onChange={(event) => selectDateFromPicker(event.target.value)}
+            />
+          </label>
+          <div className="month-calendar__switcher">
+            <button
+              type="button"
+              className="month-calendar__nav-button"
+              aria-label="前の月"
+              aria-keyshortcuts="PageUp"
+              title="前の月（Page Up）"
+              onClick={() => moveMonth(-1)}
+            >
+              <ChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="month-calendar__nav-button"
+              aria-label="次の月"
+              aria-keyshortcuts="PageDown"
+              title="次の月（Page Down）"
+              onClick={() => moveMonth(1)}
+            >
+              <ChevronRight size={18} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -252,6 +299,16 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
         })}
       </div>
 
+      {!loading && error && (
+        <div className="calendar-screen__load-error" role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={onRetry}>
+            <RefreshCw size={14} aria-hidden="true" />
+            再読み込み
+          </button>
+        </div>
+      )}
+
       <footer className="month-calendar__footer">
         <button
           type="button"
@@ -285,7 +342,11 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
           >
             <CalendarClock size={15} aria-hidden="true" />
             <span className="month-calendar__next-empty-label">
-              {loading ? "予定を確認中…" : error || "次の予定はありません"}
+              {loading
+                ? "予定を確認中…"
+                : error
+                  ? "読み込みエラー"
+                  : "次の予定はありません"}
             </span>
           </div>
         )}
