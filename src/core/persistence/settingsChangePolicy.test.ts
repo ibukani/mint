@@ -32,6 +32,22 @@ describe("settings change policy", () => {
     expect(requiresImmediateSettingsSave(previous, next)).toBe(true);
   });
 
+  it("applies ignored-application privacy changes immediately", () => {
+    const previous = cloneSettings();
+    const next = cloneSettings();
+    next.fileShelf.ignoredApplications.push("PrivateCopy.exe");
+
+    expect(requiresImmediateSettingsSave(previous, next)).toBe(true);
+  });
+
+  it("repositions the file shelf immediately", () => {
+    const previous = cloneSettings();
+    const next = cloneSettings();
+    next.fileShelf.verticalPosition = "bottom";
+
+    expect(requiresImmediateSettingsSave(previous, next)).toBe(true);
+  });
+
   it("compares complete settings snapshots", () => {
     const settings = cloneSettings();
 

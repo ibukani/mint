@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addFileShelfContent,
   addFileShelfPaths,
+  chooseFileShelfFolders,
   chooseFileShelfPaths,
   clearFileShelf,
   clearFileShelfClipboardHistory,
@@ -11,9 +12,13 @@ import {
   openFileShelfPath,
   openFileShelfUrl,
   removeFileShelfItems,
+  renameFileShelfItem,
   restoreFileShelfRemoval,
+  restoreRecentFileShelfRemoval,
   revealFileShelfPath,
   setFileShelfExpanded,
+  setFileShelfItemsPinned,
+  shouldAutoExpandFileShelf,
   startFileShelfDrag,
 } from "../api";
 import type {
@@ -35,7 +40,10 @@ export const useFileShelf = () => {
   const [notice, setNotice] = useState("");
   const [undoToken, setUndoToken] = useState("");
   const [isDropTarget, setIsDropTarget] = useState(false);
+  const [transientExpanded, setTransientExpanded] = useState(false);
+  const [pendingDragItemIds, setPendingDragItemIds] = useState<string[]>([]);
   const loadRevision = useRef(0);
+  const dragEnterRevision = useRef(0);
 
   const fail = useCallback((reason: unknown) => {
     setError(reason instanceof Error ? reason.message : String(reason));
@@ -60,12 +68,14 @@ export const useFileShelf = () => {
   }, [load]);
 
   const changeExpanded = useCallback(
-    async (next: boolean, focus = next) => {
+    async (next: boolean, focus = next, transient = false) => {
       setError("");
+      setTransientExpanded(next && transient);
       try {
         await setFileShelfExpanded(next, focus);
         setExpanded(next);
       } catch (reason) {
+        setTransientExpanded(false);
         fail(reason);
       }
     },
@@ -99,8 +109,12 @@ export const useFileShelf = () => {
     let unlistenMode: (() => void) | undefined;
     let unlistenDrop: (() => void) | undefined;
     let unlistenState: (() => void) | undefined;
+    let unlistenNotice: (() => void) | undefined;
+    let unlistenError: (() => void) | undefined;
+    let unlistenRecentRestore: (() => void) | undefined;
     void listen<boolean>("file-shelf-mode-changed", (event) => {
       setExpanded(event.payload);
+      if (!event.payload) setTransientExpanded(false);
     }).then((cleanup) => {
       unlistenMode = cleanup;
     });
@@ -110,16 +124,46 @@ export const useFileShelf = () => {
     }).then((cleanup) => {
       unlistenState = cleanup;
     });
+    void listen<string>("file-shelf-notice", (event) => {
+      setError("");
+      setNotice(event.payload);
+    }).then((cleanup) => {
+      unlistenNotice = cleanup;
+    });
+    void listen<string>("file-shelf-error", (event) => {
+      setNotice("");
+      setError(event.payload);
+    }).then((cleanup) => {
+      unlistenError = cleanup;
+    });
+    void listen<void>("file-shelf-recent-removal-restored", () => {
+      setUndoToken("");
+    }).then((cleanup) => {
+      unlistenRecentRestore = cleanup;
+    });
     void getCurrentWebview()
       .onDragDropEvent((event) => {
         if (event.payload.type === "enter" || event.payload.type === "over") {
           setIsDropTarget(true);
           if (event.payload.type === "enter") {
-            void changeExpanded(true, false);
+            const revision = ++dragEnterRevision.current;
+            void shouldAutoExpandFileShelf()
+              .then((shouldExpand) => {
+                if (revision === dragEnterRevision.current && shouldExpand) {
+                  void changeExpanded(true, false, true);
+                }
+              })
+              .catch(() => {
+                if (revision === dragEnterRevision.current) {
+                  void changeExpanded(true, false, true);
+                }
+              });
           }
         } else if (event.payload.type === "leave") {
+          dragEnterRevision.current += 1;
           setIsDropTarget(false);
         } else if (event.payload.type === "drop") {
+          dragEnterRevision.current += 1;
           setIsDropTarget(false);
           void addPaths(event.payload.paths);
         }
@@ -131,6 +175,10 @@ export const useFileShelf = () => {
       unlistenMode?.();
       unlistenDrop?.();
       unlistenState?.();
+      unlistenNotice?.();
+      unlistenError?.();
+      unlistenRecentRestore?.();
+      dragEnterRevision.current += 1;
       setIsDropTarget(false);
     };
   }, [addPaths, changeExpanded]);
@@ -140,6 +188,15 @@ export const useFileShelf = () => {
     const timer = window.setTimeout(() => setUndoToken(""), 10_000);
     return () => window.clearTimeout(timer);
   }, [undoToken]);
+
+  useEffect(() => {
+    const activeIds = new Set(
+      state.groups.flatMap((group) => group.items.map((item) => item.id)),
+    );
+    setPendingDragItemIds((previous) =>
+      previous.filter((itemId) => activeIds.has(itemId)),
+    );
+  }, [state.groups]);
 
   const addContent = useCallback(
     async (input: AddFileShelfContentInput) => {
@@ -162,6 +219,16 @@ export const useFileShelf = () => {
   const choosePaths = useCallback(async () => {
     try {
       const selection = await chooseFileShelfPaths();
+      if (!selection) return;
+      await addPaths(Array.isArray(selection) ? selection : [selection]);
+    } catch (reason) {
+      fail(reason);
+    }
+  }, [addPaths, fail]);
+
+  const chooseFolders = useCallback(async () => {
+    try {
+      const selection = await chooseFileShelfFolders();
       if (!selection) return;
       await addPaths(Array.isArray(selection) ? selection : [selection]);
     } catch (reason) {
@@ -233,6 +300,66 @@ export const useFileShelf = () => {
     }
   }, [fail, undoToken]);
 
+  const restoreRecent = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const next = await restoreRecentFileShelfRemoval();
+      setState(next);
+      setUndoToken("");
+      setNotice("最近外した項目を棚へ戻しました");
+    } catch (reason) {
+      fail(reason);
+    } finally {
+      setBusy(false);
+    }
+  }, [fail]);
+
+  const pinItems = useCallback(
+    async (items: FileShelfItem[], pinned: boolean) => {
+      if (!items.length) return;
+      setBusy(true);
+      setError("");
+      try {
+        const next = await setFileShelfItemsPinned(
+          items.map((item) => item.id),
+          pinned,
+        );
+        setState(next);
+        setNotice(
+          pinned
+            ? `${items.length}件を棚に固定しました`
+            : `${items.length}件の固定を解除しました`,
+        );
+      } catch (reason) {
+        fail(reason);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [fail],
+  );
+
+  const renameItem = useCallback(
+    async (item: FileShelfItem, displayName: string) => {
+      setBusy(true);
+      setError("");
+      try {
+        const next = await renameFileShelfItem(item.id, displayName);
+        setState(next);
+        setNotice(`「${displayName.trim()}」として棚に表示します`);
+        return true;
+      } catch (reason) {
+        fail(reason);
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [fail],
+  );
+
   const dragItems = useCallback(
     async (items: FileShelfItem[], move = false) => {
       const ready = items.filter(
@@ -249,12 +376,20 @@ export const useFileShelf = () => {
       try {
         const result = await startFileShelfDrag(paths, move ? "move" : "copy");
         if (result === "Dropped") {
-          const removal = await removeFileShelfItems(
-            ready.map((item) => item.id),
+          const removable = ready.filter((item) => !item.pinned);
+          if (removable.length) {
+            setPendingDragItemIds((previous) =>
+              Array.from(
+                new Set([...previous, ...removable.map((item) => item.id)]),
+              ),
+            );
+          }
+          const retainedCount = ready.length - removable.length;
+          setNotice(
+            removable.length
+              ? `${ready.length}件の取り出し操作を完了しました。ドロップ先を確認してください${retainedCount ? `（固定中の${retainedCount}件は棚に残ります）` : ""}`
+              : `${ready.length}件を取り出しました（固定中の項目は棚に残ります）`,
           );
-          setState(removal.state);
-          setUndoToken(removal.undoToken);
-          setNotice(`${ready.length}件を取り出しました`);
         }
       } catch (reason) {
         fail(reason);
@@ -264,6 +399,30 @@ export const useFileShelf = () => {
     },
     [fail],
   );
+
+  const confirmDraggedItems = useCallback(async () => {
+    if (!pendingDragItemIds.length) return;
+    setBusy(true);
+    setError("");
+    try {
+      const removal = await removeFileShelfItems(pendingDragItemIds);
+      setState(removal.state);
+      setUndoToken(removal.undoToken);
+      setPendingDragItemIds([]);
+      setNotice(`${pendingDragItemIds.length}件を棚から外しました`);
+    } catch (reason) {
+      fail(reason);
+    } finally {
+      setBusy(false);
+    }
+  }, [fail, pendingDragItemIds]);
+
+  const keepDraggedItems = useCallback(() => {
+    if (!pendingDragItemIds.length) return;
+    const count = pendingDragItemIds.length;
+    setPendingDragItemIds([]);
+    setNotice(`${count}件を棚に残しました`);
+  }, [pendingDragItemIds]);
 
   const copyItem = useCallback(
     async (item: FileShelfItem) => {
@@ -332,8 +491,18 @@ export const useFileShelf = () => {
       state.groups.reduce(
         (sum, group) =>
           sum +
-          group.items.filter((item) => item.source === "clipboardHistory")
-            .length,
+          group.items.filter(
+            (item) => item.source === "clipboardHistory" && !item.pinned,
+          ).length,
+        0,
+      ),
+    [state.groups],
+  );
+
+  const pinnedCount = useMemo(
+    () =>
+      state.groups.reduce(
+        (sum, group) => sum + group.items.filter((item) => item.pinned).length,
         0,
       ),
     [state.groups],
@@ -348,18 +517,27 @@ export const useFileShelf = () => {
     notice,
     undoToken,
     isDropTarget,
+    transientExpanded,
     itemCount,
     clipboardHistoryCount,
+    pinnedCount,
+    pendingDragCount: pendingDragItemIds.length,
     reportError: fail,
     changeExpanded,
     addPaths,
     addContent,
     choosePaths,
+    chooseFolders,
     removeItems,
     clear,
     clearClipboardHistory,
     undo,
+    restoreRecent,
+    pinItems,
+    renameItem,
     dragItems,
+    confirmDraggedItems,
+    keepDraggedItems,
     copyItem,
     copyItems,
     openItem,

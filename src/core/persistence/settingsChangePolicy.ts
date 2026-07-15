@@ -15,11 +15,14 @@ export const requiresImmediateSettingsSave = (
   previous.fileShelf.enabled !== next.fileShelf.enabled ||
   previous.fileShelf.shortcut !== next.fileShelf.shortcut ||
   previous.fileShelf.edge !== next.fileShelf.edge ||
+  previous.fileShelf.verticalPosition !== next.fileShelf.verticalPosition ||
   previous.fileShelf.edgeHandleEnabled !== next.fileShelf.edgeHandleEnabled ||
   previous.fileShelf.clipboardHistoryEnabled !==
     next.fileShelf.clipboardHistoryEnabled ||
   previous.fileShelf.clipboardHistoryLimit !==
     next.fileShelf.clipboardHistoryLimit ||
+  JSON.stringify(previous.fileShelf.ignoredApplications) !==
+    JSON.stringify(next.fileShelf.ignoredApplications) ||
   previous.clock.enabled !== next.clock.enabled ||
   previous.clock.shortcut !== next.clock.shortcut ||
   previous.calendar.enabled !== next.calendar.enabled ||

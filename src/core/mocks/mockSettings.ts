@@ -6,10 +6,12 @@ const defaultMockSettings: AppSettings = {
     enabled: defaultAppSettings.fileShelf.enabled,
     shortcut: defaultAppSettings.fileShelf.shortcut,
     edge: defaultAppSettings.fileShelf.edge,
+    verticalPosition: defaultAppSettings.fileShelf.verticalPosition,
     edgeHandleEnabled: defaultAppSettings.fileShelf.edgeHandleEnabled,
     clipboardHistoryEnabled:
       defaultAppSettings.fileShelf.clipboardHistoryEnabled,
     clipboardHistoryLimit: defaultAppSettings.fileShelf.clipboardHistoryLimit,
+    ignoredApplications: [...defaultAppSettings.fileShelf.ignoredApplications],
     themeColor: defaultAppSettings.fileShelf.themeColor,
   },
 

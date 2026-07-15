@@ -1,10 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFileShelf } from "../hooks/useFileShelf";
 import type { FileShelfItem } from "../types";
 import { FileShelfOverlay } from "./FileShelfOverlay";
 
+const previewApi = vi.hoisted(() => ({
+  loadFileShelfPreview: vi.fn(),
+}));
+
 vi.mock("../hooks/useFileShelf", () => ({ useFileShelf: vi.fn() }));
+vi.mock("../api", () => previewApi);
 vi.mock("../../../core/context/AppSettings", () => ({
   useAppSettings: () => ({ settings: undefined }),
 }));
@@ -21,6 +32,7 @@ const first: FileShelfItem = {
   createdAt: "2026-07-13T00:00:00Z",
   availability: "ready",
   source: "manual",
+  pinned: false,
 };
 
 const second: FileShelfItem = {
@@ -44,11 +56,22 @@ const urlItem: FileShelfItem = {
   sizeBytes: null,
 };
 
+const imageItem: FileShelfItem = {
+  ...first,
+  id: "image",
+  groupId: "image-group",
+  kind: "image",
+  displayName: "preview.png",
+  sourcePath: "C:\\Work\\preview.png",
+  mimeType: "image/png",
+};
+
 const actions = {
   changeExpanded: vi.fn(),
   addPaths: vi.fn(),
   addContent: vi.fn(),
   choosePaths: vi.fn(),
+  chooseFolders: vi.fn(),
   removeItems: vi.fn(),
   clear: vi.fn(),
   undo: vi.fn(),
@@ -58,6 +81,11 @@ const actions = {
   openItem: vi.fn(),
   revealItem: vi.fn(),
   clearClipboardHistory: vi.fn(),
+  pinItems: vi.fn(),
+  renameItem: vi.fn(),
+  restoreRecent: vi.fn(),
+  confirmDraggedItems: vi.fn(),
+  keepDraggedItems: vi.fn(),
 };
 
 const expandedShelf = () => ({
@@ -77,8 +105,11 @@ const expandedShelf = () => ({
   notice: "",
   undoToken: "",
   isDropTarget: false,
+  transientExpanded: false,
   itemCount: 2,
   clipboardHistoryCount: 0,
+  pinnedCount: 0,
+  pendingDragCount: 0,
   reportError: vi.fn(),
   ...actions,
 });
@@ -86,6 +117,10 @@ const expandedShelf = () => ({
 describe("FileShelfOverlay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    previewApi.loadFileShelfPreview.mockResolvedValue({
+      dataUrl: "data:image/png;base64,cHJldmlldw==",
+    });
+    actions.renameItem.mockResolvedValue(true);
     vi.mocked(useFileShelf).mockReturnValue(expandedShelf());
   });
 
@@ -106,6 +141,50 @@ describe("FileShelfOverlay", () => {
     expect(actions.dragItems).toHaveBeenCalledWith([first, second], true);
   });
 
+  it("starts an outward drag from the item row without requiring the grip", () => {
+    render(<FileShelfOverlay />);
+
+    fireEvent.click(screen.getByRole("button", { name: /2件のスタック/ }));
+    const row = screen.getByRole("button", { name: /report\.pdf.*ファイル/ });
+    expect(row).toHaveClass("is-draggable");
+
+    fireEvent.pointerDown(row, {
+      button: 0,
+      pointerId: 4,
+      clientX: 40,
+      clientY: 20,
+    });
+    fireEvent.pointerMove(row, {
+      pointerId: 4,
+      clientX: 47,
+      clientY: 20,
+      shiftKey: true,
+    });
+    fireEvent.click(row);
+
+    expect(actions.dragItems).toHaveBeenCalledWith([first], true);
+    expect(row).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("asks for destination confirmation before removing dragged items", () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      pendingDragCount: 1,
+    });
+    render(<FileShelfOverlay />);
+
+    expect(screen.getByText("ドロップ先を確認")).toBeInTheDocument();
+    expect(
+      screen.getByText("1件が追加できていたら棚から外します"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "棚に残す" }));
+    fireEvent.click(screen.getByRole("button", { name: "棚から外す" }));
+
+    expect(actions.keepDraggedItems).toHaveBeenCalledOnce();
+    expect(actions.confirmDraggedItems).toHaveBeenCalledOnce();
+  });
+
   it("shows a clear drop target state while files are being dragged in", () => {
     vi.mocked(useFileShelf).mockReturnValue({
       ...expandedShelf(),
@@ -120,6 +199,208 @@ describe("FileShelfOverlay", () => {
     expect(pasteZone).toHaveTextContent("ここにドロップしてファイルを追加");
   });
 
+  it("keeps a manually opened shelf available after the pointer leaves", () => {
+    vi.useFakeTimers();
+    render(<FileShelfOverlay />);
+
+    fireEvent.mouseLeave(
+      screen.getByRole("region", { name: "ファイルシェル" }),
+    );
+    vi.advanceTimersByTime(2_000);
+
+    expect(actions.changeExpanded).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("folds a drag-opened shelf after a short pointer-leave grace period", () => {
+    vi.useFakeTimers();
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      transientExpanded: true,
+    });
+    render(<FileShelfOverlay />);
+
+    fireEvent.mouseLeave(
+      screen.getByRole("region", { name: "ファイルシェル" }),
+    );
+    vi.advanceTimersByTime(1_200);
+
+    expect(actions.changeExpanded).toHaveBeenCalledWith(false);
+    vi.useRealTimers();
+  });
+
+  it("keeps a drag-opened shelf visible while Quick Look is pinned", () => {
+    vi.useFakeTimers();
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: urlItem.groupId,
+            createdAt: urlItem.createdAt,
+            items: [urlItem],
+          },
+        ],
+      },
+      transientExpanded: true,
+      itemCount: 1,
+    });
+    render(<FileShelfOverlay />);
+
+    fireEvent.click(screen.getByRole("button", { name: /example\.com.*URL/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "選択項目をプレビュー" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "クイックプレビューを固定" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "クイックプレビューの固定を解除" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.mouseLeave(
+      screen.getByRole("region", { name: "ファイルシェル" }),
+    );
+    act(() => vi.advanceTimersByTime(1_200));
+    expect(actions.changeExpanded).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole("region", { name: "ファイルシェル" }), {
+      key: "p",
+    });
+    fireEvent.mouseLeave(
+      screen.getByRole("region", { name: "ファイルシェル" }),
+    );
+    act(() => vi.advanceTimersByTime(1_200));
+    expect(actions.changeExpanded).toHaveBeenCalledWith(false);
+    vi.useRealTimers();
+  });
+
+  it("offers separate file and folder pickers when the shelf is empty", () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: { groups: [] },
+      itemCount: 0,
+    });
+    render(<FileShelfOverlay />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ファイル" }));
+    fireEvent.click(screen.getByRole("button", { name: "フォルダ" }));
+
+    expect(actions.choosePaths).toHaveBeenCalledOnce();
+    expect(actions.chooseFolders).toHaveBeenCalledOnce();
+  });
+
+  it("offers recovery of the most recently removed batch", () => {
+    render(<FileShelfOverlay />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "最近外した項目を戻す" }),
+    );
+
+    expect(actions.restoreRecent).toHaveBeenCalledOnce();
+  });
+
+  it("opens a newly added stack so its contents are immediately visible", () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: "first-group",
+            createdAt: first.createdAt,
+            items: [{ ...first, groupId: "first-group" }],
+          },
+        ],
+      },
+      itemCount: 1,
+    });
+    const { rerender } = render(<FileShelfOverlay />);
+
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: "first-group",
+            createdAt: first.createdAt,
+            items: [{ ...first, groupId: "first-group" }],
+          },
+          {
+            id: "new-stack",
+            createdAt: second.createdAt,
+            items: [
+              { ...second, groupId: "new-stack" },
+              { ...urlItem, groupId: "new-stack" },
+            ],
+          },
+        ],
+      },
+      itemCount: 3,
+    });
+    rerender(<FileShelfOverlay />);
+
+    expect(screen.getByText("assets")).toBeInTheDocument();
+    expect(screen.getByText("example.com")).toBeInTheDocument();
+  });
+
+  it("shows an image Quick Look and closes it with Escape", async () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: imageItem.groupId,
+            createdAt: imageItem.createdAt,
+            items: [imageItem],
+          },
+        ],
+      },
+      itemCount: 1,
+    });
+    render(<FileShelfOverlay />);
+
+    fireEvent.click(screen.getByRole("button", { name: /preview\.png.*画像/ }));
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "選択項目をプレビュー" }),
+      );
+    });
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "preview.pngのクイックプレビュー",
+      }),
+    ).toBeInTheDocument();
+    expect(previewApi.loadFileShelfPreview).toHaveBeenCalledWith("image");
+    expect(
+      await screen.findByRole("img", { name: "preview.png" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "クイックプレビューを固定" }),
+    );
+
+    fireEvent.keyDown(screen.getByRole("region", { name: "ファイルシェル" }), {
+      key: "Escape",
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(actions.changeExpanded).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole("region", { name: "ファイルシェル" }), {
+      key: "q",
+    });
+    expect(
+      screen.getByRole("dialog", {
+        name: "preview.pngのクイックプレビュー",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "クイックプレビューを固定" }),
+    ).toHaveAttribute("aria-pressed", "false");
+    expect(
+      await screen.findByRole("img", { name: "preview.png" }),
+    ).toBeInTheDocument();
+  });
+
   it("supports paste and keyboard selection removal", () => {
     render(<FileShelfOverlay />);
     const shelf = screen.getByRole("region", { name: "ファイルシェル" });
@@ -132,6 +413,16 @@ describe("FileShelfOverlay", () => {
     expect(actions.addContent).toHaveBeenCalledWith({
       kind: "url",
       url: "https://example.com/docs",
+    });
+    fireEvent.paste(shelf, {
+      clipboardData: {
+        items: [],
+        getData: () => "mailto:hello@example.com",
+      },
+    });
+    expect(actions.addContent).toHaveBeenCalledWith({
+      kind: "url",
+      url: "mailto:hello@example.com",
     });
 
     fireEvent.keyDown(shelf, { key: "a", ctrlKey: true });
@@ -211,7 +502,7 @@ describe("FileShelfOverlay", () => {
       "Control+F ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
     expect(
-      screen.getByText("↑↓: 1件 · PgUp/PgDn: 5件 · Home/End · Shiftで移動"),
+      screen.getByText("F2: 名前 · Q: プレビュー · ↑↓: 移動 · Shiftで取り出し"),
     ).toBeInTheDocument();
 
     fireEvent.keyDown(search, { key: "PageDown" });
@@ -375,6 +666,50 @@ describe("FileShelfOverlay", () => {
     expect(actions.copyItem).toHaveBeenCalledWith(urlItem);
   });
 
+  it("renames a selected item from F2 and cancels without saving", async () => {
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: first.groupId,
+            createdAt: first.createdAt,
+            items: [first],
+          },
+        ],
+      },
+      itemCount: 1,
+    });
+    render(<FileShelfOverlay />);
+
+    const shelf = screen.getByRole("region", { name: "ファイルシェル" });
+    fireEvent.click(
+      screen.getByRole("button", { name: /report\.pdf.*ファイル/ }),
+    );
+    fireEvent.keyDown(shelf, { key: "F2" });
+
+    const input = screen.getByRole("textbox", { name: "棚で表示する名前" });
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue("report.pdf");
+    fireEvent.change(input, { target: { value: "提出用資料" } });
+    fireEvent.submit(screen.getByRole("form", { name: "棚での表示名を変更" }));
+
+    await waitFor(() =>
+      expect(actions.renameItem).toHaveBeenCalledWith(first, "提出用資料"),
+    );
+    expect(
+      screen.queryByRole("textbox", { name: "棚で表示する名前" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.keyDown(shelf, { key: "F2" });
+    const reopened = screen.getByRole("textbox", { name: "棚で表示する名前" });
+    fireEvent.keyDown(reopened, { key: "Escape" });
+    expect(actions.renameItem).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByRole("textbox", { name: "棚で表示する名前" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("restores the latest removal with the platform undo shortcut", () => {
     vi.mocked(useFileShelf).mockReturnValue({
       ...expandedShelf(),
@@ -418,5 +753,46 @@ describe("FileShelfOverlay", () => {
       }),
     );
     expect(actions.clearClipboardHistory).toHaveBeenCalledOnce();
+  });
+
+  it("protects pinned items from removal and exposes an unpin action", () => {
+    const pinnedItem = { ...first, pinned: true };
+    const reportError = vi.fn();
+    vi.mocked(useFileShelf).mockReturnValue({
+      ...expandedShelf(),
+      state: {
+        groups: [
+          {
+            id: pinnedItem.groupId,
+            createdAt: pinnedItem.createdAt,
+            items: [pinnedItem],
+          },
+        ],
+      },
+      itemCount: 1,
+      pinnedCount: 1,
+      reportError,
+    });
+    render(<FileShelfOverlay />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /report\.pdf.*固定.*ファイル/ }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "選択項目を棚から外す" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "すべて外す" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByRole("region", { name: "ファイルシェル" }), {
+      key: "Delete",
+    });
+    expect(reportError).toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "選択項目の固定を解除" }),
+    );
+    expect(actions.pinItems).toHaveBeenCalledWith([pinnedItem], false);
   });
 });

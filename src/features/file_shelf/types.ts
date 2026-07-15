@@ -2,9 +2,11 @@ export interface FileShelfSettings {
   enabled: boolean;
   shortcut: string;
   edge: "left" | "right";
+  verticalPosition: "top" | "center" | "bottom" | "cursor";
   edgeHandleEnabled: boolean;
   clipboardHistoryEnabled: boolean;
   clipboardHistoryLimit: number;
+  ignoredApplications: string[];
   themeColor: string;
 }
 
@@ -26,6 +28,7 @@ export interface FileShelfItem {
   createdAt: string;
   availability: FileShelfAvailability;
   source: FileShelfItemSource;
+  pinned: boolean;
 }
 
 export interface FileShelfGroup {
@@ -61,4 +64,8 @@ export interface FileShelfMutation {
 export interface FileShelfRemoval {
   state: FileShelfState;
   undoToken: string;
+}
+
+export interface FileShelfPreview {
+  dataUrl: string | null;
 }

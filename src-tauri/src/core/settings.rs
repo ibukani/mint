@@ -191,15 +191,32 @@ fn default_file_shelf_color() -> String {
     "#818cf8".to_string()
 }
 
+fn default_file_shelf_ignored_applications() -> Vec<String> {
+    [
+        "1Password.exe",
+        "Bitwarden.exe",
+        "Dashlane.exe",
+        "Enpass.exe",
+        "KeePass.exe",
+        "KeePassXC.exe",
+        "LastPass.exe",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect()
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct FileShelfSettings {
     pub enabled: bool,
     pub shortcut: String,
     pub edge: FileShelfEdge,
+    pub vertical_position: FileShelfVerticalPosition,
     pub edge_handle_enabled: bool,
     pub clipboard_history_enabled: bool,
     pub clipboard_history_limit: u32,
+    pub ignored_applications: Vec<String>,
     #[serde(default = "default_file_shelf_color")]
     pub theme_color: String,
 }
@@ -212,15 +229,27 @@ pub enum FileShelfEdge {
     Right,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum FileShelfVerticalPosition {
+    Top,
+    #[default]
+    Center,
+    Bottom,
+    Cursor,
+}
+
 impl Default for FileShelfSettings {
     fn default() -> Self {
         Self {
             enabled: true,
             shortcut: "Alt+3".to_string(),
             edge: FileShelfEdge::Right,
+            vertical_position: FileShelfVerticalPosition::Center,
             edge_handle_enabled: true,
             clipboard_history_enabled: false,
             clipboard_history_limit: 25,
+            ignored_applications: default_file_shelf_ignored_applications(),
             theme_color: default_file_shelf_color(),
         }
     }
@@ -680,9 +709,17 @@ mod tests {
         assert_eq!(settings.file_shelf.shortcut, "Alt+3");
         assert_eq!(settings.file_shelf.theme_color, "#818cf8");
         assert_eq!(settings.file_shelf.edge, FileShelfEdge::Right);
+        assert_eq!(
+            settings.file_shelf.vertical_position,
+            FileShelfVerticalPosition::Center
+        );
         assert!(settings.file_shelf.edge_handle_enabled);
         assert!(!settings.file_shelf.clipboard_history_enabled);
         assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
+        assert!(settings
+            .file_shelf
+            .ignored_applications
+            .contains(&"Bitwarden.exe".to_string()));
         assert!(settings.game_launcher.favorite_game_keys.is_empty());
         assert!(settings.game_launcher.last_played_at_by_game.is_empty());
         assert!(settings
@@ -732,7 +769,15 @@ mod tests {
         let settings: AppSettings = serde_json::from_str(legacy_file_shelf_json).unwrap();
         assert!(!settings.file_shelf.clipboard_history_enabled);
         assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
+        assert!(settings
+            .file_shelf
+            .ignored_applications
+            .contains(&"KeePassXC.exe".to_string()));
         assert_eq!(settings.file_shelf.theme_color, "#818cf8");
+        assert_eq!(
+            settings.file_shelf.vertical_position,
+            FileShelfVerticalPosition::Center
+        );
     }
 
     #[test]

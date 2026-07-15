@@ -11,8 +11,69 @@
   line-height: 1.6;
 }
 
-.file-shelf-settings-history {
+.file-shelf-settings-history,
+.file-shelf-settings-ignored {
   grid-column: 1 / -1;
+}
+
+.file-shelf-settings-apps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file-shelf-settings-app {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  background: var(--surface-control);
+  font-size: var(--font-size-sm);
+}
+
+.file-shelf-settings-app span {
+  overflow-wrap: anywhere;
+}
+
+.file-shelf-settings-app button {
+  display: inline-grid;
+  place-items: center;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.file-shelf-settings-app button:hover {
+  color: var(--color-text-primary);
+  background: var(--surface-control-hover);
+}
+
+.file-shelf-settings-apps-empty,
+.file-shelf-settings-app-error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.file-shelf-settings-apps-empty {
+  color: var(--color-text-muted);
+}
+
+.file-shelf-settings-app-error {
+  color: var(--color-error);
+}
+
+.file-shelf-settings-add-app {
+  align-self: flex-start;
 }
 
 @media (max-width: 760px) {

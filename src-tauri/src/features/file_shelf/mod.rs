@@ -1,5 +1,6 @@
 use base64::Engine;
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
+use image::{codecs::png::PngEncoder, ExtendedColorType, ImageEncoder};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,14 +8,32 @@ use std::{
     fs,
     path::{Path, PathBuf},
     sync::Mutex,
-    time::Duration as StdDuration,
+    time::{Duration as StdDuration, Instant},
 };
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 use tauri_plugin_clipboard_manager::ClipboardExt;
+use tauri_plugin_global_shortcut::ShortcutState;
 use url::Url;
 use uuid::Uuid;
 
-use crate::core::settings::{AppSettings, AppSettingsState, FileShelfEdge, FileShelfSettings};
+#[cfg(target_os = "windows")]
+use std::{ffi::OsString, os::windows::ffi::OsStringExt};
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::{
+    Foundation::{CloseHandle, HWND},
+    System::{
+        DataExchange::GetClipboardOwner,
+        Threading::{
+            OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+            PROCESS_QUERY_LIMITED_INFORMATION,
+        },
+    },
+    UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId},
+};
+
+use crate::core::settings::{
+    AppSettings, AppSettingsState, FileShelfEdge, FileShelfSettings, FileShelfVerticalPosition,
+};
 
 const COLLAPSED_WIDTH: f64 = 32.0;
 const COLLAPSED_HEIGHT: f64 = 96.0;
@@ -23,8 +42,13 @@ const EXPANDED_HEIGHT: f64 = 520.0;
 const MAX_TEXT_BYTES: usize = 1024 * 1024;
 const MAX_IMAGE_BYTES: usize = 25 * 1024 * 1024;
 const MAX_CLIPBOARD_HISTORY_BYTES: usize = 64 * 1024;
+const MAX_DISPLAY_NAME_CHARS: usize = 120;
 const UNDO_SECONDS: i64 = 10;
 const CLIPBOARD_POLL_INTERVAL: StdDuration = StdDuration::from_millis(900);
+const SHORTCUT_DOUBLE_PRESS_INTERVAL: StdDuration = StdDuration::from_millis(550);
+const SHORTCUT_LONG_PRESS_INTERVAL: StdDuration = StdDuration::from_millis(800);
+const MAX_CLIPBOARD_IMAGE_RGBA_BYTES: usize = 128 * 1024 * 1024;
+const RECENT_REMOVAL_HOURS: i64 = 24;
 
 pub struct FileShelfStoreState {
     path: PathBuf,
@@ -33,6 +57,15 @@ pub struct FileShelfStoreState {
 
 #[derive(Default)]
 pub struct FileShelfWindowState(pub Mutex<bool>);
+
+#[derive(Default)]
+struct FileShelfShortcutTiming {
+    last_pressed_at: Option<Instant>,
+    current_pressed_at: Option<Instant>,
+}
+
+#[derive(Default)]
+pub struct FileShelfShortcutState(Mutex<FileShelfShortcutTiming>);
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -116,6 +149,7 @@ pub struct FileShelfItem {
     pub created_at: String,
     pub availability: FileShelfAvailability,
     pub source: FileShelfItemSource,
+    pub pinned: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -167,6 +201,12 @@ pub struct FileShelfMutation {
 pub struct FileShelfRemoval {
     pub state: FileShelfState,
     pub undo_token: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileShelfPreview {
+    pub data_url: Option<String>,
 }
 
 struct NewItem {
@@ -236,6 +276,10 @@ pub fn start_clipboard_history_monitor(app: AppHandle) {
                     continue;
                 }
                 previous_text.clone_from(&current_text);
+                if is_application_ignored(&settings, clipboard_source_application_name().as_deref())
+                {
+                    continue;
+                }
 
                 let Some(store) = app.try_state::<FileShelfStoreState>() else {
                     continue;
@@ -255,6 +299,86 @@ pub fn start_clipboard_history_monitor(app: AppHandle) {
 
 fn should_monitor_clipboard(settings: &FileShelfSettings) -> bool {
     settings.enabled && settings.clipboard_history_enabled
+}
+
+fn normalized_application_name(value: &str) -> Option<String> {
+    let trimmed = value.trim().trim_matches('"');
+    if trimmed.is_empty() {
+        return None;
+    }
+    Path::new(trimmed)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(str::to_string)
+}
+
+fn is_application_ignored(settings: &FileShelfSettings, application: Option<&str>) -> bool {
+    let Some(application) = application.and_then(normalized_application_name) else {
+        return false;
+    };
+    settings.ignored_applications.iter().any(|ignored| {
+        normalized_application_name(ignored)
+            .is_some_and(|candidate| candidate.eq_ignore_ascii_case(&application))
+    })
+}
+
+#[cfg(target_os = "windows")]
+fn application_name_from_window(window: HWND) -> Option<String> {
+    if window.is_null() {
+        return None;
+    }
+    let mut process_id = 0;
+    unsafe {
+        GetWindowThreadProcessId(window, &mut process_id);
+    }
+    if process_id == 0 {
+        return None;
+    }
+    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, process_id) };
+    if process.is_null() {
+        return None;
+    }
+    let mut path = vec![0_u16; 32_768];
+    let mut path_length = path.len() as u32;
+    let succeeded = unsafe {
+        QueryFullProcessImageNameW(
+            process,
+            PROCESS_NAME_WIN32,
+            path.as_mut_ptr(),
+            &mut path_length,
+        )
+    } != 0;
+    unsafe {
+        CloseHandle(process);
+    }
+    if !succeeded || path_length == 0 {
+        return None;
+    }
+    let path = PathBuf::from(OsString::from_wide(&path[..path_length as usize]));
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .map(str::to_string)
+}
+
+#[cfg(target_os = "windows")]
+fn foreground_application_name() -> Option<String> {
+    application_name_from_window(unsafe { GetForegroundWindow() })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn foreground_application_name() -> Option<String> {
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn clipboard_source_application_name() -> Option<String> {
+    application_name_from_window(unsafe { GetClipboardOwner() })
+        .or_else(foreground_application_name)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn clipboard_source_application_name() -> Option<String> {
+    None
 }
 
 pub fn apply_clipboard_history_settings(app: &AppHandle, settings: &FileShelfSettings) {
@@ -304,6 +428,7 @@ fn open_store(path: &Path) -> Result<Connection, String> {
                size_bytes INTEGER,
                created_at TEXT NOT NULL,
                origin TEXT NOT NULL DEFAULT 'manual',
+               pinned INTEGER NOT NULL DEFAULT 0,
                removed_at TEXT,
                removal_token TEXT
              );
@@ -313,19 +438,25 @@ fn open_store(path: &Path) -> Result<Connection, String> {
                ON file_shelf_items(removal_token);",
         )
         .map_err(|error| error.to_string())?;
-    let has_origin = connection
+    let columns = connection
         .prepare("PRAGMA table_info(file_shelf_items)")
         .and_then(|mut statement| {
             let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
             columns.collect::<Result<Vec<_>, _>>()
         })
-        .map_err(|error| error.to_string())?
-        .iter()
-        .any(|column| column == "origin");
-    if !has_origin {
+        .map_err(|error| error.to_string())?;
+    if !columns.iter().any(|column| column == "origin") {
         connection
             .execute(
                 "ALTER TABLE file_shelf_items ADD COLUMN origin TEXT NOT NULL DEFAULT 'manual'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+    }
+    if !columns.iter().any(|column| column == "pinned") {
+        connection
+            .execute(
+                "ALTER TABLE file_shelf_items ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
                 [],
             )
             .map_err(|error| error.to_string())?;
@@ -351,7 +482,11 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
                SELECT 1 FROM file_shelf_items
                WHERE group_id = file_shelf_groups.id AND removed_at IS NULL
              )
-             ORDER BY created_at DESC",
+             ORDER BY EXISTS (
+               SELECT 1 FROM file_shelf_items
+               WHERE group_id = file_shelf_groups.id
+                 AND removed_at IS NULL AND pinned = 1
+             ) DESC, created_at DESC",
         )
         .map_err(|error| error.to_string())?;
     let group_rows = group_statement
@@ -369,7 +504,7 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
         let mut item_statement = connection
             .prepare(
                 "SELECT id, kind, display_name, source_path, text_content, mime_type,
-                        size_bytes, created_at, origin
+                        size_bytes, created_at, origin, pinned
                  FROM file_shelf_items
                  WHERE group_id = ?1 AND removed_at IS NULL
                  ORDER BY created_at ASC",
@@ -387,6 +522,7 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
                     row.get::<_, Option<i64>>(6)?,
                     row.get::<_, String>(7)?,
                     row.get::<_, String>(8)?,
+                    row.get::<_, bool>(9)?,
                 ))
             })
             .map_err(|error| error.to_string())?;
@@ -402,6 +538,7 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
                 size,
                 created,
                 source,
+                pinned,
             ) = row.map_err(|error| error.to_string())?;
             let kind = FileShelfItemKind::from_str(&kind)?;
             let source = FileShelfItemSource::from_str(&source)?;
@@ -426,6 +563,7 @@ fn load_state_from_store(path: &Path) -> Result<FileShelfState, String> {
                 created_at: created,
                 availability,
                 source,
+                pinned,
             });
         }
         result.push(FileShelfGroup {
@@ -453,8 +591,8 @@ fn insert_group(connection: &Connection, items: Vec<NewItem>) -> Result<(), Stri
             .execute(
                 "INSERT INTO file_shelf_items(
                    id, group_id, kind, display_name, source_path, text_content,
-                   mime_type, size_bytes, created_at, origin
-                 ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                   mime_type, size_bytes, created_at, origin, pinned
+                 ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0)",
                 params![
                     id,
                     group_id,
@@ -512,8 +650,11 @@ fn add_paths_in_store(
         let Ok(metadata) = fs::metadata(&path) else {
             continue;
         };
+        let image_mime = image_mime_for_path(&path);
         let kind = if metadata.is_dir() {
             FileShelfItemKind::Folder
+        } else if metadata.is_file() && image_mime.is_some() {
+            FileShelfItemKind::Image
         } else if metadata.is_file() {
             FileShelfItemKind::File
         } else {
@@ -529,7 +670,7 @@ fn add_paths_in_store(
             display_name,
             source_path: Some(path.to_string_lossy().to_string()),
             text_content: None,
-            mime_type: None,
+            mime_type: image_mime.map(ToOwned::to_owned),
             size_bytes: metadata.is_file().then_some(metadata.len()),
             source: FileShelfItemSource::Manual,
         });
@@ -546,6 +687,70 @@ fn add_paths_in_store(
     })
 }
 
+fn image_mime_for_path(path: &Path) -> Option<&'static str> {
+    match path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("png") => Some("image/png"),
+        Some("jpg" | "jpeg") => Some("image/jpeg"),
+        Some("gif") => Some("image/gif"),
+        Some("webp") => Some("image/webp"),
+        _ => None,
+    }
+}
+
+fn load_preview_from_store(
+    database_path: &Path,
+    item_id: &str,
+) -> Result<FileShelfPreview, String> {
+    let connection = open_store(database_path)?;
+    let record = connection
+        .query_row(
+            "SELECT source_path, mime_type, kind
+             FROM file_shelf_items
+             WHERE id = ?1 AND removed_at IS NULL",
+            [item_id],
+            |row| {
+                Ok((
+                    row.get::<_, Option<String>>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "プレビューする項目が見つかりません。".to_string())?;
+    let (source_path, stored_mime, kind) = record;
+    if kind != FileShelfItemKind::Image.as_str() {
+        return Ok(FileShelfPreview { data_url: None });
+    }
+    let path = source_path.ok_or_else(|| "画像の保存場所が見つかりません。".to_string())?;
+    let path = Path::new(&path);
+    let mime_type = stored_mime
+        .as_deref()
+        .or_else(|| image_mime_for_path(path))
+        .filter(|value| {
+            matches!(
+                *value,
+                "image/png" | "image/jpeg" | "image/gif" | "image/webp"
+            )
+        })
+        .ok_or_else(|| "この画像形式はプレビューできません。".to_string())?;
+    let metadata = fs::metadata(path).map_err(|_| "画像が見つかりません。".to_string())?;
+    if metadata.len() > MAX_IMAGE_BYTES as u64 {
+        return Err("25MBを超える画像はプレビューできません。".to_string());
+    }
+    let bytes = fs::read(path).map_err(|error| error.to_string())?;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+    Ok(FileShelfPreview {
+        data_url: Some(format!("data:{mime_type};base64,{encoded}")),
+    })
+}
+
 fn display_text(text: &str) -> String {
     let single_line = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let mut chars = single_line.chars();
@@ -555,6 +760,17 @@ fn display_text(text: &str) -> String {
     } else {
         summary
     }
+}
+
+fn is_supported_url(url: &Url) -> bool {
+    matches!(url.scheme(), "http" | "https" | "mailto" | "tel")
+}
+
+fn display_url(url: &Url, original: &str) -> String {
+    url.host_str()
+        .or_else(|| (!url.path().is_empty()).then(|| url.path()))
+        .unwrap_or(original)
+        .to_string()
 }
 
 fn safe_image_name(file_name: &str, mime_type: &str) -> String {
@@ -613,10 +829,10 @@ fn add_content_in_store(
                 return Err("URLは1MB以下にしてください。".to_string());
             }
             let parsed = Url::parse(&url).map_err(|_| "URLが正しくありません。".to_string())?;
-            if !matches!(parsed.scheme(), "http" | "https") {
-                return Err("httpまたはhttpsのURLだけ追加できます。".to_string());
+            if !is_supported_url(&parsed) {
+                return Err("http、https、mailto、telのURLだけ追加できます。".to_string());
             }
-            let display_name = parsed.host_str().unwrap_or(&url).to_string();
+            let display_name = display_url(&parsed, &url);
             NewItem {
                 kind: FileShelfItemKind::Url,
                 display_name,
@@ -669,6 +885,123 @@ fn add_content_in_store(
     })
 }
 
+fn capture_clipboard_text_explicit_in_store(
+    database_path: &Path,
+    text: String,
+) -> Result<FileShelfMutation, String> {
+    let text = text.trim().to_string();
+    if text.is_empty() {
+        return Err("クリップボードに文章または画像がありません。".to_string());
+    }
+    if text.len() > MAX_TEXT_BYTES {
+        return Err("クリップボードの文章は1MB以下にしてください。".to_string());
+    }
+
+    let connection = open_store(database_path)?;
+    let existing = connection
+        .query_row(
+            "SELECT group_id, origin
+             FROM file_shelf_items
+             WHERE text_content = ?1 AND removed_at IS NULL
+             LIMIT 1",
+            [&text],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+
+    if let Some((group_id, origin)) = existing {
+        if origin == FileShelfItemSource::ClipboardHistory.as_str() {
+            let created_at = timestamp();
+            connection
+                .execute(
+                    "UPDATE file_shelf_items
+                     SET origin = 'manual', created_at = ?1
+                     WHERE group_id = ?2",
+                    params![created_at, group_id],
+                )
+                .map_err(|error| error.to_string())?;
+            connection
+                .execute(
+                    "UPDATE file_shelf_groups SET created_at = ?1 WHERE id = ?2",
+                    params![created_at, group_id],
+                )
+                .map_err(|error| error.to_string())?;
+            return Ok(FileShelfMutation {
+                state: load_state_from_store(database_path)?,
+                added_count: 1,
+                skipped_count: 0,
+            });
+        }
+        return Ok(FileShelfMutation {
+            state: load_state_from_store(database_path)?,
+            added_count: 0,
+            skipped_count: 1,
+        });
+    }
+    drop(connection);
+
+    let input = Url::parse(&text)
+        .ok()
+        .filter(is_supported_url)
+        .map(|_| AddFileShelfContentInput::Url { url: text.clone() })
+        .unwrap_or(AddFileShelfContentInput::Text { text });
+    add_content_in_store(database_path, Path::new(""), input)
+}
+
+fn capture_clipboard_image_in_store(
+    database_path: &Path,
+    assets_dir: &Path,
+    rgba: &[u8],
+    width: u32,
+    height: u32,
+) -> Result<FileShelfMutation, String> {
+    let expected_length = (width as usize)
+        .checked_mul(height as usize)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| "クリップボード画像のサイズが大きすぎます。".to_string())?;
+    if width == 0
+        || height == 0
+        || rgba.len() != expected_length
+        || rgba.len() > MAX_CLIPBOARD_IMAGE_RGBA_BYTES
+    {
+        return Err("クリップボード画像のサイズが大きすぎます。".to_string());
+    }
+
+    let mut png = Vec::new();
+    PngEncoder::new(&mut png)
+        .write_image(rgba, width, height, ExtendedColorType::Rgba8)
+        .map_err(|error| format!("クリップボード画像をPNGに変換できませんでした: {error}"))?;
+    if png.is_empty() || png.len() > MAX_IMAGE_BYTES {
+        return Err("クリップボード画像はPNG変換後25MB以下にしてください。".to_string());
+    }
+
+    let connection = open_store(database_path)?;
+    let destination = assets_dir.join(format!("{}-clipboard-image.png", Uuid::new_v4()));
+    fs::write(&destination, &png).map_err(|error| error.to_string())?;
+    let insert_result = insert_group(
+        &connection,
+        vec![NewItem {
+            kind: FileShelfItemKind::Image,
+            display_name: "クリップボード画像.png".to_string(),
+            source_path: Some(destination.to_string_lossy().to_string()),
+            text_content: None,
+            mime_type: Some("image/png".to_string()),
+            size_bytes: Some(png.len() as u64),
+            source: FileShelfItemSource::Manual,
+        }],
+    );
+    if let Err(error) = insert_result {
+        let _ = fs::remove_file(destination);
+        return Err(error);
+    }
+    Ok(FileShelfMutation {
+        state: load_state_from_store(database_path)?,
+        added_count: 1,
+        skipped_count: 0,
+    })
+}
+
 fn clipboard_history_limit(value: u32) -> usize {
     value.clamp(5, 100) as usize
 }
@@ -678,7 +1011,7 @@ fn prune_clipboard_history(connection: &Connection, max_items: usize) -> Result<
         .prepare(
             "SELECT DISTINCT group_id
              FROM file_shelf_items
-             WHERE origin = 'clipboardHistory' AND removed_at IS NULL
+             WHERE origin = 'clipboardHistory' AND removed_at IS NULL AND pinned = 0
              ORDER BY created_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -747,13 +1080,11 @@ fn capture_clipboard_text_in_store(
         });
     }
 
-    let parsed_url = Url::parse(&text)
-        .ok()
-        .filter(|url| matches!(url.scheme(), "http" | "https"));
+    let parsed_url = Url::parse(&text).ok().filter(is_supported_url);
     let item = if let Some(url) = parsed_url {
         NewItem {
             kind: FileShelfItemKind::Url,
-            display_name: url.host_str().unwrap_or(&text).to_string(),
+            display_name: display_url(&url, &text),
             source_path: None,
             text_content: Some(text),
             mime_type: Some("text/uri-list".to_string()),
@@ -785,7 +1116,7 @@ fn clear_clipboard_history_in_store(database_path: &Path) -> Result<FileShelfRem
     let mut statement = connection
         .prepare(
             "SELECT id FROM file_shelf_items
-             WHERE origin = 'clipboardHistory' AND removed_at IS NULL",
+             WHERE origin = 'clipboardHistory' AND removed_at IS NULL AND pinned = 0",
         )
         .map_err(|error| error.to_string())?;
     let ids = statement
@@ -816,18 +1147,75 @@ fn remove_items_in_store(
             .execute(
                 "UPDATE file_shelf_items
                  SET removed_at = ?1, removal_token = ?2
-                 WHERE id = ?3 AND removed_at IS NULL",
+                 WHERE id = ?3 AND removed_at IS NULL AND pinned = 0",
                 params![removed_at, undo_token, item_id],
             )
             .map_err(|error| error.to_string())?;
     }
     if changed == 0 {
-        return Err("項目が見つかりません。".to_string());
+        return Err("項目が見つからないか、固定されています。".to_string());
     }
     Ok(FileShelfRemoval {
         state: load_state_from_store(database_path)?,
         undo_token,
     })
+}
+
+fn set_items_pinned_in_store(
+    database_path: &Path,
+    item_ids: Vec<String>,
+    pinned: bool,
+) -> Result<FileShelfState, String> {
+    if item_ids.is_empty() {
+        return Err("固定状態を変更する項目を選択してください。".to_string());
+    }
+    let connection = open_store(database_path)?;
+    let mut changed = 0;
+    for item_id in item_ids {
+        changed += connection
+            .execute(
+                "UPDATE file_shelf_items SET pinned = ?1
+                 WHERE id = ?2 AND removed_at IS NULL AND pinned != ?1",
+                params![pinned, item_id],
+            )
+            .map_err(|error| error.to_string())?;
+    }
+    if changed == 0 {
+        return Err("固定状態を変更できる項目がありません。".to_string());
+    }
+    load_state_from_store(database_path)
+}
+
+fn rename_item_in_store(
+    database_path: &Path,
+    item_id: String,
+    display_name: String,
+) -> Result<FileShelfState, String> {
+    let display_name = display_name.trim();
+    if display_name.is_empty() {
+        return Err("棚で表示する名前を入力してください。".to_string());
+    }
+    if display_name.chars().count() > MAX_DISPLAY_NAME_CHARS {
+        return Err(format!(
+            "棚で表示する名前は{MAX_DISPLAY_NAME_CHARS}文字以内にしてください。"
+        ));
+    }
+    if display_name.chars().any(char::is_control) {
+        return Err("棚で表示する名前に改行や制御文字は使えません。".to_string());
+    }
+
+    let connection = open_store(database_path)?;
+    let changed = connection
+        .execute(
+            "UPDATE file_shelf_items SET display_name = ?1
+             WHERE id = ?2 AND removed_at IS NULL AND display_name != ?1",
+            params![display_name, item_id],
+        )
+        .map_err(|error| error.to_string())?;
+    if changed == 0 {
+        return Err("名前を変更できる項目がないか、同じ名前です。".to_string());
+    }
+    load_state_from_store(database_path)
 }
 
 fn restore_removal_in_store(
@@ -861,13 +1249,59 @@ fn restore_removal_in_store(
     load_state_from_store(database_path)
 }
 
+fn restore_recent_removal_in_store(database_path: &Path) -> Result<FileShelfState, String> {
+    let connection = open_store(database_path)?;
+    let recent = connection
+        .query_row(
+            "SELECT removal_token, removed_at
+             FROM file_shelf_items
+             WHERE removed_at IS NOT NULL AND removal_token IS NOT NULL
+             ORDER BY removed_at DESC
+             LIMIT 1",
+            [],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "最近棚から外した項目はありません。".to_string())?;
+    let (undo_token, removed_at) = recent;
+    let removed_at = DateTime::parse_from_rfc3339(&removed_at)
+        .map_err(|error| error.to_string())?
+        .with_timezone(&Utc);
+    if Utc::now().signed_duration_since(removed_at) > Duration::hours(RECENT_REMOVAL_HOURS) {
+        return Err("呼び戻せる項目の保存期間（24時間）を過ぎました。".to_string());
+    }
+
+    let restored_at = timestamp();
+    connection
+        .execute(
+            "UPDATE file_shelf_groups
+             SET created_at = ?1
+             WHERE id IN (
+               SELECT DISTINCT group_id FROM file_shelf_items WHERE removal_token = ?2
+             )",
+            params![restored_at, undo_token],
+        )
+        .map_err(|error| error.to_string())?;
+    connection
+        .execute(
+            "UPDATE file_shelf_items
+             SET removed_at = NULL, removal_token = NULL
+             WHERE removal_token = ?1",
+            [&undo_token],
+        )
+        .map_err(|error| error.to_string())?;
+    load_state_from_store(database_path)
+}
+
 fn is_managed_asset(path: &Path, assets_dir: &Path) -> bool {
     path.parent().is_some_and(|parent| parent == assets_dir)
 }
 
 fn purge_old_removals(database_path: &Path, assets_dir: &Path) -> Result<(), String> {
     let connection = open_store(database_path)?;
-    let cutoff = (Utc::now() - Duration::hours(24)).to_rfc3339_opts(SecondsFormat::Nanos, true);
+    let cutoff = (Utc::now() - Duration::hours(RECENT_REMOVAL_HOURS))
+        .to_rfc3339_opts(SecondsFormat::Nanos, true);
     let mut statement = connection
         .prepare(
             "SELECT source_path FROM file_shelf_items
@@ -912,6 +1346,14 @@ pub fn load_file_shelf_state(
 }
 
 #[tauri::command]
+pub fn load_file_shelf_preview(
+    item_id: String,
+    state: tauri::State<'_, FileShelfStoreState>,
+) -> Result<FileShelfPreview, String> {
+    load_preview_from_store(&state.path, &item_id)
+}
+
+#[tauri::command]
 pub fn add_file_shelf_paths(
     input: AddFileShelfPathsInput,
     state: tauri::State<'_, FileShelfStoreState>,
@@ -936,11 +1378,36 @@ pub fn remove_file_shelf_items(
 }
 
 #[tauri::command]
+pub fn set_file_shelf_items_pinned(
+    item_ids: Vec<String>,
+    pinned: bool,
+    state: tauri::State<'_, FileShelfStoreState>,
+) -> Result<FileShelfState, String> {
+    set_items_pinned_in_store(&state.path, item_ids, pinned)
+}
+
+#[tauri::command]
+pub fn rename_file_shelf_item(
+    item_id: String,
+    display_name: String,
+    state: tauri::State<'_, FileShelfStoreState>,
+) -> Result<FileShelfState, String> {
+    rename_item_in_store(&state.path, item_id, display_name)
+}
+
+#[tauri::command]
 pub fn restore_file_shelf_removal(
     undo_token: String,
     state: tauri::State<'_, FileShelfStoreState>,
 ) -> Result<FileShelfState, String> {
     restore_removal_in_store(&state.path, undo_token)
+}
+
+#[tauri::command]
+pub fn restore_recent_file_shelf_removal(
+    state: tauri::State<'_, FileShelfStoreState>,
+) -> Result<FileShelfState, String> {
+    restore_recent_removal_in_store(&state.path)
 }
 
 #[tauri::command]
@@ -951,7 +1418,13 @@ pub fn clear_file_shelf(
     let ids = current
         .groups
         .into_iter()
-        .flat_map(|group| group.items.into_iter().map(|item| item.id))
+        .flat_map(|group| {
+            group
+                .items
+                .into_iter()
+                .filter(|item| !item.pinned)
+                .map(|item| item.id)
+        })
         .collect();
     remove_items_in_store(&state.path, ids)
 }
@@ -977,10 +1450,19 @@ fn set_window_mode(
     } else {
         (COLLAPSED_WIDTH, COLLAPSED_HEIGHT)
     };
-    let monitor = window
-        .current_monitor()
-        .ok()
-        .flatten()
+    let cursor_position = if settings.vertical_position == FileShelfVerticalPosition::Cursor {
+        app.cursor_position().ok()
+    } else {
+        None
+    };
+    let monitor = cursor_position
+        .as_ref()
+        .and_then(|position| {
+            app.monitor_from_point(position.x, position.y)
+                .ok()
+                .flatten()
+        })
+        .or_else(|| window.current_monitor().ok().flatten())
         .or_else(|| app.primary_monitor().ok().flatten());
     window
         .set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))
@@ -996,7 +1478,17 @@ fn set_window_mode(
         } else {
             monitor_position.x + monitor_size.width as i32 - physical_width
         };
-        let y = monitor_position.y + ((monitor_size.height as i32 - physical_height).max(0) / 2);
+        let available_height = (monitor_size.height as i32 - physical_height).max(0);
+        let cursor_y = cursor_position
+            .as_ref()
+            .map(|position| position.y.round() as i32 - monitor_position.y);
+        let y = monitor_position.y
+            + shelf_vertical_offset(
+                &settings.vertical_position,
+                available_height,
+                cursor_y,
+                physical_height,
+            );
         window
             .set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
             .map_err(|error| error.to_string())?;
@@ -1013,6 +1505,23 @@ fn set_window_mode(
     }
     let _ = window.emit("file-shelf-mode-changed", expanded);
     Ok(())
+}
+
+fn shelf_vertical_offset(
+    position: &FileShelfVerticalPosition,
+    available_height: i32,
+    cursor_y: Option<i32>,
+    shelf_height: i32,
+) -> i32 {
+    match position {
+        FileShelfVerticalPosition::Top => 0,
+        FileShelfVerticalPosition::Center => available_height / 2,
+        FileShelfVerticalPosition::Bottom => available_height,
+        FileShelfVerticalPosition::Cursor => cursor_y
+            .map(|value| value - shelf_height / 2)
+            .unwrap_or(available_height / 2)
+            .clamp(0, available_height),
+    }
 }
 
 pub fn apply_window_settings(app: &AppHandle, settings: &FileShelfSettings) {
@@ -1060,6 +1569,147 @@ pub fn toggle_file_shelf_overlay(app: &AppHandle) {
     }
 }
 
+fn is_double_shortcut_press(previous: &mut Option<Instant>, now: Instant) -> bool {
+    if previous
+        .take()
+        .and_then(|value| now.checked_duration_since(value))
+        .is_some_and(|elapsed| elapsed <= SHORTCUT_DOUBLE_PRESS_INTERVAL)
+    {
+        true
+    } else {
+        *previous = Some(now);
+        false
+    }
+}
+
+fn shortcut_hold_duration(pressed_at: &mut Option<Instant>, now: Instant) -> Option<StdDuration> {
+    pressed_at
+        .take()
+        .and_then(|value| now.checked_duration_since(value))
+}
+
+fn capture_current_clipboard(app: &AppHandle) -> Result<FileShelfMutation, String> {
+    let store = app
+        .try_state::<FileShelfStoreState>()
+        .ok_or_else(|| "ファイルシェルの保存先を準備できていません。".to_string())?;
+
+    if let Ok(image) = app.clipboard().read_image() {
+        return capture_clipboard_image_in_store(
+            &store.path,
+            &store.assets_dir,
+            image.rgba(),
+            image.width(),
+            image.height(),
+        );
+    }
+
+    let text = app
+        .clipboard()
+        .read_text()
+        .map_err(|_| "クリップボードに対応する文章、URL、画像がありません。".to_string())?;
+    capture_clipboard_text_explicit_in_store(&store.path, text)
+}
+
+pub fn handle_file_shelf_shortcut_event(
+    app: &AppHandle,
+    settings: &FileShelfSettings,
+    shortcut_state: ShortcutState,
+) {
+    let now = Instant::now();
+    if shortcut_state == ShortcutState::Pressed {
+        let double_pressed = app
+            .try_state::<FileShelfShortcutState>()
+            .and_then(|state| {
+                state.0.lock().ok().map(|mut timing| {
+                    timing.current_pressed_at = Some(now);
+                    is_double_shortcut_press(&mut timing.last_pressed_at, now)
+                })
+            })
+            .unwrap_or(false);
+        if !double_pressed {
+            toggle_file_shelf_overlay(app);
+            return;
+        }
+
+        let app = app.clone();
+        let settings = settings.clone();
+        let _ = std::thread::Builder::new()
+            .name("mint-file-shelf-shortcut-capture".to_string())
+            .spawn(move || {
+                match capture_current_clipboard(&app) {
+                    Ok(mutation) => {
+                        let notice = if mutation.added_count > 0 {
+                            "クリップボードから棚へ保存しました"
+                        } else {
+                            "同じ内容はすでに棚にあります"
+                        };
+                        let _ = app.emit("file-shelf-state-changed", mutation.state);
+                        let _ = app.emit("file-shelf-notice", notice);
+                    }
+                    Err(error) => {
+                        let _ = app.emit("file-shelf-error", error);
+                    }
+                }
+                let _ = set_window_mode(&app, &settings, true, true);
+            });
+        return;
+    }
+
+    let long_pressed = app
+        .try_state::<FileShelfShortcutState>()
+        .and_then(|state| {
+            state.0.lock().ok().map(|mut timing| {
+                let duration = shortcut_hold_duration(&mut timing.current_pressed_at, now);
+                let long_pressed =
+                    duration.is_some_and(|value| value >= SHORTCUT_LONG_PRESS_INTERVAL);
+                if long_pressed {
+                    timing.last_pressed_at = None;
+                }
+                long_pressed
+            })
+        })
+        .unwrap_or(false);
+    if !long_pressed {
+        return;
+    }
+
+    let app = app.clone();
+    let settings = settings.clone();
+    let _ = std::thread::Builder::new()
+        .name("mint-file-shelf-shortcut-restore".to_string())
+        .spawn(move || {
+            let result = app
+                .try_state::<FileShelfStoreState>()
+                .ok_or_else(|| "ファイルシェルの保存先を準備できていません。".to_string())
+                .and_then(|store| restore_recent_removal_in_store(&store.path));
+            match result {
+                Ok(state) => {
+                    let _ = app.emit("file-shelf-state-changed", state);
+                    let _ = app.emit("file-shelf-recent-removal-restored", ());
+                    let _ = app.emit("file-shelf-notice", "最近外した項目を棚へ戻しました");
+                }
+                Err(error) => {
+                    let _ = app.emit("file-shelf-error", error);
+                }
+            }
+            let _ = set_window_mode(&app, &settings, true, true);
+        });
+}
+
+#[tauri::command]
+pub fn should_auto_expand_file_shelf(app: AppHandle) -> Result<bool, String> {
+    let settings = app
+        .try_state::<AppSettingsState>()
+        .and_then(|state| state.0.lock().ok().and_then(|value| value.clone()))
+        .map(Ok)
+        .unwrap_or_else(|| crate::core::settings::load_settings_internal(&app))?;
+    Ok(settings.file_shelf.enabled
+        && !is_application_ignored(
+            &settings.file_shelf,
+            foreground_application_name().as_deref(),
+        ))
+}
+
 #[tauri::command]
 pub fn set_file_shelf_expanded(app: AppHandle, expanded: bool, focus: bool) -> Result<(), String> {
     let settings: AppSettings = crate::core::settings::load_settings_internal(&app)?;
@@ -1086,6 +1736,51 @@ mod tests {
         let root = std::env::temp_dir().join(format!("mint-file-shelf-{name}-{}", Uuid::new_v4()));
         fs::create_dir_all(&root).unwrap();
         (root.join("shelf.sqlite3"), root)
+    }
+
+    #[test]
+    fn ignored_applications_match_executable_names_without_case_sensitivity() {
+        let mut settings = FileShelfSettings::default();
+        settings
+            .ignored_applications
+            .push(r#"C:\Tools\PrivateCopy.exe"#.to_string());
+
+        assert!(is_application_ignored(&settings, Some("bitWARDEN.EXE")));
+        assert!(is_application_ignored(
+            &settings,
+            Some(r#"C:\Tools\PrivateCopy.exe"#)
+        ));
+        assert!(!is_application_ignored(&settings, Some("explorer.exe")));
+        assert!(!is_application_ignored(&settings, None));
+    }
+
+    #[test]
+    fn safe_contact_links_are_urls_and_executable_schemes_are_rejected() {
+        let (database, root) = test_paths("contact-links");
+        open_store(&database).unwrap();
+
+        let mutation = add_content_in_store(
+            &database,
+            &root,
+            AddFileShelfContentInput::Url {
+                url: "mailto:hello@example.com".to_string(),
+            },
+        )
+        .unwrap();
+        let item = &mutation.state.groups[0].items[0];
+        assert_eq!(item.kind, FileShelfItemKind::Url);
+        assert_eq!(item.display_name, "hello@example.com");
+
+        let error = add_content_in_store(
+            &database,
+            &root,
+            AddFileShelfContentInput::Url {
+                url: "javascript:alert(1)".to_string(),
+            },
+        )
+        .unwrap_err();
+        assert!(error.contains("mailto"));
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
@@ -1117,6 +1812,64 @@ mod tests {
     }
 
     #[test]
+    fn image_paths_produce_safe_inline_previews() {
+        let (database, root) = test_paths("image-preview");
+        let image = root.join("reference.png");
+        fs::write(&image, b"png-preview").unwrap();
+        open_store(&database).unwrap();
+        let mutation = add_paths_in_store(
+            &database,
+            AddFileShelfPathsInput {
+                paths: vec![image.to_string_lossy().to_string()],
+            },
+        )
+        .unwrap();
+        let item = &mutation.state.groups[0].items[0];
+
+        assert_eq!(item.kind, FileShelfItemKind::Image);
+        assert_eq!(item.mime_type.as_deref(), Some("image/png"));
+        let preview = load_preview_from_store(&database, &item.id).unwrap();
+        assert!(preview
+            .data_url
+            .as_deref()
+            .is_some_and(|value| value.starts_with("data:image/png;base64,")));
+        assert!(load_preview_from_store(&database, "missing-item").is_err());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn shelf_vertical_positions_use_the_available_monitor_height() {
+        assert_eq!(
+            shelf_vertical_offset(&FileShelfVerticalPosition::Top, 500, None, 100),
+            0
+        );
+        assert_eq!(
+            shelf_vertical_offset(&FileShelfVerticalPosition::Center, 500, None, 100),
+            250
+        );
+        assert_eq!(
+            shelf_vertical_offset(&FileShelfVerticalPosition::Bottom, 500, None, 100),
+            500
+        );
+        assert_eq!(
+            shelf_vertical_offset(&FileShelfVerticalPosition::Cursor, 500, Some(300), 100),
+            250
+        );
+        assert_eq!(
+            shelf_vertical_offset(&FileShelfVerticalPosition::Cursor, 500, Some(20), 100),
+            0
+        );
+        assert_eq!(
+            shelf_vertical_offset(&FileShelfVerticalPosition::Cursor, 500, Some(580), 100),
+            500
+        );
+        assert_eq!(
+            shelf_vertical_offset(&FileShelfVerticalPosition::Cursor, 500, None, 100),
+            250
+        );
+    }
+
+    #[test]
     fn removal_can_be_restored() {
         let (database, root) = test_paths("undo");
         let file = root.join("item.txt");
@@ -1134,6 +1887,94 @@ mod tests {
         assert!(removal.state.groups.is_empty());
         let restored = restore_removal_in_store(&database, removal.undo_token).unwrap();
         assert_eq!(restored.groups.len(), 1);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn recent_removals_can_be_recalled_one_batch_at_a_time() {
+        let (database, root) = test_paths("recent-removal");
+        let first = root.join("first.txt");
+        let second = root.join("second.txt");
+        fs::write(&first, "first").unwrap();
+        fs::write(&second, "second").unwrap();
+        open_store(&database).unwrap();
+        let first_mutation = add_paths_in_store(
+            &database,
+            AddFileShelfPathsInput {
+                paths: vec![first.to_string_lossy().to_string()],
+            },
+        )
+        .unwrap();
+        let first_id = first_mutation.state.groups[0].items[0].id.clone();
+        remove_items_in_store(&database, vec![first_id]).unwrap();
+        let second_mutation = add_paths_in_store(
+            &database,
+            AddFileShelfPathsInput {
+                paths: vec![second.to_string_lossy().to_string()],
+            },
+        )
+        .unwrap();
+        let second_id = second_mutation.state.groups[0].items[0].id.clone();
+        remove_items_in_store(&database, vec![second_id]).unwrap();
+
+        let first_recall = restore_recent_removal_in_store(&database).unwrap();
+        assert_eq!(first_recall.groups.len(), 1);
+        assert_eq!(first_recall.groups[0].items[0].display_name, "second.txt");
+        let second_recall = restore_recent_removal_in_store(&database).unwrap();
+        assert_eq!(second_recall.groups.len(), 2);
+        assert!(restore_recent_removal_in_store(&database).is_err());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn pinned_items_survive_removal_until_unpinned() {
+        let (database, root) = test_paths("pinning");
+        let file = root.join("reference.txt");
+        fs::write(&file, "reference").unwrap();
+        open_store(&database).unwrap();
+        let mutation = add_paths_in_store(
+            &database,
+            AddFileShelfPathsInput {
+                paths: vec![file.to_string_lossy().to_string()],
+            },
+        )
+        .unwrap();
+        let id = mutation.state.groups[0].items[0].id.clone();
+
+        let pinned = set_items_pinned_in_store(&database, vec![id.clone()], true).unwrap();
+        assert!(pinned.groups[0].items[0].pinned);
+        assert!(remove_items_in_store(&database, vec![id.clone()]).is_err());
+        assert_eq!(load_state_from_store(&database).unwrap().groups.len(), 1);
+
+        set_items_pinned_in_store(&database, vec![id.clone()], false).unwrap();
+        let removal = remove_items_in_store(&database, vec![id]).unwrap();
+        assert!(removal.state.groups.is_empty());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn shelf_labels_can_change_without_renaming_the_source_file() {
+        let (database, root) = test_paths("rename-label");
+        let file = root.join("original-name.txt");
+        fs::write(&file, "reference").unwrap();
+        open_store(&database).unwrap();
+        let mutation = add_paths_in_store(
+            &database,
+            AddFileShelfPathsInput {
+                paths: vec![file.to_string_lossy().to_string()],
+            },
+        )
+        .unwrap();
+        let id = mutation.state.groups[0].items[0].id.clone();
+        let source_path = mutation.state.groups[0].items[0].source_path.clone();
+
+        let renamed =
+            rename_item_in_store(&database, id.clone(), "  提出用  ".to_string()).unwrap();
+        assert_eq!(renamed.groups[0].items[0].display_name, "提出用");
+        assert_eq!(renamed.groups[0].items[0].source_path, source_path);
+        assert!(file.exists());
+        assert!(rename_item_in_store(&database, id.clone(), "\n".to_string()).is_err());
+        assert!(rename_item_in_store(&database, id, "x".repeat(121)).is_err());
         let _ = fs::remove_dir_all(root);
     }
 
@@ -1203,6 +2044,95 @@ mod tests {
     }
 
     #[test]
+    fn explicit_clipboard_capture_is_deduplicated_and_promotes_history() {
+        let (database, root) = test_paths("explicit-clipboard");
+        open_store(&database).unwrap();
+        capture_clipboard_text_in_store(&database, "https://example.com".to_string(), 25).unwrap();
+
+        let promoted =
+            capture_clipboard_text_explicit_in_store(&database, "https://example.com".to_string())
+                .unwrap();
+        assert_eq!(promoted.added_count, 1);
+        assert_eq!(
+            promoted.state.groups[0].items[0].source,
+            FileShelfItemSource::Manual
+        );
+
+        let duplicate =
+            capture_clipboard_text_explicit_in_store(&database, "https://example.com".to_string())
+                .unwrap();
+        assert_eq!(duplicate.added_count, 0);
+        assert_eq!(duplicate.skipped_count, 1);
+
+        assert!(clear_clipboard_history_in_store(&database).is_err());
+        assert_eq!(load_state_from_store(&database).unwrap().groups.len(), 1);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn clipboard_images_are_encoded_as_managed_png_files() {
+        let (database, root) = test_paths("explicit-clipboard-image");
+        let assets = root.join("assets");
+        fs::create_dir_all(&assets).unwrap();
+        open_store(&database).unwrap();
+
+        let mutation = capture_clipboard_image_in_store(
+            &database,
+            &assets,
+            &[255, 0, 0, 255, 0, 255, 0, 255],
+            2,
+            1,
+        )
+        .unwrap();
+        let item = &mutation.state.groups[0].items[0];
+        assert_eq!(item.kind, FileShelfItemKind::Image);
+        assert_eq!(item.source, FileShelfItemSource::Manual);
+        assert!(item
+            .source_path
+            .as_ref()
+            .is_some_and(|path| Path::new(path).exists()));
+        assert!(capture_clipboard_image_in_store(&database, &assets, &[0; 4], 2, 1).is_err());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn shortcut_double_press_uses_a_bounded_interval() {
+        let start = Instant::now();
+        let mut previous = None;
+        assert!(!is_double_shortcut_press(&mut previous, start));
+        assert!(is_double_shortcut_press(
+            &mut previous,
+            start + StdDuration::from_millis(400)
+        ));
+        assert!(previous.is_none());
+        assert!(!is_double_shortcut_press(
+            &mut previous,
+            start + StdDuration::from_millis(1_000)
+        ));
+        assert!(!is_double_shortcut_press(
+            &mut previous,
+            start + StdDuration::from_millis(1_700)
+        ));
+    }
+
+    #[test]
+    fn shortcut_long_press_requires_eight_hundred_milliseconds() {
+        let start = Instant::now();
+        let mut pressed_at = Some(start);
+        assert_eq!(
+            shortcut_hold_duration(&mut pressed_at, start + StdDuration::from_millis(799)),
+            Some(StdDuration::from_millis(799))
+        );
+        assert!(pressed_at.is_none());
+
+        pressed_at = Some(start);
+        assert!(
+            shortcut_hold_duration(&mut pressed_at, start + SHORTCUT_LONG_PRESS_INTERVAL)
+                .is_some_and(|duration| duration >= SHORTCUT_LONG_PRESS_INTERVAL)
+        );
+    }
+
+    #[test]
     fn existing_shelf_database_migrates_items_to_manual_source() {
         let (database, root) = test_paths("origin-migration");
         let connection = Connection::open(&database).unwrap();
@@ -1237,6 +2167,7 @@ mod tests {
         open_store(&database).unwrap();
         let state = load_state_from_store(&database).unwrap();
         assert_eq!(state.groups[0].items[0].source, FileShelfItemSource::Manual);
+        assert!(!state.groups[0].items[0].pinned);
         let _ = fs::remove_dir_all(root);
     }
 

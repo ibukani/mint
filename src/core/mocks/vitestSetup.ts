@@ -28,9 +28,13 @@ import {
   mockAddFileShelfPaths,
   mockClearFileShelf,
   mockClearFileShelfClipboardHistory,
+  mockLoadFileShelfPreview,
   mockLoadFileShelfState,
   mockRemoveFileShelfItems,
+  mockRenameFileShelfItem,
   mockRestoreFileShelfRemoval,
+  mockRestoreRecentFileShelfRemoval,
+  mockSetFileShelfItemsPinned,
 } from "./fileShelfMock";
 import {
   mockAddQuickCaptureAttachment,
@@ -129,6 +133,11 @@ mockIPCWithEvents(async (cmd, args) => {
       return mockLoadQuickCaptureState();
     case "load_file_shelf_state":
       return mockLoadFileShelfState();
+    case "load_file_shelf_preview": {
+      const itemId = typedArgs?.itemId as string | undefined;
+      if (!itemId) throw new Error("File shelf item id is required.");
+      return mockLoadFileShelfPreview(itemId);
+    }
     case "add_file_shelf_paths": {
       const input = typedArgs?.input as AddFileShelfPathsInput | undefined;
       if (!input) throw new Error("File shelf paths are required.");
@@ -144,15 +153,35 @@ mockIPCWithEvents(async (cmd, args) => {
       if (!itemIds) throw new Error("File shelf item ids are required.");
       return mockRemoveFileShelfItems(itemIds);
     }
+    case "set_file_shelf_items_pinned": {
+      const itemIds = typedArgs?.itemIds as string[] | undefined;
+      const pinned = typedArgs?.pinned as boolean | undefined;
+      if (!itemIds || pinned === undefined) {
+        throw new Error("File shelf pin state is required.");
+      }
+      return mockSetFileShelfItemsPinned(itemIds, pinned);
+    }
+    case "rename_file_shelf_item": {
+      const itemId = typedArgs?.itemId as string | undefined;
+      const displayName = typedArgs?.displayName as string | undefined;
+      if (!itemId || displayName === undefined) {
+        throw new Error("File shelf rename input is required.");
+      }
+      return mockRenameFileShelfItem(itemId, displayName);
+    }
     case "restore_file_shelf_removal": {
       const undoToken = typedArgs?.undoToken as string | undefined;
       if (!undoToken) throw new Error("File shelf undo token is required.");
       return mockRestoreFileShelfRemoval(undoToken);
     }
+    case "restore_recent_file_shelf_removal":
+      return mockRestoreRecentFileShelfRemoval();
     case "clear_file_shelf":
       return mockClearFileShelf();
     case "clear_file_shelf_clipboard_history":
       return mockClearFileShelfClipboardHistory();
+    case "should_auto_expand_file_shelf":
+      return true;
     case "set_file_shelf_expanded":
       return;
     case "save_quick_capture_draft": {
