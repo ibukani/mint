@@ -3,8 +3,8 @@ use std::{fs, path::Path};
 use uuid::Uuid;
 
 use super::{
-    implementation::{open_store, timestamp},
     models::{QuickCaptureAttachment, QuickCaptureAttachmentInput},
+    repository::{open_store, timestamp},
 };
 
 fn mime_type_for(path: &Path) -> String {

@@ -1,21 +1,14 @@
 import {
   Archive,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
   Clipboard,
   Copy,
   ExternalLink,
   Eye,
-  File,
-  FileImage,
-  Folder,
   FolderPlus,
   FolderSearch,
-  GripVertical,
   History,
-  Link,
-  LoaderCircle,
   Pencil,
   Pin,
   PinOff,
@@ -38,33 +31,12 @@ import {
 import { loadFileShelfPreview } from "../api";
 import { useFileShelf } from "../hooks/useFileShelf";
 import { useFileShelfDragGesture } from "../hooks/useFileShelfDragGesture";
-import type { FileShelfItem, FileShelfItemKind } from "../types";
-import {
-  formatBytes,
-  isSupportedUrl,
-  kindLabel,
-  matchesQuery,
-  supportedImageTypes,
-} from "../utils";
+import type { FileShelfItem } from "../types";
+import { isSupportedUrl, matchesQuery, supportedImageTypes } from "../utils";
+import { FileShelfContent } from "./FileShelfContent";
+import { FileShelfPreview } from "./FileShelfPreview";
+import { FileShelfRenameForm } from "./FileShelfRenameForm";
 import "./FileShelfOverlay.css";
-
-const ItemIcon = ({
-  kind,
-  className,
-}: {
-  kind: FileShelfItemKind;
-  className?: string;
-}) => {
-  if (kind === "folder")
-    return <Folder className={className} size={18} aria-hidden="true" />;
-  if (kind === "image")
-    return <FileImage className={className} size={18} aria-hidden="true" />;
-  if (kind === "url")
-    return <Link className={className} size={18} aria-hidden="true" />;
-  if (kind === "text")
-    return <Clipboard className={className} size={18} aria-hidden="true" />;
-  return <File className={className} size={18} aria-hidden="true" />;
-};
 
 const imageAsBase64 = (file: globalThis.File) =>
   new Promise<string>((resolve, reject) => {
@@ -686,395 +658,52 @@ export const FileShelfOverlay: React.FC = () => {
           )}
         </label>
 
-        <div
-          ref={contentRef}
-          className="file-shelf__content"
-          aria-live="polite"
-        >
-          {shelf.loading ? (
-            <div className="file-shelf__empty">棚を読み込んでいます…</div>
-          ) : shelf.state.groups.length === 0 ? (
-            <div className="file-shelf__empty">
-              <Archive size={32} aria-hidden="true" />
-              <strong>棚は空です</strong>
-              <span>
-                Explorerから画面端へドラッグするか、下から選んで追加できます
-              </span>
-              <div className="file-shelf__empty-actions">
-                <button type="button" onClick={() => void shelf.choosePaths()}>
-                  <Plus size={14} aria-hidden="true" />
-                  ファイル
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void shelf.chooseFolders()}
-                >
-                  <FolderPlus size={14} aria-hidden="true" />
-                  フォルダ
-                </button>
-              </div>
-            </div>
-          ) : visibleGroups.length === 0 ? (
-            <div className="file-shelf__empty file-shelf__empty--search">
-              <Search size={28} aria-hidden="true" />
-              <strong>一致する項目がありません</strong>
-              <span>名前、パス、URL、文章から検索しています</span>
-              <button type="button" onClick={() => setQuery("")}>
-                検索をクリア
-              </button>
-            </div>
-          ) : (
-            visibleGroups.map((group) => {
-              const isStack = group.items.length > 1;
-              const isOpen = normalizedQuery
-                ? true
-                : expandedGroups.has(group.id);
-              const draggableItems = group.items.filter(
-                (item) =>
-                  item.availability === "ready" && Boolean(item.sourcePath),
-              );
-              return (
-                <article className="file-shelf__group" key={group.id}>
-                  <div className="file-shelf__group-summary">
-                    {isStack ? (
-                      <button
-                        type="button"
-                        className={`file-shelf__stack-toggle${draggableItems.length ? " is-draggable" : ""}${cursorKey === `group:${group.id}` ? " is-keyboard-active" : ""}`}
-                        onClick={(event) => {
-                          if (rowDrag.consumeSuppressedClick()) {
-                            event.preventDefault();
-                            return;
-                          }
-                          toggleGroup(group.id);
-                        }}
-                        onPointerDown={(event) =>
-                          rowDrag.begin(event, draggableItems)
-                        }
-                        onPointerMove={rowDrag.move}
-                        onPointerUp={rowDrag.end}
-                        onPointerCancel={rowDrag.end}
-                        aria-expanded={isOpen}
-                        title={
-                          draggableItems.length
-                            ? "行をドラッグして取り出す"
-                            : undefined
-                        }
-                        data-shelf-cursor-key={
-                          normalizedQuery ? undefined : `group:${group.id}`
-                        }
-                      >
-                        {isOpen ? (
-                          <ChevronDown size={16} aria-hidden="true" />
-                        ) : (
-                          <ChevronRight size={16} aria-hidden="true" />
-                        )}
-                        <span className="file-shelf__stack-icons">
-                          {group.items.slice(0, 3).map((item) => (
-                            <ItemIcon kind={item.kind} key={item.id} />
-                          ))}
-                        </span>
-                        <span>
-                          <strong>{group.items.length}件のスタック</strong>
-                          <small>
-                            {group.items
-                              .map((item) => item.displayName)
-                              .join("、")}
-                          </small>
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`file-shelf__single${draggableItems.length ? " is-draggable" : ""}${selectedIds.has(group.items[0].id) ? " is-selected" : ""}${cursorKey === `item:${group.items[0].id}` ? " is-keyboard-active" : ""}`}
-                        onClick={(event) => {
-                          if (rowDrag.consumeSuppressedClick()) {
-                            event.preventDefault();
-                            return;
-                          }
-                          selectItem(
-                            group.items[0],
-                            event.ctrlKey || event.metaKey,
-                          );
-                        }}
-                        onPointerDown={(event) =>
-                          rowDrag.begin(event, draggableItems)
-                        }
-                        onPointerMove={rowDrag.move}
-                        onPointerUp={rowDrag.end}
-                        onPointerCancel={rowDrag.end}
-                        onDoubleClick={() =>
-                          void shelf.openItem(group.items[0])
-                        }
-                        title={
-                          draggableItems.length
-                            ? "クリックで選択、ドラッグで取り出す"
-                            : undefined
-                        }
-                        aria-pressed={selectedIds.has(group.items[0].id)}
-                        data-shelf-cursor-key={`item:${group.items[0].id}`}
-                      >
-                        <ItemIcon kind={group.items[0].kind} />
-                        <span>
-                          <strong>{group.items[0].displayName}</strong>
-                          <small>
-                            {group.items[0].availability === "missing"
-                              ? "元の場所に見つかりません"
-                              : [
-                                  group.items[0].source === "clipboardHistory"
-                                    ? "履歴"
-                                    : null,
-                                  group.items[0].pinned ? "固定" : null,
-                                  kindLabel[group.items[0].kind],
-                                  formatBytes(group.items[0].sizeBytes),
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                          </small>
-                        </span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="file-shelf__drag-handle"
-                      disabled={!draggableItems.length || shelf.busy}
-                      onPointerDown={(event) => {
-                        if (event.button !== 0) return;
-                        event.preventDefault();
-                        void shelf.dragItems(draggableItems, event.shiftKey);
-                      }}
-                      aria-label={`${isStack ? "スタック" : group.items[0].displayName}をドラッグして取り出す`}
-                      title={
-                        draggableItems.length
-                          ? "ドラッグして取り出す（Shiftで移動）"
-                          : "文章とURLは選択してコピー"
-                      }
-                    >
-                      <GripVertical size={17} aria-hidden="true" />
-                    </button>
-                  </div>
-
-                  {isStack && isOpen && (
-                    <div className="file-shelf__items">
-                      {group.items.map((item) => (
-                        <div
-                          className={`file-shelf__item${selectedIds.has(item.id) ? " is-selected" : ""}`}
-                          key={item.id}
-                        >
-                          <button
-                            type="button"
-                            className={`file-shelf__item-main${item.availability === "ready" && item.sourcePath ? " is-draggable" : ""}${cursorKey === `item:${item.id}` ? " is-keyboard-active" : ""}`}
-                            onClick={(event) => {
-                              if (rowDrag.consumeSuppressedClick()) {
-                                event.preventDefault();
-                                return;
-                              }
-                              selectItem(item, event.ctrlKey || event.metaKey);
-                            }}
-                            onPointerDown={(event) =>
-                              rowDrag.begin(event, [item])
-                            }
-                            onPointerMove={rowDrag.move}
-                            onPointerUp={rowDrag.end}
-                            onPointerCancel={rowDrag.end}
-                            onDoubleClick={() => void shelf.openItem(item)}
-                            title={
-                              item.availability === "ready" && item.sourcePath
-                                ? "クリックで選択、ドラッグで取り出す"
-                                : undefined
-                            }
-                            aria-pressed={selectedIds.has(item.id)}
-                            data-shelf-cursor-key={`item:${item.id}`}
-                          >
-                            <ItemIcon kind={item.kind} />
-                            <span>
-                              <strong>{item.displayName}</strong>
-                              <small>
-                                {item.availability === "missing"
-                                  ? "見つかりません"
-                                  : [
-                                      item.source === "clipboardHistory"
-                                        ? "履歴"
-                                        : null,
-                                      item.pinned ? "固定" : null,
-                                      kindLabel[item.kind],
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                              </small>
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            className="file-shelf__drag-handle"
-                            disabled={
-                              item.availability !== "ready" ||
-                              !item.sourcePath ||
-                              shelf.busy
-                            }
-                            onPointerDown={(event) => {
-                              if (event.button !== 0) return;
-                              event.preventDefault();
-                              void shelf.dragItems([item], event.shiftKey);
-                            }}
-                            aria-label={`${item.displayName}をドラッグして取り出す`}
-                          >
-                            <GripVertical size={16} aria-hidden="true" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </article>
-              );
-            })
-          )}
-        </div>
+        <FileShelfContent
+          contentRef={contentRef}
+          visibleGroups={visibleGroups}
+          totalGroupCount={shelf.state.groups.length}
+          loading={shelf.loading}
+          normalizedQuery={normalizedQuery}
+          expandedGroups={expandedGroups}
+          selectedIds={selectedIds}
+          cursorKey={cursorKey}
+          busy={shelf.busy}
+          rowDrag={rowDrag}
+          onChoosePaths={() => void shelf.choosePaths()}
+          onChooseFolders={() => void shelf.chooseFolders()}
+          onClearQuery={() => setQuery("")}
+          onToggleGroup={toggleGroup}
+          onSelectItem={selectItem}
+          onOpenItem={(item) => void shelf.openItem(item)}
+          onDragItems={(items, shiftKey) => {
+            void shelf.dragItems(items, shiftKey);
+          }}
+        />
 
         {previewItem && (
-          <aside
-            className="file-shelf__preview"
-            role="dialog"
-            aria-label={`${previewItem.displayName}のクイックプレビュー`}
-          >
-            <header className="file-shelf__preview-header">
-              <div className="file-shelf__preview-title">
-                <ItemIcon
-                  className="file-shelf__preview-icon"
-                  kind={previewItem.kind}
-                />
-                <span>
-                  <strong>{previewItem.displayName}</strong>
-                  <small>
-                    {previewPinned ? "プレビュー固定 · " : ""}
-                    {previewItem.pinned ? "固定 · " : ""}
-                    {kindLabel[previewItem.kind]}
-                  </small>
-                </span>
-              </div>
-              <div className="file-shelf__preview-header-actions">
-                <button
-                  type="button"
-                  className={previewPinned ? "is-active" : undefined}
-                  onClick={() => setPreviewPinned((current) => !current)}
-                  aria-label={
-                    previewPinned
-                      ? "クイックプレビューの固定を解除"
-                      : "クイックプレビューを固定"
-                  }
-                  aria-pressed={previewPinned}
-                  title={previewPinned ? "固定を解除（P）" : "固定する（P）"}
-                >
-                  {previewPinned ? (
-                    <PinOff size={16} aria-hidden="true" />
-                  ) : (
-                    <Pin size={16} aria-hidden="true" />
-                  )}
-                </button>
-                <button
-                  ref={previewCloseRef}
-                  type="button"
-                  onClick={closePreview}
-                  aria-label="クイックプレビューを閉じる"
-                  title="閉じる（Esc）"
-                >
-                  <X size={16} aria-hidden="true" />
-                </button>
-              </div>
-            </header>
-            <div className="file-shelf__preview-body">
-              {previewLoading ? (
-                <div className="file-shelf__preview-state">
-                  <LoaderCircle
-                    className="is-spinning"
-                    size={28}
-                    aria-hidden="true"
-                  />
-                  画像を読み込んでいます…
-                </div>
-              ) : previewError ? (
-                <div className="file-shelf__preview-state is-error">
-                  <ItemIcon
-                    className="file-shelf__preview-hero-icon"
-                    kind={previewItem.kind}
-                  />
-                  {previewError}
-                </div>
-              ) : previewDataUrl ? (
-                <img src={previewDataUrl} alt={previewItem.displayName} />
-              ) : previewItem.textContent ? (
-                <pre>{previewItem.textContent}</pre>
-              ) : (
-                <div className="file-shelf__preview-state">
-                  <ItemIcon
-                    className="file-shelf__preview-hero-icon"
-                    kind={previewItem.kind}
-                  />
-                  <strong>{previewItem.displayName}</strong>
-                  <span>
-                    {previewItem.availability === "missing"
-                      ? "元の場所に見つかりません"
-                      : previewItem.sourcePath || "内容プレビューはありません"}
-                  </span>
-                </div>
-              )}
-            </div>
-            <footer className="file-shelf__preview-actions">
-              <span>Pで固定 · Q / Escで閉じる</span>
-              <button
-                type="button"
-                onClick={() => void shelf.copyItem(previewItem)}
-              >
-                <Copy size={14} aria-hidden="true" />
-                コピー
-              </button>
-              {(previewItem.sourcePath || previewItem.kind === "url") && (
-                <button
-                  type="button"
-                  onClick={() => void shelf.openItem(previewItem)}
-                >
-                  <ExternalLink size={14} aria-hidden="true" />
-                  開く
-                </button>
-              )}
-            </footer>
-          </aside>
+          <FileShelfPreview
+            item={previewItem}
+            pinned={previewPinned}
+            dataUrl={previewDataUrl}
+            loading={previewLoading}
+            error={previewError}
+            closeRef={previewCloseRef}
+            onTogglePinned={() => setPreviewPinned((current) => !current)}
+            onClose={closePreview}
+            onCopy={(item) => void shelf.copyItem(item)}
+            onOpen={(item) => void shelf.openItem(item)}
+          />
         )}
 
         {editingItem && (
-          <form
-            className="file-shelf__rename"
-            aria-label="棚での表示名を変更"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void commitRename();
-            }}
-          >
-            <Pencil size={15} aria-hidden="true" />
-            <input
-              ref={renameInputRef}
-              value={editingName}
-              maxLength={120}
-              aria-label="棚で表示する名前"
-              onChange={(event) => setEditingName(event.target.value)}
-              onKeyDown={(event) => {
-                event.stopPropagation();
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  cancelRenaming();
-                }
-              }}
-            />
-            <button type="submit" disabled={shelf.busy || !editingName.trim()}>
-              保存
-            </button>
-            <button
-              type="button"
-              onClick={cancelRenaming}
-              aria-label="名前の変更をキャンセル"
-            >
-              <X size={15} aria-hidden="true" />
-            </button>
-          </form>
+          <FileShelfRenameForm
+            name={editingName}
+            busy={shelf.busy}
+            inputRef={renameInputRef}
+            onNameChange={setEditingName}
+            onSubmit={() => void commitRename()}
+            onCancel={cancelRenaming}
+          />
         )}
 
         {shelf.pendingDragCount > 0 && !editingItem && (

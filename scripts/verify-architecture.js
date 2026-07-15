@@ -3,7 +3,10 @@ import path from "node:path";
 
 const ROOT_DIR = process.cwd();
 const TS_SETTINGS_PATH = path.join(ROOT_DIR, "src/core/settingsModel.ts");
-const RS_SETTINGS_PATH = path.join(ROOT_DIR, "src-tauri/src/core/settings.rs");
+const RS_SETTINGS_PATH = path.join(
+  ROOT_DIR,
+  "src-tauri/src/core/settings_model.rs",
+);
 const FEATURES_DIR = path.join(ROOT_DIR, "src/features");
 const TAURI_MOCK_PATH = path.join(ROOT_DIR, "src/core/mocks/tauriMock.ts");
 const VITEST_SETUP_PATH = path.join(ROOT_DIR, "src/core/mocks/vitestSetup.ts");

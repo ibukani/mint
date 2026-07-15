@@ -11,6 +11,9 @@ import type {
 
 export const CALENDAR_EVENTS_CHANGED_EVENT = "calendar-events-changed";
 
+export const getCalendarEditorPayload = () =>
+  invoke<CalendarEditorPayload | null>("get_calendar_editor_payload");
+
 export interface CalendarEventsChangedPayload {
   event: CalendarEvent;
 }

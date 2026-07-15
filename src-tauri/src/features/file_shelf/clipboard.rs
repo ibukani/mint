@@ -28,13 +28,13 @@ use windows_sys::Win32::{
 use crate::core::settings::{AppSettingsState, FileShelfSettings};
 
 use super::{
-    implementation::{
-        add_content_in_store, display_text, display_url, insert_group, load_state_from_store,
-        open_store, remove_items_in_store, timestamp, NewItem, MAX_IMAGE_BYTES, MAX_TEXT_BYTES,
-    },
     models::{
         FileShelfItemKind, FileShelfItemSource, FileShelfMutation, FileShelfRemoval,
         FileShelfStoreState,
+    },
+    repository::{
+        add_content_in_store, display_text, display_url, insert_group, load_state_from_store,
+        open_store, remove_items_in_store, timestamp, NewItem, MAX_IMAGE_BYTES, MAX_TEXT_BYTES,
     },
 };
 
@@ -293,7 +293,7 @@ pub(super) fn capture_clipboard_text_in_store(
 
     let parsed_url = Url::parse(&text)
         .ok()
-        .filter(super::implementation::is_supported_url);
+        .filter(super::repository::is_supported_url);
     let item = if let Some(url) = parsed_url {
         NewItem {
             kind: FileShelfItemKind::Url,
@@ -382,7 +382,7 @@ pub(super) fn capture_clipboard_text_explicit_in_store(
 
     let input = Url::parse(&text)
         .ok()
-        .filter(super::implementation::is_supported_url)
+        .filter(super::repository::is_supported_url)
         .map(|_| super::models::AddFileShelfContentInput::Url { url: text.clone() })
         .unwrap_or(super::models::AddFileShelfContentInput::Text { text });
     add_content_in_store(database_path, Path::new(""), input)

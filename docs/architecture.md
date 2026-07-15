@@ -27,7 +27,7 @@ Mint は、機能追加の安全性・拡張性・保守性を高めるため、
 ### 機能管理ダッシュボードと共通設定 (`AppSettings`)
 - `src/core/settingsModel.ts` (TypeScript): 設定スキーマの単一ソース
 - `src/core/context/AppSettings.tsx` (TypeScript): Provider と購読 API
-- `src-tauri/src/core/settings.rs` (Rust)
+- `src-tauri/src/core/settings.rs` (Rust facade) / `settings_model.rs` (Rust model)
 - すべての機能の設定や有効状態はここで一元管理され、ローカルファイルにシリアライズされて保存されます。
 - `theme` などの共通設定と、機能ごとの個別設定 (`clock`, `voiceToText` 等) が混在します。
 

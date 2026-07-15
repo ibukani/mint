@@ -1,6 +1,8 @@
 mod clipboard;
 mod implementation;
 mod models;
+mod repository;
+mod shortcut;
 mod window;
 
 const COLLAPSED_WIDTH: f64 = 32.0;
@@ -9,7 +11,8 @@ const EXPANDED_WIDTH: f64 = 360.0;
 const EXPANDED_HEIGHT: f64 = 520.0;
 
 pub use clipboard::{apply_clipboard_history_settings, start_clipboard_history_monitor};
-pub use implementation::{handle_file_shelf_shortcut_event, initialize_store};
+pub use repository::initialize_store;
+pub use shortcut::handle_file_shelf_shortcut_event;
 pub use window::{apply_window_settings, toggle_file_shelf_overlay};
 
 #[allow(unused_imports)]
@@ -108,7 +111,7 @@ pub fn clear_file_shelf_clipboard_history(
 
 #[tauri::command]
 pub fn should_auto_expand_file_shelf(app: tauri::AppHandle) -> Result<bool, String> {
-    implementation::should_auto_expand_file_shelf(app)
+    shortcut::should_auto_expand_file_shelf(app)
 }
 
 #[tauri::command]
@@ -117,5 +120,5 @@ pub fn set_file_shelf_expanded(
     expanded: bool,
     focus: bool,
 ) -> Result<(), String> {
-    implementation::set_file_shelf_expanded(app, expanded, focus)
+    shortcut::set_file_shelf_expanded(app, expanded, focus)
 }

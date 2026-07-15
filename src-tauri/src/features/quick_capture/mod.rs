@@ -2,6 +2,7 @@ mod attachments;
 mod backup;
 mod implementation;
 mod models;
+mod repository;
 mod window;
 
 pub use implementation::initialize_store;

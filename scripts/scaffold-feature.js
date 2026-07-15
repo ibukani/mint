@@ -199,8 +199,11 @@ if (fs.existsSync(appSettingsPath)) {
   }
 }
 
-// 7. Auto-Register in settings.rs
-const settingsRsPath = path.join(ROOT_DIR, "src-tauri/src/core/settings.rs");
+// 7. Auto-Register in settings_model.rs
+const settingsRsPath = path.join(
+  ROOT_DIR,
+  "src-tauri/src/core/settings_model.rs",
+);
 if (fs.existsSync(settingsRsPath)) {
   let content = fs.readFileSync(settingsRsPath, "utf-8");
   if (!content.includes(`pub struct ${pascalName}Settings`)) {
@@ -240,7 +243,7 @@ impl Default for ${pascalName}Settings {
 
     fs.writeFileSync(settingsRsPath, content, "utf-8");
     recordAction(
-      `[AUTO-REGISTERED] settings.rs に構造体定義と初期値を登録しました。`,
+      `[AUTO-REGISTERED] settings_model.rs に構造体定義と初期値を登録しました。`,
     );
   }
 }

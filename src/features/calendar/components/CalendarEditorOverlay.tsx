@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { X } from "lucide-react";
@@ -7,7 +6,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
-import { CALENDAR_EVENTS_CHANGED_EVENT } from "../events";
+import {
+  CALENDAR_EVENTS_CHANGED_EVENT,
+  getCalendarEditorPayload,
+} from "../events";
 import type { CalendarEditorPayload, CalendarEvent } from "../types";
 import { CalendarEventEditor } from "./CalendarEventEditor";
 import "./CalendarOverlay.css";
@@ -83,7 +85,7 @@ export const CalendarEditorOverlay: React.FC = () => {
     emit("calendar-editor-ready").catch(console.error);
 
     // 2. Also try retrieving it directly via invoke as a fallback
-    invoke<CalendarEditorPayload | null>("get_calendar_editor_payload")
+    getCalendarEditorPayload()
       .then((payload) => {
         if (!payload) return;
         if (payload.mode === "create") {

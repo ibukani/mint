@@ -8,8 +8,8 @@ use std::{
 use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
 
 use super::{
-    implementation::{load_state_from_store, normalize_tags, open_store},
     models::{QuickCaptureExportInput, QuickCaptureState, QuickCaptureStoreState},
+    repository::{load_state_from_store, normalize_tags, open_store},
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
