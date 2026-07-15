@@ -66,7 +66,7 @@
   background: var(--color-accent);
   box-shadow:
     0 0 0 1px var(--border-accent),
-    0 5px 12px rgb(0 0 0 / 20%);
+    var(--shadow-switch);
 }
 
 .clock-range::-moz-range-thumb {
@@ -181,8 +181,7 @@
   border-color: color-mix(in srgb, var(--color-text-primary) 13%, transparent);
   border-radius: var(--radius-lg);
   box-shadow:
-    0 28px 58px rgb(0 0 0 / 30%),
-    0 8px 20px rgb(0 0 0 / 18%),
+    var(--shadow-card-raised),
     0 0 34px
     color-mix(
       in srgb,

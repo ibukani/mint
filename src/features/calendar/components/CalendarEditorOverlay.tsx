@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import {
@@ -29,7 +30,8 @@ const getTodayMachineDate = () => {
 
 export const CalendarEditorOverlay: React.FC = () => {
   const { settings } = useAppSettings();
-  const themeColor = settings?.calendar.themeColor || "#10a37f";
+  const themeColor =
+    settings?.calendar.themeColor || defaultAppSettings.calendar.themeColor;
 
   const [editorState, setEditorState] = useState<EditorState>(() => ({
     kind: "create",
