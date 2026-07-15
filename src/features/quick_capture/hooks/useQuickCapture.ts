@@ -306,26 +306,34 @@ export const useQuickCapture = () => {
     }
   }, [activeId, content, persist, pinned, sortNotes, tags]);
 
-  const removeActive = useCallback(async () => {
-    if (!activeId) return null;
-    setStatus("saving");
-    setError(null);
-    setCanRetrySave(false);
-    try {
-      await deleteQuickCaptureNote(activeId);
-      setNotes((current) => current.filter((note) => note.id !== activeId));
-      showDraft();
-      setStatus("saved");
+  const removeNote = useCallback(
+    async (noteId: string) => {
+      setStatus("saving");
+      setError(null);
       setCanRetrySave(false);
-      return null;
-    } catch (reason) {
-      const message = reason instanceof Error ? reason.message : String(reason);
-      setError(message);
-      setStatus("error");
-      setCanRetrySave(false);
-      return message;
-    }
-  }, [activeId, showDraft]);
+      try {
+        await deleteQuickCaptureNote(noteId);
+        setNotes((current) => current.filter((note) => note.id !== noteId));
+        if (activeId === noteId) showDraft();
+        setStatus("saved");
+        setCanRetrySave(false);
+        return null;
+      } catch (reason) {
+        const message =
+          reason instanceof Error ? reason.message : String(reason);
+        setError(message);
+        setStatus("error");
+        setCanRetrySave(false);
+        return message;
+      }
+    },
+    [activeId, showDraft],
+  );
+
+  const removeActive = useCallback(
+    async () => (activeId ? removeNote(activeId) : null),
+    [activeId, removeNote],
+  );
 
   const addAttachmentFromPath = useCallback(
     async (noteId: string, sourcePath: string) => {
@@ -633,6 +641,7 @@ export const useQuickCapture = () => {
     pinned,
     promote,
     removeActive,
+    removeNote,
     removeAttachment,
     retrySave,
     selectNote,

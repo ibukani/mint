@@ -129,6 +129,71 @@ describe("QuickCaptureOverlay", () => {
     });
   });
 
+  it("copies a saved note directly from the library", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "一覧からコピーするメモ" } });
+    fireEvent.click(screen.getByRole("button", { name: /メモに保存/ }));
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "「一覧からコピーするメモ」をコピー",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(clipboardMocks.writeText).toHaveBeenCalledWith(
+        "一覧からコピーするメモ",
+      );
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "メモをクリップボードへコピーしました",
+      );
+    });
+  });
+
+  it("deletes a saved note from the library after confirmation", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: {
+          content: "残しておく下書き",
+          tags: [],
+          updatedAt: "2026-07-15T03:00:00.000Z",
+        },
+        notes: [
+          {
+            id: "library-delete-note",
+            content: "一覧から削除するメモ",
+            tags: [],
+            pinned: false,
+            createdAt: "2026-07-15T02:00:00.000Z",
+            updatedAt: "2026-07-15T02:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "「一覧から削除するメモ」を削除",
+      }),
+    );
+    const dialog = screen.getByRole("alertdialog", {
+      name: "このメモを削除しますか？",
+    });
+    expect(dialog).toHaveTextContent("一覧から削除するメモ");
+    fireEvent.click(within(dialog).getByRole("button", { name: "削除する" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("option", { name: /一覧から削除するメモ/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText("メモ本文")).toHaveValue("残しておく下書き");
+    });
+  });
+
   it("resets draft view state when returning from a saved note", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");
@@ -221,7 +286,7 @@ describe("QuickCaptureOverlay", () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText("メモ本文")).toHaveValue("");
-      expect(screen.getByText("自動保存される下書き")).toBeVisible();
+      expect(screen.getByText("思いついたことを、そのままメモ")).toBeVisible();
     });
   });
 
@@ -441,7 +506,7 @@ describe("QuickCaptureOverlay", () => {
       "aria-keyshortcuts",
       "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
-    expect(screen.getByText("Ctrl F · PgUp/PgDn")).toBeInTheDocument();
+    expect(screen.getByText("Ctrl F")).toBeInTheDocument();
 
     fireEvent.keyDown(search, { key: "PageDown" });
     expect(search).toHaveAttribute("aria-activedescendant", options[5].id);
@@ -502,5 +567,18 @@ describe("QuickCaptureOverlay", () => {
 
     fireEvent.keyDown(dialog, { key: "Escape" });
     await waitFor(() => expect(windowMocks.hide).toHaveBeenCalledOnce());
+  });
+
+  it("guides an empty library without competing with the editor", async () => {
+    render(<QuickCaptureOverlay />);
+
+    expect(
+      await screen.findByRole("heading", { name: "クイックキャプチャー" }),
+    ).toBeVisible();
+    expect(screen.getByPlaceholderText("何を残しておきますか？")).toHaveFocus();
+    expect(screen.getByText("まだメモはありません")).toBeVisible();
+    expect(
+      screen.getByText("Ctrl+Enterで保存すると、ここからすぐ開けます"),
+    ).toBeVisible();
   });
 });

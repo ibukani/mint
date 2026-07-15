@@ -75,7 +75,7 @@ const isEditableTarget = (target: EventTarget | null) =>
 const QUICK_CAPTURE_PAGE_STEP = 5;
 
 type QuickCaptureConfirmation =
-  | { kind: "delete" }
+  | { kind: "delete"; note: QuickCaptureNote }
   | { kind: "import"; path: string };
 
 export const QuickCaptureOverlay: React.FC = () => {
@@ -313,6 +313,15 @@ export const QuickCaptureOverlay: React.FC = () => {
     }
   };
 
+  const copySavedNote = async (note: QuickCaptureNote) => {
+    try {
+      await navigator.clipboard.writeText(note.content);
+      setActionStatus("メモをクリップボードへコピーしました");
+    } catch {
+      setActionStatus("メモをコピーできませんでした");
+    }
+  };
+
   const exportMarkdown = async () => {
     try {
       const path = await capture.withAutoHideSuspended(() =>
@@ -371,7 +380,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     setConfirmationError("");
     const operationError =
       confirmation.kind === "delete"
-        ? await capture.removeActive()
+        ? await capture.removeNote(confirmation.note.id)
         : await capture.importBackup(confirmation.path);
     if (operationError) {
       setConfirmationError(operationError);
@@ -407,15 +416,19 @@ export const QuickCaptureOverlay: React.FC = () => {
 
         <header className="quick-capture__header">
           <div className="quick-capture__heading">
-            <FileText size={18} aria-hidden="true" />
+            <span className="quick-capture__heading-icon" aria-hidden="true">
+              <FileText size={17} />
+            </span>
             <div>
               <h1>
                 {capture.activeId
                   ? noteTitle({ content: capture.content })
-                  : "Quick Capture"}
+                  : "クイックキャプチャー"}
               </h1>
               <span>
-                {capture.activeId ? "保存済みメモ" : "自動保存される下書き"}
+                {capture.activeId
+                  ? "保存済みメモを編集中"
+                  : "思いついたことを、そのままメモ"}
               </span>
             </div>
           </div>
@@ -557,60 +570,62 @@ export const QuickCaptureOverlay: React.FC = () => {
               </div>
             )}
 
-            {preview ? (
-              <article
-                ref={previewRef}
-                id="quick-capture-content"
-                className="quick-capture__preview"
-                tabIndex={-1}
-                aria-label="メモのプレビュー"
-              >
-                {capture.content.trim() ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      a: ({ href, children }) => (
-                        <a
-                          href={href}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            if (href) void openUrl(href);
-                          }}
-                        >
-                          {children}
-                        </a>
-                      ),
-                    }}
-                  >
-                    {capture.content}
-                  </ReactMarkdown>
-                ) : (
-                  <p className="quick-capture__empty">
-                    プレビューする内容がありません。
-                  </p>
-                )}
-              </article>
-            ) : (
-              <textarea
-                ref={editorRef}
-                id="quick-capture-content"
-                aria-label="メモ本文"
-                value={capture.content}
-                onChange={(event) => capture.setContent(event.target.value)}
-                placeholder="ここに書き始める…"
-                spellCheck="true"
-              />
-            )}
+            <div className="quick-capture__writing-surface">
+              {preview ? (
+                <article
+                  ref={previewRef}
+                  id="quick-capture-content"
+                  className="quick-capture__preview"
+                  tabIndex={-1}
+                  aria-label="メモのプレビュー"
+                >
+                  {capture.content.trim() ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({ href, children }) => (
+                          <a
+                            href={href}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              if (href) void openUrl(href);
+                            }}
+                          >
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
+                      {capture.content}
+                    </ReactMarkdown>
+                  ) : (
+                    <p className="quick-capture__empty">
+                      プレビューする内容がありません。
+                    </p>
+                  )}
+                </article>
+              ) : (
+                <textarea
+                  ref={editorRef}
+                  id="quick-capture-content"
+                  aria-label="メモ本文"
+                  value={capture.content}
+                  onChange={(event) => capture.setContent(event.target.value)}
+                  placeholder="何を残しておきますか？"
+                  spellCheck="true"
+                />
+              )}
 
-            <label className="quick-capture__tags-input">
-              <Tag size={14} aria-hidden="true" />
-              <input
-                aria-label="タグ"
-                value={capture.tags}
-                onChange={(event) => capture.setTags(event.target.value)}
-                placeholder="タグをカンマ区切りで追加"
-              />
-            </label>
+              <label className="quick-capture__tags-input">
+                <Tag size={14} aria-hidden="true" />
+                <input
+                  aria-label="タグ"
+                  value={capture.tags}
+                  onChange={(event) => capture.setTags(event.target.value)}
+                  placeholder="タグを追加（カンマ区切り）"
+                />
+              </label>
+            </div>
 
             {activeNote && activeNote.attachments.length > 0 && (
               <section
@@ -702,7 +717,9 @@ export const QuickCaptureOverlay: React.FC = () => {
                     disabled={isSaving}
                     onClick={() => {
                       setConfirmationError("");
-                      setConfirmation({ kind: "delete" });
+                      if (activeNote) {
+                        setConfirmation({ kind: "delete", note: activeNote });
+                      }
                     }}
                   >
                     <Trash2 size={14} aria-hidden="true" /> 削除
@@ -724,7 +741,10 @@ export const QuickCaptureOverlay: React.FC = () => {
             </footer>
           </section>
 
-          <aside className="quick-capture__library" aria-label="保存済みメモ">
+          <aside
+            className={`quick-capture__library${capture.notes.length === 0 ? " is-empty" : ""}`}
+            aria-label="保存済みメモ"
+          >
             <div className="quick-capture__library-header">
               <strong>
                 <Archive size={14} aria-hidden="true" /> 保存済みメモ
@@ -790,7 +810,7 @@ export const QuickCaptureOverlay: React.FC = () => {
                 className="quick-capture__search-shortcut"
                 title={`検索へ移動（${shortcutModifier}+F /）・↑↓: 1件移動・PageUp/PageDown: 5件移動`}
               >
-                {shortcutModifier} F · PgUp/PgDn
+                {shortcutModifier} F
               </kbd>
             </label>
             <fieldset
@@ -848,38 +868,74 @@ export const QuickCaptureOverlay: React.FC = () => {
               aria-label="保存済みメモ"
             >
               {filteredNotes.length ? (
-                filteredNotes.map((note) => (
-                  <button
-                    type="button"
-                    role="option"
-                    id={`${noteListId}-${note.id}`}
-                    key={note.id}
-                    tabIndex={-1}
-                    className={`quick-capture__note${capture.activeId === note.id ? " is-active" : ""}${librarySearchFocused && libraryCursorNote?.id === note.id ? " is-keyboard-active" : ""}`}
-                    aria-selected={capture.activeId === note.id}
-                    onMouseEnter={() => setLibraryCursorId(note.id)}
-                    onClick={() => {
-                      setLibraryCursorId(note.id);
-                      void capture.selectNote(note);
-                    }}
-                  >
-                    <span className="quick-capture__note-title">
-                      {note.pinned && (
-                        <Pin size={11} aria-label="ピン留め済み" />
-                      )}
-                      <strong>{noteTitle(note)}</strong>
-                    </span>
-                    <small>{formatUpdatedAt(note.updatedAt)}</small>
-                    {note.tags.length > 0 && (
-                      <span>{note.tags.map((tag) => `#${tag}`).join(" ")}</span>
-                    )}
-                  </button>
-                ))
+                filteredNotes.map((note) => {
+                  const title = noteTitle(note);
+                  return (
+                    <div className="quick-capture__note-row" key={note.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        id={`${noteListId}-${note.id}`}
+                        tabIndex={-1}
+                        className={`quick-capture__note${capture.activeId === note.id ? " is-active" : ""}${librarySearchFocused && libraryCursorNote?.id === note.id ? " is-keyboard-active" : ""}`}
+                        aria-selected={capture.activeId === note.id}
+                        onMouseEnter={() => setLibraryCursorId(note.id)}
+                        onClick={() => {
+                          setLibraryCursorId(note.id);
+                          void capture.selectNote(note);
+                        }}
+                      >
+                        <span className="quick-capture__note-title">
+                          {note.pinned && (
+                            <Pin size={11} aria-label="ピン留め済み" />
+                          )}
+                          <strong>{title}</strong>
+                        </span>
+                        <small>{formatUpdatedAt(note.updatedAt)}</small>
+                        {note.tags.length > 0 && (
+                          <span>
+                            {note.tags.map((tag) => `#${tag}`).join(" ")}
+                          </span>
+                        )}
+                      </button>
+                      <div className="quick-capture__note-actions">
+                        <button
+                          type="button"
+                          aria-label={`「${title}」をコピー`}
+                          title="メモ本文をコピー"
+                          onClick={() => void copySavedNote(note)}
+                        >
+                          <Copy size={13} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          className="quick-capture__note-delete"
+                          aria-label={`「${title}」を削除`}
+                          title="メモを削除"
+                          onClick={() => {
+                            setConfirmationError("");
+                            setConfirmation({ kind: "delete", note });
+                          }}
+                        >
+                          <Trash2 size={13} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               ) : (
                 <div className="quick-capture__empty">
-                  {query || tagFilter || pinnedOnly
-                    ? "一致するメモがありません"
-                    : "保存したメモがここに並びます"}
+                  <Archive size={20} aria-hidden="true" />
+                  <strong>
+                    {query || tagFilter || pinnedOnly
+                      ? "一致するメモがありません"
+                      : "まだメモはありません"}
+                  </strong>
+                  <span>
+                    {query || tagFilter || pinnedOnly
+                      ? "検索条件を変えてみてください"
+                      : `${shortcutModifier}+Enterで保存すると、ここからすぐ開けます`}
+                  </span>
                 </div>
               )}
             </div>
@@ -896,7 +952,7 @@ export const QuickCaptureOverlay: React.FC = () => {
         description={
           confirmation?.kind === "import"
             ? `現在の下書きと保存済みメモ${capture.notes.length}件を、選択したバックアップの内容で置き換えます。`
-            : `「${activeNote ? noteTitle(activeNote) : "このメモ"}」を削除します。添付ファイルも削除され、この操作は取り消せません。`
+            : `「${confirmation?.kind === "delete" ? noteTitle(confirmation.note) : "このメモ"}」を削除します。添付ファイルも削除され、この操作は取り消せません。`
         }
         confirmLabel={
           confirmation?.kind === "import" ? "置き換えて復元" : "削除する"

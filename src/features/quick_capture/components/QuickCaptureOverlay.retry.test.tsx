@@ -25,6 +25,7 @@ vi.mock("../hooks/useQuickCapture", () => ({
     pinned: false,
     promote: vi.fn(),
     removeActive: vi.fn(),
+    removeNote: vi.fn(),
     removeAttachment: vi.fn(),
     retryDuplicate: vi.fn(),
     retrySave: mocks.retrySave,
