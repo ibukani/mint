@@ -2,7 +2,7 @@ use image::{codecs::png::PngEncoder, ExtendedColorType, ImageEncoder};
 use rusqlite::{params, OptionalExtension};
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::Path,
     sync::atomic::{AtomicBool, Ordering},
     sync::Arc,
     time::Duration as StdDuration,
@@ -13,7 +13,7 @@ use url::Url;
 use uuid::Uuid;
 
 #[cfg(target_os = "windows")]
-use std::{ffi::OsString, os::windows::ffi::OsStringExt};
+use std::{ffi::OsString, os::windows::ffi::OsStringExt, path::PathBuf};
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::{
     Foundation::{CloseHandle, HWND},
