@@ -106,6 +106,7 @@ describe("CalendarOverlay window coordination", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 11, 9, 0, 0));
+    window.localStorage.clear();
     mocks.listeners.clear();
     mocks.hideCalendar.mockClear();
     mocks.hideClock.mockClear();
@@ -290,9 +291,11 @@ describe("CalendarOverlay window coordination", () => {
     const consoleWarn = vi
       .spyOn(console, "warn")
       .mockImplementation(() => undefined);
+    const settings = createMockSettings();
+    settings.calendar.selectedGoogleCalendarIds = ["primary"];
     mocks.syncShouldFail = true;
     mocks.invoke.mockImplementation(async (command: string) => {
-      if (command === "load_settings") return createMockSettings();
+      if (command === "load_settings") return settings;
       if (command === "list_calendar_events") return [];
       if (command === "get_next_calendar_event") return null;
       if (command === "get_google_calendar_connection") {
@@ -340,7 +343,7 @@ describe("CalendarOverlay window coordination", () => {
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(mocks.invoke).toHaveBeenCalledWith("sync_google_calendars", {
-      calendarIds: [],
+      calendarIds: ["primary"],
     });
     consoleWarn.mockRestore();
   });
