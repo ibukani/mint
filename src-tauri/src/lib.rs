@@ -87,7 +87,7 @@ pub fn run() {
                 .build(),
         )
         .manage(AppSettingsState(Mutex::new(None)))
-        .setup(|app| {
+        .setup(move |app| {
             let calendar_store = features::calendar::initialize_store(app.handle())?;
             app.manage(calendar_store);
             let quick_capture_store = features::quick_capture::initialize_store(app.handle())?;

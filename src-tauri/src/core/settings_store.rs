@@ -308,10 +308,8 @@ mod tests {
 
     #[test]
     fn write_settings_atomically_writes_file() {
-        let temp_dir = std::env::temp_dir().join(format!(
-            "mint-settings-test-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let temp_dir =
+            std::env::temp_dir().join(format!("mint-settings-test-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp_dir).unwrap();
         let path = temp_dir.join("settings.json");
 
@@ -326,10 +324,8 @@ mod tests {
 
     #[test]
     fn replace_file_preserves_previous_file_on_failure() {
-        let temp_dir = std::env::temp_dir().join(format!(
-            "mint-replace-test-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let temp_dir =
+            std::env::temp_dir().join(format!("mint-replace-test-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp_dir).unwrap();
         let destination = temp_dir.join("settings.json");
         fs::write(&destination, "original").unwrap();
