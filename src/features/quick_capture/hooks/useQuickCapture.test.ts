@@ -249,6 +249,18 @@ describe("useQuickCapture", () => {
     expect(result.current.error).toBe("保存に失敗しました");
   });
 
+  it("releases the saved note list while hidden and reloads it when shown", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.notes).toHaveLength(1));
+
+    await act(async () => result.current.close());
+    expect(result.current.notes).toEqual([]);
+
+    act(() => mocks.listeners.get("quick-capture-shown")?.({}));
+    await waitFor(() => expect(result.current.notes).toHaveLength(1));
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+  });
+
   it("saves and hides once when an unpinned visible window loses focus", async () => {
     const { result } = renderHook(() => useQuickCapture());
     await waitFor(() => expect(result.current.content).toBe("下書きの内容"));

@@ -38,6 +38,7 @@ export const useQuickCapture = () => {
   const [windowVisible, setWindowVisible] = useState(false);
   const loaded = useRef(false);
   const revision = useRef(0);
+  const notesReloadSequenceRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef({ content: "", tags: "" });
   const closeRef = useRef<() => Promise<void>>(async () => {});
@@ -125,8 +126,10 @@ export const useQuickCapture = () => {
   }, []);
 
   const reload = useCallback(async () => {
+    const sequence = ++notesReloadSequenceRef.current;
     try {
       const state = await loadQuickCaptureState();
+      if (sequence !== notesReloadSequenceRef.current) return null;
       const nextDraft = {
         content: state.draft.content,
         tags: tagsToText(state.draft.tags),
@@ -147,6 +150,19 @@ export const useQuickCapture = () => {
       return message;
     }
   }, [showDraft, sortNotes]);
+
+  const reloadNotes = useCallback(async () => {
+    const sequence = ++notesReloadSequenceRef.current;
+    try {
+      const state = await loadQuickCaptureState();
+      if (sequence !== notesReloadSequenceRef.current) return;
+      setNotes(sortNotes(state.notes));
+    } catch (reason) {
+      if (sequence !== notesReloadSequenceRef.current) return;
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setStatus("error");
+    }
+  }, [sortNotes]);
 
   const persist = useCallback((): Promise<boolean> => {
     if (!loaded.current) return Promise.resolve(false);
@@ -392,6 +408,8 @@ export const useQuickCapture = () => {
       setWindowVisible(false);
       try {
         await getCurrentWindow().hide();
+        notesReloadSequenceRef.current += 1;
+        setNotes([]);
       } catch (reason) {
         visibleRef.current = true;
         setWindowVisible(true);
@@ -427,6 +445,7 @@ export const useQuickCapture = () => {
         autoHideSuppressedRef.current = false;
       }
       showDraft();
+      void reloadNotes();
     });
     const noteCreated = listen<QuickCaptureNoteCreatedPayload>(
       QUICK_CAPTURE_NOTE_CREATED_EVENT,
@@ -470,7 +489,7 @@ export const useQuickCapture = () => {
       void hide.then((unlisten) => unlisten());
       void focus.then((unlisten) => unlisten());
     };
-  }, [reload, showDraft, sortNotes]);
+  }, [reload, reloadNotes, showDraft, sortNotes]);
 
   useOverlayWindowEviction(windowVisible);
 
