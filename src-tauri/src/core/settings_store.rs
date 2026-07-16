@@ -164,6 +164,15 @@ pub fn save_settings(
     settings: AppSettings,
     state: tauri::State<'_, AppSettingsState>,
 ) -> Result<(), String> {
+    // Hold the in-memory cache lock for the entire save operation so that
+    // concurrent calls cannot interleave OS side effects or file writes.
+    // Recover from a poisoned mutex so a previous panic does not permanently
+    // block future saves.
+    let mut cached = state.0.lock().unwrap_or_else(|error| {
+        eprintln!("Warning: settings mutex was poisoned, recovering to continue save");
+        error.into_inner()
+    });
+
     let new_shortcuts = settings.active_shortcuts();
     let mut seen: HashMap<&str, &str> = HashMap::new();
     let mut duplicates = Vec::new();
@@ -184,7 +193,10 @@ pub fn save_settings(
         .to_string());
     }
 
-    let old_settings = load_settings_internal(&app).ok();
+    // Read the previous settings from the in-memory cache when available;
+    // otherwise fall back to disk. This guarantees the rollback baseline
+    // matches the state we are about to replace.
+    let old_settings = cached.clone().or_else(|| load_settings_internal(&app).ok());
     let old_autostart = old_settings.as_ref().is_some_and(|old| old.autostart);
     let old_shortcuts = old_settings
         .as_ref()
@@ -255,7 +267,8 @@ pub fn save_settings(
         return Err(SettingsError::IoError { message: error }.to_string());
     }
 
-    *state.0.lock().unwrap() = Some(settings.clone());
+    *cached = Some(settings.clone());
+    drop(cached);
     let _ = app.emit("settings-changed", ());
 
     crate::features::file_shelf::apply_window_settings(&app, &settings.file_shelf);
@@ -282,7 +295,8 @@ pub fn save_settings(
 
 #[cfg(test)]
 mod tests {
-    use super::should_enable_autostart;
+    use super::*;
+    use std::fs;
 
     #[test]
     fn development_builds_never_enable_autostart() {
@@ -290,5 +304,64 @@ mod tests {
         assert!(!should_enable_autostart(false, true));
         assert!(should_enable_autostart(true, false));
         assert!(!should_enable_autostart(false, false));
+    }
+
+    #[test]
+    fn write_settings_atomically_writes_file() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "mint-settings-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let path = temp_dir.join("settings.json");
+
+        write_settings_atomically(&path, "{\"theme\":\"dark\"}").unwrap();
+
+        let content = fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "{\"theme\":\"dark\"}");
+        assert!(temporary_path(&path).unwrap().parent().unwrap() == temp_dir);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn replace_file_preserves_previous_file_on_failure() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "mint-replace-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let destination = temp_dir.join("settings.json");
+        fs::write(&destination, "original").unwrap();
+        let temp_path = temp_dir.join("settings.tmp");
+        fs::write(&temp_path, "updated").unwrap();
+
+        replace_file(&temp_path, &destination).unwrap();
+
+        assert_eq!(fs::read_to_string(&destination).unwrap(), "updated");
+        assert!(!temp_path.exists());
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn replace_file_cleans_up_temp_files() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "mint-replace-cleanup-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let destination = temp_dir.join("settings.json");
+        fs::write(&destination, "original").unwrap();
+        let temp_path = temp_dir.join("settings.tmp");
+        fs::write(&temp_path, "updated").unwrap();
+
+        replace_file(&temp_path, &destination).unwrap();
+
+        assert!(!temp_path.exists());
+        let previous_path = temp_path.with_extension("previous");
+        assert!(!previous_path.exists());
+
+        let _ = fs::remove_dir_all(&temp_dir);
     }
 }

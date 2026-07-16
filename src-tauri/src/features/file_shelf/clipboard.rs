@@ -3,6 +3,8 @@ use rusqlite::{params, OptionalExtension};
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicBool, Ordering},
+    sync::Arc,
     time::Duration as StdDuration,
 };
 use tauri::{AppHandle, Emitter, Manager};
@@ -42,15 +44,16 @@ const CLIPBOARD_POLL_INTERVAL: StdDuration = StdDuration::from_millis(900);
 const MAX_CLIPBOARD_HISTORY_BYTES: usize = 64 * 1024;
 const MAX_CLIPBOARD_IMAGE_RGBA_BYTES: usize = 128 * 1024 * 1024;
 
-pub fn start_clipboard_history_monitor(app: AppHandle) {
+pub fn start_clipboard_history_monitor(app: AppHandle, running: Arc<AtomicBool>) {
     let _ = std::thread::Builder::new()
         .name("mint-clipboard-history".to_string())
         .spawn(move || {
             let mut monitoring = false;
             let mut previous_text = String::new();
 
-            loop {
+            while running.load(Ordering::Relaxed) {
                 std::thread::sleep(CLIPBOARD_POLL_INTERVAL);
+
                 let settings = app
                     .try_state::<AppSettingsState>()
                     .and_then(|state| state.0.lock().ok().and_then(|value| value.clone()))
@@ -75,7 +78,7 @@ pub fn start_clipboard_history_monitor(app: AppHandle) {
                 };
                 if !monitoring {
                     monitoring = true;
-                    previous_text = current_text;
+                    previous_text.clone_from(&current_text);
                     continue;
                 }
                 if current_text.is_empty() || current_text == previous_text {
