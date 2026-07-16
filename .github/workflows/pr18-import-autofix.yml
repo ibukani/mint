@@ -1,0 +1,52 @@
+name: PR 18 import autofix
+
+on:
+  push:
+    branches:
+      - refactor/code-improvements
+
+permissions:
+  contents: write
+
+jobs:
+  autofix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/code-improvements
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Scope Windows-only PathBuf import
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src-tauri/src/features/file_shelf/clipboard.rs")
+          content = path.read_text(encoding="utf-8")
+          content = content.replace("path::{Path, PathBuf},", "path::Path,", 1)
+          content = content.replace(
+              "use std::{ffi::OsString, os::windows::ffi::OsStringExt};",
+              "use std::{ffi::OsString, os::windows::ffi::OsStringExt, path::PathBuf};",
+              1,
+          )
+          path.write_text(content, encoding="utf-8")
+          PY
+          cargo fmt --manifest-path src-tauri/Cargo.toml
+
+      - name: Commit autofix
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src-tauri
+          git commit -m "fix: scope clipboard PathBuf import to Windows"
+          git push origin HEAD:refactor/code-improvements
