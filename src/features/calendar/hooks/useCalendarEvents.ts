@@ -2,6 +2,10 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadSettings } from "../../../core/settings";
 import {
+  rememberGoogleCalendarSync,
+  shouldRunAutomaticGoogleCalendarSync,
+} from "../autoSyncPolicy";
+import {
   buildEventCursor,
   buildEventRange,
   CALENDAR_EVENTS_CHANGED_EVENT,
@@ -36,30 +40,40 @@ export const useCalendarEvents = (
 
   const refresh = useCallback(() => setRevision((current) => current + 1), []);
 
-  const sync = useCallback(async () => {
-    const sequence = ++syncSequenceRef.current;
-    setSyncError("");
+  const sync = useCallback(
+    async (force = false) => {
+      const sequence = ++syncSequenceRef.current;
+      setSyncError("");
 
-    try {
-      const settings = await loadSettings();
-      const connection = await getGoogleCalendarConnection();
-      if (!connection.connected || connection.syncing) return;
+      try {
+        const settings = await loadSettings();
+        const connection = await getGoogleCalendarConnection();
+        const calendarIds = settings.calendar.selectedGoogleCalendarIds;
+        if (
+          !force &&
+          !shouldRunAutomaticGoogleCalendarSync(connection, calendarIds)
+        ) {
+          return;
+        }
 
-      setSyncing(true);
+        setSyncing(true);
 
-      await syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
-      if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
-      refresh();
-    } catch (syncReason) {
-      if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
-      console.warn("Google Calendar sync failed:", syncReason);
-      setSyncError(formatGoogleCalendarError(syncReason));
-    } finally {
-      if (mountedRef.current && syncSequenceRef.current === sequence) {
-        setSyncing(false);
+        await syncGoogleCalendars(calendarIds);
+        rememberGoogleCalendarSync(calendarIds);
+        if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
+        refresh();
+      } catch (syncReason) {
+        if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
+        console.warn("Google Calendar sync failed:", syncReason);
+        setSyncError(formatGoogleCalendarError(syncReason));
+      } finally {
+        if (mountedRef.current && syncSequenceRef.current === sequence) {
+          setSyncing(false);
+        }
       }
-    }
-  }, [refresh]);
+    },
+    [refresh],
+  );
 
   useEffect(
     () => () => {
@@ -131,6 +145,6 @@ export const useCalendarEvents = (
     refresh,
     syncError,
     syncing,
-    retrySync: sync,
+    retrySync: () => sync(true),
   };
 };

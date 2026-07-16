@@ -21,6 +21,10 @@ import {
 import { isOverlayTarget, openOverlay } from "./core/windowCommands";
 import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
+import {
+  rememberGoogleCalendarSync,
+  shouldRunAutomaticGoogleCalendarSync,
+} from "./features/calendar/autoSyncPolicy";
 import { toMachineDate } from "./features/calendar/calendar";
 import { openCalendarEditor } from "./features/calendar/events";
 import {
@@ -75,10 +79,16 @@ const AppContent: React.FC = () => {
       return;
     }
     startupSyncStarted.current = true;
+    const calendarIds = settings.calendar.selectedGoogleCalendarIds;
     getGoogleCalendarConnection()
       .then((connection) => {
-        if (!connection.connected || connection.syncing) return undefined;
-        return syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
+        if (!shouldRunAutomaticGoogleCalendarSync(connection, calendarIds)) {
+          return undefined;
+        }
+        return syncGoogleCalendars(calendarIds).then((result) => {
+          rememberGoogleCalendarSync(calendarIds);
+          return result;
+        });
       })
       .catch((syncError) =>
         console.warn("Google Calendar startup sync was skipped:", syncError),
