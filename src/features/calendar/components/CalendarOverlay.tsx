@@ -37,6 +37,7 @@ export const CalendarOverlay: React.FC = () => {
     animationClass,
     closeCalendar,
     isDocked,
+    isVisible,
     openMode,
     selectedGoogleCalendarIds,
     showSequence,
@@ -67,6 +68,7 @@ export const CalendarOverlay: React.FC = () => {
     today,
     showSequence,
     selectedGoogleCalendarIds,
+    isVisible,
   );
 
   const openEditor = useCallback(async (payload: CalendarEditorPayload) => {

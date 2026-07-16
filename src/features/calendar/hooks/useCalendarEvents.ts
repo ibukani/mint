@@ -24,6 +24,7 @@ export const useCalendarEvents = (
   today: Date,
   showSequence: number,
   calendarIds: string[] | null,
+  isVisible: boolean,
 ) => {
   const calendarIdsRef = useRef(calendarIds);
   const calendarIdsKey = calendarIds?.join("\u0000") ?? "";
@@ -53,11 +54,18 @@ export const useCalendarEvents = (
   const requestSequenceRef = useRef(0);
   const syncSequenceRef = useRef(0);
   const mountedRef = useRef(true);
+  const isVisibleRef = useRef(isVisible);
+  isVisibleRef.current = isVisible;
 
-  const refresh = useCallback(() => setRevision((current) => current + 1), []);
+  const refresh = useCallback(() => {
+    if (isVisibleRef.current) {
+      setRevision((current) => current + 1);
+    }
+  }, []);
 
   const sync = useCallback(
     async (force = false) => {
+      if (!isVisibleRef.current) return;
       const sequence = ++syncSequenceRef.current;
       setSyncError("");
       const selectedCalendarIds = stableCalendarIds.value;
@@ -109,6 +117,7 @@ export const useCalendarEvents = (
     const unlistenPromise = listen<CalendarEventsChangedPayload>(
       CALENDAR_EVENTS_CHANGED_EVENT,
       ({ payload }) => {
+        if (!isVisibleRef.current) return;
         if (payload?.event) setLastChangedEvent(payload.event);
         refresh();
       },
@@ -126,6 +135,7 @@ export const useCalendarEvents = (
   }, [refresh]);
 
   useEffect(() => {
+    if (!isVisible) return;
     void showSequence;
     void revision;
     const requestSequence = requestSequenceRef.current + 1;
@@ -150,7 +160,20 @@ export const useCalendarEvents = (
       .finally(() => {
         if (requestSequenceRef.current === requestSequence) setLoading(false);
       });
-  }, [viewMonth, today, showSequence, revision]);
+  }, [isVisible, viewMonth, today, showSequence, revision]);
+
+  useEffect(() => {
+    if (isVisible) return;
+    requestSequenceRef.current += 1;
+    syncSequenceRef.current += 1;
+    setEvents([]);
+    setNextEvent(null);
+    setLastChangedEvent(null);
+    setError("");
+    setSyncError("");
+    setSyncing(false);
+    setLoading(false);
+  }, [isVisible]);
 
   return {
     events,
