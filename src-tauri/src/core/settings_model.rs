@@ -243,7 +243,9 @@ impl Default for FileShelfSettings {
             shortcut: "Alt+3".to_string(),
             edge: FileShelfEdge::Right,
             vertical_position: FileShelfVerticalPosition::Center,
-            edge_handle_enabled: true,
+            // The edge handle owns a resident WebView; keep it opt-in for new
+            // installations while preserving an explicit persisted choice.
+            edge_handle_enabled: false,
             clipboard_history_enabled: false,
             clipboard_history_limit: 25,
             ignored_applications: default_file_shelf_ignored_applications(),
@@ -465,7 +467,7 @@ mod tests {
             settings.file_shelf.vertical_position,
             FileShelfVerticalPosition::Center
         );
-        assert!(settings.file_shelf.edge_handle_enabled);
+        assert!(!settings.file_shelf.edge_handle_enabled);
         assert!(!settings.file_shelf.clipboard_history_enabled);
         assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
         assert!(settings
@@ -504,6 +506,7 @@ mod tests {
         assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
         assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
+        assert!(!settings.file_shelf.edge_handle_enabled); // デフォルト補完
 
         let system_theme_json = r#"{"theme": "system"}"#;
         let settings: AppSettings = serde_json::from_str(system_theme_json).unwrap();
