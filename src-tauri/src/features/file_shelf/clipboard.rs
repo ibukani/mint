@@ -204,15 +204,16 @@ pub fn start_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHis
                 }
 
                 previous_oversized_length = None;
+                if monitoring && trimmed_text == previous_text {
+                    poll_interval = next_clipboard_poll_interval(poll_interval, false);
+                    continue;
+                }
+
                 let current_text = trimmed_text.to_string();
                 if !monitoring {
                     monitoring = true;
                     previous_text = current_text;
                     poll_interval = next_clipboard_poll_interval(poll_interval, true);
-                    continue;
-                }
-                if current_text == previous_text {
-                    poll_interval = next_clipboard_poll_interval(poll_interval, false);
                     continue;
                 }
                 previous_text.clone_from(&current_text);
