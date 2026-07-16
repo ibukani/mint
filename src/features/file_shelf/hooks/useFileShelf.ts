@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addFileShelfContent,
   addFileShelfPaths,
@@ -29,11 +29,40 @@ import type {
 
 const emptyState: FileShelfState = { groups: [] };
 
+interface FileShelfSummary {
+  itemCount: number;
+  clipboardHistoryCount: number;
+  pinnedCount: number;
+}
+
+const emptySummary: FileShelfSummary = {
+  itemCount: 0,
+  clipboardHistoryCount: 0,
+  pinnedCount: 0,
+};
+
+const summarizeState = (next: FileShelfState): FileShelfSummary => {
+  let itemCount = 0;
+  let clipboardHistoryCount = 0;
+  let pinnedCount = 0;
+  for (const group of next.groups) {
+    itemCount += group.items.length;
+    for (const item of group.items) {
+      if (item.source === "clipboardHistory" && !item.pinned) {
+        clipboardHistoryCount += 1;
+      }
+      if (item.pinned) pinnedCount += 1;
+    }
+  }
+  return { itemCount, clipboardHistoryCount, pinnedCount };
+};
+
 export const useFileShelf = () => {
   const [state, setState] = useState<FileShelfState>(emptyState);
-  const [expanded, setExpanded] = useState(
-    () => typeof window !== "undefined" && window.innerWidth > 100,
-  );
+  const initialExpanded =
+    typeof window !== "undefined" && window.innerWidth > 100;
+  const [expanded, setExpanded] = useState(initialExpanded);
+  const [summary, setSummary] = useState<FileShelfSummary>(emptySummary);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +73,21 @@ export const useFileShelf = () => {
   const [pendingDragItemIds, setPendingDragItemIds] = useState<string[]>([]);
   const operationRevision = useRef(0);
   const dragEnterRevision = useRef(0);
+  const expandedRef = useRef(initialExpanded);
+  const summaryLoadedRef = useRef(false);
+  const stateLoadedRef = useRef(false);
+
+  const applyState = useCallback((next: FileShelfState) => {
+    setSummary(summarizeState(next));
+    summaryLoadedRef.current = true;
+    if (expandedRef.current) {
+      setState(next);
+      stateLoadedRef.current = true;
+    } else {
+      setState(emptyState);
+      stateLoadedRef.current = false;
+    }
+  }, []);
 
   const fail = useCallback((reason: unknown) => {
     setError(reason instanceof Error ? reason.message : String(reason));
@@ -55,17 +99,19 @@ export const useFileShelf = () => {
     setError("");
     try {
       const next = await loadFileShelfState();
-      if (revision === operationRevision.current) setState(next);
+      if (revision === operationRevision.current) applyState(next);
     } catch (reason) {
       if (revision === operationRevision.current) fail(reason);
     } finally {
       if (revision === operationRevision.current) setLoading(false);
     }
-  }, [fail]);
+  }, [applyState, fail]);
 
   useEffect(() => {
+    if (expanded && stateLoadedRef.current) return;
+    if (!expanded && summaryLoadedRef.current) return;
     void load();
-  }, [load]);
+  }, [expanded, load]);
 
   const changeExpanded = useCallback(
     async (next: boolean, focus = next, transient = false) => {
@@ -73,7 +119,12 @@ export const useFileShelf = () => {
       setTransientExpanded(next && transient);
       try {
         await setFileShelfExpanded(next, focus);
+        expandedRef.current = next;
         setExpanded(next);
+        if (!next) {
+          stateLoadedRef.current = false;
+          setState(emptyState);
+        }
       } catch (reason) {
         setTransientExpanded(false);
         fail(reason);
@@ -92,7 +143,7 @@ export const useFileShelf = () => {
       try {
         const mutation = await addFileShelfPaths({ paths });
         if (revision === operationRevision.current) {
-          setState(mutation.state);
+          applyState(mutation.state);
           setNotice(
             mutation.addedCount > 0
               ? `${mutation.addedCount}件を預かりました${mutation.skippedCount ? `（${mutation.skippedCount}件は追加済みまたは無効）` : ""}`
@@ -105,7 +156,7 @@ export const useFileShelf = () => {
         if (revision === operationRevision.current) setBusy(false);
       }
     },
-    [fail],
+    [applyState, fail],
   );
 
   useEffect(() => {
@@ -116,13 +167,18 @@ export const useFileShelf = () => {
     let unlistenError: (() => void) | undefined;
     let unlistenRecentRestore: (() => void) | undefined;
     void listen<boolean>("file-shelf-mode-changed", (event) => {
+      expandedRef.current = event.payload;
       setExpanded(event.payload);
-      if (!event.payload) setTransientExpanded(false);
+      if (!event.payload) {
+        stateLoadedRef.current = false;
+        setState(emptyState);
+        setTransientExpanded(false);
+      }
     }).then((cleanup) => {
       unlistenMode = cleanup;
     });
     void listen<FileShelfState>("file-shelf-state-changed", (event) => {
-      setState(event.payload);
+      applyState(event.payload);
       setNotice("クリップボード履歴を更新しました");
     }).then((cleanup) => {
       unlistenState = cleanup;
@@ -184,7 +240,7 @@ export const useFileShelf = () => {
       dragEnterRevision.current += 1;
       setIsDropTarget(false);
     };
-  }, [addPaths, changeExpanded]);
+  }, [addPaths, applyState, changeExpanded]);
 
   useEffect(() => {
     if (!undoToken) return;
@@ -212,7 +268,7 @@ export const useFileShelf = () => {
       try {
         const mutation = await addFileShelfContent(input);
         if (revision === operationRevision.current) {
-          setState(mutation.state);
+          applyState(mutation.state);
           setNotice("クリップボードから1件預かりました");
         }
       } catch (reason) {
@@ -221,7 +277,7 @@ export const useFileShelf = () => {
         if (revision === operationRevision.current) setBusy(false);
       }
     },
-    [fail],
+    [applyState, fail],
   );
 
   const choosePaths = useCallback(async () => {
@@ -252,7 +308,7 @@ export const useFileShelf = () => {
       try {
         const removal = await removeFileShelfItems(itemIds);
         if (revision === operationRevision.current) {
-          setState(removal.state);
+          applyState(removal.state);
           setUndoToken(removal.undoToken);
           setNotice(`${itemIds.length}件を棚から外しました`);
         }
@@ -262,7 +318,7 @@ export const useFileShelf = () => {
         if (revision === operationRevision.current) setBusy(false);
       }
     },
-    [fail],
+    [applyState, fail],
   );
 
   const clear = useCallback(async () => {
@@ -272,7 +328,7 @@ export const useFileShelf = () => {
     try {
       const removal = await clearFileShelf();
       if (revision === operationRevision.current) {
-        setState(removal.state);
+        applyState(removal.state);
         setUndoToken(removal.undoToken);
         setNotice("棚を空にしました");
       }
@@ -281,7 +337,7 @@ export const useFileShelf = () => {
     } finally {
       if (revision === operationRevision.current) setBusy(false);
     }
-  }, [fail]);
+  }, [applyState, fail]);
 
   const clearClipboardHistory = useCallback(async () => {
     const revision = ++operationRevision.current;
@@ -290,7 +346,7 @@ export const useFileShelf = () => {
     try {
       const removal = await clearFileShelfClipboardHistory();
       if (revision === operationRevision.current) {
-        setState(removal.state);
+        applyState(removal.state);
         setUndoToken(removal.undoToken);
         setNotice("クリップボード履歴を消去しました");
       }
@@ -299,7 +355,7 @@ export const useFileShelf = () => {
     } finally {
       if (revision === operationRevision.current) setBusy(false);
     }
-  }, [fail]);
+  }, [applyState, fail]);
 
   const undo = useCallback(async () => {
     if (!undoToken) return;
@@ -309,7 +365,7 @@ export const useFileShelf = () => {
     try {
       const next = await restoreFileShelfRemoval(undoToken);
       if (revision === operationRevision.current) {
-        setState(next);
+        applyState(next);
         setUndoToken("");
         setNotice("棚へ戻しました");
       }
@@ -318,7 +374,7 @@ export const useFileShelf = () => {
     } finally {
       if (revision === operationRevision.current) setBusy(false);
     }
-  }, [fail, undoToken]);
+  }, [applyState, fail, undoToken]);
 
   const restoreRecent = useCallback(async () => {
     const revision = ++operationRevision.current;
@@ -328,7 +384,7 @@ export const useFileShelf = () => {
     try {
       const next = await restoreRecentFileShelfRemoval();
       if (revision === operationRevision.current) {
-        setState(next);
+        applyState(next);
         setUndoToken("");
         setNotice("最近外した項目を棚へ戻しました");
       }
@@ -337,7 +393,7 @@ export const useFileShelf = () => {
     } finally {
       if (revision === operationRevision.current) setBusy(false);
     }
-  }, [fail]);
+  }, [applyState, fail]);
 
   const pinItems = useCallback(
     async (items: FileShelfItem[], pinned: boolean) => {
@@ -351,7 +407,7 @@ export const useFileShelf = () => {
           pinned,
         );
         if (revision === operationRevision.current) {
-          setState(next);
+          applyState(next);
           setNotice(
             pinned
               ? `${items.length}件を棚に固定しました`
@@ -364,7 +420,7 @@ export const useFileShelf = () => {
         if (revision === operationRevision.current) setBusy(false);
       }
     },
-    [fail],
+    [applyState, fail],
   );
 
   const renameItem = useCallback(
@@ -375,7 +431,7 @@ export const useFileShelf = () => {
       try {
         const next = await renameFileShelfItem(item.id, displayName);
         if (revision === operationRevision.current) {
-          setState(next);
+          applyState(next);
           setNotice(`「${displayName.trim()}」として棚に表示します`);
         }
         return true;
@@ -386,7 +442,7 @@ export const useFileShelf = () => {
         if (revision === operationRevision.current) setBusy(false);
       }
     },
-    [fail],
+    [applyState, fail],
   );
 
   const dragItems = useCallback(
@@ -437,7 +493,7 @@ export const useFileShelf = () => {
     try {
       const removal = await removeFileShelfItems(pendingDragItemIds);
       if (revision === operationRevision.current) {
-        setState(removal.state);
+        applyState(removal.state);
         setUndoToken(removal.undoToken);
         setPendingDragItemIds([]);
         setNotice(`${pendingDragItemIds.length}件を棚から外しました`);
@@ -447,7 +503,7 @@ export const useFileShelf = () => {
     } finally {
       if (revision === operationRevision.current) setBusy(false);
     }
-  }, [fail, pendingDragItemIds]);
+  }, [applyState, fail, pendingDragItemIds]);
 
   const keepDraggedItems = useCallback(() => {
     if (!pendingDragItemIds.length) return;
@@ -513,33 +569,6 @@ export const useFileShelf = () => {
     [fail],
   );
 
-  const itemCount = useMemo(
-    () => state.groups.reduce((sum, group) => sum + group.items.length, 0),
-    [state.groups],
-  );
-
-  const clipboardHistoryCount = useMemo(
-    () =>
-      state.groups.reduce(
-        (sum, group) =>
-          sum +
-          group.items.filter(
-            (item) => item.source === "clipboardHistory" && !item.pinned,
-          ).length,
-        0,
-      ),
-    [state.groups],
-  );
-
-  const pinnedCount = useMemo(
-    () =>
-      state.groups.reduce(
-        (sum, group) => sum + group.items.filter((item) => item.pinned).length,
-        0,
-      ),
-    [state.groups],
-  );
-
   return {
     state,
     expanded,
@@ -550,9 +579,9 @@ export const useFileShelf = () => {
     undoToken,
     isDropTarget,
     transientExpanded,
-    itemCount,
-    clipboardHistoryCount,
-    pinnedCount,
+    itemCount: summary.itemCount,
+    clipboardHistoryCount: summary.clipboardHistoryCount,
+    pinnedCount: summary.pinnedCount,
     pendingDragCount: pendingDragItemIds.length,
     reportError: fail,
     changeExpanded,
