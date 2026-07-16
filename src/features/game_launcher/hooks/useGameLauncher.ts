@@ -24,6 +24,8 @@ export const useGameLauncher = () => {
   const closingRef = useRef(false);
   const visibleRef = useRef(false);
   const launchingRef = useRef(false);
+  const initialScanStartedRef = useRef(false);
+  const initialShownRef = useRef(false);
 
   const scan = useCallback(async (force = false) => {
     const sequence = ++scanSequence.current;
@@ -134,8 +136,11 @@ export const useGameLauncher = () => {
   useEffect(() => {
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
+    initialScanStartedRef.current = true;
     void scan();
     const shown = listen("game-launcher-shown", () => {
+      const firstShown = !initialShownRef.current;
+      initialShownRef.current = true;
       if (hideTimer.current) {
         clearTimeout(hideTimer.current);
         hideTimer.current = null;
@@ -145,7 +150,7 @@ export const useGameLauncher = () => {
       setHiding(false);
       setVisible(true);
       setShowSequence((current) => current + 1);
-      void scan();
+      if (!firstShown || !initialScanStartedRef.current) void scan();
     });
     const hide = listen("game-launcher-hide-requested", close);
     const currentWindow = getCurrentWindow();

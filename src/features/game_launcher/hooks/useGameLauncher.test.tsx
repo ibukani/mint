@@ -105,6 +105,7 @@ describe("useGameLauncher lifecycle", () => {
     });
     expect(result.current.result?.games).toHaveLength(1);
 
+    act(() => mocks.listeners.get("game-launcher-shown")?.());
     act(() => {
       result.current.close();
       vi.advanceTimersByTime(180);
