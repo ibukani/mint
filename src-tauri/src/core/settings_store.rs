@@ -99,6 +99,49 @@ fn restore_shortcuts(
     }
 }
 
+fn file_shelf_window_settings_changed(
+    old_settings: Option<&AppSettings>,
+    new_settings: &AppSettings,
+) -> bool {
+    let Some(old_settings) = old_settings else {
+        return true;
+    };
+    let old = &old_settings.file_shelf;
+    let new = &new_settings.file_shelf;
+    old.enabled != new.enabled
+        || old.edge != new.edge
+        || old.vertical_position != new.vertical_position
+        || old.edge_handle_enabled != new.edge_handle_enabled
+}
+
+fn clipboard_history_settings_changed(
+    old_settings: Option<&AppSettings>,
+    new_settings: &AppSettings,
+) -> bool {
+    let Some(old_settings) = old_settings else {
+        return true;
+    };
+    let old = &old_settings.file_shelf;
+    let new = &new_settings.file_shelf;
+    old.clipboard_history_enabled != new.clipboard_history_enabled
+        || old.clipboard_history_limit != new.clipboard_history_limit
+}
+
+fn clock_layout_settings_changed(
+    old_settings: Option<&AppSettings>,
+    new_settings: &AppSettings,
+) -> bool {
+    let Some(old_settings) = old_settings else {
+        return true;
+    };
+    let old = &old_settings.clock;
+    let new = &new_settings.clock;
+    old.enabled != new.enabled
+        || old.show_date != new.show_date
+        || old.size_percent != new.size_percent
+        || old.display_mode != new.display_mode
+}
+
 /// Synchronize the OS auto-start entry with the saved preference.
 ///
 /// A development Tauri binary loads its UI from `devUrl` (`localhost:1420`).
@@ -223,6 +266,15 @@ pub fn save_settings(
         .as_ref()
         .map(AppSettings::active_shortcuts)
         .unwrap_or_default();
+    let autostart_changed = old_settings
+        .as_ref()
+        .is_none_or(|old| old.autostart != settings.autostart);
+    let shortcuts_changed = old_settings.is_none() || old_shortcuts != new_shortcuts;
+    let file_shelf_window_changed =
+        file_shelf_window_settings_changed(old_settings.as_ref(), &settings);
+    let clipboard_history_changed =
+        clipboard_history_settings_changed(old_settings.as_ref(), &settings);
+    let clock_layout_changed = clock_layout_settings_changed(old_settings.as_ref(), &settings);
     let path = get_config_path(&app)?;
     let json = serde_json::to_string_pretty(&settings).map_err(|error| {
         SettingsError::IoError {
@@ -231,10 +283,12 @@ pub fn save_settings(
         .to_string()
     })?;
 
-    sync_autostart(&app, settings.autostart)
-        .map_err(|message| SettingsError::AutostartError { message }.to_string())?;
+    if autostart_changed {
+        sync_autostart(&app, settings.autostart)
+            .map_err(|message| SettingsError::AutostartError { message }.to_string())?;
+    }
 
-    {
+    if shortcuts_changed {
         use tauri_plugin_global_shortcut::GlobalShortcutExt;
         let global_shortcut = app.global_shortcut();
 
@@ -292,22 +346,28 @@ pub fn save_settings(
     drop(cached);
     let _ = app.emit("settings-changed", ());
 
-    crate::features::file_shelf::apply_window_settings(&app, &settings.file_shelf);
-    crate::features::file_shelf::apply_clipboard_history_settings(&app, &settings.file_shelf);
-
-    if let Some(clock_window) = app.get_webview_window("clock") {
-        if clock_window.is_visible().unwrap_or(false) {
-            crate::features::clock::show_clock_overlay(&app, &settings);
-        }
+    if file_shelf_window_changed {
+        crate::features::file_shelf::apply_window_settings(&app, &settings.file_shelf);
     }
-    if let Some(calendar_window) = app.get_webview_window("calendar") {
-        if calendar_window.is_visible().unwrap_or(false) {
-            let clock_was_visible = app
-                .get_webview_window("clock")
-                .and_then(|clock| clock.is_visible().ok())
-                .unwrap_or(false);
-            let docked = settings.clock.enabled && clock_was_visible;
-            crate::features::calendar::position_calendar(&app, docked, &settings);
+    if clipboard_history_changed {
+        crate::features::file_shelf::apply_clipboard_history_settings(&app, &settings.file_shelf);
+    }
+
+    if clock_layout_changed {
+        if let Some(clock_window) = app.get_webview_window("clock") {
+            if clock_window.is_visible().unwrap_or(false) {
+                crate::features::clock::show_clock_overlay(&app, &settings);
+            }
+        }
+        if let Some(calendar_window) = app.get_webview_window("calendar") {
+            if calendar_window.is_visible().unwrap_or(false) {
+                let clock_was_visible = app
+                    .get_webview_window("clock")
+                    .and_then(|clock| clock.is_visible().ok())
+                    .unwrap_or(false);
+                let docked = settings.clock.enabled && clock_was_visible;
+                crate::features::calendar::position_calendar(&app, docked, &settings);
+            }
         }
     }
 
@@ -325,6 +385,30 @@ mod tests {
         assert!(!should_enable_autostart(false, true));
         assert!(should_enable_autostart(true, false));
         assert!(!should_enable_autostart(false, false));
+    }
+
+    #[test]
+    fn settings_side_effects_only_run_for_changed_sections() {
+        let old = AppSettings::default();
+        let mut next = old.clone();
+
+        assert!(!file_shelf_window_settings_changed(Some(&old), &next));
+        assert!(!clipboard_history_settings_changed(Some(&old), &next));
+        assert!(!clock_layout_settings_changed(Some(&old), &next));
+
+        next.theme = "light".to_string();
+        assert!(!file_shelf_window_settings_changed(Some(&old), &next));
+        assert!(!clipboard_history_settings_changed(Some(&old), &next));
+        assert!(!clock_layout_settings_changed(Some(&old), &next));
+
+        next.file_shelf.edge = crate::core::settings_model::FileShelfEdge::Left;
+        assert!(file_shelf_window_settings_changed(Some(&old), &next));
+
+        next.file_shelf.clipboard_history_limit += 1;
+        assert!(clipboard_history_settings_changed(Some(&old), &next));
+
+        next.clock.size_percent += 10;
+        assert!(clock_layout_settings_changed(Some(&old), &next));
     }
 
     #[test]
