@@ -97,6 +97,14 @@ npm run tauri -- build
 npm run check:all
 ```
 
+### GitHub Codespaces
+
+リポジトリを Codespaces で開くと、`.devcontainer/devcontainer.json` により Node.js 22 系（npm 同梱）と Rust 開発環境が用意され、初回作成時に `npm ci` が実行されます。Vite の開発サーバーはポート 1420 に転送されます。
+
+```bash
+npm run dev
+```
+
 ---
 
 ## 開発ガイドライン (AI アシスタント向け)
