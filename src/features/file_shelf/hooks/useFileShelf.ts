@@ -196,9 +196,11 @@ export const useFileShelf = () => {
     const activeIds = new Set(
       state.groups.flatMap((group) => group.items.map((item) => item.id)),
     );
-    setPendingDragItemIds((previous) =>
-      previous.filter((itemId) => activeIds.has(itemId)),
-    );
+    setPendingDragItemIds((previous) => {
+      if (previous.length === 0) return previous;
+      const next = previous.filter((itemId) => activeIds.has(itemId));
+      return next.length === previous.length ? previous : next;
+    });
   }, [state.groups]);
 
   const addContent = useCallback(
