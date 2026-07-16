@@ -155,10 +155,30 @@ export const TickingClock: React.FC<TickingClockProps> = ({
     // The rendered values only change once per second. Analog seconds keep a
     // shorter cadence for a smooth hand while avoiding unnecessary 10Hz React
     // renders for every clock and its live settings preview.
-    const intervalMs = displayMode === "analog" && showSeconds ? 250 : 1000;
-    const timer = setInterval(() => setTime(new Date()), intervalMs);
-    return () => clearInterval(timer);
-  }, [displayMode, isActive, showSeconds]);
+    const intervalMs =
+      displayMode === "analog" && showSeconds
+        ? 250
+        : showSeconds || blinkColon
+          ? 1000
+          : null;
+    if (intervalMs !== null) {
+      const timer = setInterval(() => setTime(new Date()), intervalMs);
+      return () => clearInterval(timer);
+    }
+
+    let timer: ReturnType<typeof setTimeout>;
+    const scheduleNextMinute = () => {
+      const now = new Date();
+      const elapsedInMinute = now.getSeconds() * 1000 + now.getMilliseconds();
+      const delay = Math.max(100, 60_000 - elapsedInMinute + 10);
+      timer = setTimeout(() => {
+        setTime(new Date());
+        scheduleNextMinute();
+      }, delay);
+    };
+    scheduleNextMinute();
+    return () => clearTimeout(timer);
+  }, [blinkColon, displayMode, isActive, showSeconds]);
 
   const rawHours = time.getHours();
   const is12h = hourFormat === "12h";
