@@ -1,11 +1,21 @@
 use rusqlite::{params, OptionalExtension};
-use std::{fs, path::Path};
+use std::{fs, io::ErrorKind, path::Path};
 use uuid::Uuid;
 
 use super::{
     models::{QuickCaptureAttachment, QuickCaptureAttachmentInput},
     repository::{open_store, timestamp},
 };
+
+pub(super) const MAX_ATTACHMENT_BYTES: u64 = 100 * 1024 * 1024;
+
+fn remove_stored_file(path: &str) -> Result<(), String> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
+}
 
 fn mime_type_for(path: &Path) -> String {
     match path
@@ -43,7 +53,6 @@ pub(super) fn add_attachment_in_store(
     if !metadata.is_file() {
         return Err("添付できるファイルを指定してください。".to_string());
     }
-    const MAX_ATTACHMENT_BYTES: u64 = 100 * 1024 * 1024;
     if metadata.len() > MAX_ATTACHMENT_BYTES {
         return Err("添付ファイルは100MB以下にしてください。".to_string());
     }
@@ -80,8 +89,7 @@ pub(super) fn add_attachment_in_store(
         stored_path: stored_path.to_string_lossy().to_string(),
         created_at,
     };
-    connection
-        .execute(
+    if let Err(error) = connection.execute(
             "INSERT INTO quick_capture_attachments(id, note_id, file_name, mime_type, size_bytes, stored_path, created_at)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
@@ -93,8 +101,10 @@ pub(super) fn add_attachment_in_store(
                 attachment.stored_path,
                 attachment.created_at,
             ],
-        )
-        .map_err(|error| error.to_string())?;
+        ) {
+        let _ = fs::remove_file(&stored_path);
+        return Err(error.to_string());
+    }
     Ok(attachment)
 }
 
@@ -113,12 +123,14 @@ pub(super) fn delete_attachment_in_store(
         .optional()
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "添付ファイルが見つかりません。".to_string())?;
-    let _ = fs::remove_file(stored_path);
     connection
         .execute(
             "DELETE FROM quick_capture_attachments WHERE id = ?1 AND note_id = ?2",
             params![attachment_id, note_id],
         )
         .map_err(|error| error.to_string())?;
+    if let Err(error) = remove_stored_file(&stored_path) {
+        eprintln!("Failed to remove deleted quick capture attachment: {error}");
+    }
     Ok(())
 }

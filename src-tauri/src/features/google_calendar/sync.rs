@@ -273,7 +273,7 @@ fn sync_google_calendars_inner(
         .map(|item| (item.id, item.access_role))
         .collect();
     let client = google_client()?;
-    let connection = open_store(store.path())?;
+    let mut connection = open_store(store.path())?;
     flush_outbox(&client, &token, &connection)?;
     let cached_calendar_ids = connection
         .prepare(
@@ -313,8 +313,10 @@ fn sync_google_calendars_inner(
             .map_err(|error| error.to_string())?
             .flatten();
         let mut reset_attempted = false;
+        let mut fetched_events = Vec::new();
         let next_sync_token = 'retry_sync: loop {
             let mut page_token: Option<String> = None;
+            fetched_events.clear();
             loop {
                 let mut request = client
                     .get(format!(
@@ -337,18 +339,6 @@ fn sync_google_calendars_inner(
                             "Google Calendar sync token reset failed repeatedly.".to_string()
                         );
                     }
-                    connection
-                        .execute(
-                            "DELETE FROM calendar_events WHERE source_calendar_id=?1",
-                            [calendar_id],
-                        )
-                        .map_err(|error| error.to_string())?;
-                    connection
-                        .execute(
-                            "DELETE FROM google_calendar_sync WHERE calendar_id=?1",
-                            [calendar_id],
-                        )
-                        .map_err(|error| error.to_string())?;
                     sync_token = None;
                     reset_attempted = true;
                     continue 'retry_sync;
@@ -358,19 +348,7 @@ fn sync_google_calendars_inner(
                     .map_err(|error| error.to_string())?
                     .json::<EventListResponse>()
                     .map_err(|error| error.to_string())?;
-                for event in &page.items {
-                    if upsert_event(
-                        &connection,
-                        calendar_id,
-                        roles
-                            .get(calendar_id)
-                            .map(String::as_str)
-                            .unwrap_or("reader"),
-                        event,
-                    )? {
-                        changed += 1;
-                    }
-                }
+                fetched_events.extend(page.items);
                 page_token = page.next_page_token;
                 if page_token.is_none() {
                     break 'retry_sync page.next_sync_token;
@@ -378,7 +356,40 @@ fn sync_google_calendars_inner(
             }
         };
         let synced_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-        connection.execute("INSERT INTO google_calendar_sync(calendar_id,sync_token,last_synced_at,last_error) VALUES(?1,?2,?3,NULL) ON CONFLICT(calendar_id) DO UPDATE SET sync_token=excluded.sync_token,last_synced_at=excluded.last_synced_at,last_error=NULL", params![calendar_id, next_sync_token, synced_at]).map_err(|error| error.to_string())?;
+        let transaction = connection
+            .transaction()
+            .map_err(|error| error.to_string())?;
+        if reset_attempted {
+            transaction
+                .execute(
+                    "DELETE FROM calendar_events WHERE source_calendar_id=?1",
+                    [calendar_id],
+                )
+                .map_err(|error| error.to_string())?;
+            transaction
+                .execute(
+                    "DELETE FROM google_calendar_sync WHERE calendar_id=?1",
+                    [calendar_id],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        for event in &fetched_events {
+            if upsert_event(
+                &transaction,
+                calendar_id,
+                roles
+                    .get(calendar_id)
+                    .map(String::as_str)
+                    .unwrap_or("reader"),
+                event,
+            )? {
+                changed += 1;
+            }
+        }
+        transaction
+            .execute("INSERT INTO google_calendar_sync(calendar_id,sync_token,last_synced_at,last_error) VALUES(?1,?2,?3,NULL) ON CONFLICT(calendar_id) DO UPDATE SET sync_token=excluded.sync_token,last_synced_at=excluded.last_synced_at,last_error=NULL", params![calendar_id, next_sync_token, synced_at])
+            .map_err(|error| error.to_string())?;
+        transaction.commit().map_err(|error| error.to_string())?;
     }
     let synced_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
     let pending = pending_count(store)?;

@@ -219,10 +219,13 @@ pub(super) fn load_state_from_store(path: &Path) -> Result<FileShelfState, Strin
     Ok(FileShelfState { groups: result })
 }
 
-pub(super) fn insert_group(connection: &Connection, items: Vec<NewItem>) -> Result<(), String> {
+pub(super) fn insert_group(connection: &mut Connection, items: Vec<NewItem>) -> Result<(), String> {
     let group_id = Uuid::new_v4().to_string();
     let created_at = timestamp();
-    connection
+    let transaction = connection
+        .transaction()
+        .map_err(|error| error.to_string())?;
+    transaction
         .execute(
             "INSERT INTO file_shelf_groups(id, created_at) VALUES(?1, ?2)",
             params![group_id, created_at],
@@ -231,7 +234,7 @@ pub(super) fn insert_group(connection: &Connection, items: Vec<NewItem>) -> Resu
     for item in items {
         let id = Uuid::new_v4().to_string();
         let size = item.size_bytes.and_then(|value| i64::try_from(value).ok());
-        connection
+        transaction
             .execute(
                 "INSERT INTO file_shelf_items(
                    id, group_id, kind, display_name, source_path, text_content,
@@ -252,6 +255,7 @@ pub(super) fn insert_group(connection: &Connection, items: Vec<NewItem>) -> Resu
             )
             .map_err(|error| error.to_string())?;
     }
+    transaction.commit().map_err(|error| error.to_string())?;
     Ok(())
 }
 
@@ -278,7 +282,7 @@ pub(super) fn add_paths_in_store(
     database_path: &Path,
     input: AddFileShelfPathsInput,
 ) -> Result<FileShelfMutation, String> {
-    let connection = open_store(database_path)?;
+    let mut connection = open_store(database_path)?;
     let existing = active_path_keys(&connection)?;
     let requested_count = input.paths.len();
     let mut seen = existing;
@@ -322,7 +326,7 @@ pub(super) fn add_paths_in_store(
 
     let added_count = items.len();
     if !items.is_empty() {
-        insert_group(&connection, items)?;
+        insert_group(&mut connection, items)?;
     }
     Ok(FileShelfMutation {
         state: load_state_from_store(database_path)?,
@@ -447,7 +451,7 @@ pub(super) fn add_content_in_store(
     assets_dir: &Path,
     input: AddFileShelfContentInput,
 ) -> Result<FileShelfMutation, String> {
-    let connection = open_store(database_path)?;
+    let mut connection = open_store(database_path)?;
     let item = match input {
         AddFileShelfContentInput::Text { text } => {
             let text = text.trim().to_string();
@@ -521,7 +525,13 @@ pub(super) fn add_content_in_store(
             }
         }
     };
-    insert_group(&connection, vec![item])?;
+    let cleanup_path = item.source_path.clone();
+    if let Err(error) = insert_group(&mut connection, vec![item]) {
+        if let Some(path) = cleanup_path {
+            let _ = fs::remove_file(path);
+        }
+        return Err(error);
+    }
     Ok(FileShelfMutation {
         state: load_state_from_store(database_path)?,
         added_count: 1,
@@ -699,7 +709,7 @@ fn is_managed_asset(path: &Path, assets_dir: &Path) -> bool {
 }
 
 fn purge_old_removals(database_path: &Path, assets_dir: &Path) -> Result<(), String> {
-    let connection = open_store(database_path)?;
+    let mut connection = open_store(database_path)?;
     let cutoff = (Utc::now() - Duration::hours(RECENT_REMOVAL_HOURS))
         .to_rfc3339_opts(SecondsFormat::Nanos, true);
     let mut statement = connection
@@ -714,19 +724,16 @@ fn purge_old_removals(database_path: &Path, assets_dir: &Path) -> Result<(), Str
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     drop(statement);
-    for path in paths.into_iter().flatten() {
-        let path = Path::new(&path);
-        if is_managed_asset(path, assets_dir) {
-            let _ = fs::remove_file(path);
-        }
-    }
-    connection
+    let transaction = connection
+        .transaction()
+        .map_err(|error| error.to_string())?;
+    transaction
         .execute(
             "DELETE FROM file_shelf_items WHERE removed_at IS NOT NULL AND removed_at < ?1",
             [&cutoff],
         )
         .map_err(|error| error.to_string())?;
-    connection
+    transaction
         .execute(
             "DELETE FROM file_shelf_groups
              WHERE NOT EXISTS (
@@ -735,6 +742,13 @@ fn purge_old_removals(database_path: &Path, assets_dir: &Path) -> Result<(), Str
             [],
         )
         .map_err(|error| error.to_string())?;
+    transaction.commit().map_err(|error| error.to_string())?;
+    for path in paths.into_iter().flatten() {
+        let path = Path::new(&path);
+        if is_managed_asset(path, assets_dir) {
+            let _ = fs::remove_file(path);
+        }
+    }
     Ok(())
 }
 #[cfg(test)]

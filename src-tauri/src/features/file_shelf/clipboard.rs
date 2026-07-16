@@ -253,7 +253,7 @@ pub(super) fn capture_clipboard_text_in_store(
         return Err("クリップボード履歴は64KB以下の文章またはURLに対応しています。".to_string());
     }
 
-    let connection = open_store(database_path)?;
+    let mut connection = open_store(database_path)?;
     let existing = connection
         .query_row(
             "SELECT group_id, origin
@@ -315,7 +315,7 @@ pub(super) fn capture_clipboard_text_in_store(
             source: FileShelfItemSource::ClipboardHistory,
         }
     };
-    insert_group(&connection, vec![item])?;
+    insert_group(&mut connection, vec![item])?;
     prune_clipboard_history(&connection, clipboard_history_limit(max_items))?;
     Ok(FileShelfMutation {
         state: load_state_from_store(database_path)?,
@@ -415,11 +415,11 @@ pub(super) fn capture_clipboard_image_in_store(
         return Err("クリップボード画像はPNG変換後25MB以下にしてください。".to_string());
     }
 
-    let connection = open_store(database_path)?;
+    let mut connection = open_store(database_path)?;
     let destination = assets_dir.join(format!("{}-clipboard-image.png", Uuid::new_v4()));
     fs::write(&destination, &png).map_err(|error| error.to_string())?;
     let insert_result = insert_group(
-        &connection,
+        &mut connection,
         vec![NewItem {
             kind: FileShelfItemKind::Image,
             display_name: "クリップボード画像.png".to_string(),

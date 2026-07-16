@@ -1,6 +1,6 @@
 use chrono::{SecondsFormat, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
-use std::{collections::HashSet, fs, path::Path, time::Duration};
+use std::{collections::HashSet, fs, io::ErrorKind, path::Path, time::Duration};
 use tauri::{AppHandle, Manager};
 use uuid::Uuid;
 
@@ -434,17 +434,21 @@ fn delete_note_in_store(path: &Path, id: String) -> Result<(), String> {
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     drop(statement);
-    for stored_path in attachment_paths {
-        let _ = fs::remove_file(stored_path);
-    }
     let changed = connection
         .execute("DELETE FROM quick_capture_notes WHERE id = ?1", [&id])
         .map_err(|error| error.to_string())?;
     if changed == 0 {
-        Err("メモが見つかりません。".to_string())
-    } else {
-        Ok(())
+        return Err("メモが見つかりません。".to_string());
     }
+
+    for stored_path in attachment_paths {
+        if let Err(error) = fs::remove_file(&stored_path) {
+            if error.kind() != ErrorKind::NotFound {
+                eprintln!("Failed to remove deleted quick capture attachment: {error}");
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
