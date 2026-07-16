@@ -1,5 +1,8 @@
 use serde::Deserialize;
-use tauri::{AppHandle, Manager};
+use std::sync::{Mutex, OnceLock};
+use tauri::{AppHandle, Emitter, Manager};
+
+static WINDOW_CREATION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,9 +46,84 @@ impl OverlayTarget {
     }
 }
 
+/// Creates a configured window only when it is first needed. Keeping the
+/// window configuration in tauri.conf.json preserves static routing while
+/// avoiding a WebView process for every hidden overlay during startup.
+pub fn ensure_window(
+    app: &AppHandle,
+    label: &str,
+    display_name: &str,
+) -> Result<tauri::WebviewWindow, String> {
+    if let Some(window) = app.get_webview_window(label) {
+        return Ok(window);
+    }
+
+    let creation_lock = WINDOW_CREATION_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = creation_lock
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    if let Some(window) = app.get_webview_window(label) {
+        return Ok(window);
+    }
+
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|window| window.label == label)
+        .cloned()
+        .ok_or_else(|| format!("{}のウィンドウ設定が見つかりません。", display_name))?;
+
+    tauri::WebviewWindowBuilder::from_config(app, &config)
+        .map_err(|error| {
+            format!(
+                "{}のウィンドウを作成できませんでした: {error}",
+                display_name
+            )
+        })?
+        .build()
+        .map_err(|error| {
+            format!(
+                "{}のウィンドウを作成できませんでした: {error}",
+                display_name
+            )
+        })
+}
+
+pub fn ensure_overlay_window(
+    app: &AppHandle,
+    target: OverlayTarget,
+) -> Result<tauri::WebviewWindow, String> {
+    ensure_window(app, target.label(), target.display_name())
+}
+
+fn show_main_window_ready(app: &AppHandle) {
+    let Ok(window) = ensure_window(app, "main", "設定画面") else {
+        return;
+    };
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+    let _ = window.emit("main-window-shown", ());
+}
+
+/// Shows the main window and recreates its WebView if it was evicted while
+/// hidden after a long idle period.
+pub fn show_main_window(app: &AppHandle) {
+    if app.get_webview_window("main").is_none() {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            show_main_window_ready(&app);
+        });
+        return;
+    }
+    show_main_window_ready(app);
+}
+
 #[tauri::command]
-pub fn open_overlay(app: AppHandle, target: OverlayTarget) -> Result<(), String> {
-    let settings = crate::core::settings::load_settings_internal(&app)?;
+pub async fn open_overlay(app: AppHandle, target: OverlayTarget) -> Result<(), String> {
+    let settings = crate::core::settings::load_settings_cached(&app)?;
     if !target.is_enabled(&settings) {
         return Err(format!(
             "{}は無効になっています。設定を確認してください。",
@@ -53,12 +131,10 @@ pub fn open_overlay(app: AppHandle, target: OverlayTarget) -> Result<(), String>
         ));
     }
 
-    let window = app
-        .get_webview_window(target.label())
-        .ok_or_else(|| format!("{}のウィンドウを利用できません。", target.display_name()))?;
+    let window = ensure_overlay_window(&app, target)?;
 
     if matches!(target, OverlayTarget::FileShelf) {
-        crate::features::file_shelf::set_file_shelf_expanded(app.clone(), true, true)?;
+        crate::features::file_shelf::set_file_shelf_expanded(app.clone(), true, true).await?;
         if !window.is_visible().map_err(|error| error.to_string())? {
             return Err(format!(
                 "{}を開けませんでした。設定で機能が有効か確認してください。",

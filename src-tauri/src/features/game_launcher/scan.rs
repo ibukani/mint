@@ -6,10 +6,22 @@ use std::{
     collections::HashSet,
     fs,
     path::{Path, PathBuf},
+    sync::Mutex,
+    time::{Duration, Instant},
 };
+use tauri::State;
 
 const MAX_ARTWORK_BYTES: u64 = 512 * 1024;
 const MAX_STEAM_FALLBACK_ARTWORK_BYTES: usize = 8 * 1024 * 1024;
+const SCAN_CACHE_TTL: Duration = Duration::from_secs(30);
+
+struct CachedGameScan {
+    scanned_at: Instant,
+    result: GameScanResult,
+}
+
+#[derive(Default)]
+pub struct GameScanCache(Mutex<Option<CachedGameScan>>);
 
 pub(super) fn program_data() -> PathBuf {
     std::env::var_os("PROGRAMDATA")
@@ -356,7 +368,16 @@ fn icon_data_url(_executable: &Path) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn list_installed_games() -> GameScanResult {
+pub fn list_installed_games(force: bool, state: State<'_, GameScanCache>) -> GameScanResult {
+    let mut cache = state.0.lock().unwrap_or_else(|error| error.into_inner());
+    if !force {
+        if let Some(cached) = cache.as_ref() {
+            if cached.scanned_at.elapsed() < SCAN_CACHE_TTL {
+                return cached.result.clone();
+            }
+        }
+    }
+
     let (mut games, steam) = scan_steam(true);
     let (epic_games, epic) = scan_epic(true);
     let (riot_games, riot) = scan_riot(true);
@@ -364,14 +385,14 @@ pub fn list_installed_games() -> GameScanResult {
     games.extend(riot_games);
     let mut seen = HashSet::new();
     games.retain(|game| seen.insert(format!("{:?}:{}", game.store, game.id)));
-    games.sort_by(|left, right| {
-        left.title
-            .to_lowercase()
-            .cmp(&right.title.to_lowercase())
-            .then_with(|| format!("{:?}", left.store).cmp(&format!("{:?}", right.store)))
-    });
-    GameScanResult {
+    games.sort_by_cached_key(|game| (game.title.to_lowercase(), format!("{:?}", game.store)));
+    let result = GameScanResult {
         games,
         sources: vec![steam, epic, riot],
-    }
+    };
+    *cache = Some(CachedGameScan {
+        scanned_at: Instant::now(),
+        result: result.clone(),
+    });
+    result
 }

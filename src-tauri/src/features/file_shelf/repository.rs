@@ -1,7 +1,12 @@
 use base64::Engine;
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
-use std::{collections::HashSet, fs, path::Path, time::Duration as StdDuration};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::Path,
+    time::Duration as StdDuration,
+};
 use tauri::{AppHandle, Manager};
 use url::Url;
 use uuid::Uuid;
@@ -143,59 +148,62 @@ pub(super) fn load_state_from_store(path: &Path) -> Result<FileShelfState, Strin
         .map_err(|error| error.to_string())?;
     drop(group_statement);
 
-    let mut result = Vec::new();
-    for (group_id, created_at) in groups {
-        let mut item_statement = connection
-            .prepare(
-                "SELECT id, kind, display_name, source_path, text_content, mime_type,
-                        size_bytes, created_at, origin, pinned
-                 FROM file_shelf_items
-                 WHERE group_id = ?1 AND removed_at IS NULL
-                 ORDER BY created_at ASC",
-            )
-            .map_err(|error| error.to_string())?;
-        let item_rows = item_statement
-            .query_map([&group_id], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                    row.get::<_, Option<String>>(4)?,
-                    row.get::<_, Option<String>>(5)?,
-                    row.get::<_, Option<i64>>(6)?,
-                    row.get::<_, String>(7)?,
-                    row.get::<_, String>(8)?,
-                    row.get::<_, bool>(9)?,
-                ))
-            })
-            .map_err(|error| error.to_string())?;
-        let mut items = Vec::new();
-        for row in item_rows {
-            let (
-                id,
-                kind,
-                display_name,
-                source_path,
-                text_content,
-                mime_type,
-                size,
-                created,
-                source,
-                pinned,
-            ) = row.map_err(|error| error.to_string())?;
-            let kind = FileShelfItemKind::from_str(&kind)?;
-            let source = FileShelfItemSource::from_str(&source)?;
-            let availability = if kind.has_path()
-                && source_path
-                    .as_ref()
-                    .is_none_or(|value| !Path::new(value).exists())
-            {
-                FileShelfAvailability::Missing
-            } else {
-                FileShelfAvailability::Ready
-            };
-            items.push(FileShelfItem {
+    let mut item_statement = connection
+        .prepare(
+            "SELECT group_id, id, kind, display_name, source_path, text_content, mime_type,
+                    size_bytes, created_at, origin, pinned
+             FROM file_shelf_items
+             WHERE removed_at IS NULL
+             ORDER BY group_id, created_at ASC",
+        )
+        .map_err(|error| error.to_string())?;
+    let item_rows = item_statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, Option<i64>>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, String>(9)?,
+                row.get::<_, bool>(10)?,
+            ))
+        })
+        .map_err(|error| error.to_string())?;
+    let mut items_by_group: HashMap<String, Vec<FileShelfItem>> = HashMap::new();
+    for row in item_rows {
+        let (
+            group_id,
+            id,
+            kind,
+            display_name,
+            source_path,
+            text_content,
+            mime_type,
+            size,
+            created,
+            source,
+            pinned,
+        ) = row.map_err(|error| error.to_string())?;
+        let kind = FileShelfItemKind::from_str(&kind)?;
+        let source = FileShelfItemSource::from_str(&source)?;
+        let availability = if kind.has_path()
+            && source_path
+                .as_ref()
+                .is_none_or(|value| !Path::new(value).exists())
+        {
+            FileShelfAvailability::Missing
+        } else {
+            FileShelfAvailability::Ready
+        };
+        items_by_group
+            .entry(group_id.clone())
+            .or_default()
+            .push(FileShelfItem {
                 id,
                 group_id: group_id.clone(),
                 kind,
@@ -209,13 +217,16 @@ pub(super) fn load_state_from_store(path: &Path) -> Result<FileShelfState, Strin
                 source,
                 pinned,
             });
-        }
-        result.push(FileShelfGroup {
+    }
+
+    let result = groups
+        .into_iter()
+        .map(|(group_id, created_at)| FileShelfGroup {
+            items: items_by_group.remove(&group_id).unwrap_or_default(),
             id: group_id,
             created_at,
-            items,
-        });
-    }
+        })
+        .collect();
     Ok(FileShelfState { groups: result })
 }
 

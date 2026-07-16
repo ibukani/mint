@@ -8,6 +8,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import type { CalendarOpenMode } from "../types";
 
 const ANIMATION_MS = 240;
@@ -63,7 +64,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
                 )
               : Promise.resolve(),
           ])
-            .then(() => emitTo("clock", "calendar-closed"))
+            .then(() => emitTo("clock", "calendar-closed", { hideClock }))
             .catch((error) =>
               console.error("Failed to hide calendar overlay:", error),
             )
@@ -128,6 +129,8 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
       closeCalendar(closeClockOnToggleRef.current);
     }
   }, [settings, closeCalendar]);
+
+  useOverlayWindowEviction(isVisible);
 
   // Resize and position the window from the frontend
   useEffect(() => {
@@ -214,6 +217,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     animationClass,
     closeCalendar: () => closeCalendar(true),
     isDocked,
+    isVisible,
     openMode,
     showSequence,
     themeColor,

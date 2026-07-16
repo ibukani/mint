@@ -7,8 +7,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   isApplePlatform,
   OverlayCard,
@@ -45,7 +44,7 @@ const gameDomId = (game: InstalledGame) =>
 
 const GAME_PAGE_STEP = 5;
 
-export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
+export const GameArtwork = React.memo(({ game }: { game: InstalledGame }) => {
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const [loadedSource, setLoadedSource] = useState<string | null>(null);
   const source =
@@ -81,7 +80,7 @@ export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
       {getArtworkLabel(game.title)}
     </span>
   );
-};
+});
 
 export const GameLauncherOverlay: React.FC = () => {
   const {
@@ -108,31 +107,49 @@ export const GameLauncherOverlay: React.FC = () => {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const searchShortcutModifier = isApplePlatform() ? "Meta" : "Control";
 
-  const games = useMemo(() => {
-    const rawGames = result?.games ?? [];
-    const normalized = query.trim();
-    let filtered = rawGames;
-    if (normalized) {
-      const term = normalized.toLocaleLowerCase("ja");
-      filtered = rawGames.filter((game) =>
-        [game.title, storeLabel[game.store], getAcronym(game.title)].some(
-          (candidate) => candidate.toLocaleLowerCase("ja").includes(term),
-        ),
-      );
-    }
-    const favoriteSet = new Set(favoriteGameKeys);
-    return [...filtered].sort((left, right) => {
-      const leftKey = gameKey(left);
-      const rightKey = gameKey(right);
+  const searchableGames = useMemo(
+    () =>
+      (result?.games ?? []).map((game) => {
+        const key = gameKey(game);
+        return {
+          game,
+          key,
+          title: game.title.toLocaleLowerCase("ja"),
+          store: storeLabel[game.store].toLocaleLowerCase("ja"),
+          acronym: getAcronym(game.title).toLocaleLowerCase("ja"),
+          lastPlayedAt: Date.parse(lastPlayedAtByGame[key] ?? "") || 0,
+        };
+      }),
+    [lastPlayedAtByGame, result],
+  );
+  const favoriteGameKeySet = useMemo(
+    () => new Set(favoriteGameKeys),
+    [favoriteGameKeys],
+  );
+  const orderedGames = useMemo(() => {
+    return [...searchableGames].sort((left, right) => {
       const favoriteDifference =
-        Number(favoriteSet.has(rightKey)) - Number(favoriteSet.has(leftKey));
+        Number(favoriteGameKeySet.has(right.key)) -
+        Number(favoriteGameKeySet.has(left.key));
       if (favoriteDifference) return favoriteDifference;
-      const recentDifference =
-        (Date.parse(lastPlayedAtByGame[rightKey] ?? "") || 0) -
-        (Date.parse(lastPlayedAtByGame[leftKey] ?? "") || 0);
-      return recentDifference || left.title.localeCompare(right.title, "ja");
+      return (
+        right.lastPlayedAt - left.lastPlayedAt ||
+        left.game.title.localeCompare(right.game.title, "ja")
+      );
     });
-  }, [favoriteGameKeys, lastPlayedAtByGame, query, result]);
+  }, [favoriteGameKeySet, searchableGames]);
+  const games = useMemo(() => {
+    const term = query.trim().toLocaleLowerCase("ja");
+    if (!term) return orderedGames.map(({ game }) => game);
+    return orderedGames
+      .filter(
+        ({ title, store, acronym }) =>
+          title.includes(term) ||
+          store.includes(term) ||
+          acronym.includes(term),
+      )
+      .map(({ game }) => game);
+  }, [orderedGames, query]);
 
   useEffect(() => {
     void showSequence;
@@ -329,7 +346,7 @@ export const GameLauncherOverlay: React.FC = () => {
             ) : games.length ? (
               games.map((game, index) => {
                 const key = gameKey(game);
-                const favorite = favoriteGameKeys.includes(key);
+                const favorite = favoriteGameKeySet.has(key);
                 const lastPlayed = lastPlayedAtByGame[key];
                 return (
                   <div
@@ -466,7 +483,11 @@ export const GameLauncherOverlay: React.FC = () => {
                 .map((source) => `${storeLabel[source.store]}を確認できません`)
                 .join(" · ")}
           </span>
-          <button type="button" onClick={() => void scan()} disabled={loading}>
+          <button
+            type="button"
+            onClick={() => void scan(true)}
+            disabled={loading}
+          >
             <RefreshCw size={14} aria-hidden="true" /> 再スキャン
           </button>
         </footer>

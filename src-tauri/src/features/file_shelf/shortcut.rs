@@ -141,7 +141,7 @@ pub(super) fn set_file_shelf_expanded(
     expanded: bool,
     focus: bool,
 ) -> Result<(), String> {
-    let settings: AppSettings = crate::core::settings::load_settings_internal(&app)?;
+    let settings: AppSettings = crate::core::settings::load_settings_cached(&app)?;
     if !settings.file_shelf.enabled {
         return Err("ファイルシェルは無効です。".to_string());
     }

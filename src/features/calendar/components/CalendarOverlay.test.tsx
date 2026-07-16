@@ -165,7 +165,9 @@ describe("CalendarOverlay window coordination", () => {
 
     expect(mocks.hideCalendar).toHaveBeenCalledOnce();
     expect(mocks.hideClock).not.toHaveBeenCalled();
-    expect(mocks.emitTo).toHaveBeenCalledWith("clock", "calendar-closed");
+    expect(mocks.emitTo).toHaveBeenCalledWith("clock", "calendar-closed", {
+      hideClock: false,
+    });
   });
 
   it("closes a clock opened as part of the calendar session", async () => {

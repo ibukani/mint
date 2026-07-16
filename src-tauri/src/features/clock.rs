@@ -1,7 +1,9 @@
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
+use crate::core::window::{ensure_overlay_window, OverlayTarget};
+
 pub fn toggle_clock_overlay(app: &AppHandle) {
-    let settings = match crate::core::settings::load_settings_internal(app) {
+    let settings = match crate::core::settings::load_settings_cached(app) {
         Ok(s) => {
             if !s.clock.enabled {
                 return;
@@ -18,17 +20,37 @@ pub fn toggle_clock_overlay(app: &AppHandle) {
         }
     }
 
-    if let Some(window) = app.get_webview_window("clock") {
-        if window.is_visible().unwrap_or(false) {
-            let _ = window.hide();
-        } else {
-            show_clock_overlay(app, &settings);
-        }
+    if app.get_webview_window("clock").is_none() {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if ensure_overlay_window(&app, OverlayTarget::Clock).is_ok() {
+                toggle_clock_overlay(&app);
+            }
+        });
+        return;
+    }
+
+    let Ok(window) = ensure_overlay_window(app, OverlayTarget::Clock) else {
+        return;
+    };
+    if window.is_visible().unwrap_or(false) {
+        let _ = window.hide();
+    } else {
+        show_clock_overlay(app, &settings);
     }
 }
 
 pub fn show_clock_overlay(app: &AppHandle, settings: &crate::core::settings::AppSettings) {
-    let Some(window) = app.get_webview_window("clock") else {
+    if app.get_webview_window("clock").is_none() {
+        let app = app.clone();
+        let settings = settings.clone();
+        tauri::async_runtime::spawn(async move {
+            show_clock_overlay(&app, &settings);
+        });
+        return;
+    }
+
+    let Ok(window) = ensure_overlay_window(app, OverlayTarget::Clock) else {
         return;
     };
     let percent = settings.clock.size_percent as f64 / 100.0;

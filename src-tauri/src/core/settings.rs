@@ -1,5 +1,5 @@
 pub use super::settings_model::*;
-pub use super::settings_store::{load_settings_internal, sync_autostart};
+pub use super::settings_store::{load_settings_cached, load_settings_internal, sync_autostart};
 
 #[tauri::command]
 pub fn load_settings(

@@ -3,6 +3,7 @@ import {
   addDays,
   adjustEndTimeForStartChange,
   CalendarEventValidationError,
+  countEventsForDate,
   createDefaultEventDraft,
   draftToEventInput,
   eventOccursOnDate,
@@ -128,6 +129,12 @@ describe("calendar event helpers", () => {
     expect(eventOccursOnDate(allDayEvent, "2026-07-11")).toBe(true);
     expect(eventOccursOnDate(allDayEvent, "2026-07-12")).toBe(true);
     expect(eventOccursOnDate(allDayEvent, "2026-07-13")).toBe(false);
+  });
+
+  it("counts events for a month cell without sorting the event list", () => {
+    expect(countEventsForDate([allDayEvent], "2026-07-10")).toBe(0);
+    expect(countEventsForDate([allDayEvent], "2026-07-11")).toBe(1);
+    expect(countEventsForDate([allDayEvent], "2026-07-12")).toBe(1);
   });
 
   it("preserves the duration of multi-day all-day events when editing", () => {

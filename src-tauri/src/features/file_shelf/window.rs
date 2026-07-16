@@ -1,6 +1,7 @@
 use super::models::FileShelfWindowState;
 use super::{COLLAPSED_HEIGHT, COLLAPSED_WIDTH, EXPANDED_HEIGHT, EXPANDED_WIDTH};
 use crate::core::settings::{FileShelfEdge, FileShelfSettings, FileShelfVerticalPosition};
+use crate::core::window::{ensure_overlay_window, OverlayTarget};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 pub(super) fn set_window_mode(
@@ -9,9 +10,7 @@ pub(super) fn set_window_mode(
     expanded: bool,
     focus: bool,
 ) -> Result<(), String> {
-    let window = app
-        .get_webview_window("fileShelf")
-        .ok_or_else(|| "ファイルシェルのウィンドウが見つかりません。".to_string())?;
+    let window = ensure_overlay_window(app, OverlayTarget::FileShelf)?;
     let (width, height) = if expanded {
         (EXPANDED_WIDTH, EXPANDED_HEIGHT)
     } else {
@@ -92,11 +91,10 @@ pub(super) fn shelf_vertical_offset(
 }
 
 pub fn apply_window_settings(app: &AppHandle, settings: &FileShelfSettings) {
-    let Some(window) = app.get_webview_window("fileShelf") else {
-        return;
-    };
     if !settings.enabled {
-        let _ = window.hide();
+        if let Some(window) = app.get_webview_window("fileShelf") {
+            let _ = window.hide();
+        }
         if let Some(state) = app.try_state::<FileShelfWindowState>() {
             *state.0.lock().unwrap_or_else(|value| value.into_inner()) = false;
         }
@@ -107,14 +105,24 @@ pub fn apply_window_settings(app: &AppHandle, settings: &FileShelfSettings) {
         .and_then(|state| state.0.lock().ok().map(|value| *value))
         .unwrap_or(false);
     if expanded || settings.edge_handle_enabled {
-        let _ = set_window_mode(app, settings, expanded, false);
-    } else {
+        if app.get_webview_window("fileShelf").is_none() {
+            let app = app.clone();
+            let settings = settings.clone();
+            tauri::async_runtime::spawn(async move {
+                if ensure_overlay_window(&app, OverlayTarget::FileShelf).is_ok() {
+                    let _ = set_window_mode(&app, &settings, expanded, false);
+                }
+            });
+        } else {
+            let _ = set_window_mode(app, settings, expanded, false);
+        }
+    } else if let Some(window) = app.get_webview_window("fileShelf") {
         let _ = window.hide();
     }
 }
 
 pub fn toggle_file_shelf_overlay(app: &AppHandle) {
-    let settings = match crate::core::settings::load_settings_internal(app) {
+    let settings = match crate::core::settings::load_settings_cached(app) {
         Ok(settings) if settings.file_shelf.enabled => settings.file_shelf,
         _ => return,
     };
@@ -132,6 +140,13 @@ pub fn toggle_file_shelf_overlay(app: &AppHandle) {
             }
         }
     } else {
-        let _ = set_window_mode(app, &settings, true, true);
+        if app.get_webview_window("fileShelf").is_none() {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = set_window_mode(&app, &settings, true, true);
+            });
+        } else {
+            let _ = set_window_mode(app, &settings, true, true);
+        }
     }
 }

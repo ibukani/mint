@@ -7,7 +7,14 @@ import { TickingClock } from "./ClockDisplay";
 export { getClockDimensions, TickingClock } from "./ClockDisplay";
 
 export const ClockOverlay: React.FC = () => {
-  const { settings, hideClock, animationClass, clockColor } = useClockOverlay();
+  const {
+    settings,
+    hideClock,
+    animationClass,
+    clockColor,
+    isAnimateVisible,
+    isHiding,
+  } = useClockOverlay();
 
   return (
     <OverlayFrame>
@@ -36,6 +43,7 @@ export const ClockOverlay: React.FC = () => {
         </button>
         <div className="overlay-clock-content">
           <TickingClock
+            isActive={isAnimateVisible && !isHiding}
             showDate={settings?.clock.showDate ?? false}
             showSeconds={settings?.clock.showSeconds ?? true}
             blinkColon={settings?.clock.blinkColon ?? true}

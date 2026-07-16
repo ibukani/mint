@@ -55,4 +55,5 @@ npm run test:scaffold
 
 - `verify-architecture.js` still uses regex-based parsing. It is acceptable for the current code shape, but a TypeScript/Rust parser would be stronger if the codebase grows.
 - Desktop behavior still depends on manual verification for tray behavior, global shortcuts, and platform-specific window behavior.
+- Resident CPU/RSS measurements are comparative evidence from the current Linux/WebKitGTK release environment only; OS, WebView, GPU, display scale, and development/release mode can materially change the values. Windows/macOS release behavior and physical battery impact still require target-device verification.
 - Voice to Text now supports typed file transcription through an OpenAI-compatible API. Live microphone recording and automatic clipboard insertion still require manual design and platform verification.

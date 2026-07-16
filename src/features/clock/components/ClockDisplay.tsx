@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./ClockDisplay.css";
 
 const WEEKDAY_LABELS = [
@@ -12,7 +12,18 @@ const WEEKDAY_LABELS = [
   "土曜日",
 ] as const;
 
+const HOUR_TICKS = Array.from({ length: 12 }, (_, tick) => {
+  const angle = (tick * 30 * Math.PI) / 180;
+  const x1 = 100 + 78 * Math.sin(angle);
+  const y1 = 100 - 78 * Math.cos(angle);
+  const x2 = 100 + 86 * Math.sin(angle);
+  const y2 = 100 - 86 * Math.cos(angle);
+  const isMain = tick % 3 === 0;
+  return { tick, x1, y1, x2, y2, isMain };
+});
+
 export interface TickingClockProps {
+  isActive?: boolean;
   showDate: boolean;
   showSeconds: boolean;
   blinkColon: boolean;
@@ -48,24 +59,22 @@ const AnalogClock: React.FC<{
   const minDeg = mins * 6;
   const hrDeg = hours * 30;
 
-  const hourTicks = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((tick) => {
-    const angle = (tick * 30 * Math.PI) / 180;
-    const x1 = 100 + 78 * Math.sin(angle);
-    const y1 = 100 - 78 * Math.cos(angle);
-    const x2 = 100 + 86 * Math.sin(angle);
-    const y2 = 100 - 86 * Math.cos(angle);
-    const isMain = tick % 3 === 0;
-    return (
-      <line
-        key={tick}
-        className={`analog-clock__tick${isMain ? " is-major" : ""}`}
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-      />
-    );
-  });
+  const hourTicks = useMemo(
+    () =>
+      HOUR_TICKS.map(({ tick, x1, y1, x2, y2, isMain }) => {
+        return (
+          <line
+            key={tick}
+            className={`analog-clock__tick${isMain ? " is-major" : ""}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+          />
+        );
+      }),
+    [],
+  );
 
   return (
     <div
@@ -128,6 +137,7 @@ const AnalogClock: React.FC<{
 };
 
 export const TickingClock: React.FC<TickingClockProps> = ({
+  isActive = true,
   showDate,
   showSeconds,
   blinkColon,
@@ -139,13 +149,16 @@ export const TickingClock: React.FC<TickingClockProps> = ({
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
+    if (!isActive) return;
+
+    setTime(new Date());
     // The rendered values only change once per second. Analog seconds keep a
     // shorter cadence for a smooth hand while avoiding unnecessary 10Hz React
     // renders for every clock and its live settings preview.
     const intervalMs = displayMode === "analog" && showSeconds ? 250 : 1000;
     const timer = setInterval(() => setTime(new Date()), intervalMs);
     return () => clearInterval(timer);
-  }, [displayMode, showSeconds]);
+  }, [displayMode, isActive, showSeconds]);
 
   const rawHours = time.getHours();
   const is12h = hourFormat === "12h";

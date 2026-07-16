@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   updateNote: vi.fn(),
   addAttachment: vi.fn(),
   hide: vi.fn(),
+  isVisible: vi.fn(),
   listen: vi.fn(),
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
   focusChanged: null as ((event: { payload: boolean }) => void) | null,
@@ -41,6 +42,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     hide: mocks.hide,
+    isVisible: mocks.isVisible,
     onFocusChanged: async (handler: (event: { payload: boolean }) => void) => {
       mocks.focusChanged = handler;
       return () => {
@@ -85,6 +87,7 @@ describe("useQuickCapture", () => {
     mocks.listeners.clear();
     mocks.focusChanged = null;
     mocks.dragDropHandler = null;
+    mocks.isVisible.mockResolvedValue(true);
     mocks.load.mockResolvedValue(state);
     mocks.promote.mockResolvedValue({
       note: savedNote,

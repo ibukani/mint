@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import {
   createQuickCaptureNote,
   deleteQuickCaptureNote,
@@ -34,6 +35,7 @@ export const useQuickCapture = () => {
   const [canRetrySave, setCanRetrySave] = useState(false);
   const [canRetryDuplicate, setCanRetryDuplicate] = useState(false);
   const [focusSequence, setFocusSequence] = useState(0);
+  const [windowVisible, setWindowVisible] = useState(false);
   const loaded = useRef(false);
   const revision = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -387,10 +389,12 @@ export const useQuickCapture = () => {
       const saved = await persist();
       if (!saved) return;
       visibleRef.current = false;
+      setWindowVisible(false);
       try {
         await getCurrentWindow().hide();
       } catch (reason) {
         visibleRef.current = true;
+        setWindowVisible(true);
         setError(reason instanceof Error ? reason.message : String(reason));
         setStatus("error");
         setCanRetrySave(false);
@@ -404,10 +408,20 @@ export const useQuickCapture = () => {
 
   useEffect(() => {
     void reload();
+    void getCurrentWindow()
+      .isVisible()
+      .then((visible) => {
+        if (visible) {
+          visibleRef.current = true;
+          setWindowVisible(true);
+        }
+      })
+      .catch(() => {});
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
     const shown = listen("quick-capture-shown", () => {
       visibleRef.current = true;
+      setWindowVisible(true);
       focusedRef.current = true;
       if (autoHideSuppressionDepthRef.current === 0) {
         autoHideSuppressedRef.current = false;
@@ -457,6 +471,8 @@ export const useQuickCapture = () => {
       void focus.then((unlisten) => unlisten());
     };
   }, [reload, showDraft, sortNotes]);
+
+  useOverlayWindowEviction(windowVisible);
 
   const allTags = useMemo(
     () =>

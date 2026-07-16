@@ -41,6 +41,7 @@ use super::{
 };
 
 const CLIPBOARD_POLL_INTERVAL: StdDuration = StdDuration::from_millis(900);
+const CLIPBOARD_MAX_POLL_INTERVAL: StdDuration = StdDuration::from_secs(4);
 const CLIPBOARD_IDLE_INTERVAL: StdDuration = StdDuration::from_secs(30);
 const MAX_CLIPBOARD_HISTORY_BYTES: usize = 64 * 1024;
 const MAX_CLIPBOARD_IMAGE_RGBA_BYTES: usize = 128 * 1024 * 1024;
@@ -98,6 +99,22 @@ impl ClipboardHistoryMonitor {
         state.notified = false;
         notified
     }
+
+    fn wait_for_notification(&self) -> bool {
+        let mut state = self
+            .wake_state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        while !state.notified && self.is_running() {
+            state = self
+                .wake
+                .wait(state)
+                .unwrap_or_else(|error| error.into_inner());
+        }
+        let notified = state.notified;
+        state.notified = false;
+        notified
+    }
 }
 
 impl Default for ClipboardHistoryMonitor {
@@ -113,6 +130,13 @@ fn load_file_shelf_settings(app: &AppHandle) -> Option<FileShelfSettings> {
         .map(|settings| settings.file_shelf)
 }
 
+fn next_clipboard_poll_interval(current: StdDuration, changed: bool) -> StdDuration {
+    if changed {
+        return CLIPBOARD_POLL_INTERVAL;
+    }
+    current.saturating_mul(2).min(CLIPBOARD_MAX_POLL_INTERVAL)
+}
+
 pub fn start_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHistoryMonitor>) {
     let _ = std::thread::Builder::new()
         .name("mint-clipboard-history".to_string())
@@ -121,6 +145,7 @@ pub fn start_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHis
             let mut monitoring = false;
             let mut previous_text = String::new();
             let mut previous_oversized_length: Option<usize> = None;
+            let mut poll_interval = CLIPBOARD_POLL_INTERVAL;
 
             while monitor.is_running() {
                 let Some(file_shelf_settings) = settings.as_ref() else {
@@ -133,13 +158,17 @@ pub fn start_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHis
                     monitoring = false;
                     previous_text.clear();
                     previous_oversized_length = None;
-                    monitor.wait(CLIPBOARD_IDLE_INTERVAL);
+                    poll_interval = CLIPBOARD_POLL_INTERVAL;
+                    if !monitor.wait_for_notification() {
+                        break;
+                    }
                     settings = load_file_shelf_settings(&app);
                     continue;
                 }
 
-                if monitor.wait(CLIPBOARD_POLL_INTERVAL) {
+                if monitor.wait(poll_interval) {
                     settings = load_file_shelf_settings(&app);
+                    poll_interval = CLIPBOARD_POLL_INTERVAL;
                     continue;
                 }
                 if !monitor.is_running() {
@@ -152,21 +181,25 @@ pub fn start_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHis
                         monitoring = true;
                         previous_text.clear();
                         previous_oversized_length = None;
+                        poll_interval = CLIPBOARD_POLL_INTERVAL;
                         continue;
                     }
                 };
 
                 let trimmed_text = raw_text.trim();
                 if trimmed_text.is_empty() {
+                    poll_interval = next_clipboard_poll_interval(poll_interval, false);
                     continue;
                 }
                 if trimmed_text.len() > MAX_CLIPBOARD_HISTORY_BYTES {
                     if previous_oversized_length == Some(trimmed_text.len()) {
+                        poll_interval = next_clipboard_poll_interval(poll_interval, false);
                         continue;
                     }
                     previous_oversized_length = Some(trimmed_text.len());
                     previous_text.clear();
                     monitoring = true;
+                    poll_interval = next_clipboard_poll_interval(poll_interval, true);
                     continue;
                 }
 
@@ -175,12 +208,15 @@ pub fn start_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHis
                 if !monitoring {
                     monitoring = true;
                     previous_text = current_text;
+                    poll_interval = next_clipboard_poll_interval(poll_interval, true);
                     continue;
                 }
                 if current_text == previous_text {
+                    poll_interval = next_clipboard_poll_interval(poll_interval, false);
                     continue;
                 }
                 previous_text.clone_from(&current_text);
+                poll_interval = next_clipboard_poll_interval(poll_interval, true);
                 if is_application_ignored(
                     file_shelf_settings,
                     clipboard_source_application_name().as_deref(),
@@ -601,5 +637,42 @@ mod tests {
 
         monitor.stop();
         assert!(!monitor.is_running());
+    }
+
+    #[test]
+    fn monitor_idle_wait_stays_asleep_until_notified() {
+        let monitor = Arc::new(ClipboardHistoryMonitor::new());
+        let waiter = monitor.clone();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            sender.send(waiter.wait_for_notification()).unwrap();
+        });
+
+        let stayed_asleep = receiver.recv_timeout(StdDuration::from_millis(20)).is_err();
+        monitor.notify();
+
+        assert!(stayed_asleep);
+        assert!(receiver.recv_timeout(StdDuration::from_secs(1)).unwrap());
+        thread.join().unwrap();
+    }
+
+    #[test]
+    fn clipboard_polling_backs_off_only_when_the_clipboard_is_unchanged() {
+        assert_eq!(
+            next_clipboard_poll_interval(CLIPBOARD_POLL_INTERVAL, false),
+            StdDuration::from_millis(1_800)
+        );
+        assert_eq!(
+            next_clipboard_poll_interval(StdDuration::from_secs(2), false),
+            CLIPBOARD_MAX_POLL_INTERVAL
+        );
+        assert_eq!(
+            next_clipboard_poll_interval(CLIPBOARD_MAX_POLL_INTERVAL, false),
+            CLIPBOARD_MAX_POLL_INTERVAL
+        );
+        assert_eq!(
+            next_clipboard_poll_interval(CLIPBOARD_MAX_POLL_INTERVAL, true),
+            CLIPBOARD_POLL_INTERVAL
+        );
     }
 }

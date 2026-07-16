@@ -1,6 +1,6 @@
 import { CircleAlert, RefreshCw, X } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { startOfMonth, toMachineDate } from "../calendar";
@@ -162,6 +162,12 @@ export const CalendarOverlay: React.FC = () => {
     [openDay, screen],
   );
 
+  const dayDate = screen.kind === "day" ? screen.date : null;
+  const dayEvents = useMemo(
+    () => (dayDate ? eventsForDate(events, dayDate) : []),
+    [dayDate, events],
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -206,7 +212,7 @@ export const CalendarOverlay: React.FC = () => {
         return (
           <CalendarDayAgenda
             date={screen.date}
-            events={eventsForDate(events, screen.date)}
+            events={dayEvents}
             loading={loading}
             error={error}
             onBack={handleBack}

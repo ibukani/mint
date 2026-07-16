@@ -32,7 +32,7 @@ export const supportedImageTypes = new Set([
   "image/webp",
 ]);
 
-export const matchesQuery = (item: FileShelfItem, query: string) =>
+export const fileShelfSearchText = (item: FileShelfItem) =>
   [
     item.displayName,
     item.sourcePath,
@@ -42,5 +42,7 @@ export const matchesQuery = (item: FileShelfItem, query: string) =>
   ]
     .filter(Boolean)
     .join(" ")
-    .toLocaleLowerCase("ja")
-    .includes(query);
+    .toLocaleLowerCase("ja");
+
+export const matchesQuery = (item: FileShelfItem, query: string) =>
+  fileShelfSearchText(item).includes(query);

@@ -4,15 +4,23 @@ import { createMockSettings } from "../../../core/mocks/mockSettings";
 import { useClockOverlay } from "./useClockOverlay";
 
 const mocks = vi.hoisted(() => ({
-  listeners: new Map<string, () => void>(),
+  listeners: new Map<
+    string,
+    (event?: { payload?: { hideClock?: boolean } }) => void
+  >(),
   hide: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(async (event: string, callback: () => void) => {
-    mocks.listeners.set(event, callback);
-    return () => mocks.listeners.delete(event);
-  }),
+  listen: vi.fn(
+    async (
+      event: string,
+      callback: (event?: { payload?: { hideClock?: boolean } }) => void,
+    ) => {
+      mocks.listeners.set(event, callback);
+      return () => mocks.listeners.delete(event);
+    },
+  ),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -53,5 +61,18 @@ describe("useClockOverlay", () => {
     await act(async () => Promise.resolve());
 
     expect(mocks.hide).toHaveBeenCalledOnce();
+  });
+
+  it("stops ticking when the calendar closes its clock", () => {
+    const { result } = renderHook(() => useClockOverlay());
+
+    act(() => {
+      mocks.listeners.get("calendar-closed")?.({
+        payload: { hideClock: true },
+      });
+    });
+
+    expect(result.current.isAnimateVisible).toBe(false);
+    expect(result.current.isHiding).toBe(false);
   });
 });

@@ -158,7 +158,7 @@ export const GameLauncherSettings: React.FC = () => {
             id="game-launcher-sources-refresh"
             variant="ghost"
             className="game-launcher-sources-refresh"
-            onClick={() => void scanGameSources()}
+            onClick={() => void scanGameSources(true)}
             disabled={sourceScanPhase === "loading"}
             aria-label="対応ランチャーを再確認"
           >

@@ -61,11 +61,7 @@ pub fn run() {
                         }
                         match feature {
                             "settings" => {
-                                if let Some(main_window) = app.get_webview_window("main") {
-                                    let _ = main_window.show();
-                                    let _ = main_window.unminimize();
-                                    let _ = main_window.set_focus();
-                                }
+                                core::window::show_main_window(app);
                             }
                             "clock" => features::clock::toggle_clock_overlay(app),
                             "calendar" => features::calendar::toggle_calendar_overlay(app),
@@ -206,6 +202,7 @@ pub fn run() {
             }
         })
         .manage(features::calendar::window::CalendarEditorState::default())
+        .manage(features::game_launcher::scan::GameScanCache::default())
         .manage(features::file_shelf::FileShelfWindowState::default())
         .manage(features::file_shelf::FileShelfShortcutState::default())
         .invoke_handler(tauri::generate_handler![

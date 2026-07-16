@@ -159,6 +159,27 @@ pub fn load_settings(
     Ok(settings)
 }
 
+/// Load settings from the process cache for backend paths that do not receive
+/// `tauri::State` through an invoke command (shortcuts and window helpers).
+pub fn load_settings_cached(app: &AppHandle) -> Result<AppSettings, String> {
+    if let Some(state) = app.try_state::<AppSettingsState>() {
+        if let Some(cached) = state
+            .0
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone()
+        {
+            return Ok(cached);
+        }
+
+        let settings = load_settings_internal(app)?;
+        *state.0.lock().unwrap_or_else(|error| error.into_inner()) = Some(settings.clone());
+        return Ok(settings);
+    }
+
+    load_settings_internal(app)
+}
+
 pub fn save_settings(
     app: AppHandle,
     settings: AppSettings,

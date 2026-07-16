@@ -2,6 +2,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import {
   getPlatformShortcutModifier,
   isApplePlatform,
@@ -11,7 +12,11 @@ import { loadFileShelfPreview } from "../api";
 import { useFileShelf } from "../hooks/useFileShelf";
 import { useFileShelfDragGesture } from "../hooks/useFileShelfDragGesture";
 import type { FileShelfItem } from "../types";
-import { isSupportedUrl, matchesQuery, supportedImageTypes } from "../utils";
+import {
+  fileShelfSearchText,
+  isSupportedUrl,
+  supportedImageTypes,
+} from "../utils";
 
 const imageAsBase64 = (file: globalThis.File) =>
   new Promise<string>((resolve, reject) => {
@@ -41,6 +46,9 @@ const isEditableTarget = (target: EventTarget | null) =>
 export const useFileShelfOverlayController = () => {
   const { settings } = useAppSettings();
   const shelf = useFileShelf();
+  useOverlayWindowEviction(shelf.expanded, {
+    enabled: settings?.fileShelf.edgeHandleEnabled === false,
+  });
   const rowDrag = useFileShelfDragGesture({
     disabled: shelf.busy,
     onDrag: shelf.dragItems,
@@ -72,18 +80,22 @@ export const useFileShelfOverlayController = () => {
     () => shelf.state.groups.flatMap((group) => group.items),
     [shelf.state.groups],
   );
+  const searchTextByItemId = useMemo(
+    () => new Map(allItems.map((item) => [item.id, fileShelfSearchText(item)])),
+    [allItems],
+  );
 
   const visibleGroups = useMemo(
     () =>
       normalizedQuery
         ? shelf.state.groups.flatMap((group) => {
             const items = group.items.filter((item) =>
-              matchesQuery(item, normalizedQuery),
+              searchTextByItemId.get(item.id)?.includes(normalizedQuery),
             );
             return items.length ? [{ ...group, items }] : [];
           })
         : shelf.state.groups,
-    [normalizedQuery, shelf.state.groups],
+    [normalizedQuery, searchTextByItemId, shelf.state.groups],
   );
 
   const visibleItems = useMemo(
@@ -288,8 +300,14 @@ export const useFileShelfOverlayController = () => {
     setCursorKey(`item:${item.id}`);
   };
 
-  const selectedItems = allItems.filter((item) => selectedIds.has(item.id));
-  const removableSelectedItems = selectedItems.filter((item) => !item.pinned);
+  const selectedItems = useMemo(
+    () => allItems.filter((item) => selectedIds.has(item.id)),
+    [allItems, selectedIds],
+  );
+  const removableSelectedItems = useMemo(
+    () => selectedItems.filter((item) => !item.pinned),
+    [selectedItems],
+  );
 
   const closePreview = () => {
     setPreviewItemId("");

@@ -107,4 +107,26 @@ describe("digital clock presentation", () => {
 
     expect(screen.getByRole("img")).toHaveAccessibleName("現在時刻 20時42分");
   });
+
+  it("pauses its timer while the overlay is hidden", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 10, 8, 42, 18));
+
+    render(
+      <TickingClock
+        isActive={false}
+        showDate={false}
+        showSeconds
+        blinkColon={false}
+        displayMode="digital"
+        hourFormat="24h"
+        glowEffect={false}
+        clockColor="#38bdf8"
+      />,
+    );
+
+    expect(screen.getByText("18")).toBeInTheDocument();
+    vi.advanceTimersByTime(2_000);
+    expect(screen.getByText("18")).toBeInTheDocument();
+  });
 });

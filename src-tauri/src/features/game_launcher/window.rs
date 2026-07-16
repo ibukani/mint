@@ -3,7 +3,8 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
-const WINDOW_LABEL: &str = "gameLauncher";
+use crate::core::window::{ensure_overlay_window, OverlayTarget};
+
 pub(super) const TOGGLE_DEBOUNCE: Duration = Duration::from_millis(250);
 static LAST_TOGGLE: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
 
@@ -11,13 +12,26 @@ pub fn toggle_game_launcher_overlay(app: &AppHandle) {
     if !accept_toggle(Instant::now()) {
         return;
     }
-    let enabled = crate::core::settings::load_settings_internal(app)
+    let enabled = crate::core::settings::load_settings_cached(app)
         .map(|settings| settings.game_launcher.enabled)
         .unwrap_or(false);
     if !enabled {
         return;
     }
-    let Some(window) = app.get_webview_window(WINDOW_LABEL) else {
+    if app.get_webview_window("gameLauncher").is_none() {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if ensure_overlay_window(&app, OverlayTarget::GameLauncher).is_ok() {
+                toggle_game_launcher_overlay_ready(&app);
+            }
+        });
+        return;
+    }
+    toggle_game_launcher_overlay_ready(app);
+}
+
+fn toggle_game_launcher_overlay_ready(app: &AppHandle) {
+    let Ok(window) = ensure_overlay_window(app, OverlayTarget::GameLauncher) else {
         return;
     };
     if window.is_visible().unwrap_or(false) {

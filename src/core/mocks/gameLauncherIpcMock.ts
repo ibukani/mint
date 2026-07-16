@@ -8,6 +8,7 @@ interface GameRequest {
 
 export interface GameLauncherIpcMockOptions {
   scanResult: GameScanResult;
+  onScan?: (force: boolean) => GameScanResult | Promise<GameScanResult>;
   onLaunch?: (id: string) => unknown | Promise<unknown>;
   onOpenStorePage?: (id: string) => unknown | Promise<unknown>;
 }
@@ -18,8 +19,12 @@ export async function handleGameLauncherIpcCommand(
   options: GameLauncherIpcMockOptions,
 ): Promise<MockIPCResult> {
   switch (command) {
-    case "list_installed_games":
-      return handled(options.scanResult);
+    case "list_installed_games": {
+      const result = options.onScan
+        ? await options.onScan(Boolean(args?.force))
+        : options.scanResult;
+      return handled(result);
+    }
     case "launch_game": {
       const request = args?.request as GameRequest | undefined;
       if (!request?.id) throw new Error("Game id is required.");

@@ -41,6 +41,19 @@ describe("shared IPC mock handlers", () => {
     expect(onLaunch).toHaveBeenCalledWith("demo");
   });
 
+  it("passes the game scan refresh flag through the browser mock", async () => {
+    const scanResult = { games: [], sources: [] };
+    const onScan = vi.fn().mockResolvedValue(scanResult);
+
+    await handleGameLauncherIpcCommand(
+      "list_installed_games",
+      { force: true },
+      { scanResult, onScan },
+    );
+
+    expect(onScan).toHaveBeenCalledWith(true);
+  });
+
   it("shares transcription validation between browser and Vitest mocks", async () => {
     const result = await handleTranscriptionIpcCommand(
       "transcribe_audio_file",

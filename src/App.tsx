@@ -11,6 +11,7 @@ import {
   useAppSettings,
 } from "./core/context/AppSettings";
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
+import { useMainWindowEviction } from "./core/hooks/useMainWindowEviction";
 import { useSettingsWindow } from "./core/hooks/useSettingsWindow";
 import { getAvailableQuickActions } from "./core/navigation/quickActions";
 import {
@@ -60,6 +61,7 @@ const AppContent: React.FC = () => {
   const { label, activeTab, setActiveTab, focusRequest } = useSettingsWindow(
     settings?.theme,
   );
+  useMainWindowEviction(label === "main");
   const startupSyncStarted = useRef(false);
   const initialActiveTab = useRef(activeTab);
 

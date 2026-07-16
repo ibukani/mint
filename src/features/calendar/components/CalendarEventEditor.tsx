@@ -37,6 +37,15 @@ const validationFieldIds = {
   endTime: "calendar-event-end-time",
 } as const;
 
+const draftsAreEqual = (left: CalendarEventDraft, right: CalendarEventDraft) =>
+  left.title === right.title &&
+  left.date === right.date &&
+  left.allDayDurationDays === right.allDayDurationDays &&
+  left.startTime === right.startTime &&
+  left.endTime === right.endTime &&
+  left.allDay === right.allDay &&
+  left.notes === right.notes;
+
 export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
   event,
   template,
@@ -58,7 +67,7 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
     useState<CalendarEventValidationError | null>(null);
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initialDraft);
+  const dirty = !draftsAreEqual(draft, initialDraft);
 
   useEffect(() => setDraft(initialDraft), [initialDraft]);
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);

@@ -5,6 +5,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import {
@@ -42,11 +43,13 @@ export const CalendarEditorOverlay: React.FC = () => {
   const [discarding, setDiscarding] = useState(false);
   const [closeError, setCloseError] = useState("");
   const [editorSaving, setEditorSaving] = useState(false);
+  const [windowVisible, setWindowVisible] = useState(true);
 
   const hideEditor = useCallback(async () => {
     try {
       const appWindow = getCurrentWindow();
       await appWindow.hide();
+      setWindowVisible(false);
       return true;
     } catch (err) {
       console.warn("Failed to hide calendar editor window", err);
@@ -108,6 +111,7 @@ export const CalendarEditorOverlay: React.FC = () => {
     const unlisten = listen<CalendarEditorPayload>(
       "calendar-editor-shown",
       (event) => {
+        setWindowVisible(true);
         dirtyRef.current = false;
         setDiscardDialogOpen(false);
         setDiscarding(false);
@@ -138,6 +142,8 @@ export const CalendarEditorOverlay: React.FC = () => {
       unlisten.then((f) => f()).catch(console.error);
     };
   }, []);
+
+  useOverlayWindowEviction(windowVisible);
 
   const handleDirtyChange = useCallback((dirty: boolean) => {
     dirtyRef.current = dirty;

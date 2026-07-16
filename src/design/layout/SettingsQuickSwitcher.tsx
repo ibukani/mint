@@ -79,73 +79,90 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
   const resultsId = useId();
 
   const normalizedQuery = normalizeSearchText(query);
+  const tabSearchIndex = useMemo(
+    () =>
+      tabs.map((tab) => ({
+        tab,
+        text: normalizeSearchText(
+          [
+            tab.label,
+            tab.navigationLabel,
+            tab.description,
+            ...(tab.keywords ?? []),
+          ]
+            .filter(Boolean)
+            .join(" "),
+        ),
+        items: (tab.searchItems ?? []).map((item) => ({
+          item,
+          text: normalizeSearchText(
+            [item.label, item.description, ...(item.keywords ?? [])]
+              .filter(Boolean)
+              .join(" "),
+          ),
+        })),
+      })),
+    [tabs],
+  );
+  const actionSearchIndex = useMemo(
+    () =>
+      quickActions.map((action) => ({
+        action,
+        text: normalizeSearchText(
+          [action.label, action.description, ...(action.keywords ?? [])]
+            .filter(Boolean)
+            .join(" "),
+        ),
+      })),
+    [quickActions],
+  );
   const filteredResults = useMemo(() => {
     if (!normalizedQuery) {
       return [
-        ...tabs.map<SettingsSearchResult<TTabId>>((tab) => ({
+        ...tabSearchIndex.map<SettingsSearchResult<TTabId>>(({ tab }) => ({
           kind: "tab",
           key: `tab:${tab.id}`,
           tab,
         })),
-        ...quickActions.map<SettingsSearchResult<TTabId>>((action) => ({
-          kind: "action",
-          key: `action:${action.id}`,
-          action,
-        })),
+        ...actionSearchIndex.map<SettingsSearchResult<TTabId>>(
+          ({ action }) => ({
+            kind: "action",
+            key: `action:${action.id}`,
+            action,
+          }),
+        ),
       ];
     }
 
-    const tabResults = tabs.flatMap<SettingsSearchResult<TTabId>>((tab) => {
-      const tabSearchableText = [
-        tab.label,
-        tab.navigationLabel,
-        tab.description,
-        ...(tab.keywords ?? []),
-      ]
-        .filter(Boolean)
-        .join(" ");
-      const results: SettingsSearchResult<TTabId>[] = [];
-      if (normalizeSearchText(tabSearchableText).includes(normalizedQuery)) {
-        results.push({ kind: "tab", key: `tab:${tab.id}`, tab });
-      }
-
-      for (const item of tab.searchItems ?? []) {
-        const itemSearchableText = [
-          item.label,
-          item.description,
-          ...(item.keywords ?? []),
-        ]
-          .filter(Boolean)
-          .join(" ");
-        if (normalizeSearchText(itemSearchableText).includes(normalizedQuery)) {
-          results.push({
-            kind: "setting",
-            key: `setting:${tab.id}:${item.id}`,
-            item,
-            tab,
-          });
+    const tabResults = tabSearchIndex.flatMap<SettingsSearchResult<TTabId>>(
+      ({ tab, text, items }) => {
+        const results: SettingsSearchResult<TTabId>[] = [];
+        if (text.includes(normalizedQuery)) {
+          results.push({ kind: "tab", key: `tab:${tab.id}`, tab });
         }
-      }
-      return results;
-    });
-    const actionResults = quickActions
-      .filter((action) => {
-        const searchableText = [
-          action.label,
-          action.description,
-          ...(action.keywords ?? []),
-        ]
-          .filter(Boolean)
-          .join(" ");
-        return normalizeSearchText(searchableText).includes(normalizedQuery);
-      })
-      .map<SettingsSearchResult<TTabId>>((action) => ({
+
+        for (const { item, text: itemText } of items) {
+          if (itemText.includes(normalizedQuery)) {
+            results.push({
+              kind: "setting",
+              key: `setting:${tab.id}:${item.id}`,
+              item,
+              tab,
+            });
+          }
+        }
+        return results;
+      },
+    );
+    const actionResults = actionSearchIndex
+      .filter(({ text }) => text.includes(normalizedQuery))
+      .map<SettingsSearchResult<TTabId>>(({ action }) => ({
         kind: "action",
         key: `action:${action.id}`,
         action,
       }));
     return [...tabResults, ...actionResults];
-  }, [normalizedQuery, quickActions, tabs]);
+  }, [actionSearchIndex, normalizedQuery, tabSearchIndex]);
   const recentResults = useMemo(() => {
     if (normalizedQuery) return [];
     return recentKeys.flatMap((key) => {

@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { launchGame, listInstalledGames, openGameStorePage } from "../api";
 import { type GameScanResult, gameKey, type InstalledGame } from "../types";
 
@@ -24,12 +25,12 @@ export const useGameLauncher = () => {
   const visibleRef = useRef(false);
   const launchingRef = useRef(false);
 
-  const scan = useCallback(async () => {
+  const scan = useCallback(async (force = false) => {
     const sequence = ++scanSequence.current;
     setLoading(true);
     setError(null);
     try {
-      const next = await listInstalledGames();
+      const next = await listInstalledGames(force);
       if (sequence === scanSequence.current) setResult(next);
     } catch (reason) {
       if (sequence === scanSequence.current) {
@@ -156,6 +157,8 @@ export const useGameLauncher = () => {
       void focus.then((unlisten) => unlisten());
     };
   }, [close, scan]);
+
+  useOverlayWindowEviction(visible);
 
   return {
     animationClass: hiding ? "is-hiding" : visible ? "is-visible" : "",

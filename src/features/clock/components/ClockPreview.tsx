@@ -43,6 +43,7 @@ export const ClockPreview: React.FC<{
           </button>
           <div className="overlay-clock-content">
             <TickingClock
+              isActive
               showDate={clock.showDate}
               showSeconds={clock.showSeconds}
               blinkColon={clock.blinkColon}

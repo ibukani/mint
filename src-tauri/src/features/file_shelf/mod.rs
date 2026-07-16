@@ -117,7 +117,7 @@ pub fn should_auto_expand_file_shelf(app: tauri::AppHandle) -> Result<bool, Stri
 }
 
 #[tauri::command]
-pub fn set_file_shelf_expanded(
+pub async fn set_file_shelf_expanded(
     app: tauri::AppHandle,
     expanded: bool,
     focus: bool,

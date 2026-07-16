@@ -54,9 +54,13 @@ export const useQuickCaptureOverlayController = () => {
   const usesMetaShortcut = isApplePlatform();
   const { focusSequence } = capture;
   const isSaving = capture.status === "saving";
-  const activeNote = capture.activeId
-    ? (capture.notes.find((note) => note.id === capture.activeId) ?? null)
-    : null;
+  const activeNote = useMemo(
+    () =>
+      capture.activeId
+        ? (capture.notes.find((note) => note.id === capture.activeId) ?? null)
+        : null,
+    [capture.activeId, capture.notes],
+  );
 
   useEffect(() => {
     void focusSequence;
@@ -79,27 +83,45 @@ export const useQuickCaptureOverlayController = () => {
     setActionStatus("");
   }, [capture.activeId, focusSequence]);
 
+  const taggedNotes = useMemo(
+    () =>
+      capture.notes.filter(
+        (note) =>
+          (!pinnedOnly || note.pinned) &&
+          (!tagFilter || note.tags.includes(tagFilter)),
+      ),
+    [capture.notes, pinnedOnly, tagFilter],
+  );
+  const searchIndexRef = useRef<{
+    notes: QuickCaptureNote[];
+    index: Fuse<QuickCaptureNote>;
+  } | null>(null);
   const filteredNotes = useMemo(() => {
-    const tagged = capture.notes.filter(
-      (note) =>
-        (!pinnedOnly || note.pinned) &&
-        (!tagFilter || note.tags.includes(tagFilter)),
-    );
-    if (!query.trim()) return tagged;
-    return new Fuse(tagged, {
-      keys: ["content", "tags"],
-      threshold: 0.35,
-      ignoreLocation: true,
-    })
+    if (!query.trim()) return taggedNotes;
+
+    if (searchIndexRef.current?.notes !== taggedNotes) {
+      searchIndexRef.current = {
+        notes: taggedNotes,
+        index: new Fuse(taggedNotes, {
+          keys: ["content", "tags"],
+          threshold: 0.35,
+          ignoreLocation: true,
+        }),
+      };
+    }
+    return searchIndexRef.current.index
       .search(query)
       .map((result) => result.item);
-  }, [capture.notes, pinnedOnly, query, tagFilter]);
+  }, [query, taggedNotes]);
 
   const libraryCursorNote =
     filteredNotes.find((note) => note.id === libraryCursorId) ??
     filteredNotes[0] ??
     null;
-  const pinnedCount = capture.notes.filter((note) => note.pinned).length;
+  const pinnedCount = useMemo(
+    () => capture.notes.filter((note) => note.pinned).length,
+    [capture.notes],
+  );
 
   useEffect(() => {
     if (!librarySearchFocused || !libraryCursorNote) return;
