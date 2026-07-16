@@ -94,7 +94,7 @@ pub fn run() {
                 clipboard_monitor.clone(),
             );
             let clipboard_monitor_for_settings = clipboard_monitor.clone();
-            app.listen("settings-changed", move |_| {
+            app.listen("clipboard-settings-changed", move |_| {
                 clipboard_monitor_for_settings.notify();
             });
             app.manage(features::google_calendar::GoogleCalendarState::default());

@@ -127,6 +127,21 @@ fn clipboard_history_settings_changed(
         || old.clipboard_history_limit != new.clipboard_history_limit
 }
 
+fn clipboard_monitor_settings_changed(
+    old_settings: Option<&AppSettings>,
+    new_settings: &AppSettings,
+) -> bool {
+    let Some(old_settings) = old_settings else {
+        return true;
+    };
+    let old = &old_settings.file_shelf;
+    let new = &new_settings.file_shelf;
+    old.enabled != new.enabled
+        || old.clipboard_history_enabled != new.clipboard_history_enabled
+        || old.clipboard_history_limit != new.clipboard_history_limit
+        || old.ignored_applications != new.ignored_applications
+}
+
 fn clock_layout_settings_changed(
     old_settings: Option<&AppSettings>,
     new_settings: &AppSettings,
@@ -274,6 +289,8 @@ pub fn save_settings(
         file_shelf_window_settings_changed(old_settings.as_ref(), &settings);
     let clipboard_history_changed =
         clipboard_history_settings_changed(old_settings.as_ref(), &settings);
+    let clipboard_monitor_changed =
+        clipboard_monitor_settings_changed(old_settings.as_ref(), &settings);
     let clock_layout_changed = clock_layout_settings_changed(old_settings.as_ref(), &settings);
     let path = get_config_path(&app)?;
     let json = serde_json::to_string_pretty(&settings).map_err(|error| {
@@ -347,6 +364,9 @@ pub fn save_settings(
     // Send the already validated, cached settings with the event so every
     // WebView can update without issuing a second load_settings IPC call.
     let _ = app.emit("settings-changed", &settings);
+    if clipboard_monitor_changed {
+        let _ = app.emit("clipboard-settings-changed", ());
+    }
 
     if file_shelf_window_changed {
         crate::features::file_shelf::apply_window_settings(&app, &settings.file_shelf);
@@ -396,11 +416,13 @@ mod tests {
 
         assert!(!file_shelf_window_settings_changed(Some(&old), &next));
         assert!(!clipboard_history_settings_changed(Some(&old), &next));
+        assert!(!clipboard_monitor_settings_changed(Some(&old), &next));
         assert!(!clock_layout_settings_changed(Some(&old), &next));
 
         next.theme = "light".to_string();
         assert!(!file_shelf_window_settings_changed(Some(&old), &next));
         assert!(!clipboard_history_settings_changed(Some(&old), &next));
+        assert!(!clipboard_monitor_settings_changed(Some(&old), &next));
         assert!(!clock_layout_settings_changed(Some(&old), &next));
 
         next.file_shelf.edge = crate::core::settings_model::FileShelfEdge::Left;
@@ -408,6 +430,12 @@ mod tests {
 
         next.file_shelf.clipboard_history_limit += 1;
         assert!(clipboard_history_settings_changed(Some(&old), &next));
+        assert!(clipboard_monitor_settings_changed(Some(&old), &next));
+
+        next.file_shelf
+            .ignored_applications
+            .push("Notes.exe".to_string());
+        assert!(clipboard_monitor_settings_changed(Some(&old), &next));
 
         next.clock.size_percent += 10;
         assert!(clock_layout_settings_changed(Some(&old), &next));
