@@ -10,7 +10,9 @@ const COLLAPSED_HEIGHT: f64 = 96.0;
 const EXPANDED_WIDTH: f64 = 360.0;
 const EXPANDED_HEIGHT: f64 = 520.0;
 
-pub use clipboard::{apply_clipboard_history_settings, start_clipboard_history_monitor};
+pub use clipboard::{
+    apply_clipboard_history_settings, start_clipboard_history_monitor, ClipboardHistoryMonitor,
+};
 pub use repository::initialize_store;
 pub use shortcut::handle_file_shelf_shortcut_event;
 pub use window::{apply_window_settings, toggle_file_shelf_overlay};

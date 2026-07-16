@@ -1,7 +1,6 @@
 mod core;
 mod features;
 
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::{Emitter, Listener, Manager, RunEvent, WindowEvent};
@@ -11,8 +10,8 @@ use core::settings::AppSettingsState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let clipboard_running = Arc::new(AtomicBool::new(true));
-    let clipboard_running_for_event = clipboard_running.clone();
+    let clipboard_monitor = Arc::new(features::file_shelf::ClipboardHistoryMonitor::new());
+    let clipboard_monitor_for_event = clipboard_monitor.clone();
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -94,7 +93,14 @@ pub fn run() {
             app.manage(quick_capture_store);
             let file_shelf_store = features::file_shelf::initialize_store(app.handle())?;
             app.manage(file_shelf_store);
-            features::file_shelf::start_clipboard_history_monitor(app.handle().clone(), clipboard_running);
+            features::file_shelf::start_clipboard_history_monitor(
+                app.handle().clone(),
+                clipboard_monitor.clone(),
+            );
+            let clipboard_monitor_for_settings = clipboard_monitor.clone();
+            app.listen("settings-changed", move |_| {
+                clipboard_monitor_for_settings.notify();
+            });
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Add ready event listener for calendar editor window to resolve timing issues
@@ -255,7 +261,7 @@ pub fn run() {
 
     app.run(move |_app, event| {
         if let RunEvent::Exit = event {
-            clipboard_running_for_event.store(false, std::sync::atomic::Ordering::Relaxed);
+            clipboard_monitor_for_event.stop();
         }
     });
 }

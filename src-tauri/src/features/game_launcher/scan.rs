@@ -8,7 +8,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const MAX_ARTWORK_BYTES: u64 = 5 * 1024 * 1024;
+const MAX_ARTWORK_BYTES: u64 = 512 * 1024;
+const MAX_STEAM_FALLBACK_ARTWORK_BYTES: usize = 8 * 1024 * 1024;
 
 pub(super) fn program_data() -> PathBuf {
     std::env::var_os("PROGRAMDATA")
@@ -16,8 +17,9 @@ pub(super) fn program_data() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
 }
 
-fn scan_steam() -> (Vec<InstalledGame>, GameSourceStatus) {
+fn scan_steam(include_artwork: bool) -> (Vec<InstalledGame>, GameSourceStatus) {
     let mut games = Vec::new();
+    let mut fallback_artwork_bytes: usize = 0;
     let result = (|| -> Result<(), String> {
         let steam = steamlocate::locate().map_err(|error| error.to_string())?;
         for library in steam.libraries().map_err(|error| error.to_string())? {
@@ -27,7 +29,20 @@ fn scan_steam() -> (Vec<InstalledGame>, GameSourceStatus) {
                 let Some(title) = app.name.filter(|name| !name.trim().is_empty()) else {
                     continue;
                 };
-                let image = find_steam_artwork(steam.path(), app.app_id);
+                let fallback_image_path = if include_artwork {
+                    find_steam_artwork(steam.path(), app.app_id).and_then(|path| {
+                        let data_url = image_file_data_url(&path)?;
+                        if fallback_artwork_bytes.saturating_add(data_url.len())
+                            > MAX_STEAM_FALLBACK_ARTWORK_BYTES
+                        {
+                            return None;
+                        }
+                        fallback_artwork_bytes += data_url.len();
+                        Some(data_url)
+                    })
+                } else {
+                    None
+                };
                 games.push(InstalledGame {
                     id: app.app_id.to_string(),
                     title,
@@ -36,7 +51,7 @@ fn scan_steam() -> (Vec<InstalledGame>, GameSourceStatus) {
                         "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/header.jpg",
                         app.app_id
                     )),
-                    fallback_image_path: image.as_deref().and_then(image_file_data_url),
+                    fallback_image_path,
                 });
             }
         }
@@ -116,7 +131,7 @@ fn epic_manifest_dir() -> PathBuf {
     program_data().join("Epic/EpicGamesLauncher/Data/Manifests")
 }
 
-fn scan_epic() -> (Vec<InstalledGame>, GameSourceStatus) {
+fn scan_epic(include_artwork: bool) -> (Vec<InstalledGame>, GameSourceStatus) {
     let directory = epic_manifest_dir();
     if !directory.exists() {
         return (
@@ -144,7 +159,9 @@ fn scan_epic() -> (Vec<InstalledGame>, GameSourceStatus) {
                     });
                 match parsed {
                     Ok(manifest) if !manifest.display_name.trim().is_empty() => {
-                        let executable = epic_executable(&manifest);
+                        let executable = include_artwork
+                            .then(|| epic_executable(&manifest))
+                            .flatten();
                         games.push(InstalledGame {
                             id: epic_id(&manifest),
                             title: manifest.display_name,
@@ -201,7 +218,7 @@ pub(super) fn riot_products() -> &'static [(&'static str, &'static str)] {
     ]
 }
 
-fn scan_riot() -> (Vec<InstalledGame>, GameSourceStatus) {
+fn scan_riot(include_artwork: bool) -> (Vec<InstalledGame>, GameSourceStatus) {
     let directory = riot_metadata_dir();
     if !directory.exists() {
         return (
@@ -213,7 +230,7 @@ fn scan_riot() -> (Vec<InstalledGame>, GameSourceStatus) {
             },
         );
     }
-    let (games, warning) = scan_riot_directory(&directory);
+    let (games, warning) = scan_riot_directory_with_artwork(&directory, include_artwork);
     (
         games,
         GameSourceStatus {
@@ -224,7 +241,15 @@ fn scan_riot() -> (Vec<InstalledGame>, GameSourceStatus) {
     )
 }
 
+#[cfg(test)]
 pub(super) fn scan_riot_directory(directory: &Path) -> (Vec<InstalledGame>, Option<String>) {
+    scan_riot_directory_with_artwork(directory, true)
+}
+
+fn scan_riot_directory_with_artwork(
+    directory: &Path,
+    include_artwork: bool,
+) -> (Vec<InstalledGame>, Option<String>) {
     let mut games = Vec::new();
     let mut warning = None;
     let entries = match fs::read_dir(directory) {
@@ -242,11 +267,17 @@ pub(super) fn scan_riot_directory(directory: &Path) -> (Vec<InstalledGame>, Opti
             .as_deref()
             .and_then(|path| fs::read_to_string(path).ok())
             .and_then(|content| serde_yaml::from_str::<RiotProductSettings>(&content).ok());
-        let executable = settings.as_ref().and_then(riot_executable);
-        let image_path = find_riot_icon_file(&entry.path(), &folder_name)
-            .as_deref()
-            .and_then(image_file_data_url)
-            .or_else(|| executable.as_deref().and_then(icon_data_url));
+        let executable = include_artwork
+            .then(|| settings.as_ref().and_then(riot_executable))
+            .flatten();
+        let image_path = include_artwork
+            .then(|| {
+                find_riot_icon_file(&entry.path(), &folder_name)
+                    .as_deref()
+                    .and_then(image_file_data_url)
+                    .or_else(|| executable.as_deref().and_then(icon_data_url))
+            })
+            .flatten();
         if settings_path.is_some() && settings.is_none() {
             warning.get_or_insert_with(|| format!("{folder_name} の設定を読み取れませんでした"));
         }
@@ -263,6 +294,17 @@ pub(super) fn scan_riot_directory(directory: &Path) -> (Vec<InstalledGame>, Opti
 
 pub(super) fn riot_product_id(metadata_folder: &str) -> &str {
     metadata_folder.split('.').next().unwrap_or(metadata_folder)
+}
+
+pub(super) fn is_detected_game(id: &str, store: GameStore) -> bool {
+    let games = match store {
+        GameStore::Steam => scan_steam(false).0,
+        GameStore::Epic => scan_epic(false).0,
+        GameStore::Riot => scan_riot(false).0,
+    };
+    games
+        .iter()
+        .any(|game| game.id == id && game.store == store)
 }
 
 fn find_riot_settings_file(directory: &Path, product: &str) -> Option<PathBuf> {
@@ -315,9 +357,9 @@ fn icon_data_url(_executable: &Path) -> Option<String> {
 
 #[tauri::command]
 pub fn list_installed_games() -> GameScanResult {
-    let (mut games, steam) = scan_steam();
-    let (epic_games, epic) = scan_epic();
-    let (riot_games, riot) = scan_riot();
+    let (mut games, steam) = scan_steam(true);
+    let (epic_games, epic) = scan_epic(true);
+    let (riot_games, riot) = scan_riot(true);
     games.extend(epic_games);
     games.extend(riot_games);
     let mut seen = HashSet::new();

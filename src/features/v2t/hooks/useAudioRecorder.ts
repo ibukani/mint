@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const MAX_RECORDING_SECONDS = 5 * 60;
+const RECORDER_TIMESLICE_MS = 1000;
 const RECORDER_MIME_TYPES = [
   "audio/webm;codecs=opus",
   "audio/webm",
@@ -113,7 +114,7 @@ export const useAudioRecorder = ({
           );
         }
       };
-      recorder.start(250);
+      recorder.start(RECORDER_TIMESLICE_MS);
       recordingRef.current = true;
       setRecording(true);
       setRecordingSeconds(0);

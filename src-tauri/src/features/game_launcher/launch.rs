@@ -1,6 +1,6 @@
 use super::{
     debounce::interval_elapsed,
-    scan::{list_installed_games, program_data, riot_products},
+    scan::{is_detected_game, program_data, riot_products},
     GameStore, GameStoreInput, LaunchGameRequest, RiotInstalls,
 };
 use std::{
@@ -53,12 +53,7 @@ fn input_store(store: GameStoreInput) -> GameStore {
 }
 
 fn validate_detected_game(id: &str, store: GameStore) -> Result<(), String> {
-    let scan = list_installed_games();
-    if !scan
-        .games
-        .iter()
-        .any(|game| game.store == store && game.id == id)
-    {
+    if !is_detected_game(id, store) {
         return Err("検出済みゲームではありません。再スキャンしてください。".to_string());
     }
     Ok(())
