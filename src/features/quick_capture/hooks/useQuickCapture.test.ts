@@ -252,6 +252,9 @@ describe("useQuickCapture", () => {
   it("releases the saved note list while hidden and reloads it when shown", async () => {
     const { result } = renderHook(() => useQuickCapture());
     await waitFor(() => expect(result.current.notes).toHaveLength(1));
+    act(() => mocks.listeners.get("quick-capture-shown")?.({}));
+    await act(async () => Promise.resolve());
+    expect(mocks.load).toHaveBeenCalledOnce();
 
     await act(async () => result.current.close());
     expect(result.current.notes).toEqual([]);

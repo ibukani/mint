@@ -39,6 +39,9 @@ export const useQuickCapture = () => {
   const loaded = useRef(false);
   const revision = useRef(0);
   const notesReloadSequenceRef = useRef(0);
+  const initialLoadPromiseRef = useRef<Promise<string | null> | null>(null);
+  const initialShownRef = useRef(false);
+  const notesReleasedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef({ content: "", tags: "" });
   const closeRef = useRef<() => Promise<void>>(async () => {});
@@ -409,6 +412,7 @@ export const useQuickCapture = () => {
       try {
         await getCurrentWindow().hide();
         notesReloadSequenceRef.current += 1;
+        notesReleasedRef.current = true;
         setNotes([]);
       } catch (reason) {
         visibleRef.current = true;
@@ -425,7 +429,7 @@ export const useQuickCapture = () => {
   closeRef.current = close;
 
   useEffect(() => {
-    void reload();
+    initialLoadPromiseRef.current = reload();
     void getCurrentWindow()
       .isVisible()
       .then((visible) => {
@@ -438,6 +442,8 @@ export const useQuickCapture = () => {
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
     const shown = listen("quick-capture-shown", () => {
+      const firstShown = !initialShownRef.current;
+      initialShownRef.current = true;
       visibleRef.current = true;
       setWindowVisible(true);
       focusedRef.current = true;
@@ -445,7 +451,19 @@ export const useQuickCapture = () => {
         autoHideSuppressedRef.current = false;
       }
       showDraft();
-      void reloadNotes();
+      if (!firstShown || notesReleasedRef.current) {
+        notesReleasedRef.current = false;
+        void reloadNotes();
+      } else {
+        const initialLoad = initialLoadPromiseRef.current;
+        if (initialLoad) {
+          void initialLoad.then((error) => {
+            if (error) void reload();
+          });
+        } else {
+          void reloadNotes();
+        }
+      }
     });
     const noteCreated = listen<QuickCaptureNoteCreatedPayload>(
       QUICK_CAPTURE_NOTE_CREATED_EVENT,
