@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   rememberGoogleCalendarSync,
   shouldRunAutomaticGoogleCalendarSync,
@@ -25,6 +25,22 @@ export const useCalendarEvents = (
   showSequence: number,
   calendarIds: string[] | null,
 ) => {
+  const calendarIdsRef = useRef(calendarIds);
+  const calendarIdsKey = calendarIds?.join("\u0000") ?? "";
+  const previousCalendarIds = calendarIdsRef.current;
+  if (
+    previousCalendarIds !== calendarIds &&
+    (previousCalendarIds === null ||
+      calendarIds === null ||
+      previousCalendarIds.length !== calendarIds.length ||
+      previousCalendarIds.some((id, index) => id !== calendarIds[index]))
+  ) {
+    calendarIdsRef.current = calendarIds;
+  }
+  const stableCalendarIds = useMemo(
+    () => ({ key: calendarIdsKey, value: calendarIdsRef.current }),
+    [calendarIdsKey],
+  );
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [nextEvent, setNextEvent] = useState<CalendarEvent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,21 +60,22 @@ export const useCalendarEvents = (
     async (force = false) => {
       const sequence = ++syncSequenceRef.current;
       setSyncError("");
+      const selectedCalendarIds = stableCalendarIds.value;
 
       try {
-        if (!calendarIds || calendarIds.length === 0) return;
+        if (!selectedCalendarIds || selectedCalendarIds.length === 0) return;
         const connection = await getGoogleCalendarConnection();
         if (
           !force &&
-          !shouldRunAutomaticGoogleCalendarSync(connection, calendarIds)
+          !shouldRunAutomaticGoogleCalendarSync(connection, selectedCalendarIds)
         ) {
           return;
         }
 
         setSyncing(true);
 
-        await syncGoogleCalendars(calendarIds);
-        rememberGoogleCalendarSync(calendarIds);
+        await syncGoogleCalendars(selectedCalendarIds);
+        rememberGoogleCalendarSync(selectedCalendarIds);
         if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
         refresh();
       } catch (syncReason) {
@@ -71,7 +88,7 @@ export const useCalendarEvents = (
         }
       }
     },
-    [calendarIds, refresh],
+    [refresh, stableCalendarIds],
   );
 
   useEffect(
