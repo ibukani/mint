@@ -1,0 +1,50 @@
+name: PR 18 Rust autofix
+
+on:
+  push:
+    branches:
+      - refactor/code-improvements
+
+permissions:
+  contents: write
+
+jobs:
+  autofix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/code-improvements
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Fix captured setup state and format Rust
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src-tauri/src/lib.rs")
+          content = path.read_text(encoding="utf-8")
+          expected = ".setup(|app| {"
+          replacement = ".setup(move |app| {"
+          if expected not in content and replacement not in content:
+              raise SystemExit("setup closure pattern was not found")
+          path.write_text(content.replace(expected, replacement, 1), encoding="utf-8")
+          PY
+          cargo fmt --manifest-path src-tauri/Cargo.toml
+
+      - name: Commit autofix
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src-tauri
+          git commit -m "fix: satisfy Tauri setup lifetime and format Rust"
+          git push origin HEAD:refactor/code-improvements
