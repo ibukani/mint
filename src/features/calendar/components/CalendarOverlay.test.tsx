@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
+  currentMonitor: vi.fn().mockResolvedValue({
+    size: { width: 1920, height: 1080 },
+    scaleFactor: 1,
+  }),
   openEditorShouldFail: false,
   syncShouldFail: false,
   invoke: vi.fn<(command: string) => Promise<unknown>>(async (command) => {
@@ -59,10 +63,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
-  currentMonitor: vi.fn().mockResolvedValue({
-    size: { width: 1920, height: 1080 },
-    scaleFactor: 1,
-  }),
+  currentMonitor: mocks.currentMonitor,
   getCurrentWindow: vi.fn(() => ({
     hide: mocks.hideCalendar,
     setPosition: mocks.setCalendarPosition,
@@ -113,6 +114,7 @@ describe("CalendarOverlay window coordination", () => {
     mocks.emitTo.mockClear();
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
+    mocks.currentMonitor.mockClear();
     mocks.openEditorShouldFail = false;
     mocks.syncShouldFail = false;
     mocks.invoke.mockClear();
@@ -223,6 +225,24 @@ describe("CalendarOverlay window coordination", () => {
     };
     expect(size.width).toBe(420);
     expect(size.height).toBe(384);
+  });
+
+  it("does not reposition when an unrelated settings update rerenders the overlay", async () => {
+    const view = render(<CalendarOverlay />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const initialMonitorCalls = mocks.currentMonitor.mock.calls.length;
+
+    view.rerender(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.currentMonitor).toHaveBeenCalledTimes(initialMonitorCalls);
   });
 
   it("opens the event editor when quick entry is requested", async () => {

@@ -22,6 +22,10 @@ interface CalendarShownPayload {
 
 export const useCalendarOverlay = (canClose: () => boolean) => {
   const { settings } = useAppSettings();
+  const calendarEnabled = settings?.calendar.enabled;
+  const clockEnabled = settings?.clock.enabled;
+  const clockSizePercent = settings?.clock.sizePercent;
+  const clockDisplayMode = settings?.clock.displayMode;
   const [isVisible, setIsVisible] = useState(true);
   const [isHiding, setIsHiding] = useState(false);
   const [isDocked, setIsDocked] = useState(false);
@@ -125,19 +129,26 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   );
 
   useEffect(() => {
-    if (settings && !settings.calendar.enabled) {
+    if (calendarEnabled === false) {
       closeCalendar(closeClockOnToggleRef.current);
     }
-  }, [settings, closeCalendar]);
+  }, [calendarEnabled, closeCalendar]);
 
   useOverlayWindowEviction(isVisible);
 
   // Resize and position the window from the frontend
   useEffect(() => {
-    if (!settings || !isVisible) return;
+    if (
+      !isVisible ||
+      clockSizePercent === undefined ||
+      clockDisplayMode === undefined ||
+      clockEnabled === undefined
+    ) {
+      return;
+    }
 
-    const percent = settings.clock.sizePercent / 100;
-    const baseW = settings.clock.displayMode === "analog" ? 240 : 420;
+    const percent = clockSizePercent / 100;
+    const baseW = clockDisplayMode === "analog" ? 240 : 420;
     const contentWidth = Math.max(Math.round(baseW * percent), 320);
     const width = contentWidth;
     const height = Math.round(384 * Math.max(contentWidth / 420, 1.0));
@@ -163,7 +174,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
           clockWindow && typeof clockWindow.isVisible === "function"
             ? await clockWindow.isVisible()
             : false;
-        const docked = settings.clock.enabled && isClockVisible;
+        const docked = clockEnabled && isClockVisible;
         setIsDocked(docked);
 
         if (docked && clockWindow) {
@@ -207,7 +218,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
       .catch((error) => {
         console.error("Failed to load monitor details:", error);
       });
-  }, [settings, isVisible]);
+  }, [clockDisplayMode, clockEnabled, clockSizePercent, isVisible]);
 
   const animationClass = isHiding ? "is-hiding" : isVisible ? "is-visible" : "";
   const themeColor =

@@ -75,4 +75,18 @@ describe("useClockOverlay", () => {
     expect(result.current.isAnimateVisible).toBe(false);
     expect(result.current.isHiding).toBe(false);
   });
+
+  it("does not restart the auto-hide countdown for an unrelated settings rerender", async () => {
+    const { rerender } = renderHook(() => useClockOverlay());
+
+    act(() => vi.advanceTimersByTime(2_500));
+    rerender();
+    act(() => vi.advanceTimersByTime(500));
+    await act(async () => {
+      vi.runOnlyPendingTimers();
+      await Promise.resolve();
+    });
+
+    expect(mocks.hide).toHaveBeenCalledOnce();
+  });
 });
