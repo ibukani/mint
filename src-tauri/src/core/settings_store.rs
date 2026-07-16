@@ -344,7 +344,9 @@ pub fn save_settings(
 
     *cached = Some(settings.clone());
     drop(cached);
-    let _ = app.emit("settings-changed", ());
+    // Send the already validated, cached settings with the event so every
+    // WebView can update without issuing a second load_settings IPC call.
+    let _ = app.emit("settings-changed", &settings);
 
     if file_shelf_window_changed {
         crate::features::file_shelf::apply_window_settings(&app, &settings.file_shelf);
