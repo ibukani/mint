@@ -219,6 +219,8 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     isDocked,
     isVisible,
     openMode,
+    selectedGoogleCalendarIds:
+      settings?.calendar.selectedGoogleCalendarIds ?? null,
     showSequence,
     themeColor,
   };

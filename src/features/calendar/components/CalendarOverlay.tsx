@@ -38,6 +38,7 @@ export const CalendarOverlay: React.FC = () => {
     closeCalendar,
     isDocked,
     openMode,
+    selectedGoogleCalendarIds,
     showSequence,
     themeColor,
   } = useCalendarOverlay(() => true);
@@ -61,7 +62,12 @@ export const CalendarOverlay: React.FC = () => {
     syncError,
     syncing,
     retrySync,
-  } = useCalendarEvents(viewMonth, today, showSequence);
+  } = useCalendarEvents(
+    viewMonth,
+    today,
+    showSequence,
+    selectedGoogleCalendarIds,
+  );
 
   const openEditor = useCallback(async (payload: CalendarEditorPayload) => {
     const attempt = ++editorAttemptRef.current;

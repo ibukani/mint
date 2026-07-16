@@ -1,6 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadSettings } from "../../../core/settings";
 import {
   rememberGoogleCalendarSync,
   shouldRunAutomaticGoogleCalendarSync,
@@ -24,6 +23,7 @@ export const useCalendarEvents = (
   viewMonth: Date,
   today: Date,
   showSequence: number,
+  calendarIds: string[] | null,
 ) => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [nextEvent, setNextEvent] = useState<CalendarEvent | null>(null);
@@ -46,9 +46,8 @@ export const useCalendarEvents = (
       setSyncError("");
 
       try {
-        const settings = await loadSettings();
+        if (!calendarIds || calendarIds.length === 0) return;
         const connection = await getGoogleCalendarConnection();
-        const calendarIds = settings.calendar.selectedGoogleCalendarIds;
         if (
           !force &&
           !shouldRunAutomaticGoogleCalendarSync(connection, calendarIds)
@@ -72,7 +71,7 @@ export const useCalendarEvents = (
         }
       }
     },
-    [refresh],
+    [calendarIds, refresh],
   );
 
   useEffect(
