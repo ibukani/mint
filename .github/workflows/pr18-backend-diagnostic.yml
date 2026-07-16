@@ -1,0 +1,61 @@
+name: PR 18 backend diagnostic
+
+on:
+  push:
+    branches:
+      - refactor/code-improvements
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/code-improvements
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libayatana-appindicator3-dev
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Capture backend diagnostics
+        shell: bash
+        run: |
+          set +e
+          diagnostic="pr18-backend-diagnostic.txt"
+          : > "$diagnostic"
+
+          run_check() {
+            local name="$1"
+            shift
+            {
+              echo "===== $name ====="
+              "$@"
+              status=$?
+              echo
+              echo "EXIT_STATUS=$status"
+              echo
+            } >> "$diagnostic" 2>&1
+          }
+
+          run_check "cargo fmt --check" cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          run_check "cargo clippy" cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+          run_check "cargo test" cargo test --manifest-path src-tauri/Cargo.toml
+          run_check "cargo check" cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Commit diagnostic output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pr18-backend-diagnostic.txt
+          git commit -m "chore: capture PR 18 backend diagnostics"
+          git push origin HEAD:refactor/code-improvements
