@@ -42,7 +42,7 @@ export const useFileShelf = () => {
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [transientExpanded, setTransientExpanded] = useState(false);
   const [pendingDragItemIds, setPendingDragItemIds] = useState<string[]>([]);
-  const loadRevision = useRef(0);
+  const operationRevision = useRef(0);
   const dragEnterRevision = useRef(0);
 
   const fail = useCallback((reason: unknown) => {
@@ -50,16 +50,16 @@ export const useFileShelf = () => {
   }, []);
 
   const load = useCallback(async () => {
-    const revision = ++loadRevision.current;
+    const revision = ++operationRevision.current;
     setLoading(true);
     setError("");
     try {
       const next = await loadFileShelfState();
-      if (revision === loadRevision.current) setState(next);
+      if (revision === operationRevision.current) setState(next);
     } catch (reason) {
-      if (revision === loadRevision.current) fail(reason);
+      if (revision === operationRevision.current) fail(reason);
     } finally {
-      if (revision === loadRevision.current) setLoading(false);
+      if (revision === operationRevision.current) setLoading(false);
     }
   }, [fail]);
 
@@ -85,21 +85,24 @@ export const useFileShelf = () => {
   const addPaths = useCallback(
     async (paths: string[]) => {
       if (!paths.length) return;
+      const revision = ++operationRevision.current;
       setBusy(true);
       setError("");
       setNotice("");
       try {
         const mutation = await addFileShelfPaths({ paths });
-        setState(mutation.state);
-        setNotice(
-          mutation.addedCount > 0
-            ? `${mutation.addedCount}件を預かりました${mutation.skippedCount ? `（${mutation.skippedCount}件は追加済みまたは無効）` : ""}`
-            : "追加できる新しい項目がありませんでした",
-        );
+        if (revision === operationRevision.current) {
+          setState(mutation.state);
+          setNotice(
+            mutation.addedCount > 0
+              ? `${mutation.addedCount}件を預かりました${mutation.skippedCount ? `（${mutation.skippedCount}件は追加済みまたは無効）` : ""}`
+              : "追加できる新しい項目がありませんでした",
+          );
+        }
       } catch (reason) {
-        fail(reason);
+        if (revision === operationRevision.current) fail(reason);
       } finally {
-        setBusy(false);
+        if (revision === operationRevision.current) setBusy(false);
       }
     },
     [fail],
@@ -200,17 +203,20 @@ export const useFileShelf = () => {
 
   const addContent = useCallback(
     async (input: AddFileShelfContentInput) => {
+      const revision = ++operationRevision.current;
       setBusy(true);
       setError("");
       setNotice("");
       try {
         const mutation = await addFileShelfContent(input);
-        setState(mutation.state);
-        setNotice("クリップボードから1件預かりました");
+        if (revision === operationRevision.current) {
+          setState(mutation.state);
+          setNotice("クリップボードから1件預かりました");
+        }
       } catch (reason) {
-        fail(reason);
+        if (revision === operationRevision.current) fail(reason);
       } finally {
-        setBusy(false);
+        if (revision === operationRevision.current) setBusy(false);
       }
     },
     [fail],
@@ -238,87 +244,103 @@ export const useFileShelf = () => {
 
   const removeItems = useCallback(
     async (itemIds: string[]) => {
+      const revision = ++operationRevision.current;
       setBusy(true);
       setError("");
       try {
         const removal = await removeFileShelfItems(itemIds);
-        setState(removal.state);
-        setUndoToken(removal.undoToken);
-        setNotice(`${itemIds.length}件を棚から外しました`);
+        if (revision === operationRevision.current) {
+          setState(removal.state);
+          setUndoToken(removal.undoToken);
+          setNotice(`${itemIds.length}件を棚から外しました`);
+        }
       } catch (reason) {
-        fail(reason);
+        if (revision === operationRevision.current) fail(reason);
       } finally {
-        setBusy(false);
+        if (revision === operationRevision.current) setBusy(false);
       }
     },
     [fail],
   );
 
   const clear = useCallback(async () => {
+    const revision = ++operationRevision.current;
     setBusy(true);
     setError("");
     try {
       const removal = await clearFileShelf();
-      setState(removal.state);
-      setUndoToken(removal.undoToken);
-      setNotice("棚を空にしました");
+      if (revision === operationRevision.current) {
+        setState(removal.state);
+        setUndoToken(removal.undoToken);
+        setNotice("棚を空にしました");
+      }
     } catch (reason) {
-      fail(reason);
+      if (revision === operationRevision.current) fail(reason);
     } finally {
-      setBusy(false);
+      if (revision === operationRevision.current) setBusy(false);
     }
   }, [fail]);
 
   const clearClipboardHistory = useCallback(async () => {
+    const revision = ++operationRevision.current;
     setBusy(true);
     setError("");
     try {
       const removal = await clearFileShelfClipboardHistory();
-      setState(removal.state);
-      setUndoToken(removal.undoToken);
-      setNotice("クリップボード履歴を消去しました");
+      if (revision === operationRevision.current) {
+        setState(removal.state);
+        setUndoToken(removal.undoToken);
+        setNotice("クリップボード履歴を消去しました");
+      }
     } catch (reason) {
-      fail(reason);
+      if (revision === operationRevision.current) fail(reason);
     } finally {
-      setBusy(false);
+      if (revision === operationRevision.current) setBusy(false);
     }
   }, [fail]);
 
   const undo = useCallback(async () => {
     if (!undoToken) return;
+    const revision = ++operationRevision.current;
     setBusy(true);
     setError("");
     try {
       const next = await restoreFileShelfRemoval(undoToken);
-      setState(next);
-      setUndoToken("");
-      setNotice("棚へ戻しました");
+      if (revision === operationRevision.current) {
+        setState(next);
+        setUndoToken("");
+        setNotice("棚へ戻しました");
+      }
     } catch (reason) {
-      fail(reason);
+      if (revision === operationRevision.current) fail(reason);
     } finally {
-      setBusy(false);
+      if (revision === operationRevision.current) setBusy(false);
     }
   }, [fail, undoToken]);
 
   const restoreRecent = useCallback(async () => {
+    const revision = ++operationRevision.current;
     setBusy(true);
     setError("");
     setNotice("");
     try {
       const next = await restoreRecentFileShelfRemoval();
-      setState(next);
-      setUndoToken("");
-      setNotice("最近外した項目を棚へ戻しました");
+      if (revision === operationRevision.current) {
+        setState(next);
+        setUndoToken("");
+        setNotice("最近外した項目を棚へ戻しました");
+      }
     } catch (reason) {
-      fail(reason);
+      if (revision === operationRevision.current) fail(reason);
     } finally {
-      setBusy(false);
+      if (revision === operationRevision.current) setBusy(false);
     }
   }, [fail]);
 
   const pinItems = useCallback(
     async (items: FileShelfItem[], pinned: boolean) => {
       if (!items.length) return;
+      const revision = ++operationRevision.current;
       setBusy(true);
       setError("");
       try {
@@ -326,16 +348,18 @@ export const useFileShelf = () => {
           items.map((item) => item.id),
           pinned,
         );
-        setState(next);
-        setNotice(
-          pinned
-            ? `${items.length}件を棚に固定しました`
-            : `${items.length}件の固定を解除しました`,
-        );
+        if (revision === operationRevision.current) {
+          setState(next);
+          setNotice(
+            pinned
+              ? `${items.length}件を棚に固定しました`
+              : `${items.length}件の固定を解除しました`,
+          );
+        }
       } catch (reason) {
-        fail(reason);
+        if (revision === operationRevision.current) fail(reason);
       } finally {
-        setBusy(false);
+        if (revision === operationRevision.current) setBusy(false);
       }
     },
     [fail],
@@ -343,18 +367,21 @@ export const useFileShelf = () => {
 
   const renameItem = useCallback(
     async (item: FileShelfItem, displayName: string) => {
+      const revision = ++operationRevision.current;
       setBusy(true);
       setError("");
       try {
         const next = await renameFileShelfItem(item.id, displayName);
-        setState(next);
-        setNotice(`「${displayName.trim()}」として棚に表示します`);
+        if (revision === operationRevision.current) {
+          setState(next);
+          setNotice(`「${displayName.trim()}」として棚に表示します`);
+        }
         return true;
       } catch (reason) {
-        fail(reason);
+        if (revision === operationRevision.current) fail(reason);
         return false;
       } finally {
-        setBusy(false);
+        if (revision === operationRevision.current) setBusy(false);
       }
     },
     [fail],
@@ -402,18 +429,21 @@ export const useFileShelf = () => {
 
   const confirmDraggedItems = useCallback(async () => {
     if (!pendingDragItemIds.length) return;
+    const revision = ++operationRevision.current;
     setBusy(true);
     setError("");
     try {
       const removal = await removeFileShelfItems(pendingDragItemIds);
-      setState(removal.state);
-      setUndoToken(removal.undoToken);
-      setPendingDragItemIds([]);
-      setNotice(`${pendingDragItemIds.length}件を棚から外しました`);
+      if (revision === operationRevision.current) {
+        setState(removal.state);
+        setUndoToken(removal.undoToken);
+        setPendingDragItemIds([]);
+        setNotice(`${pendingDragItemIds.length}件を棚から外しました`);
+      }
     } catch (reason) {
-      fail(reason);
+      if (revision === operationRevision.current) fail(reason);
     } finally {
-      setBusy(false);
+      if (revision === operationRevision.current) setBusy(false);
     }
   }, [fail, pendingDragItemIds]);
 

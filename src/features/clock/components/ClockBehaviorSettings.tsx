@@ -22,11 +22,8 @@ export const ClockBehaviorSettings: React.FC<{
     controller;
 
   return (
-    <section
-      className="clock-control-group"
-      aria-labelledby="clock-behavior-title"
-    >
-      <div className="clock-control-group__heading">
+    <section className="settings-group" aria-labelledby="clock-behavior-title">
+      <div className="settings-group__heading">
         <TimerReset size={17} aria-hidden="true" />
         <div>
           <h3 id="clock-behavior-title">呼び出し</h3>

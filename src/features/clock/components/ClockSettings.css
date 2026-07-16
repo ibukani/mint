@@ -12,7 +12,6 @@
   gap: var(--space-4);
 }
 
-.clock-control-group,
 .clock-preview-panel {
   border: 1px solid var(--border-panel);
   border-radius: var(--radius-lg);
@@ -26,26 +25,6 @@
   box-shadow: var(--shadow-card);
 }
 
-.clock-control-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  padding: var(--space-5);
-  transition:
-    border-color var(--transition-base),
-    box-shadow var(--transition-base);
-}
-
-.clock-control-group:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--border-accent) 46%,
-    var(--border-panel)
-  );
-  box-shadow: var(--shadow-card);
-}
-
-.clock-control-group:focus-within,
 .clock-preview-panel:focus-within {
   border-color: color-mix(
     in srgb,
@@ -53,37 +32,6 @@
     var(--border-panel)
   );
   box-shadow: var(--shadow-card-raised);
-}
-
-.clock-control-group__heading {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding-bottom: var(--space-1);
-  color: var(--color-accent);
-}
-
-.clock-control-group__heading > svg {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  stroke-width: 1.8;
-}
-
-.clock-control-group__heading h3,
-.clock-control-group__heading p {
-  margin: 0;
-}
-
-.clock-control-group__heading h3 {
-  color: var(--color-text-primary);
-  font-size: var(--font-size-base);
-}
-
-.clock-control-group__heading p {
-  margin-top: 4px;
-  color: var(--color-text-subtle);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
 }
 
 .clock-field-grid {
@@ -118,7 +66,7 @@
   background: var(--color-accent);
   box-shadow:
     0 0 0 1px var(--border-accent),
-    0 5px 12px rgb(0 0 0 / 20%);
+    var(--shadow-switch);
 }
 
 .clock-range::-moz-range-thumb {
@@ -233,8 +181,7 @@
   border-color: color-mix(in srgb, var(--color-text-primary) 13%, transparent);
   border-radius: var(--radius-lg);
   box-shadow:
-    0 28px 58px rgb(0 0 0 / 30%),
-    0 8px 20px rgb(0 0 0 / 18%),
+    var(--shadow-card-raised),
     0 0 34px
     color-mix(
       in srgb,
@@ -267,10 +214,6 @@
   .clock-field-grid,
   .clock-toggle-grid {
     grid-template-columns: 1fr;
-  }
-
-  .clock-control-group {
-    padding: var(--space-4);
   }
 
   .clock-preview-stage {

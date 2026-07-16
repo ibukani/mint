@@ -1,6 +1,7 @@
 import { Palette } from "lucide-react";
 import type React from "react";
 import {
+  ColorPresetPicker,
   Field,
   Select,
   Switch,
@@ -9,26 +10,14 @@ import {
 } from "../../../design/components";
 import type { ClockSettingsController } from "../hooks/useClockSettingsController";
 
-const PRESET_COLORS = [
-  { value: "#818cf8", label: "インディゴ" },
-  { value: "#38bdf8", label: "スカイ" },
-  { value: "#34d399", label: "ミント" },
-  { value: "#fbbf24", label: "アンバー" },
-  { value: "#fb7185", label: "ローズ" },
-  { value: "#f8fafc", label: "ホワイト" },
-] as const;
-
 export const ClockAppearanceSettings: React.FC<{
   controller: ClockSettingsController;
 }> = ({ controller }) => {
   const { clock, handleChange } = controller;
 
   return (
-    <section
-      className="clock-control-group"
-      aria-labelledby="clock-style-title"
-    >
-      <div className="clock-control-group__heading">
+    <section className="settings-group" aria-labelledby="clock-style-title">
+      <div className="settings-group__heading">
         <Palette size={17} aria-hidden="true" />
         <div>
           <h3 id="clock-style-title">表示スタイル</h3>
@@ -109,20 +98,11 @@ export const ClockAppearanceSettings: React.FC<{
       </Field>
 
       <Field id="clock-color-picker" label="時計のテーマカラー">
-        <div className="color-picker-palette">
-          {PRESET_COLORS.map((color) => (
-            <button
-              key={color.value}
-              type="button"
-              className={`color-picker-badge ${clock.clockColor === color.value ? "is-active" : ""}`}
-              style={{ "--swatch-color": color.value } as React.CSSProperties}
-              title={color.label}
-              onClick={() => handleChange("clockColor", color.value)}
-              aria-label={color.label}
-              aria-pressed={clock.clockColor === color.value}
-            />
-          ))}
-        </div>
+        <ColorPresetPicker
+          value={clock.clockColor}
+          onChange={(value) => handleChange("clockColor", value)}
+          ariaLabel="時計のテーマカラー"
+        />
       </Field>
 
       <div className="clock-toggle-grid">

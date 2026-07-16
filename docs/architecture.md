@@ -27,12 +27,12 @@ Mint は、機能追加の安全性・拡張性・保守性を高めるため、
 ### 機能管理ダッシュボードと共通設定 (`AppSettings`)
 - `src/core/settingsModel.ts` (TypeScript): 設定スキーマの単一ソース
 - `src/core/context/AppSettings.tsx` (TypeScript): Provider と購読 API
-- `src-tauri/src/core/settings.rs` (Rust)
+- `src-tauri/src/core/settings.rs` (Rust facade) / `settings_model.rs` (Rust model)
 - すべての機能の設定や有効状態はここで一元管理され、ローカルファイルにシリアライズされて保存されます。
 - `theme` などの共通設定と、機能ごとの個別設定 (`clock`, `voiceToText` 等) が混在します。
 
 ## 3. モック層の責務
-- `src/core/mocks/tauriMock.ts` は、Tauriのバックエンド環境がないブラウザ単体起動時でも動作するように、各Tauriコマンドのダミー処理を提供します。
+- `src/core/mocks/tauriMock.ts` と `vitestSetup.ts` は、Tauriのバックエンド環境がないブラウザ単体起動時・テスト時でも動作するように、`*IpcMock.ts` の静的な feature 別 handler を共有します。環境固有の保存・遅延・表示差分だけを各入口で注入します。
 - 新規コマンドを追加した際は、必ずモック層にも実装を追加する必要があります。
 
 ## 4. 追加手順

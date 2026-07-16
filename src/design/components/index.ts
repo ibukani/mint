@@ -1,7 +1,7 @@
 export { Button } from "./Button";
+export { ColorPresetPicker } from "./ColorPresetPicker";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { ErrorMessage } from "./ErrorMessage";
-export { FeatureCard } from "./FeatureCard";
 export { FeatureSettingsHeader } from "./FeatureSettingsHeader";
 export { Field } from "./Field";
 export { FieldRow } from "./FieldRow";

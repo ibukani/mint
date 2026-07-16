@@ -9,7 +9,7 @@ const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 const BACKUP_FILES = [
   "src-tauri/src/features/mod.rs",
   "src/core/settingsModel.ts",
-  "src-tauri/src/core/settings.rs",
+  "src-tauri/src/core/settings_model.rs",
   "src/core/defaultSettings.ts",
   "src/core/mocks/mockSettings.ts",
   "src/core/mocks/tauriMock.ts",

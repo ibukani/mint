@@ -1,15 +1,20 @@
 mod core;
 mod features;
 
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::sync::Mutex;
-use tauri::{Emitter, Listener, Manager, WindowEvent};
+use tauri::{Emitter, Listener, Manager, RunEvent, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 use core::settings::AppSettingsState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let clipboard_running = Arc::new(AtomicBool::new(true));
+    let clipboard_running_for_event = clipboard_running.clone();
+
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_drag::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -82,14 +87,14 @@ pub fn run() {
                 .build(),
         )
         .manage(AppSettingsState(Mutex::new(None)))
-        .setup(|app| {
+        .setup(move |app| {
             let calendar_store = features::calendar::initialize_store(app.handle())?;
             app.manage(calendar_store);
             let quick_capture_store = features::quick_capture::initialize_store(app.handle())?;
             app.manage(quick_capture_store);
             let file_shelf_store = features::file_shelf::initialize_store(app.handle())?;
             app.manage(file_shelf_store);
-            features::file_shelf::start_clipboard_history_monitor(app.handle().clone());
+            features::file_shelf::start_clipboard_history_monitor(app.handle().clone(), clipboard_running);
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Add ready event listener for calendar editor window to resolve timing issues
@@ -245,6 +250,12 @@ pub fn run() {
             features::file_shelf::set_file_shelf_expanded,
             features::game_launcher::launch::open_game_store_page,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(move |_app, event| {
+        if let RunEvent::Exit = event {
+            clipboard_running_for_event.store(false, std::sync::atomic::Ordering::Relaxed);
+        }
+    });
 }
