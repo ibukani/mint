@@ -93,6 +93,34 @@ describe("useGameLauncher lifecycle", () => {
     expect(result.current.showSequence).toBe(initialSequence + 1);
   });
 
+  it("非表示時にスキャン結果を解放し、再表示時に再取得する", async () => {
+    mocks.list.mockResolvedValue({ games: [game], sources: [] });
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.result?.games).toHaveLength(1);
+
+    act(() => {
+      result.current.close();
+      vi.advanceTimersByTime(180);
+    });
+    await act(async () => Promise.resolve());
+    expect(result.current.result).toBeNull();
+
+    act(() => mocks.listeners.get("game-launcher-shown")?.());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.result?.games).toHaveLength(1);
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+  });
+
   it("起動要求を処理中は重複起動を拒否する", async () => {
     const { result } = renderHook(() => useGameLauncher(), {
       wrapper: AppSettingsProvider,

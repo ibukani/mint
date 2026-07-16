@@ -44,6 +44,7 @@ export const useGameLauncher = () => {
   const close = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
+    scanSequence.current += 1;
     visibleRef.current = false;
     setVisible(false);
     setHiding(true);
@@ -54,6 +55,9 @@ export const useGameLauncher = () => {
       () => {
         void getCurrentWindow()
           .hide()
+          .then(() => {
+            setResult(null);
+          })
           .catch((error) => {
             console.error("Failed to hide game launcher window:", error);
           })
