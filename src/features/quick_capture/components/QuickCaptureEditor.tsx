@@ -80,7 +80,7 @@ interface QuickCaptureEditorProps {
   onPasteClipboard: () => void;
   onCaptureClipboard: () => void;
   onCopyClipboard: () => void;
-  onFormat: (prefix: string, suffix: string, placeholder: string) => void;
+  onFormat: (prefix: string, suffix: string, fallbackText: string) => void;
   onExportMarkdown: () => void;
   onRequestDelete: () => void;
 }

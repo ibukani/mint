@@ -84,14 +84,14 @@ export const useQuickCaptureOverlayActions = ({
   const formatSelection = (
     prefix: string,
     suffix: string,
-    placeholder: string,
+    fallbackText: string,
   ) => {
     const textarea = editorRef.current;
     if (!textarea) return;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selected = capture.content.slice(start, end);
-    const replacement = selected || placeholder;
+    const replacement = selected || fallbackText;
     const nextContent = `${capture.content.slice(0, start)}${prefix}${replacement}${suffix}${capture.content.slice(end)}`;
     setContent(nextContent);
     requestAnimationFrame(() => {
