@@ -59,7 +59,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     void currentWindow
       .isVisible()
       .then((visible) => {
-        if (mounted && visible) {
+        if (mounted && visible !== false) {
           isVisibleRef.current = true;
           setIsVisible(true);
         }

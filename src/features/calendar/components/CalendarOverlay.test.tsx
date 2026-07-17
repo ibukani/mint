@@ -277,6 +277,24 @@ describe("CalendarOverlay window coordination", () => {
     ).not.toHaveLength(0);
   });
 
+  it("treats an unknown browser visibility result as visible", async () => {
+    mocks.checkVisibility = true;
+    mocks.isCalendarVisible.mockResolvedValue(undefined);
+
+    render(<CalendarOverlay />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("region", { name: "月間カレンダー" }),
+    ).toBeVisible();
+    expect(mocks.currentMonitor).toHaveBeenCalled();
+  });
+
   it("does not reposition when an unrelated settings update rerenders the overlay", async () => {
     const view = render(<CalendarOverlay />);
 

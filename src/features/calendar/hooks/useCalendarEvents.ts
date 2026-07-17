@@ -26,22 +26,11 @@ export const useCalendarEvents = (
   calendarIds: string[] | null,
   isVisible: boolean,
 ) => {
-  const calendarIdsRef = useRef(calendarIds);
   const calendarIdsKey = calendarIds?.join("\u0000") ?? "";
-  const previousCalendarIds = calendarIdsRef.current;
-  if (
-    previousCalendarIds !== calendarIds &&
-    (previousCalendarIds === null ||
-      calendarIds === null ||
-      previousCalendarIds.length !== calendarIds.length ||
-      previousCalendarIds.some((id, index) => id !== calendarIds[index]))
-  ) {
-    calendarIdsRef.current = calendarIds;
-  }
-  const stableCalendarIds = useMemo(
-    () => ({ key: calendarIdsKey, value: calendarIdsRef.current }),
-    [calendarIdsKey],
-  );
+  // Keep the selected IDs stable by content so unrelated overlay renders do
+  // not restart the automatic sync effect.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: calendarIdsKey is the intentional content-based dependency.
+  const stableCalendarIds = useMemo(() => calendarIds, [calendarIdsKey]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [nextEvent, setNextEvent] = useState<CalendarEvent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +57,7 @@ export const useCalendarEvents = (
       if (!isVisibleRef.current) return;
       const sequence = ++syncSequenceRef.current;
       setSyncError("");
-      const selectedCalendarIds = stableCalendarIds.value;
+      const selectedCalendarIds = stableCalendarIds;
 
       try {
         if (!selectedCalendarIds || selectedCalendarIds.length === 0) return;
@@ -106,8 +95,9 @@ export const useCalendarEvents = (
     [],
   );
 
+  // showSequence is an explicit event-driven signal for a newly shown window.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence intentionally retriggers sync without being read by the effect body.
   useEffect(() => {
-    void showSequence;
     if (isVisible) void sync();
   }, [isVisible, showSequence, sync]);
 
@@ -134,10 +124,11 @@ export const useCalendarEvents = (
     };
   }, [refresh]);
 
+  // Both counters are explicit reload signals; the request itself is derived
+  // from the current view and must restart when either one changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence and revision intentionally retrigger the request.
   useEffect(() => {
     if (!isVisible) return;
-    void showSequence;
-    void revision;
     const requestSequence = requestSequenceRef.current + 1;
     requestSequenceRef.current = requestSequence;
     setLoading(true);
