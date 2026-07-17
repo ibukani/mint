@@ -6,7 +6,7 @@ mod repository;
 mod window;
 
 pub use implementation::initialize_store;
-pub use window::toggle_quick_capture_overlay;
+pub use window::{show_quick_capture_overlay, toggle_quick_capture_overlay};
 
 pub use models::{
     QuickCaptureAttachment, QuickCaptureAttachmentInput, QuickCaptureDraft, QuickCaptureDraftInput,

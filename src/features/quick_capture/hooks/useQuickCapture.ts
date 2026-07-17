@@ -2,6 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import {
   createQuickCaptureNote,
   deleteQuickCaptureNote,
@@ -527,6 +528,7 @@ export const useQuickCapture = () => {
   }, [reload, reloadNotes, showDraft, sortNotes]);
 
   useOverlayWindowEviction(windowVisible);
+  useOverlayWindowReady();
 
   const allTags = useMemo(
     () =>

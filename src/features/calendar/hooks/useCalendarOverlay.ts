@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import type { CalendarOpenMode } from "../types";
 
 const ANIMATION_MS = 240;
@@ -176,6 +177,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   }, [calendarEnabled, closeCalendar]);
 
   useOverlayWindowEviction(isVisible);
+  useOverlayWindowReady();
 
   // Resize and position the window from the frontend
   useEffect(() => {

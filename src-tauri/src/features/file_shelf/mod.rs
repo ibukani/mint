@@ -15,7 +15,7 @@ pub use clipboard::{
 };
 pub use repository::initialize_store;
 pub use shortcut::handle_file_shelf_shortcut_event;
-pub use window::{apply_window_settings, toggle_file_shelf_overlay};
+pub use window::{apply_window_settings, show_file_shelf_overlay, toggle_file_shelf_overlay};
 
 #[allow(unused_imports)]
 pub use models::{

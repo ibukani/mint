@@ -20,3 +20,5 @@ export const isOverlayTarget = (value: string): value is OverlayTarget =>
 
 export const openOverlay = (target: OverlayTarget) =>
   invoke<void>("open_overlay", { target });
+
+export const notifyOverlayReady = () => invoke<void>("overlay_ready");

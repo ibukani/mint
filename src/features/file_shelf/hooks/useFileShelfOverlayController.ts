@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import {
   getPlatformShortcutModifier,
   isApplePlatform,
@@ -49,6 +50,7 @@ export const useFileShelfOverlayController = () => {
   useOverlayWindowEviction(shelf.expanded, {
     enabled: settings?.fileShelf.edgeHandleEnabled === false,
   });
+  useOverlayWindowReady();
   const rowDrag = useFileShelfDragGesture({
     disabled: shelf.busy,
     onDrag: shelf.dragItems,

@@ -38,6 +38,16 @@ fn toggle_game_launcher_overlay_ready(app: &AppHandle) {
         let _ = window.emit("game-launcher-hide-requested", ());
         return;
     }
+    show_game_launcher_overlay(app);
+}
+
+pub fn show_game_launcher_overlay(app: &AppHandle) {
+    let Ok(window) = ensure_overlay_window(app, OverlayTarget::GameLauncher) else {
+        return;
+    };
+    if window.is_visible().unwrap_or(false) {
+        return;
+    }
     if let Ok(Some(monitor)) = window.current_monitor().or_else(|_| app.primary_monitor()) {
         let size = window
             .outer_size()
@@ -46,6 +56,9 @@ fn toggle_game_launcher_overlay_ready(app: &AppHandle) {
         let x = monitor.position().x + (monitor_size.width.saturating_sub(size.width) / 2) as i32;
         let y = monitor.position().y + (monitor_size.height.saturating_sub(size.height) / 2) as i32;
         let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));
+    }
+    if crate::core::window::is_initial_show_pending("gameLauncher") {
+        return;
     }
     let _ = window.show();
     let _ = window.set_always_on_top(true);

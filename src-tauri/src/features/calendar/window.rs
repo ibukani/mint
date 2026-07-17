@@ -16,7 +16,7 @@ struct CalendarShownPayload {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-enum CalendarOpenMode {
+pub(crate) enum CalendarOpenMode {
     Month,
 }
 
@@ -216,6 +216,10 @@ fn open_calendar_editor_window_inner(
             .map_err(|error| format!("Failed to center calendar editor window: {error}"))?;
     }
 
+    if crate::core::window::is_initial_show_pending("calendarEditor") {
+        return Ok(());
+    }
+
     editor
         .show()
         .map_err(|error| format!("Failed to show calendar editor window: {error}"))?;
@@ -236,7 +240,19 @@ fn open_calendar_editor_window_inner(
     Ok(())
 }
 
-fn show_calendar_overlay(
+pub(crate) fn show_calendar_editor_when_ready(app: &tauri::AppHandle) -> Result<(), String> {
+    let state = app
+        .try_state::<CalendarEditorState>()
+        .ok_or_else(|| "Calendar editor state is unavailable".to_string())?;
+    let payload = state
+        .0
+        .lock()
+        .map_err(|_| "Calendar editor state is unavailable".to_string())?
+        .clone();
+    open_calendar_editor_window_inner(app, &state, payload)
+}
+
+pub(crate) fn show_calendar_overlay(
     app: &AppHandle,
     settings: &crate::core::settings::AppSettings,
     initial_mode: CalendarOpenMode,
@@ -261,6 +277,10 @@ fn show_calendar_overlay(
             .and_then(|clock| clock.is_visible().ok())
             .unwrap_or(false);
     position_calendar(app, docked, settings);
+
+    if crate::core::window::is_initial_show_pending("calendar") {
+        return;
+    }
 
     let _ = calendar.show();
     let _ = calendar.set_always_on_top(true);

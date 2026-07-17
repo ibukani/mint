@@ -59,18 +59,31 @@ pub(super) fn set_window_mode(
             .set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)))
             .map_err(|error| error.to_string())?;
     }
-    window.show().map_err(|error| error.to_string())?;
-    window
-        .set_always_on_top(true)
-        .map_err(|error| error.to_string())?;
-    if focus && expanded {
-        window.set_focus().map_err(|error| error.to_string())?;
+    if !crate::core::window::is_initial_show_pending("fileShelf") {
+        window.show().map_err(|error| error.to_string())?;
+        window
+            .set_always_on_top(true)
+            .map_err(|error| error.to_string())?;
+        if focus && expanded {
+            window.set_focus().map_err(|error| error.to_string())?;
+        }
     }
     if let Some(state) = app.try_state::<FileShelfWindowState>() {
         *state.0.lock().unwrap_or_else(|value| value.into_inner()) = expanded;
     }
     let _ = window.emit("file-shelf-mode-changed", expanded);
     Ok(())
+}
+
+pub fn show_file_shelf_overlay(
+    app: &AppHandle,
+    settings: &FileShelfSettings,
+) -> Result<(), String> {
+    let expanded = app
+        .try_state::<FileShelfWindowState>()
+        .and_then(|state| state.0.lock().ok().map(|value| *value))
+        .unwrap_or(false);
+    set_window_mode(app, settings, expanded, true)
 }
 
 pub(super) fn shelf_vertical_offset(

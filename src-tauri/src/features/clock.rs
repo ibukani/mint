@@ -45,7 +45,9 @@ pub fn show_clock_overlay(app: &AppHandle, settings: &crate::core::settings::App
         let app = app.clone();
         let settings = settings.clone();
         tauri::async_runtime::spawn(async move {
-            show_clock_overlay(&app, &settings);
+            if ensure_overlay_window(&app, OverlayTarget::Clock).is_ok() {
+                show_clock_overlay(&app, &settings);
+            }
         });
         return;
     }
@@ -97,6 +99,11 @@ pub fn show_clock_overlay(app: &AppHandle, settings: &crate::core::settings::App
         // Fallback if no monitor info available
         let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)));
     }
+
+    if crate::core::window::is_initial_show_pending("clock") {
+        return;
+    }
+
     let _ = window.show();
     let _ = window.set_always_on_top(true);
     let _ = window.emit("clock-shown", ());

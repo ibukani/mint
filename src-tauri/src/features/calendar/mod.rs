@@ -8,6 +8,7 @@ pub mod window;
 
 pub use database::initialize_store;
 pub use window::{open_calendar_event_editor, position_calendar, toggle_calendar_overlay};
+pub(crate) use window::{show_calendar_editor_when_ready, show_calendar_overlay};
 
 #[cfg(test)]
 mod tests;

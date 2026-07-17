@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import {
@@ -144,6 +145,7 @@ export const CalendarEditorOverlay: React.FC = () => {
   }, []);
 
   useOverlayWindowEviction(windowVisible);
+  useOverlayWindowReady();
 
   const handleDirtyChange = useCallback((dirty: boolean) => {
     dirtyRef.current = dirty;

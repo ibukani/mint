@@ -3,6 +3,7 @@ import { handleGameLauncherIpcCommand } from "./gameLauncherIpcMock";
 import { handlePluginIpcCommand } from "./pluginIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
 import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
+import { handleWindowIpcCommand } from "./windowIpcMock";
 
 describe("shared IPC mock handlers", () => {
   it("validates overlay targets and delegates opening", async () => {
@@ -88,5 +89,15 @@ describe("shared IPC mock handlers", () => {
     );
 
     expect(result).toEqual({ handled: true, value: update });
+  });
+
+  it("acknowledges the overlay readiness handshake", async () => {
+    const onOverlayReady = vi.fn();
+    const result = await handleWindowIpcCommand("overlay_ready", undefined, {
+      onOverlayReady,
+    });
+
+    expect(result).toEqual({ handled: true, value: undefined });
+    expect(onOverlayReady).toHaveBeenCalledOnce();
   });
 });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import { launchGame, listInstalledGames, openGameStorePage } from "../api";
 import { type GameScanResult, gameKey, type InstalledGame } from "../types";
 
@@ -200,6 +201,7 @@ export const useGameLauncher = () => {
   }, [close, scan]);
 
   useOverlayWindowEviction(visible);
+  useOverlayWindowReady();
 
   return {
     animationClass: hiding ? "is-hiding" : visible ? "is-visible" : "",

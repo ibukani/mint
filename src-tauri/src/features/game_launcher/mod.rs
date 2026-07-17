@@ -5,7 +5,7 @@ pub mod launch;
 pub mod scan;
 pub mod window;
 
-pub use window::toggle_game_launcher_overlay;
+pub use window::{show_game_launcher_overlay, toggle_game_launcher_overlay};
 
 #[cfg(test)]
 mod tests;

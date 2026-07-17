@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 
 const HIDE_ANIMATION_MS = 280;
 
@@ -48,6 +49,7 @@ export const useClockOverlay = () => {
   }, []);
 
   useOverlayWindowEviction(isAnimateVisible);
+  useOverlayWindowReady();
 
   const hideClock = useCallback(() => {
     setIsAnimateVisible(false);
