@@ -9,6 +9,7 @@ import {
   Download,
   Edit3,
   Eye,
+  FilePlus2,
   Italic,
   Link2,
   Paperclip,
@@ -19,14 +20,92 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import type { RefObject } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { useQuickCapture } from "../hooks/useQuickCapture";
+import {
+  QUICK_CAPTURE_TEMPLATES,
+  type QuickCaptureTemplate,
+} from "../templates";
 import type { QuickCaptureNote } from "../types";
 import { parseTags } from "../utils";
 
 type QuickCaptureController = ReturnType<typeof useQuickCapture>;
+
+const QuickCaptureTemplateMenu = ({
+  disabled,
+  onSelect,
+}: {
+  disabled: boolean;
+  onSelect: (template: QuickCaptureTemplate) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () =>
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [open]);
+
+  const closeMenu = (restoreFocus = true) => {
+    setOpen(false);
+    if (restoreFocus) {
+      requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  };
+
+  return (
+    <div ref={menuRef} className="quick-capture__template-menu">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="quick-capture__toolbar-button"
+        disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((value) => !value)}
+        title="Markdownテンプレートを挿入"
+      >
+        <FilePlus2 size={14} aria-hidden="true" /> テンプレート
+      </button>
+      {open && (
+        <div
+          className="quick-capture__template-list"
+          role="menu"
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeMenu();
+          }}
+        >
+          <strong>すぐ使える型</strong>
+          {QUICK_CAPTURE_TEMPLATES.map((template) => (
+            <button
+              type="button"
+              role="menuitem"
+              key={template.id}
+              onClick={() => {
+                onSelect(template);
+                closeMenu(false);
+              }}
+            >
+              <span>{template.label}</span>
+              <small>{template.description}</small>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const QuickCaptureTagSuggestions = ({
   capture,
@@ -83,6 +162,7 @@ interface QuickCaptureEditorProps {
   onFormat: (prefix: string, suffix: string, fallbackText: string) => void;
   onContinueList: () => boolean;
   onIndentSelection: (outdent: boolean) => void;
+  onInsertTemplate: (template: QuickCaptureTemplate) => void;
   onExportMarkdown: () => void;
   onRequestDelete: () => void;
 }
@@ -103,6 +183,7 @@ export const QuickCaptureEditor = ({
   onFormat,
   onContinueList,
   onIndentSelection,
+  onInsertTemplate,
   onExportMarkdown,
   onRequestDelete,
 }: QuickCaptureEditorProps) => (
@@ -182,6 +263,10 @@ export const QuickCaptureEditor = ({
             <Link2 size={14} aria-hidden="true" />
           </button>
         </fieldset>
+        <QuickCaptureTemplateMenu
+          disabled={preview || isSaving}
+          onSelect={onInsertTemplate}
+        />
         <button
           type="button"
           className="quick-capture__toolbar-button"

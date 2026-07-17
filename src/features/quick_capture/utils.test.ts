@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { QUICK_CAPTURE_TEMPLATES } from "./templates";
 import {
   continueMarkdownList,
   indentMarkdownSelection,
+  insertMarkdownTemplate,
+  mergeTags,
   noteTitle,
   parseTags,
   safeFileName,
@@ -72,5 +75,19 @@ describe("quick capture utilities", () => {
 
   it("does not continue a list when the caret is in the middle of a line", () => {
     expect(continueMarkdownList("- 項目", 3, 3)).toBeNull();
+  });
+
+  it("inserts a template as a separate block and merges its tags", () => {
+    const template = QUICK_CAPTURE_TEMPLATES[0];
+    const content = "既存のメモ";
+    const edit = insertMarkdownTemplate(
+      content,
+      content.length,
+      content.length,
+      template,
+    );
+    expect(edit.content).toBe("既存のメモ\n\n## タスク\n\n- [ ] ");
+    expect(mergeTags("work, task", template.tags)).toBe("work, task");
+    expect(mergeTags("work", ["idea", " work "])).toBe("work, idea");
   });
 });

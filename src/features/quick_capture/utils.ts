@@ -1,3 +1,4 @@
+import type { QuickCaptureTemplate } from "./templates";
 import type { QuickCaptureNote } from "./types";
 
 export interface MarkdownTextEdit {
@@ -114,3 +115,42 @@ export const indentMarkdownSelection = (
     selectionEnd: Math.max(firstLineStart, nextEnd),
   };
 };
+
+export const insertMarkdownTemplate = (
+  content: string,
+  selectionStart: number,
+  selectionEnd: number,
+  template: QuickCaptureTemplate,
+): MarkdownTextEdit => {
+  const before = content.slice(0, selectionStart);
+  const after = content.slice(selectionEnd);
+  if (
+    !content.trim() ||
+    (selectionStart === 0 && selectionEnd === content.length)
+  ) {
+    return {
+      content: template.content,
+      selectionStart: template.content.length,
+      selectionEnd: template.content.length,
+    };
+  }
+
+  const prefix = before && !before.endsWith("\n") ? "\n\n" : "";
+  const suffix = after && !after.startsWith("\n") ? "\n\n" : "";
+  const insertion = `${prefix}${template.content}${suffix}`;
+  const nextContent = `${before}${insertion}${after}`;
+  const nextCursor = before.length + insertion.length - suffix.length;
+  return {
+    content: nextContent,
+    selectionStart: nextCursor,
+    selectionEnd: nextCursor,
+  };
+};
+
+export const mergeTags = (current: string, additions: string[]) =>
+  [
+    ...new Set([
+      ...parseTags(current),
+      ...additions.map((tag) => tag.trim()).filter(Boolean),
+    ]),
+  ].join(", ");

@@ -176,6 +176,25 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => expect(editor).toHaveValue("項目1\n項目2"));
   });
 
+  it("inserts a Markdown template and keeps the editor ready for typing", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+
+    fireEvent.click(screen.getByRole("button", { name: "テンプレート" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /タスク/ }));
+
+    await waitFor(() => {
+      expect(editor).toHaveValue("## タスク\n\n- [ ] ");
+      expect(screen.getByLabelText("タグ")).toHaveValue("task");
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "タスクテンプレートを挿入しました",
+      );
+      expect(editor).toHaveFocus();
+    });
+  });
+
   it("copies the current draft to the clipboard", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

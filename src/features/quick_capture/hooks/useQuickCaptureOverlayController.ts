@@ -162,6 +162,7 @@ export const useQuickCaptureOverlayController = () => {
     handleLibrarySearchKeyDown: library.handleSearchKeyDown,
     isSaving,
     indentSelection: actions.indentSelection,
+    insertTemplate: actions.insertTemplate,
     noteListId,
     preview,
     previewRef,

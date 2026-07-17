@@ -5,11 +5,14 @@ import {
   chooseQuickCaptureBackupForSave,
   exportQuickCaptureMarkdown,
 } from "../api";
+import type { QuickCaptureTemplate } from "../templates";
 import type { QuickCaptureNote } from "../types";
 import {
   continueMarkdownList,
   indentMarkdownSelection,
+  insertMarkdownTemplate,
   type MarkdownTextEdit,
+  mergeTags,
   noteTitle,
   parseTags,
   safeFileName,
@@ -23,6 +26,7 @@ interface CaptureActionSource {
   content: string;
   tags: string;
   captureText: (text: string) => Promise<boolean>;
+  setTags: (value: string) => void;
   exportBackup: (path: string) => Promise<void>;
   importBackup: (path: string) => Promise<string | null>;
   removeNote: (noteId: string) => Promise<string | null>;
@@ -147,6 +151,17 @@ export const useQuickCaptureOverlayActions = ({
     );
   };
 
+  const insertTemplate = (template: QuickCaptureTemplate) => {
+    const textarea = editorRef.current;
+    const start = textarea?.selectionStart ?? capture.content.length;
+    const end = textarea?.selectionEnd ?? start;
+    applyEditorEdit(
+      insertMarkdownTemplate(capture.content, start, end, template),
+    );
+    capture.setTags(mergeTags(capture.tags, template.tags));
+    setActionStatus(`${template.label}テンプレートを挿入しました`);
+  };
+
   const captureClipboard = async () => {
     try {
       const value = await navigator.clipboard.readText();
@@ -251,6 +266,7 @@ export const useQuickCaptureOverlayActions = ({
     exportMarkdown,
     formatSelection,
     indentSelection,
+    insertTemplate,
     pasteClipboard,
     requestDeleteNote,
     requestImportBackup,

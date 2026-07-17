@@ -3,6 +3,7 @@ import type React from "react";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { useQuickCaptureOverlayController } from "../hooks/useQuickCaptureOverlayController";
+import type { QuickCaptureTemplate } from "../templates";
 import { noteTitle } from "../utils";
 import { QuickCaptureEditor } from "./QuickCaptureEditor";
 import { QuickCaptureLibrary } from "./QuickCaptureLibrary";
@@ -15,6 +16,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     capture,
     themeColor,
     continueList,
+    insertTemplate,
     preview,
     setPreview,
     query,
@@ -161,6 +163,9 @@ export const QuickCaptureOverlay: React.FC = () => {
             onFormat={formatSelection}
             onContinueList={continueList}
             onIndentSelection={indentSelection}
+            onInsertTemplate={(template: QuickCaptureTemplate) =>
+              insertTemplate(template)
+            }
             onExportMarkdown={() => void exportMarkdown()}
             onRequestDelete={() => {
               if (activeNote) requestDeleteNote(activeNote);
