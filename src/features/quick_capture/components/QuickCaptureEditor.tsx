@@ -1,12 +1,16 @@
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import {
+  Bold,
   Check,
   ClipboardPaste,
   ClipboardPlus,
+  Code2,
   Copy,
   Download,
   Edit3,
   Eye,
+  Italic,
+  Link2,
   Paperclip,
   Pin,
   RefreshCw,
@@ -36,6 +40,7 @@ interface QuickCaptureEditorProps {
   onPasteClipboard: () => void;
   onCaptureClipboard: () => void;
   onCopyClipboard: () => void;
+  onFormat: (prefix: string, suffix: string, placeholder: string) => void;
   onExportMarkdown: () => void;
   onRequestDelete: () => void;
 }
@@ -53,6 +58,7 @@ export const QuickCaptureEditor = ({
   onPasteClipboard,
   onCaptureClipboard,
   onCopyClipboard,
+  onFormat,
   onExportMarkdown,
   onRequestDelete,
 }: QuickCaptureEditorProps) => (
@@ -85,6 +91,51 @@ export const QuickCaptureEditor = ({
         </button>
       </fieldset>
       <div className="quick-capture__toolbar-actions">
+        <fieldset
+          className="quick-capture__format-actions"
+          aria-label="Markdown書式"
+        >
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="太字"
+            title="太字にする"
+            onClick={() => onFormat("**", "**", "太字")}
+          >
+            <Bold size={14} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="斜体"
+            title="斜体にする"
+            onClick={() => onFormat("_", "_", "斜体")}
+          >
+            <Italic size={14} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="コード"
+            title="インラインコードにする"
+            onClick={() => onFormat("`", "`", "コード")}
+          >
+            <Code2 size={14} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="リンク"
+            title="Markdownリンクを挿入"
+            onClick={() => onFormat("[", "](URL)", "リンク")}
+          >
+            <Link2 size={14} aria-hidden="true" />
+          </button>
+        </fieldset>
         <button
           type="button"
           className="quick-capture__toolbar-button"

@@ -81,6 +81,30 @@ export const useQuickCaptureOverlayActions = ({
     }
   };
 
+  const formatSelection = (
+    prefix: string,
+    suffix: string,
+    placeholder: string,
+  ) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = capture.content.slice(start, end);
+    const replacement = selected || placeholder;
+    const nextContent = `${capture.content.slice(0, start)}${prefix}${replacement}${suffix}${capture.content.slice(end)}`;
+    setContent(nextContent);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const nextStart = start + prefix.length;
+      const nextEnd = nextStart + replacement.length;
+      textarea.setSelectionRange(
+        selected ? nextEnd + suffix.length : nextStart,
+        selected ? nextEnd + suffix.length : nextEnd,
+      );
+    });
+  };
+
   const captureClipboard = async () => {
     try {
       const value = await navigator.clipboard.readText();
@@ -182,6 +206,7 @@ export const useQuickCaptureOverlayActions = ({
     copySavedNote,
     exportBackup,
     exportMarkdown,
+    formatSelection,
     pasteClipboard,
     requestDeleteNote,
     requestImportBackup,

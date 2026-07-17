@@ -87,7 +87,9 @@ describe("QuickCaptureOverlay", () => {
 
   it("promotes a draft and exposes it in the library", async () => {
     render(<QuickCaptureOverlay />);
-    const editor = await screen.findByLabelText("メモ本文");
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
     fireEvent.change(editor, { target: { value: "# 今日のメモ\n本文" } });
     fireEvent.change(screen.getByLabelText("タグ"), {
       target: { value: "work, idea" },
@@ -117,6 +119,19 @@ describe("QuickCaptureOverlay", () => {
       "true",
     );
     expect(screen.getByLabelText("メモのプレビュー")).toHaveFocus();
+  });
+
+  it("formats a selected phrase as Markdown", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "選択する本文" } });
+    editor.setSelectionRange(0, 2);
+
+    fireEvent.click(screen.getByRole("button", { name: "太字" }));
+
+    await waitFor(() => expect(editor).toHaveValue("**選択**する本文"));
   });
 
   it("copies the current draft to the clipboard", async () => {

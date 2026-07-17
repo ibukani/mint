@@ -45,6 +45,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     copySavedNote,
     exportMarkdown,
     exportBackup,
+    formatSelection,
     requestImportBackup,
     requestDeleteNote,
     confirmDestructiveAction,
@@ -155,6 +156,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             onPasteClipboard={() => void pasteClipboard()}
             onCaptureClipboard={() => void captureClipboard()}
             onCopyClipboard={() => void copyClipboard()}
+            onFormat={formatSelection}
             onExportMarkdown={() => void exportMarkdown()}
             onRequestDelete={() => {
               if (activeNote) requestDeleteNote(activeNote);

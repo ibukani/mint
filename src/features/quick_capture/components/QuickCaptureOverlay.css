@@ -188,6 +188,13 @@
   flex-wrap: wrap;
   gap: var(--space-1);
 }
+.quick-capture__format-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-right: var(--space-1);
+  border-right: 1px solid var(--border-subtle);
+}
 .quick-capture__mode-switch {
   min-inline-size: 0;
   margin: 0;
