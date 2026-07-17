@@ -18,12 +18,30 @@ export const useClockOverlay = () => {
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setIsAnimateVisible(true);
-    setIsHiding(false);
+    let mounted = true;
+    const currentWindow = getCurrentWindow();
+    const showClock = () => {
+      if (!mounted) return;
+      setIsAnimateVisible(true);
+      setIsHiding(false);
+    };
+
+    if (typeof currentWindow.isVisible !== "function") {
+      showClock();
+    } else {
+      void currentWindow
+        .isVisible()
+        .then((visible) => {
+          if (visible !== false) showClock();
+        })
+        .catch(showClock);
+    }
+
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
 
     return () => {
+      mounted = false;
       document.body.classList.remove("is-overlay");
       document.documentElement.classList.remove("is-overlay");
     };
