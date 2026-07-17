@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
   launch: vi.fn().mockResolvedValue(undefined),
   openStore: vi.fn().mockResolvedValue(undefined),
   list: vi.fn().mockResolvedValue({ games: [], sources: [] }),
+  checkVisibility: false,
+  windowVisible: true,
+  isVisible: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -25,6 +28,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn(() => ({
     hide: mocks.hide,
+    ...(mocks.checkVisibility ? { isVisible: mocks.isVisible } : {}),
     onFocusChanged: vi.fn(
       async (callback: (event: { payload: boolean }) => void) => {
         mocks.focusChanged = callback;
@@ -58,6 +62,11 @@ describe("useGameLauncher lifecycle", () => {
     mocks.launch.mockClear();
     mocks.openStore.mockClear();
     mocks.list.mockClear();
+    mocks.checkVisibility = false;
+    mocks.windowVisible = true;
+    mocks.isVisible
+      .mockReset()
+      .mockImplementation(() => Promise.resolve(mocks.windowVisible));
   });
 
   afterEach(() => {
@@ -91,6 +100,32 @@ describe("useGameLauncher lifecycle", () => {
     expect(mocks.hide).not.toHaveBeenCalled();
     expect(result.current.animationClass).toBe("is-visible");
     expect(result.current.showSequence).toBe(initialSequence + 1);
+  });
+
+  it("非表示の生成直後はゲームを走査せず、表示時に初回走査する", async () => {
+    mocks.checkVisibility = true;
+    mocks.windowVisible = false;
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
+    const showLauncher = mocks.listeners.get("game-launcher-shown");
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.list).not.toHaveBeenCalled();
+    expect(result.current.result).toBeNull();
+
+    mocks.windowVisible = true;
+    act(() => showLauncher?.());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.list).toHaveBeenCalledOnce();
   });
 
   it("非表示時にスキャン結果を解放し、再表示時に再取得する", async () => {

@@ -12,11 +12,11 @@ const HIDE_ANIMATION_MS = 180;
 export const useGameLauncher = () => {
   const { settings, updateSettings } = useAppSettings();
   const [result, setResult] = useState<GameScanResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [launchingGameKey, setLaunchingGameKey] = useState<string | null>(null);
   const [openingStoreId, setOpeningStoreId] = useState<string | null>(null);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [hiding, setHiding] = useState(false);
   const [showSequence, setShowSequence] = useState(0);
   const scanSequence = useRef(0);
@@ -134,10 +134,34 @@ export const useGameLauncher = () => {
   );
 
   useEffect(() => {
+    let mounted = true;
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
-    initialScanStartedRef.current = true;
-    void scan();
+    const currentWindow = getCurrentWindow();
+    const startInitialScan = () => {
+      if (initialScanStartedRef.current) return;
+      initialScanStartedRef.current = true;
+      void scan();
+    };
+    const assumeVisibleAndScan = () => {
+      if (!mounted) return;
+      visibleRef.current = true;
+      setVisible(true);
+      startInitialScan();
+    };
+
+    if (typeof currentWindow.isVisible !== "function") {
+      assumeVisibleAndScan();
+    } else {
+      void currentWindow
+        .isVisible()
+        .then((isWindowVisible) => {
+          if (!mounted || isWindowVisible === false) return;
+          assumeVisibleAndScan();
+        })
+        .catch(assumeVisibleAndScan);
+    }
+
     const shown = listen("game-launcher-shown", () => {
       const firstShown = !initialShownRef.current;
       initialShownRef.current = true;
@@ -150,14 +174,15 @@ export const useGameLauncher = () => {
       setHiding(false);
       setVisible(true);
       setShowSequence((current) => current + 1);
-      if (!firstShown || !initialScanStartedRef.current) void scan();
+      if (!initialScanStartedRef.current) startInitialScan();
+      else if (!firstShown) void scan();
     });
     const hide = listen("game-launcher-hide-requested", close);
-    const currentWindow = getCurrentWindow();
     const focus = currentWindow.onFocusChanged(({ payload }) => {
       if (!payload && !closingRef.current && visibleRef.current) close();
     });
     return () => {
+      mounted = false;
       document.body.classList.remove("is-overlay");
       document.documentElement.classList.remove("is-overlay");
       if (hideTimer.current) clearTimeout(hideTimer.current);
