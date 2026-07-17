@@ -406,6 +406,46 @@ describe("QuickCaptureOverlay", () => {
     expect(screen.getByRole("option", { name: /通常のメモ/ })).toBeVisible();
   });
 
+  it("offers existing tags as one-click suggestions", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: {
+          content: "タグを付ける下書き",
+          tags: [],
+          updatedAt: "2026-07-14T09:00:00.000Z",
+        },
+        notes: [
+          {
+            id: "tag-source-note",
+            content: "タグ候補の元になるメモ",
+            tags: ["work", "idea"],
+            pinned: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const suggestions = await screen.findByRole("group", {
+      name: "既存のタグ候補",
+    });
+    const tags = screen.getByLabelText("タグ");
+    const work = within(suggestions).getByRole("button", { name: "#work" });
+    const idea = within(suggestions).getByRole("button", { name: "#idea" });
+
+    fireEvent.click(work);
+    fireEvent.click(idea);
+    expect(tags).toHaveValue("work, idea");
+    expect(work).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(work);
+    expect(tags).toHaveValue("idea");
+  });
+
   it("persists the latest draft before exporting a backup", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

@@ -24,8 +24,48 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { useQuickCapture } from "../hooks/useQuickCapture";
 import type { QuickCaptureNote } from "../types";
+import { parseTags } from "../utils";
 
 type QuickCaptureController = ReturnType<typeof useQuickCapture>;
+
+const QuickCaptureTagSuggestions = ({
+  capture,
+}: {
+  capture: QuickCaptureController;
+}) => {
+  if (capture.allTags.length === 0) return null;
+
+  const selectedTags = parseTags(capture.tags);
+  return (
+    <fieldset
+      className="quick-capture__tag-suggestions"
+      aria-label="既存のタグ候補"
+    >
+      <legend>候補</legend>
+      {capture.allTags.slice(0, 8).map((tag) => {
+        const isSelected = selectedTags.includes(tag);
+        return (
+          <button
+            type="button"
+            key={tag}
+            aria-pressed={isSelected}
+            className={isSelected ? "is-active" : ""}
+            onClick={() =>
+              capture.setTags(
+                (isSelected
+                  ? selectedTags.filter((item) => item !== tag)
+                  : [...selectedTags, tag]
+                ).join(", "),
+              )
+            }
+          >
+            #{tag}
+          </button>
+        );
+      })}
+    </fieldset>
+  );
+};
 
 interface QuickCaptureEditorProps {
   capture: QuickCaptureController;
@@ -276,6 +316,7 @@ export const QuickCaptureEditor = ({
           placeholder="タグを追加（カンマ区切り）"
         />
       </label>
+      <QuickCaptureTagSuggestions capture={capture} />
     </div>
 
     {activeNote && activeNote.attachments.length > 0 && (
