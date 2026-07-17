@@ -454,6 +454,79 @@ describe("QuickCaptureOverlay", () => {
     expect(screen.getByRole("option", { name: /通常のメモ/ })).toBeVisible();
   });
 
+  it("filters notes with advanced search operators and the attachment filter", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: {
+          content: "編集中の下書き",
+          tags: [],
+          updatedAt: "2026-07-14T09:00:00.000Z",
+        },
+        notes: [
+          {
+            id: "operator-match",
+            content: "レビュー用の添付メモ",
+            tags: ["Work"],
+            pinned: true,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [
+              {
+                id: "attachment-1",
+                fileName: "review.txt",
+                mimeType: "text/plain",
+                sizeBytes: 12,
+                storedPath: "C:/review.txt",
+                createdAt: "2026-07-14T08:00:00.000Z",
+              },
+            ],
+          },
+          {
+            id: "operator-other",
+            content: "レビュー用の通常メモ",
+            tags: ["work"],
+            pinned: false,
+            createdAt: "2026-07-14T07:00:00.000Z",
+            updatedAt: "2026-07-14T07:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const search = await screen.findByRole("combobox", {
+      name: "保存済みメモを検索",
+    });
+    await screen.findByRole("option", { name: /レビュー用の通常メモ/ });
+    fireEvent.change(search, {
+      target: { value: "tag:work is:pinned has:attachment レビュー" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: /レビュー用の添付メモ/ }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("option", { name: /レビュー用の通常メモ/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(search, { target: { value: "" } });
+    const attachmentFilter = screen.getByRole("button", {
+      name: "添付ファイル付きメモ（1件）",
+    });
+    fireEvent.click(attachmentFilter);
+    expect(attachmentFilter).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.queryByRole("option", { name: /レビュー用の通常メモ/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "すべてのメモ（2件）" }),
+    );
+    expect(attachmentFilter).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("offers existing tags as one-click suggestions", async () => {
     localStorage.setItem(
       "mint_mock_quick_capture",

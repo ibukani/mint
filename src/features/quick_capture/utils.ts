@@ -154,3 +154,37 @@ export const mergeTags = (current: string, additions: string[]) =>
       ...additions.map((tag) => tag.trim()).filter(Boolean),
     ]),
   ].join(", ");
+
+export interface QuickCaptureSearchQuery {
+  text: string;
+  tag: string | null;
+  pinnedOnly: boolean;
+  attachmentsOnly: boolean;
+}
+
+export const parseQuickCaptureSearch = (
+  query: string,
+): QuickCaptureSearchQuery => {
+  let tag: string | null = null;
+  let pinnedOnly = false;
+  let attachmentsOnly = false;
+  const textTokens: string[] = [];
+
+  for (const token of query.trim().split(/\s+/).filter(Boolean)) {
+    const normalized = token.toLowerCase();
+    if (normalized.startsWith("tag:") && token.slice(4).trim()) {
+      tag = token.slice(4).trim();
+    } else if (normalized === "is:pinned") {
+      pinnedOnly = true;
+    } else if (
+      normalized === "has:attachment" ||
+      normalized === "has:attachments"
+    ) {
+      attachmentsOnly = true;
+    } else {
+      textTokens.push(token);
+    }
+  }
+
+  return { text: textTokens.join(" "), tag, pinnedOnly, attachmentsOnly };
+};

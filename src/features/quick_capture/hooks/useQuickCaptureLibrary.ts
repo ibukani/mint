@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { revealElementVertically } from "../../../design/layout";
 import type { QuickCaptureNote } from "../types";
+import { parseQuickCaptureSearch } from "../utils";
 
 const QUICK_CAPTURE_PAGE_STEP = 5;
 
@@ -20,6 +21,7 @@ export const useQuickCaptureLibrary = ({
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [pinnedOnly, setPinnedOnly] = useState(false);
+  const [attachmentsOnly, setAttachmentsOnly] = useState(false);
   const [libraryCursorId, setLibraryCursorId] = useState<string | null>(null);
   const [librarySearchFocused, setLibrarySearchFocused] = useState(false);
   const librarySearchRef = useRef<HTMLInputElement>(null);
@@ -29,21 +31,28 @@ export const useQuickCaptureLibrary = ({
     notes: QuickCaptureNote[];
     index: Fuse<QuickCaptureNote>;
   } | null>(null);
-  const taggedNotes = useMemo(
+  const parsedQuery = useMemo(() => parseQuickCaptureSearch(query), [query]);
+  const filteredBaseNotes = useMemo(
     () =>
       notes.filter(
         (note) =>
-          (!pinnedOnly || note.pinned) &&
-          (!tagFilter || note.tags.includes(tagFilter)),
+          (!(pinnedOnly || parsedQuery.pinnedOnly) || note.pinned) &&
+          (!(attachmentsOnly || parsedQuery.attachmentsOnly) ||
+            note.attachments.length > 0) &&
+          (!tagFilter || note.tags.includes(tagFilter)) &&
+          (!parsedQuery.tag ||
+            note.tags.some(
+              (tag) => tag.toLowerCase() === parsedQuery.tag?.toLowerCase(),
+            )),
       ),
-    [notes, pinnedOnly, tagFilter],
+    [attachmentsOnly, notes, parsedQuery, pinnedOnly, tagFilter],
   );
   const filteredNotes = useMemo(() => {
-    if (!query.trim()) return taggedNotes;
-    if (searchIndexRef.current?.notes !== taggedNotes) {
+    if (!parsedQuery.text) return filteredBaseNotes;
+    if (searchIndexRef.current?.notes !== filteredBaseNotes) {
       searchIndexRef.current = {
-        notes: taggedNotes,
-        index: new Fuse(taggedNotes, {
+        notes: filteredBaseNotes,
+        index: new Fuse(filteredBaseNotes, {
           keys: ["content", "tags"],
           threshold: 0.35,
           ignoreLocation: true,
@@ -51,15 +60,19 @@ export const useQuickCaptureLibrary = ({
       };
     }
     return searchIndexRef.current.index
-      .search(query)
+      .search(parsedQuery.text)
       .map((result) => result.item);
-  }, [query, taggedNotes]);
+  }, [filteredBaseNotes, parsedQuery.text]);
   const libraryCursorNote =
     filteredNotes.find((note) => note.id === libraryCursorId) ??
     filteredNotes[0] ??
     null;
   const pinnedCount = useMemo(
     () => notes.filter((note) => note.pinned).length,
+    [notes],
+  );
+  const attachmentCount = useMemo(
+    () => notes.filter((note) => note.attachments.length > 0).length,
     [notes],
   );
 
@@ -75,9 +88,11 @@ export const useQuickCaptureLibrary = ({
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      if (query || tagFilter) {
+      if (query || tagFilter || pinnedOnly || attachmentsOnly) {
         setQuery("");
         setTagFilter(null);
+        setPinnedOnly(false);
+        setAttachmentsOnly(false);
         setLibraryCursorId(notes[0]?.id ?? null);
       } else {
         librarySearchRef.current?.blur();
@@ -134,11 +149,16 @@ export const useQuickCaptureLibrary = ({
   };
   const handleClearFilters = () => {
     setPinnedOnly(false);
+    setAttachmentsOnly(false);
     setTagFilter(null);
     setLibraryCursorId(null);
   };
   const handleTogglePinnedOnly = () => {
     setPinnedOnly((value) => !value);
+    setLibraryCursorId(null);
+  };
+  const handleToggleAttachmentsOnly = () => {
+    setAttachmentsOnly((value) => !value);
     setLibraryCursorId(null);
   };
   const handleToggleTag = (tag: string) => {
@@ -149,6 +169,7 @@ export const useQuickCaptureLibrary = ({
     setQuery("");
     setTagFilter(null);
     setPinnedOnly(false);
+    setAttachmentsOnly(false);
     setLibraryCursorId(null);
   }, []);
 
@@ -170,14 +191,17 @@ export const useQuickCaptureLibrary = ({
     handleSearchFocus,
     handleSearchKeyDown,
     handleTogglePinnedOnly,
+    handleToggleAttachmentsOnly,
     handleToggleTag,
     libraryCursorNote,
     librarySearchFocused,
     librarySearchFocusedRef,
     librarySearchRef,
     noteListRef,
+    attachmentCount,
     pinnedCount,
     pinnedOnly,
+    attachmentsOnly,
     query,
     reset,
     setLibraryCursorId,

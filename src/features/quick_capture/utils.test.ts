@@ -6,6 +6,7 @@ import {
   insertMarkdownTemplate,
   mergeTags,
   noteTitle,
+  parseQuickCaptureSearch,
   parseTags,
   safeFileName,
 } from "./utils";
@@ -89,5 +90,16 @@ describe("quick capture utilities", () => {
     expect(edit.content).toBe("既存のメモ\n\n## タスク\n\n- [ ] ");
     expect(mergeTags("work, task", template.tags)).toBe("work, task");
     expect(mergeTags("work", ["idea", " work "])).toBe("work, idea");
+  });
+
+  it("parses advanced library search operators without losing text terms", () => {
+    expect(
+      parseQuickCaptureSearch("tag:Work is:pinned has:attachments review"),
+    ).toEqual({
+      text: "review",
+      tag: "Work",
+      pinnedOnly: true,
+      attachmentsOnly: true,
+    });
   });
 });
