@@ -4,7 +4,7 @@ use super::super::{
     models::{QuickCaptureAttachmentInput, QuickCaptureExportInput},
 };
 use super::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn test_path() -> PathBuf {
     std::env::temp_dir().join(format!("mint-quick-capture-{}.sqlite3", Uuid::new_v4()))
@@ -16,6 +16,41 @@ fn tags_are_trimmed_and_deduplicated() {
         normalize_tags(vec![" #Work ".into(), "work".into(), "".into()]),
         vec!["Work"]
     );
+}
+
+#[test]
+fn migrates_legacy_note_tables_with_archived_defaulting_to_false() {
+    let path = test_path();
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE quick_capture_notes (
+               id TEXT PRIMARY KEY NOT NULL,
+               content TEXT NOT NULL,
+               pinned INTEGER NOT NULL DEFAULT 0,
+               created_at TEXT NOT NULL,
+               updated_at TEXT NOT NULL
+             );
+             INSERT INTO quick_capture_notes(id, content, pinned, created_at, updated_at)
+             VALUES('legacy-note', '旧データ', 0, '2026-07-16T00:00:00Z', '2026-07-16T00:00:00Z');",
+        )
+        .unwrap();
+    drop(connection);
+
+    let state = load_state_from_store(&path).unwrap();
+    assert_eq!(state.notes[0].id, "legacy-note");
+    assert!(!state.notes[0].archived);
+
+    let connection = open_store(&path).unwrap();
+    let archived_column_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('quick_capture_notes') WHERE name = 'archived'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(archived_column_count, 1);
+    let _ = fs::remove_file(path);
 }
 
 #[test]
@@ -60,6 +95,71 @@ fn draft_and_note_crud_round_trip() {
     delete_note_in_store(&path, note.id).unwrap();
     assert!(load_state_from_store(&path).unwrap().notes.is_empty());
     let _ = fs::remove_file(path);
+}
+
+#[test]
+fn archive_toggle_preserves_note_content_timestamp() {
+    let path = test_path();
+    let note = create_note_in_store(
+        &path,
+        QuickCaptureNoteInput {
+            content: "整理するメモ".into(),
+            tags: vec!["inbox".into()],
+            pinned: false,
+        },
+    )
+    .unwrap();
+
+    let archived = set_note_archived_in_store(&path, note.id.clone(), true).unwrap();
+    assert!(archived.archived);
+    assert_eq!(archived.updated_at, note.updated_at);
+    assert!(load_state_from_store(&path).unwrap().notes[0].archived);
+
+    let restored = set_note_archived_in_store(&path, note.id, false).unwrap();
+    assert!(!restored.archived);
+    assert_eq!(restored.updated_at, note.updated_at);
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn deleted_notes_can_be_restored_with_their_attachments() {
+    let path = test_path();
+    let data_dir = path.with_extension("data");
+    let source = path.with_extension("txt");
+    fs::write(&source, "復元する添付内容").unwrap();
+    let note = create_note_in_store(
+        &path,
+        QuickCaptureNoteInput {
+            content: "復元するメモ".into(),
+            tags: vec!["undo".into()],
+            pinned: true,
+        },
+    )
+    .unwrap();
+    let attachment = add_attachment_in_store(
+        &path,
+        &data_dir,
+        QuickCaptureAttachmentInput {
+            note_id: note.id.clone(),
+            source_path: source.to_string_lossy().to_string(),
+        },
+    )
+    .unwrap();
+
+    delete_note_in_store(&path, note.id.clone()).unwrap();
+    assert!(load_state_from_store(&path).unwrap().notes.is_empty());
+    assert!(Path::new(&attachment.stored_path).is_file());
+
+    let restored = restore_note_in_store(&path, note.id).unwrap();
+    assert_eq!(restored.content, "復元するメモ");
+    assert!(restored.pinned);
+    assert_eq!(restored.tags, vec!["undo"]);
+    assert_eq!(restored.attachments.len(), 1);
+    assert_eq!(load_state_from_store(&path).unwrap().notes.len(), 1);
+
+    let _ = fs::remove_file(path);
+    let _ = fs::remove_file(source);
+    let _ = fs::remove_dir_all(data_dir);
 }
 
 #[test]

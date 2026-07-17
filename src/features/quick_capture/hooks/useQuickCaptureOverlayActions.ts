@@ -5,8 +5,19 @@ import {
   chooseQuickCaptureBackupForSave,
   exportQuickCaptureMarkdown,
 } from "../api";
+import type { QuickCaptureTemplate } from "../templates";
 import type { QuickCaptureNote } from "../types";
-import { noteTitle, parseTags, safeFileName } from "../utils";
+import {
+  continueMarkdownList,
+  formatMarkdownLines,
+  indentMarkdownSelection,
+  insertMarkdownTemplate,
+  type MarkdownTextEdit,
+  mergeTags,
+  noteTitle,
+  parseTags,
+  safeFileName,
+} from "../utils";
 
 export type QuickCaptureConfirmation =
   | { kind: "delete"; note: QuickCaptureNote }
@@ -15,6 +26,8 @@ export type QuickCaptureConfirmation =
 interface CaptureActionSource {
   content: string;
   tags: string;
+  captureText: (text: string) => Promise<boolean>;
+  setTags: (value: string) => void;
   exportBackup: (path: string) => Promise<void>;
   importBackup: (path: string) => Promise<string | null>;
   removeNote: (noteId: string) => Promise<string | null>;
@@ -38,6 +51,18 @@ export const useQuickCaptureOverlayActions = ({
   const [confirmationBusy, setConfirmationBusy] = useState(false);
   const [confirmationError, setConfirmationError] = useState("");
   const clearActionStatus = useCallback(() => setActionStatus(""), []);
+
+  const applyEditorEdit = useCallback(
+    (edit: MarkdownTextEdit) => {
+      setContent(edit.content);
+      requestAnimationFrame(() => {
+        const textarea = editorRef.current;
+        textarea?.focus();
+        textarea?.setSelectionRange(edit.selectionStart, edit.selectionEnd);
+      });
+    },
+    [editorRef, setContent],
+  );
 
   const pasteClipboard = async () => {
     try {
@@ -77,6 +102,92 @@ export const useQuickCaptureOverlayActions = ({
       setActionStatus("メモをクリップボードへコピーしました");
     } catch {
       setActionStatus("メモをコピーできませんでした");
+    }
+  };
+
+  const formatSelection = (
+    prefix: string,
+    suffix: string,
+    fallbackText: string,
+  ) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = capture.content.slice(start, end);
+    const replacement = selected || fallbackText;
+    const nextContent = `${capture.content.slice(0, start)}${prefix}${replacement}${suffix}${capture.content.slice(end)}`;
+    const nextStart = start + prefix.length;
+    const nextEnd = nextStart + replacement.length;
+    applyEditorEdit({
+      content: nextContent,
+      selectionStart: selected ? nextEnd + suffix.length : nextStart,
+      selectionEnd: selected ? nextEnd + suffix.length : nextEnd,
+    });
+  };
+
+  const continueList = () => {
+    const textarea = editorRef.current;
+    if (!textarea) return false;
+    const edit = continueMarkdownList(
+      capture.content,
+      textarea.selectionStart,
+      textarea.selectionEnd,
+    );
+    if (!edit) return false;
+    applyEditorEdit(edit);
+    return true;
+  };
+
+  const indentSelection = (outdent: boolean) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    applyEditorEdit(
+      indentMarkdownSelection(
+        capture.content,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        outdent,
+      ),
+    );
+  };
+
+  const formatBlock = (prefix: string) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    applyEditorEdit(
+      formatMarkdownLines(
+        capture.content,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        prefix,
+      ),
+    );
+  };
+
+  const insertTemplate = (template: QuickCaptureTemplate) => {
+    const textarea = editorRef.current;
+    const start = textarea?.selectionStart ?? capture.content.length;
+    const end = textarea?.selectionEnd ?? start;
+    applyEditorEdit(
+      insertMarkdownTemplate(capture.content, start, end, template),
+    );
+    capture.setTags(mergeTags(capture.tags, template.tags));
+    setActionStatus(`${template.label}テンプレートを挿入しました`);
+  };
+
+  const captureClipboard = async () => {
+    try {
+      const value = await navigator.clipboard.readText();
+      if (!value.trim()) {
+        setActionStatus("クリップボードが空です");
+        return;
+      }
+      if (await capture.captureText(value)) {
+        setActionStatus("クリップボードを新しいメモとして保存しました");
+      }
+    } catch {
+      setActionStatus("クリップボードを読み取れませんでした");
     }
   };
 
@@ -157,14 +268,20 @@ export const useQuickCaptureOverlayActions = ({
       setConfirmation(null);
       setConfirmationError("");
     },
+    captureClipboard,
     confirmation,
     confirmationBusy,
     confirmationError,
     confirmDestructiveAction,
     copyClipboard,
     copySavedNote,
+    continueList,
     exportBackup,
     exportMarkdown,
+    formatBlock,
+    formatSelection,
+    indentSelection,
+    insertTemplate,
     pasteClipboard,
     requestDeleteNote,
     requestImportBackup,

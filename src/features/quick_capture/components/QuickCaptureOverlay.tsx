@@ -1,9 +1,11 @@
-import { CopyPlus, FileText, Pin, X } from "lucide-react";
+import { Command, CopyPlus, FileText, Pin, X } from "lucide-react";
 import type React from "react";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { useQuickCaptureOverlayController } from "../hooks/useQuickCaptureOverlayController";
+import type { QuickCaptureTemplate } from "../templates";
 import { noteTitle } from "../utils";
+import { QuickCaptureCommandPalette } from "./QuickCaptureCommandPalette";
 import { QuickCaptureEditor } from "./QuickCaptureEditor";
 import { QuickCaptureLibrary } from "./QuickCaptureLibrary";
 import "./QuickCaptureOverlay.css";
@@ -14,11 +16,15 @@ export const QuickCaptureOverlay: React.FC = () => {
   const {
     capture,
     themeColor,
+    continueList,
+    insertTemplate,
     preview,
     setPreview,
     query,
     tagFilter,
     pinnedOnly,
+    attachmentsOnly,
+    archivedOnly,
     actionStatus,
     libraryCursorNote,
     librarySearchFocused,
@@ -35,26 +41,43 @@ export const QuickCaptureOverlay: React.FC = () => {
     isSaving,
     activeNote,
     filteredNotes,
+    activeNotesCount,
+    libraryTags,
+    searchText,
+    sortMode,
+    setSortMode,
     pinnedCount,
+    attachmentCount,
+    archivedCount,
     setLibraryCursorId,
     handleKeyDown,
     handleLibrarySearchKeyDown,
     pasteClipboard,
+    captureClipboard,
     copyClipboard,
     copySavedNote,
     exportMarkdown,
+    formatBlock,
     exportBackup,
+    formatSelection,
     requestImportBackup,
     requestDeleteNote,
     confirmDestructiveAction,
     cancelConfirmation,
+    closeCommandPalette,
+    commandPaletteOpen,
     handleLibrarySearchFocus,
     handleLibrarySearchBlur,
+    focusSearch,
     handleQueryChange,
     handleClearFilters,
     handleTogglePinnedOnly,
+    handleToggleAttachmentsOnly,
+    handleToggleArchivedOnly,
     handleToggleTag,
     selectLibraryNote,
+    indentSelection,
+    openCommandPalette,
   } = useQuickCaptureOverlayController();
   return (
     <OverlayFrame>
@@ -95,6 +118,18 @@ export const QuickCaptureOverlay: React.FC = () => {
             </div>
           </div>
           <div className="quick-capture__header-actions">
+            <button
+              type="button"
+              className="quick-capture__command-trigger"
+              aria-label="コマンドパレットを開く"
+              aria-keyshortcuts="Control+K Meta+K"
+              title={`コマンドパレット（${shortcutModifier}+K）`}
+              onClick={openCommandPalette}
+            >
+              <Command size={14} aria-hidden="true" />
+              <span>コマンド</span>
+              <kbd>{shortcutModifier} K</kbd>
+            </button>
             <button
               type="button"
               className={`quick-capture__window-pin${capture.windowPinned ? " is-active" : ""}`}
@@ -152,7 +187,15 @@ export const QuickCaptureOverlay: React.FC = () => {
             activeNote={activeNote}
             onSetPreview={setPreview}
             onPasteClipboard={() => void pasteClipboard()}
+            onCaptureClipboard={() => void captureClipboard()}
             onCopyClipboard={() => void copyClipboard()}
+            onFormat={formatSelection}
+            onContinueList={continueList}
+            onFormatBlock={formatBlock}
+            onIndentSelection={indentSelection}
+            onInsertTemplate={(template: QuickCaptureTemplate) =>
+              insertTemplate(template)
+            }
             onExportMarkdown={() => void exportMarkdown()}
             onRequestDelete={() => {
               if (activeNote) requestDeleteNote(activeNote);
@@ -161,12 +204,20 @@ export const QuickCaptureOverlay: React.FC = () => {
           <QuickCaptureLibrary
             notes={capture.notes}
             filteredNotes={filteredNotes}
+            activeNotesCount={activeNotesCount}
             activeId={capture.activeId}
-            allTags={capture.allTags}
+            allTags={libraryTags}
+            searchText={searchText}
+            sortMode={sortMode}
+            onSortChange={setSortMode}
             pinnedCount={pinnedCount}
+            attachmentCount={attachmentCount}
+            archivedCount={archivedCount}
             query={query}
             tagFilter={tagFilter}
             pinnedOnly={pinnedOnly}
+            attachmentsOnly={attachmentsOnly}
+            archivedOnly={archivedOnly}
             cursorNote={libraryCursorNote}
             searchFocused={librarySearchFocused}
             searchRef={librarySearchRef}
@@ -182,6 +233,8 @@ export const QuickCaptureOverlay: React.FC = () => {
             onSearchKeyDown={handleLibrarySearchKeyDown}
             onClearFilters={handleClearFilters}
             onTogglePinnedOnly={handleTogglePinnedOnly}
+            onToggleAttachmentsOnly={handleToggleAttachmentsOnly}
+            onToggleArchivedOnly={handleToggleArchivedOnly}
             onToggleTag={handleToggleTag}
             onCursorChange={setLibraryCursorId}
             onSelectNote={selectLibraryNote}
@@ -190,6 +243,26 @@ export const QuickCaptureOverlay: React.FC = () => {
           />
         </main>
       </OverlayCard>
+      <QuickCaptureCommandPalette
+        open={commandPaletteOpen}
+        capture={capture}
+        preview={preview}
+        isSaving={isSaving}
+        shortcutModifier={shortcutModifier}
+        onClose={closeCommandPalette}
+        onFocusSearch={focusSearch}
+        onSetPreview={setPreview}
+        onPasteClipboard={() => void pasteClipboard()}
+        onCaptureClipboard={() => void captureClipboard()}
+        onCopyClipboard={() => void copyClipboard()}
+        onExportMarkdown={() => void exportMarkdown()}
+        onExportBackup={() => void exportBackup()}
+        onImportBackup={() => void requestImportBackup()}
+        onInsertTemplate={insertTemplate}
+        onRequestDelete={() => {
+          if (activeNote) requestDeleteNote(activeNote);
+        }}
+      />
       <ConfirmDialog
         open={confirmation !== null}
         title={
@@ -200,7 +273,7 @@ export const QuickCaptureOverlay: React.FC = () => {
         description={
           confirmation?.kind === "import"
             ? `現在の下書きと保存済みメモ${capture.notes.length}件を、選択したバックアップの内容で置き換えます。`
-            : `「${confirmation?.kind === "delete" ? noteTitle(confirmation.note) : "このメモ"}」を削除します。添付ファイルも削除され、この操作は取り消せません。`
+            : `「${confirmation?.kind === "delete" ? noteTitle(confirmation.note) : "このメモ"}」を削除します。添付ファイルも保持され、直後なら「削除を取り消す」で復元できます。`
         }
         confirmLabel={
           confirmation?.kind === "import" ? "置き換えて復元" : "削除する"

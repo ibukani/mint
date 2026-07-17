@@ -6,7 +6,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
     sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
-    time::Duration as StdDuration,
+    time::{Duration as StdDuration, Instant},
 };
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -166,12 +166,17 @@ impl ClipboardHistoryMonitor {
     }
 
     fn wait(&self, timeout: StdDuration) -> bool {
+        let deadline = Instant::now() + timeout;
         let mut state = self
             .wake_state
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        if !state.notified && self.is_running() {
-            state = match self.wake.wait_timeout(state, timeout) {
+        while !state.notified && self.is_running() {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+            state = match self.wake.wait_timeout(state, remaining) {
                 Ok((state, _)) => state,
                 Err(error) => error.into_inner().0,
             };

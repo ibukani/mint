@@ -18,6 +18,7 @@ const windowMocks = vi.hoisted(() => ({
   isVisible: vi.fn(),
 }));
 const clipboardMocks = vi.hoisted(() => ({
+  readText: vi.fn(),
   writeText: vi.fn(),
 }));
 
@@ -45,6 +46,7 @@ describe("QuickCaptureOverlay", () => {
     dialogMocks.save.mockReset().mockResolvedValue(null);
     windowMocks.hide.mockReset().mockResolvedValue(undefined);
     windowMocks.isVisible.mockReset().mockResolvedValue(true);
+    clipboardMocks.readText.mockReset().mockResolvedValue("");
     clipboardMocks.writeText.mockReset().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -85,7 +87,9 @@ describe("QuickCaptureOverlay", () => {
 
   it("promotes a draft and exposes it in the library", async () => {
     render(<QuickCaptureOverlay />);
-    const editor = await screen.findByLabelText("メモ本文");
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
     fireEvent.change(editor, { target: { value: "# 今日のメモ\n本文" } });
     fireEvent.change(screen.getByLabelText("タグ"), {
       target: { value: "work, idea" },
@@ -117,6 +121,95 @@ describe("QuickCaptureOverlay", () => {
     expect(screen.getByLabelText("メモのプレビュー")).toHaveFocus();
   });
 
+  it("formats a selected phrase as Markdown", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "選択する本文" } });
+    editor.setSelectionRange(0, 2);
+
+    fireEvent.click(screen.getByRole("button", { name: "太字" }));
+
+    await waitFor(() => expect(editor).toHaveValue("**選択**する本文"));
+  });
+
+  it("formats selected lines with a Markdown block action", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "一つ目\n二つ目" } });
+    editor.setSelectionRange(0, editor.value.length);
+
+    fireEvent.click(screen.getByRole("button", { name: "チェックリスト" }));
+
+    await waitFor(() =>
+      expect(editor).toHaveValue("- [ ] 一つ目\n- [ ] 二つ目"),
+    );
+  });
+
+  it("formats the current selection with the keyboard shortcut", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "キーボード書式" } });
+    editor.setSelectionRange(0, 5);
+
+    fireEvent.keyDown(editor, { key: "b", ctrlKey: true });
+
+    await waitFor(() => expect(editor).toHaveValue("**キーボード**書式"));
+  });
+
+  it("continues Markdown checklists when pressing Enter", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "- [ ] 最初の作業" } });
+    editor.setSelectionRange(editor.value.length, editor.value.length);
+
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    await waitFor(() => expect(editor).toHaveValue("- [ ] 最初の作業\n- [ ] "));
+  });
+
+  it("indents selected Markdown lines with Tab and outdents with Shift+Tab", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "項目1\n項目2" } });
+    editor.setSelectionRange(0, editor.value.length);
+
+    fireEvent.keyDown(editor, { key: "Tab" });
+    await waitFor(() => expect(editor).toHaveValue("  項目1\n  項目2"));
+
+    editor.setSelectionRange(2, editor.value.length);
+    fireEvent.keyDown(editor, { key: "Tab", shiftKey: true });
+    await waitFor(() => expect(editor).toHaveValue("項目1\n項目2"));
+  });
+
+  it("inserts a Markdown template and keeps the editor ready for typing", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+
+    fireEvent.click(screen.getByRole("button", { name: "テンプレート" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /タスク/ }));
+
+    await waitFor(() => {
+      expect(editor).toHaveValue("## タスク\n\n- [ ] ");
+      expect(screen.getByLabelText("タグ")).toHaveValue("task");
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "タスクテンプレートを挿入しました",
+      );
+      expect(editor).toHaveFocus();
+    });
+  });
+
   it("copies the current draft to the clipboard", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");
@@ -128,6 +221,25 @@ describe("QuickCaptureOverlay", () => {
       expect(clipboardMocks.writeText).toHaveBeenCalledWith("共有する本文");
       expect(screen.getByRole("status")).toHaveTextContent(
         "クリップボードへコピーしました",
+      );
+    });
+  });
+
+  it("saves clipboard text as a new note without replacing the current draft", async () => {
+    clipboardMocks.readText.mockResolvedValue("別の場所から取り込むメモ");
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "編集中の下書き" } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "即保存" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: /別の場所から取り込むメモ/ }),
+      ).toBeInTheDocument();
+      expect(editor).toHaveValue("編集中の下書き");
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "クリップボードを新しいメモとして保存しました",
       );
     });
   });
@@ -195,6 +307,13 @@ describe("QuickCaptureOverlay", () => {
       ).not.toBeInTheDocument();
       expect(screen.getByLabelText("メモ本文")).toHaveValue("残しておく下書き");
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "削除を取り消す" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: /一覧から削除するメモ/ }),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("resets draft view state when returning from a saved note", async () => {
@@ -331,12 +450,16 @@ describe("QuickCaptureOverlay", () => {
       name: "ピン留めしたメモ（1件）",
     });
     const allFilter = screen.getByRole("button", {
-      name: "すべてのメモ（2件）",
+      name: "未アーカイブのメモ（2件）",
     });
 
     fireEvent.click(pinnedFilter);
 
-    expect(pinnedFilter).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "ピン留めしたメモ（1件）" }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
     expect(
       screen.getByRole("option", { name: /いつもの定型文/ }),
     ).toBeVisible();
@@ -346,8 +469,248 @@ describe("QuickCaptureOverlay", () => {
 
     fireEvent.click(allFilter);
 
-    expect(allFilter).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "未アーカイブのメモ（2件）" }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
     expect(screen.getByRole("option", { name: /通常のメモ/ })).toBeVisible();
+  });
+
+  it("filters notes with advanced search operators and the attachment filter", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: {
+          content: "編集中の下書き",
+          tags: [],
+          updatedAt: "2026-07-14T09:00:00.000Z",
+        },
+        notes: [
+          {
+            id: "operator-match",
+            content: "レビュー用の添付メモ",
+            tags: ["Work"],
+            pinned: true,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [
+              {
+                id: "attachment-1",
+                fileName: "review.txt",
+                mimeType: "text/plain",
+                sizeBytes: 12,
+                storedPath: "C:/review.txt",
+                createdAt: "2026-07-14T08:00:00.000Z",
+              },
+            ],
+          },
+          {
+            id: "operator-other",
+            content: "レビュー用の通常メモ",
+            tags: ["work"],
+            pinned: false,
+            createdAt: "2026-07-14T07:00:00.000Z",
+            updatedAt: "2026-07-14T07:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const search = await screen.findByRole("combobox", {
+      name: "保存済みメモを検索",
+    });
+    await screen.findByRole("option", { name: /レビュー用の通常メモ/ });
+    fireEvent.change(search, {
+      target: { value: "tag:work is:pinned has:attachment レビュー" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: /レビュー用の添付メモ/ }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("option", { name: /レビュー用の通常メモ/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(search, { target: { value: "" } });
+    const attachmentFilter = screen.getByRole("button", {
+      name: "添付ファイル付きメモ（1件）",
+    });
+    fireEvent.click(attachmentFilter);
+    expect(attachmentFilter).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.queryByRole("option", { name: /レビュー用の通常メモ/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "未アーカイブのメモ（2件）" }),
+    );
+    expect(attachmentFilter).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("offers existing tags as one-click suggestions", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: {
+          content: "タグを付ける下書き",
+          tags: [],
+          updatedAt: "2026-07-14T09:00:00.000Z",
+        },
+        notes: [
+          {
+            id: "tag-source-note",
+            content: "タグ候補の元になるメモ",
+            tags: ["work", "idea"],
+            pinned: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const suggestions = await screen.findByRole("group", {
+      name: "既存のタグ候補",
+    });
+    const tags = screen.getByLabelText("タグ");
+    const work = within(suggestions).getByRole("button", { name: "#work" });
+    const idea = within(suggestions).getByRole("button", { name: "#idea" });
+
+    fireEvent.click(work);
+    fireEvent.click(idea);
+    expect(tags).toHaveValue("work, idea");
+    expect(work).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(work);
+    expect(tags).toHaveValue("idea");
+  });
+
+  it("keeps archived notes out of the inbox until explicitly requested", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "inbox-note",
+            content: "受信箱に残るメモ",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+          {
+            id: "archived-note",
+            content: "整理済みのアーカイブメモ",
+            tags: [],
+            pinned: false,
+            archived: true,
+            createdAt: "2026-07-14T07:00:00.000Z",
+            updatedAt: "2026-07-14T07:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    await screen.findByRole("option", { name: /受信箱に残るメモ/ });
+    expect(
+      screen.queryByRole("option", { name: /整理済みのアーカイブメモ/ }),
+    ).not.toBeInTheDocument();
+
+    const allFilter = screen.getByRole("button", {
+      name: "未アーカイブのメモ（1件）",
+    });
+    expect(allFilter).toHaveAttribute("aria-pressed", "true");
+    const archivedFilter = screen.getByRole("button", {
+      name: "アーカイブしたメモ（1件）",
+    });
+    fireEvent.click(archivedFilter);
+
+    await waitFor(() =>
+      expect(archivedFilter).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(
+      screen.getByRole("option", { name: /整理済みのアーカイブメモ/ }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("option", { name: /受信箱に残るメモ/ }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(allFilter);
+    await waitFor(() =>
+      expect(allFilter).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(
+      screen.getByRole("option", { name: /受信箱に残るメモ/ }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("option", { name: /整理済みのアーカイブメモ/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers an archive shortcut when the inbox is empty", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "only-archived-note",
+            content: "受信箱から整理したメモ",
+            tags: [],
+            pinned: false,
+            archived: true,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    expect(await screen.findByText("受信箱は空です")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "アーカイブを表示" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "アーカイブしたメモ（1件）" }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(
+      await screen.findByRole("option", { name: /受信箱から整理したメモ/ }),
+    ).toBeVisible();
+  });
+
+  it("saves the current draft with the explicit save shortcut", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, {
+      target: { value: "ショートカットで保存する下書き" },
+    });
+
+    fireEvent.keyDown(screen.getByRole("dialog"), {
+      key: "s",
+      ctrlKey: true,
+    });
+
+    await waitFor(() => {
+      const stored = localStorage.getItem("mint_mock_quick_capture");
+      expect(stored).not.toBeNull();
+      expect(JSON.parse(stored ?? "{}").draft.content).toBe(
+        "ショートカットで保存する下書き",
+      );
+      expect(screen.getByRole("status")).toHaveTextContent("保存済み");
+    });
   });
 
   it("persists the latest draft before exporting a backup", async () => {
@@ -386,7 +749,7 @@ describe("QuickCaptureOverlay", () => {
     const dialog = screen.getByRole("alertdialog", {
       name: "このメモを削除しますか？",
     });
-    expect(dialog).toHaveTextContent("添付ファイルも削除され");
+    expect(dialog).toHaveTextContent("添付ファイルも保持され");
     fireEvent.click(within(dialog).getByRole("button", { name: "削除する" }));
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
@@ -415,7 +778,7 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
   });
 
-  it("focuses the library search and opens notes with the keyboard", async () => {
+  it("focuses the library search and opens notes with Ctrl+F", async () => {
     localStorage.setItem(
       "mint_mock_quick_capture",
       JSON.stringify({
@@ -460,7 +823,10 @@ describe("QuickCaptureOverlay", () => {
       "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
 
-    const options = screen.getAllByRole("option");
+    const noteList = within(
+      screen.getByRole("listbox", { name: "保存済みメモ" }),
+    );
+    const options = noteList.getAllByRole("option");
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
     fireEvent.keyDown(search, { key: "ArrowDown" });
     expect(search).toHaveAttribute("aria-activedescendant", options[1].id);
@@ -503,7 +869,10 @@ describe("QuickCaptureOverlay", () => {
     const search = screen.getByRole("combobox", {
       name: "保存済みメモを検索",
     });
-    const options = screen.getAllByRole("option");
+    const noteList = within(
+      screen.getByRole("listbox", { name: "保存済みメモ" }),
+    );
+    const options = noteList.getAllByRole("option");
     expect(options).toHaveLength(8);
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
@@ -515,6 +884,150 @@ describe("QuickCaptureOverlay", () => {
     expect(search).toHaveAttribute("aria-activedescendant", options[5].id);
     fireEvent.keyDown(search, { key: "PageUp" });
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
+  });
+
+  it("sorts notes and explains matching search results", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "zeta-note",
+            content: "Zetaメモ\nあとで確認する内容",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T09:00:00.000Z",
+            attachments: [],
+          },
+          {
+            id: "alpha-note",
+            content: "Alphaメモ\n本文に検索キーワードがあります",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:30:00.000Z",
+            updatedAt: "2026-07-14T08:30:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const sortSelect = screen.getByRole("combobox", {
+      name: "メモの並び順",
+    });
+    await screen.findByRole("option", { name: /Alphaメモ/ });
+    expect(sortSelect).toHaveValue("updated");
+    fireEvent.change(sortSelect, { target: { value: "title" } });
+
+    const noteList = within(
+      screen.getByRole("listbox", { name: "保存済みメモ" }),
+    );
+    const sortedOptions = noteList.getAllByRole("option");
+    expect(sortedOptions[0]).toHaveTextContent("Alphaメモ");
+    expect(sortedOptions[1]).toHaveTextContent("Zetaメモ");
+
+    const search = screen.getByRole("combobox", {
+      name: "保存済みメモを検索",
+    });
+    fireEvent.change(search, { target: { value: "検索キーワード" } });
+
+    await waitFor(() => {
+      expect(noteList.getAllByRole("option")).toHaveLength(1);
+      expect(screen.getByText("関連度順")).toBeVisible();
+    });
+    expect(sortSelect).toBeDisabled();
+    expect(
+      screen.getByText("検索キーワード", { selector: "mark" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the command palette with Ctrl+K and executes the selected command", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+
+    fireEvent.keyDown(editor, { key: "k", ctrlKey: true });
+
+    const palette = await screen.findByRole("dialog", {
+      name: "コマンドパレット",
+    });
+    const search = within(palette).getByRole("combobox", {
+      name: "コマンドを検索",
+    });
+    await waitFor(() => expect(search).toHaveFocus());
+    expect(within(palette).getByText("Ctrl K")).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "プレビュー" } });
+    const previewCommand = within(palette).getByRole("option", {
+      name: /プレビューを表示/,
+    });
+    expect(previewCommand).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    await waitFor(() => expect(palette).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "プレビュー" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("moves from the command palette to library search", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+
+    fireEvent.keyDown(editor, { key: "k", ctrlKey: true });
+    const palette = await screen.findByRole("dialog", {
+      name: "コマンドパレット",
+    });
+    const commandSearch = within(palette).getByRole("combobox", {
+      name: "コマンドを検索",
+    });
+    await waitFor(() => expect(commandSearch).toHaveFocus());
+    fireEvent.change(commandSearch, {
+      target: { value: "保存済みメモを検索" },
+    });
+    fireEvent.keyDown(commandSearch, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: "保存済みメモを検索" }),
+      ).toHaveFocus(),
+    );
+    expect(palette).not.toBeInTheDocument();
+  });
+
+  it("duplicates the active note from the command palette", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "パレットから複製するメモ" } });
+    fireEvent.click(screen.getByRole("button", { name: /メモに保存/ }));
+    const savedNote = await screen.findByRole("option", {
+      name: /パレットから複製するメモ/,
+    });
+    fireEvent.click(savedNote);
+
+    fireEvent.keyDown(screen.getByRole("dialog"), {
+      key: "k",
+      ctrlKey: true,
+    });
+    const palette = await screen.findByRole("dialog", {
+      name: "コマンドパレット",
+    });
+    const search = within(palette).getByRole("combobox", {
+      name: "コマンドを検索",
+    });
+    fireEvent.change(search, { target: { value: "複製" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("option", { name: /パレットから複製するメモ/ }),
+      ).toHaveLength(2),
+    );
   });
 
   it("clears library filters before Escape closes the overlay", async () => {

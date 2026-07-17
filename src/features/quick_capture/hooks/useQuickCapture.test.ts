@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   promote: vi.fn(),
   saveDraft: vi.fn(),
   updateNote: vi.fn(),
+  setArchived: vi.fn(),
   addAttachment: vi.fn(),
   hide: vi.fn(),
   isVisible: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("../api", () => ({
   promoteQuickCaptureNote: mocks.promote,
   saveQuickCaptureDraft: mocks.saveDraft,
   updateQuickCaptureNote: mocks.updateNote,
+  setQuickCaptureNoteArchived: mocks.setArchived,
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -74,6 +76,7 @@ const savedNote: QuickCaptureNote = {
   content: "保存済みのメモ",
   tags: [],
   pinned: false,
+  archived: false,
   createdAt: "2026-07-13T00:00:00.000Z",
   updatedAt: "2026-07-13T00:00:00.000Z",
   attachments: [],
@@ -455,6 +458,47 @@ describe("useQuickCapture", () => {
     expect(result.current.content).toBe("");
   });
 
+  it("waits for an in-flight draft save before promoting it", async () => {
+    let resolveSave: ((value: unknown) => void) | undefined;
+    mocks.saveDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    act(() => result.current.setContent("競合させないメモ"));
+
+    let savePromise: Promise<boolean> | undefined;
+    await act(async () => {
+      savePromise = result.current.retrySave();
+      await Promise.resolve();
+    });
+    let promotionPromise: Promise<void> | undefined;
+    act(() => {
+      promotionPromise = result.current.promote();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.promote).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveSave?.({
+        content: "競合させないメモ",
+        tags: [],
+        updatedAt: "2026-07-13T00:00:01.000Z",
+      });
+      await Promise.all([savePromise, promotionPromise]);
+    });
+
+    expect(mocks.promote).toHaveBeenCalledWith({
+      content: "競合させないメモ",
+      tags: [],
+      pinned: false,
+    });
+  });
+
   it("saves the latest edit before duplicating the active note", async () => {
     const duplicatedNote = {
       ...savedNote,
@@ -528,6 +572,30 @@ describe("useQuickCapture", () => {
 
     expect(result.current.activeId).toBe("note-2");
     expect(result.current.canRetryDuplicate).toBe(false);
+  });
+
+  it("archives and restores the active note without changing its edit timestamp", async () => {
+    const archivedNote = { ...savedNote, archived: true };
+    mocks.updateNote.mockResolvedValue(savedNote);
+    mocks.setArchived.mockImplementation(async (_id, archived) => ({
+      ...savedNote,
+      archived,
+    }));
+
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    await act(async () => result.current.selectNote(savedNote));
+
+    await act(async () => result.current.toggleArchived());
+    expect(mocks.setArchived).toHaveBeenCalledWith("note-1", true);
+    expect(result.current.archived).toBe(true);
+    expect(result.current.notes[0]).toEqual(archivedNote);
+    expect(result.current.notes[0]?.updatedAt).toBe(savedNote.updatedAt);
+
+    await act(async () => result.current.toggleArchived());
+    expect(mocks.setArchived).toHaveBeenLastCalledWith("note-1", false);
+    expect(result.current.archived).toBe(false);
+    expect(mocks.updateNote).not.toHaveBeenCalled();
   });
 
   it("keeps a newer edit when promotion finishes after the user keeps typing", async () => {

@@ -2,7 +2,8 @@ import Fuse from "fuse.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { revealElementVertically } from "../../../design/layout";
-import type { QuickCaptureNote } from "../types";
+import type { QuickCaptureNote, QuickCaptureSortMode } from "../types";
+import { noteTitle, parseQuickCaptureSearch } from "../utils";
 
 const QUICK_CAPTURE_PAGE_STEP = 5;
 
@@ -20,6 +21,9 @@ export const useQuickCaptureLibrary = ({
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [pinnedOnly, setPinnedOnly] = useState(false);
+  const [attachmentsOnly, setAttachmentsOnly] = useState(false);
+  const [archivedOnly, setArchivedOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<QuickCaptureSortMode>("updated");
   const [libraryCursorId, setLibraryCursorId] = useState<string | null>(null);
   const [librarySearchFocused, setLibrarySearchFocused] = useState(false);
   const librarySearchRef = useRef<HTMLInputElement>(null);
@@ -29,21 +33,57 @@ export const useQuickCaptureLibrary = ({
     notes: QuickCaptureNote[];
     index: Fuse<QuickCaptureNote>;
   } | null>(null);
-  const taggedNotes = useMemo(
+  const parsedQuery = useMemo(() => parseQuickCaptureSearch(query), [query]);
+  const archiveFilterActive = archivedOnly || parsedQuery.archivedOnly;
+  const scopedNotes = useMemo(
+    () =>
+      notes.filter((note) =>
+        archiveFilterActive ? note.archived : !note.archived,
+      ),
+    [archiveFilterActive, notes],
+  );
+  const filteredBaseNotes = useMemo(
     () =>
       notes.filter(
         (note) =>
-          (!pinnedOnly || note.pinned) &&
-          (!tagFilter || note.tags.includes(tagFilter)),
+          (archiveFilterActive ? note.archived : !note.archived) &&
+          (!(pinnedOnly || parsedQuery.pinnedOnly) || note.pinned) &&
+          (!(attachmentsOnly || parsedQuery.attachmentsOnly) ||
+            note.attachments.length > 0) &&
+          (!tagFilter || note.tags.includes(tagFilter)) &&
+          (!parsedQuery.tag ||
+            note.tags.some(
+              (tag) => tag.toLowerCase() === parsedQuery.tag?.toLowerCase(),
+            )),
       ),
-    [notes, pinnedOnly, tagFilter],
+    [
+      archiveFilterActive,
+      attachmentsOnly,
+      notes,
+      parsedQuery,
+      pinnedOnly,
+      tagFilter,
+    ],
+  );
+  const sortedNotes = useMemo(
+    () =>
+      [...filteredBaseNotes].sort(
+        (a, b) =>
+          Number(b.pinned) - Number(a.pinned) ||
+          (sortMode === "title"
+            ? noteTitle(a).localeCompare(noteTitle(b), "ja")
+            : sortMode === "created"
+              ? b.createdAt.localeCompare(a.createdAt)
+              : b.updatedAt.localeCompare(a.updatedAt)),
+      ),
+    [filteredBaseNotes, sortMode],
   );
   const filteredNotes = useMemo(() => {
-    if (!query.trim()) return taggedNotes;
-    if (searchIndexRef.current?.notes !== taggedNotes) {
+    if (!parsedQuery.text) return sortedNotes;
+    if (searchIndexRef.current?.notes !== sortedNotes) {
       searchIndexRef.current = {
-        notes: taggedNotes,
-        index: new Fuse(taggedNotes, {
+        notes: sortedNotes,
+        index: new Fuse(sortedNotes, {
           keys: ["content", "tags"],
           threshold: 0.35,
           ignoreLocation: true,
@@ -51,15 +91,30 @@ export const useQuickCaptureLibrary = ({
       };
     }
     return searchIndexRef.current.index
-      .search(query)
+      .search(parsedQuery.text)
       .map((result) => result.item);
-  }, [query, taggedNotes]);
+  }, [parsedQuery.text, sortedNotes]);
   const libraryCursorNote =
     filteredNotes.find((note) => note.id === libraryCursorId) ??
     filteredNotes[0] ??
     null;
   const pinnedCount = useMemo(
-    () => notes.filter((note) => note.pinned).length,
+    () => scopedNotes.filter((note) => note.pinned).length,
+    [scopedNotes],
+  );
+  const attachmentCount = useMemo(
+    () => scopedNotes.filter((note) => note.attachments.length > 0).length,
+    [scopedNotes],
+  );
+  const libraryTags = useMemo(
+    () =>
+      [...new Set(scopedNotes.flatMap((note) => note.tags))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [scopedNotes],
+  );
+  const activeNotesCount = useMemo(
+    () => notes.filter((note) => !note.archived).length,
     [notes],
   );
 
@@ -75,10 +130,13 @@ export const useQuickCaptureLibrary = ({
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      if (query || tagFilter) {
+      if (query || tagFilter || pinnedOnly || attachmentsOnly || archivedOnly) {
         setQuery("");
         setTagFilter(null);
-        setLibraryCursorId(notes[0]?.id ?? null);
+        setPinnedOnly(false);
+        setAttachmentsOnly(false);
+        setArchivedOnly(false);
+        setLibraryCursorId(notes.find((note) => !note.archived)?.id ?? null);
       } else {
         librarySearchRef.current?.blur();
       }
@@ -134,11 +192,21 @@ export const useQuickCaptureLibrary = ({
   };
   const handleClearFilters = () => {
     setPinnedOnly(false);
+    setAttachmentsOnly(false);
+    setArchivedOnly(false);
     setTagFilter(null);
     setLibraryCursorId(null);
   };
   const handleTogglePinnedOnly = () => {
     setPinnedOnly((value) => !value);
+    setLibraryCursorId(null);
+  };
+  const handleToggleAttachmentsOnly = () => {
+    setAttachmentsOnly((value) => !value);
+    setLibraryCursorId(null);
+  };
+  const handleToggleArchivedOnly = () => {
+    setArchivedOnly((value) => !value);
     setLibraryCursorId(null);
   };
   const handleToggleTag = (tag: string) => {
@@ -149,6 +217,8 @@ export const useQuickCaptureLibrary = ({
     setQuery("");
     setTagFilter(null);
     setPinnedOnly(false);
+    setAttachmentsOnly(false);
+    setArchivedOnly(false);
     setLibraryCursorId(null);
   }, []);
 
@@ -164,20 +234,31 @@ export const useQuickCaptureLibrary = ({
 
   return {
     filteredNotes,
+    activeNotesCount,
+    libraryTags,
+    searchText: parsedQuery.text,
+    sortMode,
+    setSortMode,
     handleClearFilters,
     handleQueryChange,
     handleSearchBlur,
     handleSearchFocus,
     handleSearchKeyDown,
     handleTogglePinnedOnly,
+    handleToggleAttachmentsOnly,
+    handleToggleArchivedOnly,
     handleToggleTag,
     libraryCursorNote,
     librarySearchFocused,
     librarySearchFocusedRef,
     librarySearchRef,
     noteListRef,
+    attachmentCount,
+    archivedCount: notes.filter((note) => note.archived).length,
     pinnedCount,
     pinnedOnly,
+    attachmentsOnly,
+    archivedOnly,
     query,
     reset,
     setLibraryCursorId,

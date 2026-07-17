@@ -378,8 +378,15 @@ fn import_backup_from_path(
             for note in &backup.state.notes {
                 transaction
                     .execute(
-                        "INSERT INTO quick_capture_notes(id, content, pinned, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, ?5)",
-                        params![note.id, note.content, note.pinned, note.created_at, note.updated_at],
+                        "INSERT INTO quick_capture_notes(id, content, pinned, archived, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+                        params![
+                            note.id,
+                            note.content,
+                            note.pinned,
+                            note.archived,
+                            note.created_at,
+                            note.updated_at
+                        ],
                     )
                     .map_err(|error| error.to_string())?;
                 for tag in normalize_tags(note.tags.clone()) {
@@ -482,6 +489,7 @@ mod tests {
                     content: "復元後のメモ".into(),
                     tags: vec![],
                     pinned: false,
+                    archived: false,
                     created_at: "2026-07-16T00:00:00Z".into(),
                     updated_at: "2026-07-16T00:00:00Z".into(),
                     attachments: attachment.into_iter().collect(),

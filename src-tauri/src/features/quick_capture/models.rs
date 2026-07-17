@@ -21,6 +21,8 @@ pub struct QuickCaptureNote {
     pub content: String,
     pub tags: Vec<String>,
     pub pinned: bool,
+    #[serde(default)]
+    pub archived: bool,
     pub created_at: String,
     pub updated_at: String,
     pub attachments: Vec<QuickCaptureAttachment>,

@@ -15,6 +15,7 @@ export interface QuickCaptureNote {
   content: string;
   tags: string[];
   pinned: boolean;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
   attachments: QuickCaptureAttachment[];
@@ -33,6 +34,8 @@ export interface QuickCaptureState {
   draft: QuickCaptureDraft;
   notes: QuickCaptureNote[];
 }
+
+export type QuickCaptureSortMode = "updated" | "created" | "title";
 
 export interface QuickCapturePromotion {
   note: QuickCaptureNote;
