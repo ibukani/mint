@@ -823,7 +823,10 @@ describe("QuickCaptureOverlay", () => {
       "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
 
-    const options = screen.getAllByRole("option");
+    const noteList = within(
+      screen.getByRole("listbox", { name: "保存済みメモ" }),
+    );
+    const options = noteList.getAllByRole("option");
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
     fireEvent.keyDown(search, { key: "ArrowDown" });
     expect(search).toHaveAttribute("aria-activedescendant", options[1].id);
@@ -866,7 +869,10 @@ describe("QuickCaptureOverlay", () => {
     const search = screen.getByRole("combobox", {
       name: "保存済みメモを検索",
     });
-    const options = screen.getAllByRole("option");
+    const noteList = within(
+      screen.getByRole("listbox", { name: "保存済みメモ" }),
+    );
+    const options = noteList.getAllByRole("option");
     expect(options).toHaveLength(8);
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
@@ -878,6 +884,66 @@ describe("QuickCaptureOverlay", () => {
     expect(search).toHaveAttribute("aria-activedescendant", options[5].id);
     fireEvent.keyDown(search, { key: "PageUp" });
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
+  });
+
+  it("sorts notes and explains matching search results", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "zeta-note",
+            content: "Zetaメモ\nあとで確認する内容",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T09:00:00.000Z",
+            attachments: [],
+          },
+          {
+            id: "alpha-note",
+            content: "Alphaメモ\n本文に検索キーワードがあります",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:30:00.000Z",
+            updatedAt: "2026-07-14T08:30:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const sortSelect = screen.getByRole("combobox", {
+      name: "メモの並び順",
+    });
+    await screen.findByRole("option", { name: /Alphaメモ/ });
+    expect(sortSelect).toHaveValue("updated");
+    fireEvent.change(sortSelect, { target: { value: "title" } });
+
+    const noteList = within(
+      screen.getByRole("listbox", { name: "保存済みメモ" }),
+    );
+    const sortedOptions = noteList.getAllByRole("option");
+    expect(sortedOptions[0]).toHaveTextContent("Alphaメモ");
+    expect(sortedOptions[1]).toHaveTextContent("Zetaメモ");
+
+    const search = screen.getByRole("combobox", {
+      name: "保存済みメモを検索",
+    });
+    fireEvent.change(search, { target: { value: "検索キーワード" } });
+
+    await waitFor(() => {
+      expect(noteList.getAllByRole("option")).toHaveLength(1);
+      expect(screen.getByText("関連度順")).toBeVisible();
+    });
+    expect(sortSelect).toBeDisabled();
+    expect(
+      screen.getByText("検索キーワード", { selector: "mark" }),
+    ).toBeInTheDocument();
   });
 
   it("opens the command palette with Ctrl+K and executes the selected command", async () => {

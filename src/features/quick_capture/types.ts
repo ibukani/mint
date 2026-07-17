@@ -35,6 +35,8 @@ export interface QuickCaptureState {
   notes: QuickCaptureNote[];
 }
 
+export type QuickCaptureSortMode = "updated" | "created" | "title";
+
 export interface QuickCapturePromotion {
   note: QuickCaptureNote;
   draft: QuickCaptureDraft;

@@ -2,8 +2,8 @@ import Fuse from "fuse.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { revealElementVertically } from "../../../design/layout";
-import type { QuickCaptureNote } from "../types";
-import { parseQuickCaptureSearch } from "../utils";
+import type { QuickCaptureNote, QuickCaptureSortMode } from "../types";
+import { noteTitle, parseQuickCaptureSearch } from "../utils";
 
 const QUICK_CAPTURE_PAGE_STEP = 5;
 
@@ -23,6 +23,7 @@ export const useQuickCaptureLibrary = ({
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [attachmentsOnly, setAttachmentsOnly] = useState(false);
   const [archivedOnly, setArchivedOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<QuickCaptureSortMode>("updated");
   const [libraryCursorId, setLibraryCursorId] = useState<string | null>(null);
   const [librarySearchFocused, setLibrarySearchFocused] = useState(false);
   const librarySearchRef = useRef<HTMLInputElement>(null);
@@ -64,12 +65,25 @@ export const useQuickCaptureLibrary = ({
       tagFilter,
     ],
   );
+  const sortedNotes = useMemo(
+    () =>
+      [...filteredBaseNotes].sort(
+        (a, b) =>
+          Number(b.pinned) - Number(a.pinned) ||
+          (sortMode === "title"
+            ? noteTitle(a).localeCompare(noteTitle(b), "ja")
+            : sortMode === "created"
+              ? b.createdAt.localeCompare(a.createdAt)
+              : b.updatedAt.localeCompare(a.updatedAt)),
+      ),
+    [filteredBaseNotes, sortMode],
+  );
   const filteredNotes = useMemo(() => {
-    if (!parsedQuery.text) return filteredBaseNotes;
-    if (searchIndexRef.current?.notes !== filteredBaseNotes) {
+    if (!parsedQuery.text) return sortedNotes;
+    if (searchIndexRef.current?.notes !== sortedNotes) {
       searchIndexRef.current = {
-        notes: filteredBaseNotes,
-        index: new Fuse(filteredBaseNotes, {
+        notes: sortedNotes,
+        index: new Fuse(sortedNotes, {
           keys: ["content", "tags"],
           threshold: 0.35,
           ignoreLocation: true,
@@ -79,7 +93,7 @@ export const useQuickCaptureLibrary = ({
     return searchIndexRef.current.index
       .search(parsedQuery.text)
       .map((result) => result.item);
-  }, [filteredBaseNotes, parsedQuery.text]);
+  }, [parsedQuery.text, sortedNotes]);
   const libraryCursorNote =
     filteredNotes.find((note) => note.id === libraryCursorId) ??
     filteredNotes[0] ??
@@ -222,6 +236,9 @@ export const useQuickCaptureLibrary = ({
     filteredNotes,
     activeNotesCount,
     libraryTags,
+    searchText: parsedQuery.text,
+    sortMode,
+    setSortMode,
     handleClearFilters,
     handleQueryChange,
     handleSearchBlur,
