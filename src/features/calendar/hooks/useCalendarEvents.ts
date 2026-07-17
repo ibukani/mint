@@ -108,8 +108,8 @@ export const useCalendarEvents = (
 
   useEffect(() => {
     void showSequence;
-    void sync();
-  }, [showSequence, sync]);
+    if (isVisible) void sync();
+  }, [isVisible, showSequence, sync]);
 
   useEffect(() => {
     let isMounted = true;

@@ -26,11 +26,12 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   const clockEnabled = settings?.clock.enabled;
   const clockSizePercent = settings?.clock.sizePercent;
   const clockDisplayMode = settings?.clock.displayMode;
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const [isHiding, setIsHiding] = useState(false);
   const [isDocked, setIsDocked] = useState(false);
   const [showSequence, setShowSequence] = useState(0);
   const [openMode, setOpenMode] = useState<CalendarOpenMode>("month");
+  const isVisibleRef = useRef(false);
   const closeClockOnToggleRef = useRef(false);
   const closingRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,11 +45,43 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const currentWindow = getCurrentWindow();
+    if (typeof currentWindow.isVisible !== "function") {
+      isVisibleRef.current = true;
+      setIsVisible(true);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    void currentWindow
+      .isVisible()
+      .then((visible) => {
+        if (mounted && visible) {
+          isVisibleRef.current = true;
+          setIsVisible(true);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          isVisibleRef.current = true;
+          setIsVisible(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const closeCalendar = useCallback(
     (hideClock: boolean) => {
       if (!canClose()) return;
       if (closingRef.current) return;
       closingRef.current = true;
+      isVisibleRef.current = false;
       setIsVisible(false);
       setIsHiding(true);
 
@@ -97,9 +130,9 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
         setIsDocked(payload.docked);
         setOpenMode(payload.initialMode ?? "month");
         setIsHiding(false);
-        setIsVisible(false);
         setShowSequence((current) => current + 1);
-        requestAnimationFrame(() => setIsVisible(true));
+        isVisibleRef.current = true;
+        setIsVisible(true);
       },
     );
     const hidePromise = listen("calendar-hide-requested", () => {

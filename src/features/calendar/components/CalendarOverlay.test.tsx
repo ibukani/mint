@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
+  checkVisibility: false,
+  windowVisible: true,
+  isCalendarVisible: vi.fn(),
   currentMonitor: vi.fn().mockResolvedValue({
     size: { width: 1920, height: 1080 },
     scaleFactor: 1,
@@ -66,6 +69,7 @@ vi.mock("@tauri-apps/api/window", () => ({
   currentMonitor: mocks.currentMonitor,
   getCurrentWindow: vi.fn(() => ({
     hide: mocks.hideCalendar,
+    ...(mocks.checkVisibility ? { isVisible: mocks.isCalendarVisible } : {}),
     setPosition: mocks.setCalendarPosition,
     setSize: mocks.setCalendarSize,
   })),
@@ -115,6 +119,11 @@ describe("CalendarOverlay window coordination", () => {
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
     mocks.currentMonitor.mockClear();
+    mocks.checkVisibility = false;
+    mocks.windowVisible = true;
+    mocks.isCalendarVisible
+      .mockReset()
+      .mockImplementation(() => Promise.resolve(mocks.windowVisible));
     mocks.openEditorShouldFail = false;
     mocks.syncShouldFail = false;
     mocks.invoke.mockClear();
@@ -225,6 +234,47 @@ describe("CalendarOverlay window coordination", () => {
     };
     expect(size.width).toBe(420);
     expect(size.height).toBe(384);
+  });
+
+  it("does not load or position while the newly created window is hidden", async () => {
+    mocks.checkVisibility = true;
+    mocks.windowVisible = false;
+    render(<CalendarOverlay />);
+    const showCalendar = mocks.listeners.get("calendar-shown");
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.currentMonitor).not.toHaveBeenCalled();
+    expect(
+      mocks.invoke.mock.calls.filter(
+        ([command]) =>
+          command === "list_calendar_events" ||
+          command === "get_next_calendar_event",
+      ),
+    ).toHaveLength(0);
+
+    mocks.windowVisible = true;
+    act(() => {
+      showCalendar?.({
+        payload: { closeClockOnToggle: false, docked: false },
+      });
+      vi.advanceTimersByTime(20);
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.currentMonitor).toHaveBeenCalled();
+    expect(
+      mocks.invoke.mock.calls.filter(
+        ([command]) => command === "list_calendar_events",
+      ),
+    ).not.toHaveLength(0);
   });
 
   it("does not reposition when an unrelated settings update rerenders the overlay", async () => {
