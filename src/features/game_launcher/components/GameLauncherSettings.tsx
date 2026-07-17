@@ -1,4 +1,4 @@
-import { Gamepad2, Keyboard, RefreshCw } from "lucide-react";
+import { Gamepad2, Keyboard, Palette, RefreshCw } from "lucide-react";
 import type React from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
@@ -107,42 +107,57 @@ export const GameLauncherSettings: React.FC = () => {
         ariaLabel="ゲームランチャーを有効にする"
       />
       <div className="game-launcher-settings-grid">
-        <section
-          className="settings-group"
-          aria-labelledby="game-launcher-shortcut-title"
-        >
-          <div className="settings-group__heading">
-            <Keyboard size={18} aria-hidden="true" />
-            <div>
-              <h3 id="game-launcher-shortcut-title">呼び出し操作</h3>
-              <p>中央のオーバーレイをどのアプリからでも開きます。</p>
+        <div className="game-launcher-settings-column">
+          <section
+            className="settings-group"
+            aria-labelledby="game-launcher-shortcut-title"
+          >
+            <div className="settings-group__heading">
+              <Keyboard size={18} aria-hidden="true" />
+              <div>
+                <h3 id="game-launcher-shortcut-title">呼び出し操作</h3>
+                <p>中央のオーバーレイをどのアプリからでも開きます。</p>
+              </div>
             </div>
-          </div>
-          <Field
-            id="game-launcher-shortcut"
-            label="起動ショートカットキー"
-            error={shortcutError}
-            helpText="同じキーでもう一度押すか、Escで閉じます。"
-          >
-            <ShortcutInput
+            <Field
               id="game-launcher-shortcut"
-              invalid={Boolean(shortcutError)}
-              value={settings.shortcut}
-              onChange={(value) => handleChange("shortcut", value)}
-              placeholderText="例: Alt+1"
-            />
-          </Field>
-          <Field
-            id="game-launcher-theme-color-picker"
-            label="ゲームランチャーのテーマカラー"
+              label="起動ショートカットキー"
+              error={shortcutError}
+              helpText="同じキーでもう一度押すか、Escで閉じます。"
+            >
+              <ShortcutInput
+                id="game-launcher-shortcut"
+                invalid={Boolean(shortcutError)}
+                value={settings.shortcut}
+                onChange={(value) => handleChange("shortcut", value)}
+                placeholderText="例: Alt+1"
+              />
+            </Field>
+          </section>
+
+          <section
+            className="settings-group"
+            aria-labelledby="game-launcher-style-title"
           >
-            <ColorPresetPicker
-              value={settings.themeColor}
-              onChange={(value) => handleChange("themeColor", value)}
-              ariaLabel="ゲームランチャーのテーマカラー"
-            />
-          </Field>
-        </section>
+            <div className="settings-group__heading">
+              <Palette size={18} aria-hidden="true" />
+              <div>
+                <h3 id="game-launcher-style-title">表示スタイル</h3>
+                <p>アクセントカラーの設定</p>
+              </div>
+            </div>
+            <Field
+              id="game-launcher-theme-color-picker"
+              label="ゲームランチャーのテーマカラー"
+            >
+              <ColorPresetPicker
+                value={settings.themeColor}
+                onChange={(value) => handleChange("themeColor", value)}
+                ariaLabel="ゲームランチャーのテーマカラー"
+              />
+            </Field>
+          </section>
+        </div>
 
         <section
           className="settings-group"

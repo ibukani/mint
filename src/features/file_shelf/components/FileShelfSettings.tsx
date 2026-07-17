@@ -2,6 +2,7 @@ import {
   AppWindow,
   History,
   Keyboard,
+  Palette,
   PanelRightOpen,
   Plus,
   X,
@@ -109,6 +110,19 @@ export const FileShelfSettings: React.FC = () => {
               placeholderText="例: Alt+3"
             />
           </Field>
+        </section>
+
+        <section
+          className="settings-group"
+          aria-labelledby="file-shelf-style-title"
+        >
+          <div className="settings-group__heading">
+            <Palette size={18} aria-hidden="true" />
+            <div>
+              <h3 id="file-shelf-style-title">表示スタイル</h3>
+              <p>アクセントカラーの設定</p>
+            </div>
+          </div>
           <Field
             id="file-shelf-theme-color-picker"
             label="ファイルシェルのテーマカラー"
