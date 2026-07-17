@@ -455,7 +455,11 @@ describe("QuickCaptureOverlay", () => {
 
     fireEvent.click(pinnedFilter);
 
-    expect(pinnedFilter).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "ピン留めしたメモ（1件）" }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
     expect(
       screen.getByRole("option", { name: /いつもの定型文/ }),
     ).toBeVisible();
@@ -465,7 +469,11 @@ describe("QuickCaptureOverlay", () => {
 
     fireEvent.click(allFilter);
 
-    expect(allFilter).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "すべてのメモ（2件）" }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
     expect(screen.getByRole("option", { name: /通常のメモ/ })).toBeVisible();
   });
 
