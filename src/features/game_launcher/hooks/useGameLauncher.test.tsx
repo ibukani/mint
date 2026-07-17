@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   focusChanged: undefined as
     | ((event: { payload: boolean }) => void)
     | undefined,
+  closeRequested: undefined as (() => void) | undefined,
   hide: vi.fn().mockResolvedValue(undefined),
   launch: vi.fn().mockResolvedValue(undefined),
   openStore: vi.fn().mockResolvedValue(undefined),
@@ -37,6 +38,12 @@ vi.mock("@tauri-apps/api/window", () => ({
         };
       },
     ),
+    onCloseRequested: vi.fn(async (callback: () => void) => {
+      mocks.closeRequested = callback;
+      return () => {
+        mocks.closeRequested = undefined;
+      };
+    }),
   })),
 }));
 
@@ -62,6 +69,7 @@ describe("useGameLauncher lifecycle", () => {
     mocks.launch.mockClear();
     mocks.openStore.mockClear();
     mocks.list.mockClear();
+    mocks.closeRequested = undefined;
     mocks.checkVisibility = false;
     mocks.windowVisible = true;
     mocks.isVisible
@@ -84,6 +92,26 @@ describe("useGameLauncher lifecycle", () => {
     });
     await act(async () => Promise.resolve());
     expect(mocks.hide).toHaveBeenCalledOnce();
+  });
+
+  it("ネイティブのclose要求でも表示状態と結果を解放する", async () => {
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.result).not.toBeNull();
+
+    act(() => {
+      mocks.closeRequested?.();
+      vi.advanceTimersByTime(180);
+    });
+    await act(async () => Promise.resolve());
+
+    expect(result.current.result).toBeNull();
+    expect(result.current.animationClass).toBe("");
   });
 
   it("閉じた後のshownイベントで古いtimerを破棄して再び操作できる", async () => {

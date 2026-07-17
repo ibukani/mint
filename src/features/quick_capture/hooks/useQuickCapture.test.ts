@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   listen: vi.fn(),
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
   focusChanged: null as ((event: { payload: boolean }) => void) | null,
+  closeRequested: null as (() => void) | null,
   dragDropHandler: null as ((event: { payload: DragDropEvent }) => void) | null,
 }));
 
@@ -47,6 +48,12 @@ vi.mock("@tauri-apps/api/window", () => ({
       mocks.focusChanged = handler;
       return () => {
         mocks.focusChanged = null;
+      };
+    },
+    onCloseRequested: async (handler: () => void) => {
+      mocks.closeRequested = handler;
+      return () => {
+        mocks.closeRequested = null;
       };
     },
     onDragDropEvent: async (
@@ -86,6 +93,7 @@ describe("useQuickCapture", () => {
     vi.clearAllMocks();
     mocks.listeners.clear();
     mocks.focusChanged = null;
+    mocks.closeRequested = null;
     mocks.dragDropHandler = null;
     mocks.isVisible.mockResolvedValue(true);
     mocks.load.mockResolvedValue(state);
@@ -321,6 +329,20 @@ describe("useQuickCapture", () => {
     });
 
     await waitFor(() => expect(mocks.hide).toHaveBeenCalledOnce());
+  });
+
+  it("uses the save path when the native window close is requested", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+
+    await act(async () => {
+      mocks.closeRequested?.();
+      await Promise.resolve();
+    });
+
+    expect(mocks.saveDraft).toHaveBeenCalled();
+    expect(mocks.hide).toHaveBeenCalledOnce();
+    expect(result.current.notes).toEqual([]);
   });
 
   it("keeps the window open while pinned and remembers the pin after reopening", async () => {

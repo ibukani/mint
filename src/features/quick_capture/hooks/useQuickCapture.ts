@@ -509,6 +509,10 @@ export const useQuickCapture = () => {
         void closeRef.current();
       }
     });
+    const closeRequested =
+      typeof currentWindow.onCloseRequested === "function"
+        ? currentWindow.onCloseRequested(() => void closeRef.current())
+        : null;
     return () => {
       document.body.classList.remove("is-overlay");
       document.documentElement.classList.remove("is-overlay");
@@ -516,6 +520,9 @@ export const useQuickCapture = () => {
       void noteCreated.then((unlisten) => unlisten());
       void hide.then((unlisten) => unlisten());
       void focus.then((unlisten) => unlisten());
+      if (closeRequested) {
+        void closeRequested.then((unlisten) => unlisten());
+      }
     };
   }, [reload, reloadNotes, showDraft, sortNotes]);
 

@@ -166,6 +166,8 @@ export const useCalendarEvents = (
     setLoading(false);
   }, [isVisible]);
 
+  const retrySync = useCallback(() => sync(true), [sync]);
+
   return {
     events,
     lastChangedEvent,
@@ -175,6 +177,6 @@ export const useCalendarEvents = (
     refresh,
     syncError,
     syncing,
-    retrySync: () => sync(true),
+    retrySync,
   };
 };

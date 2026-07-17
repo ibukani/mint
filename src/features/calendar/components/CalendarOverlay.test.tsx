@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
+  closeRequested: null as (() => void) | null,
   checkVisibility: false,
   windowVisible: true,
   isCalendarVisible: vi.fn(),
@@ -72,6 +73,12 @@ vi.mock("@tauri-apps/api/window", () => ({
     ...(mocks.checkVisibility ? { isVisible: mocks.isCalendarVisible } : {}),
     setPosition: mocks.setCalendarPosition,
     setSize: mocks.setCalendarSize,
+    onCloseRequested: vi.fn(async (callback: () => void) => {
+      mocks.closeRequested = callback;
+      return () => {
+        mocks.closeRequested = null;
+      };
+    }),
   })),
   LogicalPosition: class LogicalPosition {
     constructor(
@@ -118,6 +125,7 @@ describe("CalendarOverlay window coordination", () => {
     mocks.emitTo.mockClear();
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
+    mocks.closeRequested = null;
     mocks.currentMonitor.mockClear();
     mocks.checkVisibility = false;
     mocks.windowVisible = true;
@@ -209,6 +217,18 @@ describe("CalendarOverlay window coordination", () => {
       }),
     );
     act(() => vi.advanceTimersByTime(240));
+    await act(async () => Promise.resolve());
+
+    expect(mocks.hideCalendar).toHaveBeenCalledOnce();
+    expect(mocks.hideClock).toHaveBeenCalledOnce();
+  });
+
+  it("keeps native close requests on the same lifecycle as the overlay close", async () => {
+    render(<CalendarOverlay />);
+    act(() => {
+      mocks.closeRequested?.();
+      vi.advanceTimersByTime(240);
+    });
     await act(async () => Promise.resolve());
 
     expect(mocks.hideCalendar).toHaveBeenCalledOnce();

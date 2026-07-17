@@ -118,6 +118,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   );
 
   useEffect(() => {
+    const currentWindow = getCurrentWindow();
     const shownPromise = listen<CalendarShownPayload>(
       "calendar-shown",
       ({ payload }) => {
@@ -145,12 +146,19 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     const hideAllPromise = listen("calendar-hide-all-requested", () => {
       closeCalendar(true);
     });
+    const closeRequested =
+      typeof currentWindow.onCloseRequested === "function"
+        ? currentWindow.onCloseRequested(() => closeCalendar(true))
+        : null;
 
     return () => {
       void shownPromise.then((unlisten) => unlisten());
       void hidePromise.then((unlisten) => unlisten());
       void createPromise.then((unlisten) => unlisten());
       void hideAllPromise.then((unlisten) => unlisten());
+      if (closeRequested) {
+        void closeRequested.then((unlisten) => unlisten());
+      }
     };
   }, [closeCalendar]);
 

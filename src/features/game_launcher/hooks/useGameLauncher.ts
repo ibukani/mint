@@ -181,6 +181,10 @@ export const useGameLauncher = () => {
     const focus = currentWindow.onFocusChanged(({ payload }) => {
       if (!payload && !closingRef.current && visibleRef.current) close();
     });
+    const closeRequested =
+      typeof currentWindow.onCloseRequested === "function"
+        ? currentWindow.onCloseRequested(() => close())
+        : null;
     return () => {
       mounted = false;
       document.body.classList.remove("is-overlay");
@@ -189,6 +193,9 @@ export const useGameLauncher = () => {
       void shown.then((unlisten) => unlisten());
       void hide.then((unlisten) => unlisten());
       void focus.then((unlisten) => unlisten());
+      if (closeRequested) {
+        void closeRequested.then((unlisten) => unlisten());
+      }
     };
   }, [close, scan]);
 
