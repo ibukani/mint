@@ -29,6 +29,12 @@ export const updateQuickCaptureNote = (
   input: QuickCaptureNoteInput,
 ) => invoke<QuickCaptureNote>("update_quick_capture_note", { id, input });
 
+export const setQuickCaptureNoteArchived = (id: string, archived: boolean) =>
+  invoke<QuickCaptureNote>("set_quick_capture_note_archived", {
+    id,
+    archived,
+  });
+
 export const deleteQuickCaptureNote = (id: string) =>
   invoke<void>("delete_quick_capture_note", { id });
 

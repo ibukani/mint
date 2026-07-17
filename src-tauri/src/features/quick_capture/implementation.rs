@@ -47,6 +47,14 @@ pub(super) fn update_quick_capture_note(
     repository::update_quick_capture_note(id, input, state)
 }
 
+pub(super) fn set_quick_capture_note_archived(
+    id: String,
+    archived: bool,
+    state: State<'_, QuickCaptureStoreState>,
+) -> Result<QuickCaptureNote, String> {
+    repository::set_quick_capture_note_archived(id, archived, state)
+}
+
 pub(super) fn delete_quick_capture_note(
     id: String,
     state: State<'_, QuickCaptureStoreState>,

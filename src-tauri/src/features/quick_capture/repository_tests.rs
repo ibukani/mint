@@ -19,6 +19,41 @@ fn tags_are_trimmed_and_deduplicated() {
 }
 
 #[test]
+fn migrates_legacy_note_tables_with_archived_defaulting_to_false() {
+    let path = test_path();
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE quick_capture_notes (
+               id TEXT PRIMARY KEY NOT NULL,
+               content TEXT NOT NULL,
+               pinned INTEGER NOT NULL DEFAULT 0,
+               created_at TEXT NOT NULL,
+               updated_at TEXT NOT NULL
+             );
+             INSERT INTO quick_capture_notes(id, content, pinned, created_at, updated_at)
+             VALUES('legacy-note', '旧データ', 0, '2026-07-16T00:00:00Z', '2026-07-16T00:00:00Z');",
+        )
+        .unwrap();
+    drop(connection);
+
+    let state = load_state_from_store(&path).unwrap();
+    assert_eq!(state.notes[0].id, "legacy-note");
+    assert!(!state.notes[0].archived);
+
+    let connection = open_store(&path).unwrap();
+    let archived_column_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('quick_capture_notes') WHERE name = 'archived'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(archived_column_count, 1);
+    let _ = fs::remove_file(path);
+}
+
+#[test]
 fn draft_and_note_crud_round_trip() {
     let path = test_path();
     let draft = save_draft_in_store(
@@ -59,6 +94,30 @@ fn draft_and_note_crud_round_trip() {
 
     delete_note_in_store(&path, note.id).unwrap();
     assert!(load_state_from_store(&path).unwrap().notes.is_empty());
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn archive_toggle_preserves_note_content_timestamp() {
+    let path = test_path();
+    let note = create_note_in_store(
+        &path,
+        QuickCaptureNoteInput {
+            content: "整理するメモ".into(),
+            tags: vec!["inbox".into()],
+            pinned: false,
+        },
+    )
+    .unwrap();
+
+    let archived = set_note_archived_in_store(&path, note.id.clone(), true).unwrap();
+    assert!(archived.archived);
+    assert_eq!(archived.updated_at, note.updated_at);
+    assert!(load_state_from_store(&path).unwrap().notes[0].archived);
+
+    let restored = set_note_archived_in_store(&path, note.id, false).unwrap();
+    assert!(!restored.archived);
+    assert_eq!(restored.updated_at, note.updated_at);
     let _ = fs::remove_file(path);
 }
 

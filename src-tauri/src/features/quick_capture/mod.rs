@@ -55,6 +55,15 @@ pub fn update_quick_capture_note(
 }
 
 #[tauri::command]
+pub fn set_quick_capture_note_archived(
+    id: String,
+    archived: bool,
+    state: tauri::State<'_, QuickCaptureStoreState>,
+) -> Result<QuickCaptureNote, String> {
+    implementation::set_quick_capture_note_archived(id, archived, state)
+}
+
+#[tauri::command]
 pub fn delete_quick_capture_note(
     id: String,
     state: tauri::State<'_, QuickCaptureStoreState>,

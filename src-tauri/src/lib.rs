@@ -244,6 +244,7 @@ pub fn run() {
             features::quick_capture::promote_quick_capture_note,
             features::quick_capture::create_quick_capture_note,
             features::quick_capture::update_quick_capture_note,
+            features::quick_capture::set_quick_capture_note_archived,
             features::quick_capture::delete_quick_capture_note,
             features::quick_capture::restore_quick_capture_note,
             features::quick_capture::add_quick_capture_attachment,

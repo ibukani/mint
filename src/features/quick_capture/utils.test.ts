@@ -95,12 +95,15 @@ describe("quick capture utilities", () => {
 
   it("parses advanced library search operators without losing text terms", () => {
     expect(
-      parseQuickCaptureSearch("tag:Work is:pinned has:attachments review"),
+      parseQuickCaptureSearch(
+        "tag:Work is:pinned is:archived has:attachments review",
+      ),
     ).toEqual({
       text: "review",
       tag: "Work",
       pinnedOnly: true,
       attachmentsOnly: true,
+      archivedOnly: true,
     });
   });
 

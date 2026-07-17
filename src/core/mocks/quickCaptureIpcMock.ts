@@ -14,6 +14,7 @@ import {
   mockPromoteQuickCaptureNote,
   mockRestoreQuickCaptureNote,
   mockSaveQuickCaptureDraft,
+  mockSetQuickCaptureNoteArchived,
   mockUpdateQuickCaptureNote,
 } from "./quickCaptureMock";
 
@@ -52,6 +53,14 @@ export async function handleQuickCaptureIpcCommand(
         throw new Error("Quick capture note update is invalid.");
       }
       return handled(mockUpdateQuickCaptureNote(id, input));
+    }
+    case "set_quick_capture_note_archived": {
+      const id = args?.id as string | undefined;
+      const archived = args?.archived as boolean | undefined;
+      if (!id || typeof archived !== "boolean") {
+        throw new Error("Quick capture archive update is invalid.");
+      }
+      return handled(mockSetQuickCaptureNoteArchived(id, archived));
     }
     case "delete_quick_capture_note": {
       const id = args?.id as string | undefined;

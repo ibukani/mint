@@ -35,6 +35,7 @@ const read = (): QuickCaptureState => {
       ...state,
       notes: state.notes.map((note) => ({
         ...note,
+        archived: note.archived ?? false,
         attachments: note.attachments ?? [],
       })),
     };
@@ -51,7 +52,11 @@ const readTrash = (): QuickCaptureNote[] => {
   const value = localStorage.getItem(TRASH_STORAGE_KEY);
   if (!value) return [];
   try {
-    return JSON.parse(value) as QuickCaptureNote[];
+    return (JSON.parse(value) as QuickCaptureNote[]).map((note) => ({
+      ...note,
+      archived: note.archived ?? false,
+      attachments: note.attachments ?? [],
+    }));
   } catch {
     return [];
   }
@@ -90,6 +95,7 @@ export const mockPromoteQuickCaptureNote = (input: QuickCaptureNoteInput) => {
     content: input.content,
     tags: normalizeTags(input.tags),
     pinned: input.pinned,
+    archived: false,
     createdAt: now,
     updatedAt: now,
     attachments: [],
@@ -112,6 +118,7 @@ export const mockCreateQuickCaptureNote = (input: QuickCaptureNoteInput) => {
     content: input.content,
     tags: normalizeTags(input.tags),
     pinned: input.pinned,
+    archived: false,
     createdAt: now,
     updatedAt: now,
     attachments: [],
@@ -134,6 +141,21 @@ export const mockUpdateQuickCaptureNote = (
     tags: normalizeTags(input.tags),
     updatedAt: new Date().toISOString(),
   };
+  write({
+    ...state,
+    notes: sortNotes(state.notes.map((item) => (item.id === id ? note : item))),
+  });
+  return note;
+};
+
+export const mockSetQuickCaptureNoteArchived = (
+  id: string,
+  archived: boolean,
+) => {
+  const state = read();
+  const existing = state.notes.find((note) => note.id === id);
+  if (!existing) throw new Error("メモが見つかりません。");
+  const note = { ...existing, archived };
   write({
     ...state,
     notes: sortNotes(state.notes.map((item) => (item.id === id ? note : item))),

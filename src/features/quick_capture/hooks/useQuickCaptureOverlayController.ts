@@ -133,6 +133,16 @@ export const useQuickCaptureOverlayController = () => {
       event.preventDefault();
       capture.setPinned(!capture.pinned);
     } else if (
+      event.key.toLocaleLowerCase() === "a" &&
+      (event.ctrlKey || event.metaKey) &&
+      event.shiftKey &&
+      !event.altKey &&
+      capture.activeId &&
+      !isSaving
+    ) {
+      event.preventDefault();
+      void capture.toggleArchived();
+    } else if (
       event.key.toLocaleLowerCase() === "d" &&
       (event.ctrlKey || event.metaKey) &&
       event.shiftKey &&

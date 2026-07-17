@@ -20,10 +20,12 @@ interface QuickCaptureLibraryProps {
   allTags: string[];
   pinnedCount: number;
   attachmentCount: number;
+  archivedCount: number;
   query: string;
   tagFilter: string | null;
   pinnedOnly: boolean;
   attachmentsOnly: boolean;
+  archivedOnly: boolean;
   cursorNote: QuickCaptureNote | null;
   searchFocused: boolean;
   searchRef: RefObject<HTMLInputElement | null>;
@@ -40,6 +42,7 @@ interface QuickCaptureLibraryProps {
   onClearFilters: () => void;
   onTogglePinnedOnly: () => void;
   onToggleAttachmentsOnly: () => void;
+  onToggleArchivedOnly: () => void;
   onToggleTag: (tag: string) => void;
   onCursorChange: (id: string | null) => void;
   onSelectNote: (note: QuickCaptureNote) => void;
@@ -54,10 +57,12 @@ export const QuickCaptureLibrary = ({
   allTags,
   pinnedCount,
   attachmentCount,
+  archivedCount,
   query,
   tagFilter,
   pinnedOnly,
   attachmentsOnly,
+  archivedOnly,
   cursorNote,
   searchFocused,
   searchRef,
@@ -74,6 +79,7 @@ export const QuickCaptureLibrary = ({
   onClearFilters,
   onTogglePinnedOnly,
   onToggleAttachmentsOnly,
+  onToggleArchivedOnly,
   onToggleTag,
   onCursorChange,
   onSelectNote,
@@ -114,7 +120,7 @@ export const QuickCaptureLibrary = ({
         ref={searchRef}
         role="combobox"
         aria-label="保存済みメモを検索"
-        title="高度な検索: tag:タグ / is:pinned / has:attachment"
+        title="高度な検索: tag:タグ / is:pinned / is:archived / has:attachment"
         aria-controls={noteListId}
         aria-expanded="true"
         aria-autocomplete="list"
@@ -146,10 +152,14 @@ export const QuickCaptureLibrary = ({
       <button
         type="button"
         className={
-          !pinnedOnly && !attachmentsOnly && !tagFilter ? "is-active" : ""
+          !pinnedOnly && !attachmentsOnly && !archivedOnly && !tagFilter
+            ? "is-active"
+            : ""
         }
         aria-label={`すべてのメモ（${notes.length}件）`}
-        aria-pressed={!pinnedOnly && !attachmentsOnly && !tagFilter}
+        aria-pressed={
+          !pinnedOnly && !attachmentsOnly && !archivedOnly && !tagFilter
+        }
         onClick={onClearFilters}
       >
         すべて
@@ -176,6 +186,17 @@ export const QuickCaptureLibrary = ({
         <Paperclip size={11} aria-hidden="true" />
         添付あり
         <span aria-hidden="true">{attachmentCount}</span>
+      </button>
+      <button
+        type="button"
+        className={archivedOnly ? "is-active" : ""}
+        aria-label={`アーカイブしたメモ（${archivedCount}件）`}
+        aria-pressed={archivedOnly}
+        onClick={onToggleArchivedOnly}
+      >
+        <Archive size={11} aria-hidden="true" />
+        アーカイブ
+        <span aria-hidden="true">{archivedCount}</span>
       </button>
       {allTags.map((tag) => (
         <button
@@ -213,6 +234,9 @@ export const QuickCaptureLibrary = ({
               >
                 <span className="quick-capture__note-title">
                   {note.pinned && <Pin size={11} aria-label="ピン留め済み" />}
+                  {note.archived && (
+                    <Archive size={11} aria-label="アーカイブ済み" />
+                  )}
                   <strong>{title}</strong>
                 </span>
                 <small>{formatUpdatedAt(note.updatedAt)}</small>
@@ -246,12 +270,12 @@ export const QuickCaptureLibrary = ({
         <div className="quick-capture__empty">
           <Archive size={20} aria-hidden="true" />
           <strong>
-            {query || tagFilter || pinnedOnly
+            {query || tagFilter || pinnedOnly || attachmentsOnly || archivedOnly
               ? "一致するメモがありません"
               : "まだメモはありません"}
           </strong>
           <span>
-            {query || tagFilter || pinnedOnly
+            {query || tagFilter || pinnedOnly || attachmentsOnly || archivedOnly
               ? "検索条件を変えてみてください"
               : `${shortcutModifier}+Enterで保存すると、ここからすぐ開けます`}
           </span>

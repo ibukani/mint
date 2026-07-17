@@ -8,6 +8,7 @@ import {
   promoteQuickCaptureNote,
   restoreQuickCaptureNote,
   saveQuickCaptureDraft,
+  setQuickCaptureNoteArchived,
   updateQuickCaptureNote,
 } from "../api";
 import type { QuickCaptureNote } from "../types";
@@ -25,6 +26,7 @@ export const useQuickCapture = () => {
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [archived, setArchived] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [status, setStatus] = useState<CaptureSaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export const useQuickCapture = () => {
   const persistInFlightRef = useRef(false);
   const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
+  const archiveInFlightRef = useRef(false);
   const clipboardCaptureInFlightRef = useRef(false);
   const updateContent = useCallback((value: string) => {
     revision.current += 1;
@@ -77,6 +80,7 @@ export const useQuickCapture = () => {
     setContent(nextDraft.content);
     setTags(nextDraft.tags);
     setPinned(false);
+    setArchived(false);
     setError(null);
     setCanRetryDuplicate(false);
     setFocusSequence((value) => value + 1);
@@ -214,6 +218,7 @@ export const useQuickCapture = () => {
       setContent(note.content);
       setTags(tagsToText(note.tags));
       setPinned(note.pinned);
+      setArchived(note.archived);
       setError(null);
       setFocusSequence((value) => value + 1);
     },
@@ -287,6 +292,7 @@ export const useQuickCapture = () => {
       setContent(duplicated.content);
       setTags(tagsToText(duplicated.tags));
       setPinned(duplicated.pinned);
+      setArchived(duplicated.archived);
       setFocusSequence((value) => value + 1);
       setStatus("saved");
       return true;
@@ -300,6 +306,51 @@ export const useQuickCapture = () => {
       duplicateInFlightRef.current = false;
     }
   }, [activeId, content, persist, pinned, sortNotes, tags]);
+
+  const toggleArchived = useCallback(async () => {
+    if (!activeId || archiveInFlightRef.current) return false;
+    archiveInFlightRef.current = true;
+    try {
+      const activeNote = notes.find((note) => note.id === activeId);
+      const currentTags = parseTags(tags);
+      const hasPendingEdits =
+        !activeNote ||
+        activeNote.content !== content ||
+        activeNote.pinned !== pinned ||
+        activeNote.tags.length !== currentTags.length ||
+        activeNote.tags.some((tag, index) => tag !== currentTags[index]);
+      const saved = hasPendingEdits
+        ? await persist()
+        : persistInFlightRef.current
+          ? await persistQueueRef.current
+          : true;
+      if (!saved) return false;
+
+      const nextArchived = !archived;
+      const archiveRevision = ++revision.current;
+      setStatus("saving");
+      setError(null);
+      setCanRetrySave(false);
+      const updated = await setQuickCaptureNoteArchived(activeId, nextArchived);
+      setNotes((current) =>
+        sortNotes(
+          current.map((note) => (note.id === updated.id ? updated : note)),
+        ),
+      );
+      if (archiveRevision === revision.current) {
+        setArchived(updated.archived);
+        setStatus("saved");
+      }
+      return true;
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setStatus("error");
+      setCanRetrySave(false);
+      return false;
+    } finally {
+      archiveInFlightRef.current = false;
+    }
+  }, [activeId, archived, content, notes, persist, pinned, sortNotes, tags]);
 
   const captureText = useCallback(
     async (text: string) => {
@@ -465,6 +516,7 @@ export const useQuickCapture = () => {
 
   return {
     activeId,
+    archived,
     ...attachments,
     allTags,
     captureText,
@@ -494,6 +546,7 @@ export const useQuickCapture = () => {
     tags,
     canRetrySave,
     canRetryDuplicate,
+    toggleArchived,
     importBackup,
     retryDuplicate: duplicateActive,
     reload,

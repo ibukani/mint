@@ -1,5 +1,6 @@
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import {
+  Archive,
   Bold,
   Check,
   ClipboardPaste,
@@ -371,6 +372,18 @@ export const QuickCaptureEditor = ({
               onClick={() => capture.setPinned(!capture.pinned)}
             >
               <Pin size={14} aria-hidden="true" /> ピン留め
+            </button>
+            <button
+              type="button"
+              className={`quick-capture__pin${capture.archived ? " is-active" : ""}`}
+              disabled={isSaving}
+              aria-pressed={capture.archived}
+              aria-keyshortcuts="Control+Shift+A Meta+Shift+A"
+              title={`アーカイブを切り替え（${shortcutModifier}+Shift+A）`}
+              onClick={() => void capture.toggleArchived()}
+            >
+              <Archive size={14} aria-hidden="true" />
+              {capture.archived ? "アーカイブ解除" : "アーカイブ"}
             </button>
           </>
         )}

@@ -23,6 +23,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     tagFilter,
     pinnedOnly,
     attachmentsOnly,
+    archivedOnly,
     actionStatus,
     libraryCursorNote,
     librarySearchFocused,
@@ -41,6 +42,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     filteredNotes,
     pinnedCount,
     attachmentCount,
+    archivedCount,
     setLibraryCursorId,
     handleKeyDown,
     handleLibrarySearchKeyDown,
@@ -62,6 +64,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     handleClearFilters,
     handleTogglePinnedOnly,
     handleToggleAttachmentsOnly,
+    handleToggleArchivedOnly,
     handleToggleTag,
     selectLibraryNote,
     indentSelection,
@@ -183,10 +186,12 @@ export const QuickCaptureOverlay: React.FC = () => {
             allTags={capture.allTags}
             pinnedCount={pinnedCount}
             attachmentCount={attachmentCount}
+            archivedCount={archivedCount}
             query={query}
             tagFilter={tagFilter}
             pinnedOnly={pinnedOnly}
             attachmentsOnly={attachmentsOnly}
+            archivedOnly={archivedOnly}
             cursorNote={libraryCursorNote}
             searchFocused={librarySearchFocused}
             searchRef={librarySearchRef}
@@ -203,6 +208,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             onClearFilters={handleClearFilters}
             onTogglePinnedOnly={handleTogglePinnedOnly}
             onToggleAttachmentsOnly={handleToggleAttachmentsOnly}
+            onToggleArchivedOnly={handleToggleArchivedOnly}
             onToggleTag={handleToggleTag}
             onCursorChange={setLibraryCursorId}
             onSelectNote={selectLibraryNote}

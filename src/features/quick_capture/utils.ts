@@ -200,6 +200,7 @@ export interface QuickCaptureSearchQuery {
   tag: string | null;
   pinnedOnly: boolean;
   attachmentsOnly: boolean;
+  archivedOnly: boolean;
 }
 
 export const parseQuickCaptureSearch = (
@@ -208,6 +209,7 @@ export const parseQuickCaptureSearch = (
   let tag: string | null = null;
   let pinnedOnly = false;
   let attachmentsOnly = false;
+  let archivedOnly = false;
   const textTokens: string[] = [];
 
   for (const token of query.trim().split(/\s+/).filter(Boolean)) {
@@ -221,10 +223,18 @@ export const parseQuickCaptureSearch = (
       normalized === "has:attachments"
     ) {
       attachmentsOnly = true;
+    } else if (normalized === "is:archived") {
+      archivedOnly = true;
     } else {
       textTokens.push(token);
     }
   }
 
-  return { text: textTokens.join(" "), tag, pinnedOnly, attachmentsOnly };
+  return {
+    text: textTokens.join(" "),
+    tag,
+    pinnedOnly,
+    attachmentsOnly,
+    archivedOnly,
+  };
 };

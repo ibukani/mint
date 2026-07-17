@@ -15,6 +15,7 @@ export interface QuickCaptureNote {
   content: string;
   tags: string[];
   pinned: boolean;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
   attachments: QuickCaptureAttachment[];

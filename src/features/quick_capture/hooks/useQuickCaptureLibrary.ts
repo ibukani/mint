@@ -22,6 +22,7 @@ export const useQuickCaptureLibrary = ({
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [attachmentsOnly, setAttachmentsOnly] = useState(false);
+  const [archivedOnly, setArchivedOnly] = useState(false);
   const [libraryCursorId, setLibraryCursorId] = useState<string | null>(null);
   const [librarySearchFocused, setLibrarySearchFocused] = useState(false);
   const librarySearchRef = useRef<HTMLInputElement>(null);
@@ -39,13 +40,14 @@ export const useQuickCaptureLibrary = ({
           (!(pinnedOnly || parsedQuery.pinnedOnly) || note.pinned) &&
           (!(attachmentsOnly || parsedQuery.attachmentsOnly) ||
             note.attachments.length > 0) &&
+          (!(archivedOnly || parsedQuery.archivedOnly) || note.archived) &&
           (!tagFilter || note.tags.includes(tagFilter)) &&
           (!parsedQuery.tag ||
             note.tags.some(
               (tag) => tag.toLowerCase() === parsedQuery.tag?.toLowerCase(),
             )),
       ),
-    [attachmentsOnly, notes, parsedQuery, pinnedOnly, tagFilter],
+    [archivedOnly, attachmentsOnly, notes, parsedQuery, pinnedOnly, tagFilter],
   );
   const filteredNotes = useMemo(() => {
     if (!parsedQuery.text) return filteredBaseNotes;
@@ -88,11 +90,12 @@ export const useQuickCaptureLibrary = ({
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      if (query || tagFilter || pinnedOnly || attachmentsOnly) {
+      if (query || tagFilter || pinnedOnly || attachmentsOnly || archivedOnly) {
         setQuery("");
         setTagFilter(null);
         setPinnedOnly(false);
         setAttachmentsOnly(false);
+        setArchivedOnly(false);
         setLibraryCursorId(notes[0]?.id ?? null);
       } else {
         librarySearchRef.current?.blur();
@@ -150,6 +153,7 @@ export const useQuickCaptureLibrary = ({
   const handleClearFilters = () => {
     setPinnedOnly(false);
     setAttachmentsOnly(false);
+    setArchivedOnly(false);
     setTagFilter(null);
     setLibraryCursorId(null);
   };
@@ -161,6 +165,10 @@ export const useQuickCaptureLibrary = ({
     setAttachmentsOnly((value) => !value);
     setLibraryCursorId(null);
   };
+  const handleToggleArchivedOnly = () => {
+    setArchivedOnly((value) => !value);
+    setLibraryCursorId(null);
+  };
   const handleToggleTag = (tag: string) => {
     setTagFilter((current) => (current === tag ? null : tag));
     setLibraryCursorId(null);
@@ -170,6 +178,7 @@ export const useQuickCaptureLibrary = ({
     setTagFilter(null);
     setPinnedOnly(false);
     setAttachmentsOnly(false);
+    setArchivedOnly(false);
     setLibraryCursorId(null);
   }, []);
 
@@ -192,6 +201,7 @@ export const useQuickCaptureLibrary = ({
     handleSearchKeyDown,
     handleTogglePinnedOnly,
     handleToggleAttachmentsOnly,
+    handleToggleArchivedOnly,
     handleToggleTag,
     libraryCursorNote,
     librarySearchFocused,
@@ -199,9 +209,11 @@ export const useQuickCaptureLibrary = ({
     librarySearchRef,
     noteListRef,
     attachmentCount,
+    archivedCount: notes.filter((note) => note.archived).length,
     pinnedCount,
     pinnedOnly,
     attachmentsOnly,
+    archivedOnly,
     query,
     reset,
     setLibraryCursorId,

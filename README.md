@@ -15,7 +15,7 @@
 - **カレンダー (Calendar)**: **implemented**。ローカル予定の管理とGoogle Calendarの複数予定表・双方向同期に対応。
 - **ゲームランチャー (Game Launcher)**: **implemented**。インストールされているゲームの取得と起動に対応。
 - **ファイルシェル (File Shelf)**: **implemented**。ファイル・フォルダの一時保管、クリップボードからの画像・URL・文章追加、検索、コピー、Explorerへの取り出しに対応。
-- **クイックキャプチャー (Quick Capture)**: **implemented**。自動保存される下書き、タグ付きメモ、Markdown入力支援とテンプレート、全文検索（高度な条件指定を含む）、Markdown書き出し、添付ファイル、バックアップ、クリップボードコピーに対応。
+- **クイックキャプチャー (Quick Capture)**: **implemented**。自動保存される下書き、タグ付きメモ、Markdown入力支援とテンプレート、全文検索（`tag:` / `is:pinned` / `is:archived` / `has:attachment`）、アーカイブ整理、Markdown書き出し、添付ファイル、バックアップ、クリップボードコピーに対応。
 - **音声入力 (Voice to Text)**: **implemented**。音声ファイルの選択・貼り付け・ドラッグ＆ドロップ、マイクからの録音、APIキーの安全な保存、OpenAI互換APIでの文字起こしに対応しています。
 
 ## 主な機能（開発基盤）
