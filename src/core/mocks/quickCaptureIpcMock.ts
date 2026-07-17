@@ -12,6 +12,7 @@ import {
   mockDeleteQuickCaptureNote,
   mockLoadQuickCaptureState,
   mockPromoteQuickCaptureNote,
+  mockRestoreQuickCaptureNote,
   mockSaveQuickCaptureDraft,
   mockUpdateQuickCaptureNote,
 } from "./quickCaptureMock";
@@ -57,6 +58,11 @@ export async function handleQuickCaptureIpcCommand(
       if (!id) throw new Error("Quick capture note id is required.");
       mockDeleteQuickCaptureNote(id);
       return handled(undefined);
+    }
+    case "restore_quick_capture_note": {
+      const id = args?.id as string | undefined;
+      if (!id) throw new Error("Quick capture note id is required.");
+      return handled(mockRestoreQuickCaptureNote(id));
     }
     case "add_quick_capture_attachment": {
       const input = args?.input as QuickCaptureAttachmentInput | undefined;

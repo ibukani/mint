@@ -400,6 +400,16 @@
   background: var(--surface-accent-action);
   color: var(--color-accent);
 }
+.quick-capture__editor-footer .quick-capture__undo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-success);
+}
+.quick-capture__editor-footer .quick-capture__undo:hover {
+  background: var(--surface-success);
+  color: var(--color-success);
+}
 .quick-capture button:disabled {
   cursor: not-allowed;
   opacity: 0.45;

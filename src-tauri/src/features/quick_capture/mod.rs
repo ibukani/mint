@@ -63,6 +63,14 @@ pub fn delete_quick_capture_note(
 }
 
 #[tauri::command]
+pub fn restore_quick_capture_note(
+    id: String,
+    state: tauri::State<'_, QuickCaptureStoreState>,
+) -> Result<QuickCaptureNote, String> {
+    implementation::restore_quick_capture_note(id, state)
+}
+
+#[tauri::command]
 pub fn add_quick_capture_attachment(
     input: QuickCaptureAttachmentInput,
     state: tauri::State<'_, QuickCaptureStoreState>,

@@ -32,6 +32,9 @@ export const updateQuickCaptureNote = (
 export const deleteQuickCaptureNote = (id: string) =>
   invoke<void>("delete_quick_capture_note", { id });
 
+export const restoreQuickCaptureNote = (id: string) =>
+  invoke<QuickCaptureNote>("restore_quick_capture_note", { id });
+
 export const chooseQuickCaptureAttachment = () =>
   open({
     title: "メモに添付するファイルを選択",

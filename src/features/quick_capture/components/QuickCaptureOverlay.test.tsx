@@ -216,6 +216,13 @@ describe("QuickCaptureOverlay", () => {
       ).not.toBeInTheDocument();
       expect(screen.getByLabelText("メモ本文")).toHaveValue("残しておく下書き");
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "削除を取り消す" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: /一覧から削除するメモ/ }),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("resets draft view state when returning from a saved note", async () => {
@@ -407,7 +414,7 @@ describe("QuickCaptureOverlay", () => {
     const dialog = screen.getByRole("alertdialog", {
       name: "このメモを削除しますか？",
     });
-    expect(dialog).toHaveTextContent("添付ファイルも削除され");
+    expect(dialog).toHaveTextContent("添付ファイルも保持され");
     fireEvent.click(within(dialog).getByRole("button", { name: "削除する" }));
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(

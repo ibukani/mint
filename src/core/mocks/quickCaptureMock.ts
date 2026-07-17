@@ -8,6 +8,7 @@ import type {
 } from "../../features/quick_capture/types";
 
 const STORAGE_KEY = "mint_mock_quick_capture";
+const TRASH_STORAGE_KEY = "mint_mock_quick_capture_trash";
 
 const emptyState = (): QuickCaptureState => ({
   draft: { content: "", tags: [], updatedAt: new Date().toISOString() },
@@ -44,6 +45,20 @@ const read = (): QuickCaptureState => {
 
 const write = (state: QuickCaptureState) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+};
+
+const readTrash = (): QuickCaptureNote[] => {
+  const value = localStorage.getItem(TRASH_STORAGE_KEY);
+  if (!value) return [];
+  try {
+    return JSON.parse(value) as QuickCaptureNote[];
+  } catch {
+    return [];
+  }
+};
+
+const writeTrash = (notes: QuickCaptureNote[]) => {
+  localStorage.setItem(TRASH_STORAGE_KEY, JSON.stringify(notes));
 };
 
 const sortNotes = (notes: QuickCaptureNote[]) =>
@@ -128,10 +143,24 @@ export const mockUpdateQuickCaptureNote = (
 
 export const mockDeleteQuickCaptureNote = (id: string) => {
   const state = read();
-  if (!state.notes.some((note) => note.id === id)) {
+  const deleted = state.notes.find((note) => note.id === id);
+  if (!deleted) {
     throw new Error("メモが見つかりません。");
   }
   write({ ...state, notes: state.notes.filter((note) => note.id !== id) });
+  writeTrash([deleted, ...readTrash().filter((note) => note.id !== id)]);
+};
+
+export const mockRestoreQuickCaptureNote = (id: string) => {
+  const deleted = readTrash().find((note) => note.id === id);
+  if (!deleted) throw new Error("取り消せる削除履歴が見つかりません。");
+  const state = read();
+  if (state.notes.some((note) => note.id === id)) {
+    throw new Error("同じIDのメモがすでに存在します。");
+  }
+  write({ ...state, notes: sortNotes([deleted, ...state.notes]) });
+  writeTrash(readTrash().filter((note) => note.id !== id));
+  return deleted;
 };
 
 export const mockAddQuickCaptureAttachment = (

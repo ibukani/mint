@@ -3,7 +3,6 @@ use rusqlite::{params, Connection, OptionalExtension};
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    io::ErrorKind,
     path::Path,
     time::Duration,
 };
@@ -26,6 +25,7 @@ pub(super) fn initialize_store(app: &AppHandle) -> Result<QuickCaptureStoreState
         data_dir: directory,
     };
     open_store(&state.path)?;
+    purge_expired_deleted_notes(&state.path)?;
     Ok(state)
 }
 
@@ -64,6 +64,11 @@ pub(super) fn open_store(path: &Path) -> Result<Connection, String> {
                size_bytes INTEGER NOT NULL,
                stored_path TEXT NOT NULL,
                created_at TEXT NOT NULL
+             );
+             CREATE TABLE IF NOT EXISTS quick_capture_deleted_notes (
+               id TEXT PRIMARY KEY NOT NULL,
+               note_json TEXT NOT NULL,
+               deleted_at TEXT NOT NULL
              );
              CREATE INDEX IF NOT EXISTS quick_capture_notes_order
                ON quick_capture_notes(pinned DESC, updated_at DESC);",
@@ -142,6 +147,51 @@ fn read_attachments(
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     Ok(attachments)
+}
+
+fn read_tags_for_note(connection: &Connection, note_id: &str) -> Result<Vec<String>, String> {
+    let mut statement = connection
+        .prepare(
+            "SELECT tag FROM quick_capture_note_tags
+             WHERE note_id = ?1 ORDER BY tag COLLATE NOCASE",
+        )
+        .map_err(|error| error.to_string())?;
+    let tags = statement
+        .query_map([note_id], |row| row.get(0))
+        .map_err(|error| error.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string());
+    tags
+}
+
+fn read_note_by_id(connection: &Connection, note_id: &str) -> Result<QuickCaptureNote, String> {
+    let row = connection
+        .query_row(
+            "SELECT id, content, pinned, created_at, updated_at
+             FROM quick_capture_notes WHERE id = ?1",
+            [note_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, bool>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "メモが見つかりません。".to_string())?;
+    Ok(QuickCaptureNote {
+        id: row.0,
+        content: row.1,
+        pinned: row.2,
+        created_at: row.3,
+        updated_at: row.4,
+        tags: read_tags_for_note(connection, note_id)?,
+        attachments: read_attachments(connection, note_id)?,
+    })
 }
 
 fn read_attachments_by_note(
@@ -480,30 +530,156 @@ pub(super) fn delete_quick_capture_note(
 }
 
 fn delete_note_in_store(path: &Path, id: String) -> Result<(), String> {
-    let connection = open_store(path)?;
-    let mut statement = connection
-        .prepare("SELECT stored_path FROM quick_capture_attachments WHERE note_id = ?1")
+    let mut connection = open_store(path)?;
+    let note = read_note_by_id(&connection, &id)?;
+    let note_json = serde_json::to_string(&note).map_err(|error| error.to_string())?;
+    let transaction = connection
+        .transaction()
         .map_err(|error| error.to_string())?;
-    let attachment_paths = statement
-        .query_map([&id], |row| row.get::<_, String>(0))
-        .map_err(|error| error.to_string())?
-        .collect::<Result<Vec<_>, _>>()
+    transaction
+        .execute(
+            "INSERT INTO quick_capture_deleted_notes(id, note_json, deleted_at)
+             VALUES(?1, ?2, ?3)
+             ON CONFLICT(id) DO UPDATE SET note_json = excluded.note_json,
+               deleted_at = excluded.deleted_at",
+            params![id, note_json, timestamp()],
+        )
         .map_err(|error| error.to_string())?;
-    drop(statement);
-    let changed = connection
+    let changed = transaction
         .execute("DELETE FROM quick_capture_notes WHERE id = ?1", [&id])
         .map_err(|error| error.to_string())?;
     if changed == 0 {
         return Err("メモが見つかりません。".to_string());
     }
+    // Keep attachment files until the undo window expires. The startup
+    // cleanup below removes abandoned trash after 30 days.
+    transaction.commit().map_err(|error| error.to_string())?;
+    Ok(())
+}
 
-    for stored_path in attachment_paths {
-        if let Err(error) = fs::remove_file(&stored_path) {
-            if error.kind() != ErrorKind::NotFound {
-                eprintln!("Failed to remove deleted quick capture attachment: {error}");
+pub(super) fn restore_quick_capture_note(
+    id: String,
+    state: tauri::State<'_, QuickCaptureStoreState>,
+) -> Result<QuickCaptureNote, String> {
+    restore_note_in_store(&state.path, id)
+}
+
+fn restore_note_in_store(path: &Path, id: String) -> Result<QuickCaptureNote, String> {
+    let mut connection = open_store(path)?;
+    let note_json = connection
+        .query_row(
+            "SELECT note_json FROM quick_capture_deleted_notes WHERE id = ?1",
+            [&id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "取り消せる削除履歴が見つかりません。".to_string())?;
+    let note: QuickCaptureNote =
+        serde_json::from_str(&note_json).map_err(|error| error.to_string())?;
+    if note.id != id {
+        return Err("削除履歴のメモIDが一致しません。".to_string());
+    }
+    for attachment in &note.attachments {
+        if !Path::new(&attachment.stored_path).is_file() {
+            return Err(format!(
+                "添付ファイル {} が見つからないため復元できません。",
+                attachment.file_name
+            ));
+        }
+    }
+    let transaction = connection
+        .transaction()
+        .map_err(|error| error.to_string())?;
+    let exists: bool = transaction
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM quick_capture_notes WHERE id = ?1)",
+            [&id],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    if exists {
+        return Err("同じIDのメモがすでに存在します。".to_string());
+    }
+    transaction
+        .execute(
+            "INSERT INTO quick_capture_notes(id, content, pinned, created_at, updated_at)
+             VALUES(?1, ?2, ?3, ?4, ?5)",
+            params![
+                note.id,
+                note.content,
+                note.pinned,
+                note.created_at,
+                note.updated_at
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    for tag in normalize_tags(note.tags.clone()) {
+        transaction
+            .execute(
+                "INSERT INTO quick_capture_note_tags(note_id, tag) VALUES(?1, ?2)",
+                params![note.id, tag],
+            )
+            .map_err(|error| error.to_string())?;
+    }
+    for attachment in &note.attachments {
+        transaction
+            .execute(
+                "INSERT INTO quick_capture_attachments(
+                   id, note_id, file_name, mime_type, size_bytes, stored_path, created_at
+                 ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![
+                    attachment.id,
+                    note.id,
+                    attachment.file_name,
+                    attachment.mime_type,
+                    attachment.size_bytes,
+                    attachment.stored_path,
+                    attachment.created_at,
+                ],
+            )
+            .map_err(|error| error.to_string())?;
+    }
+    transaction
+        .execute(
+            "DELETE FROM quick_capture_deleted_notes WHERE id = ?1",
+            [&id],
+        )
+        .map_err(|error| error.to_string())?;
+    transaction.commit().map_err(|error| error.to_string())?;
+    Ok(note)
+}
+
+fn purge_expired_deleted_notes(path: &Path) -> Result<(), String> {
+    let connection = open_store(path)?;
+    let cutoff = (Utc::now() - chrono::Duration::days(30)).to_rfc3339();
+    let mut statement = connection
+        .prepare(
+            "SELECT id, note_json FROM quick_capture_deleted_notes
+             WHERE deleted_at < ?1",
+        )
+        .map_err(|error| error.to_string())?;
+    let rows = statement
+        .query_map([cutoff.clone()], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(|error| error.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    drop(statement);
+    for (_, note_json) in rows {
+        if let Ok(note) = serde_json::from_str::<QuickCaptureNote>(&note_json) {
+            for attachment in note.attachments {
+                let _ = fs::remove_file(attachment.stored_path);
             }
         }
     }
+    connection
+        .execute(
+            "DELETE FROM quick_capture_deleted_notes WHERE deleted_at < ?1",
+            [cutoff],
+        )
+        .map_err(|error| error.to_string())?;
     Ok(())
 }
 

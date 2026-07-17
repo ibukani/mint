@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Tag,
   Trash2,
+  Undo2,
   X,
 } from "lucide-react";
 import type { RefObject } from "react";
@@ -266,6 +267,17 @@ export const QuickCaptureEditor = ({
               : "")}
       </span>
       <div>
+        {capture.canUndoDelete && (
+          <button
+            type="button"
+            className="quick-capture__undo"
+            disabled={isSaving}
+            onClick={() => void capture.undoDelete()}
+            title="直前に削除したメモを復元"
+          >
+            <Undo2 size={14} aria-hidden="true" /> 削除を取り消す
+          </button>
+        )}
         {capture.error &&
           (capture.canRetrySave || capture.canRetryDuplicate) && (
             <button

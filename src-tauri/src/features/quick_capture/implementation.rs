@@ -53,3 +53,10 @@ pub(super) fn delete_quick_capture_note(
 ) -> Result<(), String> {
     repository::delete_quick_capture_note(id, state)
 }
+
+pub(super) fn restore_quick_capture_note(
+    id: String,
+    state: State<'_, QuickCaptureStoreState>,
+) -> Result<QuickCaptureNote, String> {
+    repository::restore_quick_capture_note(id, state)
+}

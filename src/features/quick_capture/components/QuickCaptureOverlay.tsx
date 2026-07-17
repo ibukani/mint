@@ -202,7 +202,7 @@ export const QuickCaptureOverlay: React.FC = () => {
         description={
           confirmation?.kind === "import"
             ? `現在の下書きと保存済みメモ${capture.notes.length}件を、選択したバックアップの内容で置き換えます。`
-            : `「${confirmation?.kind === "delete" ? noteTitle(confirmation.note) : "このメモ"}」を削除します。添付ファイルも削除され、この操作は取り消せません。`
+            : `「${confirmation?.kind === "delete" ? noteTitle(confirmation.note) : "このメモ"}」を削除します。添付ファイルも保持され、直後なら「削除を取り消す」で復元できます。`
         }
         confirmLabel={
           confirmation?.kind === "import" ? "置き換えて復元" : "削除する"

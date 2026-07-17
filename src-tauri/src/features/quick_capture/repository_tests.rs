@@ -4,7 +4,7 @@ use super::super::{
     models::{QuickCaptureAttachmentInput, QuickCaptureExportInput},
 };
 use super::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn test_path() -> PathBuf {
     std::env::temp_dir().join(format!("mint-quick-capture-{}.sqlite3", Uuid::new_v4()))
@@ -60,6 +60,47 @@ fn draft_and_note_crud_round_trip() {
     delete_note_in_store(&path, note.id).unwrap();
     assert!(load_state_from_store(&path).unwrap().notes.is_empty());
     let _ = fs::remove_file(path);
+}
+
+#[test]
+fn deleted_notes_can_be_restored_with_their_attachments() {
+    let path = test_path();
+    let data_dir = path.with_extension("data");
+    let source = path.with_extension("txt");
+    fs::write(&source, "復元する添付内容").unwrap();
+    let note = create_note_in_store(
+        &path,
+        QuickCaptureNoteInput {
+            content: "復元するメモ".into(),
+            tags: vec!["undo".into()],
+            pinned: true,
+        },
+    )
+    .unwrap();
+    let attachment = add_attachment_in_store(
+        &path,
+        &data_dir,
+        QuickCaptureAttachmentInput {
+            note_id: note.id.clone(),
+            source_path: source.to_string_lossy().to_string(),
+        },
+    )
+    .unwrap();
+
+    delete_note_in_store(&path, note.id.clone()).unwrap();
+    assert!(load_state_from_store(&path).unwrap().notes.is_empty());
+    assert!(Path::new(&attachment.stored_path).is_file());
+
+    let restored = restore_note_in_store(&path, note.id).unwrap();
+    assert_eq!(restored.content, "復元するメモ");
+    assert!(restored.pinned);
+    assert_eq!(restored.tags, vec!["undo"]);
+    assert_eq!(restored.attachments.len(), 1);
+    assert_eq!(load_state_from_store(&path).unwrap().notes.len(), 1);
+
+    let _ = fs::remove_file(path);
+    let _ = fs::remove_file(source);
+    let _ = fs::remove_dir_all(data_dir);
 }
 
 #[test]

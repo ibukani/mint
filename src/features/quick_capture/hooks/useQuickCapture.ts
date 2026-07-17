@@ -6,6 +6,7 @@ import {
   importQuickCaptureBackup,
   loadQuickCaptureState,
   promoteQuickCaptureNote,
+  restoreQuickCaptureNote,
   saveQuickCaptureDraft,
   updateQuickCaptureNote,
 } from "../api";
@@ -29,6 +30,7 @@ export const useQuickCapture = () => {
   const [error, setError] = useState<string | null>(null);
   const [canRetrySave, setCanRetrySave] = useState(false);
   const [canRetryDuplicate, setCanRetryDuplicate] = useState(false);
+  const [undoDeleteId, setUndoDeleteId] = useState<string | null>(null);
   const [focusSequence, setFocusSequence] = useState(0);
   const loaded = useRef(false);
   const revision = useRef(0);
@@ -90,6 +92,7 @@ export const useQuickCapture = () => {
         tags: tagsToText(state.draft.tags),
       };
       loaded.current = true;
+      setUndoDeleteId(null);
       setNotes(sortNotes(state.notes));
       setDraft(nextDraft);
       draftRef.current = nextDraft;
@@ -335,6 +338,7 @@ export const useQuickCapture = () => {
         if (persistInFlightRef.current) await persistQueueRef.current;
         await deleteQuickCaptureNote(noteId);
         setNotes((current) => current.filter((note) => note.id !== noteId));
+        setUndoDeleteId(noteId);
         if (activeId === noteId) showDraft();
         setStatus("saved");
         setCanRetrySave(false);
@@ -355,6 +359,24 @@ export const useQuickCapture = () => {
     async () => (activeId ? removeNote(activeId) : null),
     [activeId, removeNote],
   );
+
+  const undoDelete = useCallback(async () => {
+    const noteId = undoDeleteId;
+    if (!noteId) return false;
+    setStatus("saving");
+    setError(null);
+    try {
+      const restored = await restoreQuickCaptureNote(noteId);
+      setNotes((current) => sortNotes([restored, ...current]));
+      setUndoDeleteId(null);
+      setStatus("saved");
+      return true;
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setStatus("error");
+      return false;
+    }
+  }, [sortNotes, undoDeleteId]);
 
   const exportBackup = useCallback(
     async (path: string) => {
@@ -459,6 +481,8 @@ export const useQuickCapture = () => {
     promote,
     removeActive,
     removeNote,
+    canUndoDelete: undoDeleteId !== null,
+    undoDelete,
     retrySave,
     selectNote,
     setContent: updateContent,
