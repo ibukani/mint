@@ -36,6 +36,7 @@ export const useQuickCapture = () => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef({ content: "", tags: "" });
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const persistInFlightRef = useRef(false);
   const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
   const clipboardCaptureInFlightRef = useRef(false);
@@ -170,7 +171,20 @@ export const useQuickCapture = () => {
         return false;
       }
     });
+    persistInFlightRef.current = true;
     persistQueueRef.current = operation;
+    void operation.then(
+      () => {
+        if (persistQueueRef.current === operation) {
+          persistInFlightRef.current = false;
+        }
+      },
+      () => {
+        if (persistQueueRef.current === operation) {
+          persistInFlightRef.current = false;
+        }
+      },
+    );
     return operation;
   }, [activeId, clearPendingPersist, content, pinned, sortNotes, tags]);
 
@@ -218,6 +232,9 @@ export const useQuickCapture = () => {
     setError(null);
     setCanRetrySave(false);
     try {
+      // Finish an already running autosave before the atomic promotion. This
+      // prevents an older draft write from landing after the promotion.
+      if (persistInFlightRef.current) await persistQueueRef.current;
       const promotion = await promoteQuickCaptureNote({
         content,
         tags: parseTags(tags),
@@ -314,6 +331,8 @@ export const useQuickCapture = () => {
       setError(null);
       setCanRetrySave(false);
       try {
+        // Deletion follows the latest content update for the same note.
+        if (persistInFlightRef.current) await persistQueueRef.current;
         await deleteQuickCaptureNote(noteId);
         setNotes((current) => current.filter((note) => note.id !== noteId));
         if (activeId === noteId) showDraft();

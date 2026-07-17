@@ -455,6 +455,47 @@ describe("useQuickCapture", () => {
     expect(result.current.content).toBe("");
   });
 
+  it("waits for an in-flight draft save before promoting it", async () => {
+    let resolveSave: ((value: unknown) => void) | undefined;
+    mocks.saveDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+    act(() => result.current.setContent("競合させないメモ"));
+
+    let savePromise: Promise<boolean> | undefined;
+    await act(async () => {
+      savePromise = result.current.retrySave();
+      await Promise.resolve();
+    });
+    let promotionPromise: Promise<void> | undefined;
+    act(() => {
+      promotionPromise = result.current.promote();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.promote).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveSave?.({
+        content: "競合させないメモ",
+        tags: [],
+        updatedAt: "2026-07-13T00:00:01.000Z",
+      });
+      await Promise.all([savePromise, promotionPromise]);
+    });
+
+    expect(mocks.promote).toHaveBeenCalledWith({
+      content: "競合させないメモ",
+      tags: [],
+      pinned: false,
+    });
+  });
+
   it("saves the latest edit before duplicating the active note", async () => {
     const duplicatedNote = {
       ...savedNote,
