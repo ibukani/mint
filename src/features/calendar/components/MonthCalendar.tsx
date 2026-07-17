@@ -10,7 +10,11 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildCalendarDays, startOfMonth, toMachineDate } from "../calendar";
-import { eventsForDate, formatEventDate, formatEventTime } from "../events";
+import {
+  countEventsForDate,
+  formatEventDate,
+  formatEventTime,
+} from "../events";
 import type { CalendarEvent } from "../types";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
@@ -63,6 +67,16 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   const days = useMemo(
     () => buildCalendarDays(viewMonth, today),
     [viewMonth, today],
+  );
+  const eventCountsByDate = useMemo(
+    () =>
+      new Map(
+        days.map((day) => [
+          day.machineDate,
+          countEventsForDate(events, day.machineDate),
+        ]),
+      ),
+    [days, events],
   );
   const monthLabel = `${viewMonth.getFullYear()}年 ${viewMonth.getMonth() + 1}月`;
 
@@ -263,9 +277,8 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
 
       <div className="month-calendar__grid">
         {days.map((day) => {
-          const dayEvents = eventsForDate(events, day.machineDate);
-          const eventLabel =
-            dayEvents.length > 0 ? `、予定${dayEvents.length}件` : "";
+          const eventCount = eventCountsByDate.get(day.machineDate) ?? 0;
+          const eventLabel = eventCount > 0 ? `、予定${eventCount}件` : "";
           return (
             <button
               type="button"
@@ -288,7 +301,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                   {day.date.getDate()}
                 </span>
               </time>
-              {dayEvents.length > 0 && (
+              {eventCount > 0 && (
                 <span
                   className="month-calendar__event-dot"
                   aria-hidden="true"

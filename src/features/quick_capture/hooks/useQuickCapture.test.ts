@@ -14,9 +14,11 @@ const mocks = vi.hoisted(() => ({
   updateNote: vi.fn(),
   addAttachment: vi.fn(),
   hide: vi.fn(),
+  isVisible: vi.fn(),
   listen: vi.fn(),
   listeners: new Map<string, (event: { payload?: unknown }) => void>(),
   focusChanged: null as ((event: { payload: boolean }) => void) | null,
+  closeRequested: null as (() => void) | null,
   dragDropHandler: null as ((event: { payload: DragDropEvent }) => void) | null,
 }));
 
@@ -41,10 +43,17 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     hide: mocks.hide,
+    isVisible: mocks.isVisible,
     onFocusChanged: async (handler: (event: { payload: boolean }) => void) => {
       mocks.focusChanged = handler;
       return () => {
         mocks.focusChanged = null;
+      };
+    },
+    onCloseRequested: async (handler: () => void) => {
+      mocks.closeRequested = handler;
+      return () => {
+        mocks.closeRequested = null;
       };
     },
     onDragDropEvent: async (
@@ -84,7 +93,9 @@ describe("useQuickCapture", () => {
     vi.clearAllMocks();
     mocks.listeners.clear();
     mocks.focusChanged = null;
+    mocks.closeRequested = null;
     mocks.dragDropHandler = null;
+    mocks.isVisible.mockResolvedValue(true);
     mocks.load.mockResolvedValue(state);
     mocks.promote.mockResolvedValue({
       note: savedNote,
@@ -246,6 +257,66 @@ describe("useQuickCapture", () => {
     expect(result.current.error).toBe("保存に失敗しました");
   });
 
+  it("releases the saved note list while hidden and reloads it when shown", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.notes).toHaveLength(1));
+    act(() => mocks.listeners.get("quick-capture-shown")?.({}));
+    await act(async () => Promise.resolve());
+    expect(mocks.load).toHaveBeenCalledOnce();
+
+    await act(async () => result.current.close());
+    expect(result.current.notes).toEqual([]);
+
+    act(() => mocks.listeners.get("quick-capture-shown")?.({}));
+    await waitFor(() => expect(result.current.notes).toHaveLength(1));
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not load the saved state until a hidden window is shown", async () => {
+    mocks.isVisible.mockResolvedValue(false);
+    const { result } = renderHook(() => useQuickCapture());
+    const showQuickCapture = mocks.listeners.get("quick-capture-shown");
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(result.current.notes).toEqual([]);
+
+    act(() => showQuickCapture?.({}));
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+
+    expect(mocks.load).toHaveBeenCalledOnce();
+  });
+
+  it("ignores a stale reload failure after a newer reload succeeds", async () => {
+    let rejectFirstLoad: ((reason: unknown) => void) | undefined;
+    mocks.load.mockImplementationOnce(
+      () =>
+        new Promise<QuickCaptureState>((_resolve, reject) => {
+          rejectFirstLoad = reject;
+        }),
+    );
+    mocks.load.mockResolvedValueOnce(state);
+
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(mocks.load).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      await result.current.reload();
+    });
+    expect(result.current.content).toBe("下書きの内容");
+
+    await act(async () => {
+      rejectFirstLoad?.(new Error("古い読み込みの失敗"));
+      await Promise.resolve();
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
   it("saves and hides once when an unpinned visible window loses focus", async () => {
     const { result } = renderHook(() => useQuickCapture());
     await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
@@ -258,6 +329,20 @@ describe("useQuickCapture", () => {
     });
 
     await waitFor(() => expect(mocks.hide).toHaveBeenCalledOnce());
+  });
+
+  it("uses the save path when the native window close is requested", async () => {
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+
+    await act(async () => {
+      mocks.closeRequested?.();
+      await Promise.resolve();
+    });
+
+    expect(mocks.saveDraft).toHaveBeenCalled();
+    expect(mocks.hide).toHaveBeenCalledOnce();
+    expect(result.current.notes).toEqual([]);
   });
 
   it("keeps the window open while pinned and remembers the pin after reopening", async () => {

@@ -1,8 +1,9 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
 };
+
+use crate::core::window::show_main_window;
 
 pub fn init_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show_i = MenuItem::with_id(
@@ -26,10 +27,7 @@ pub fn init_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.0.as_str() {
             "show" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                show_main_window(app);
             }
             "quit" => {
                 app.exit(0);
@@ -44,10 +42,7 @@ pub fn init_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             } = event
             {
                 let app = tray.app_handle();
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                show_main_window(app);
             }
         })
         .build(app)?;

@@ -12,6 +12,14 @@ const mocks = vi.hoisted(() => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   setCalendarPosition: vi.fn().mockResolvedValue(undefined),
   setCalendarSize: vi.fn().mockResolvedValue(undefined),
+  closeRequested: null as (() => void) | null,
+  checkVisibility: false,
+  windowVisible: true,
+  isCalendarVisible: vi.fn(),
+  currentMonitor: vi.fn().mockResolvedValue({
+    size: { width: 1920, height: 1080 },
+    scaleFactor: 1,
+  }),
   openEditorShouldFail: false,
   syncShouldFail: false,
   invoke: vi.fn<(command: string) => Promise<unknown>>(async (command) => {
@@ -59,14 +67,18 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
-  currentMonitor: vi.fn().mockResolvedValue({
-    size: { width: 1920, height: 1080 },
-    scaleFactor: 1,
-  }),
+  currentMonitor: mocks.currentMonitor,
   getCurrentWindow: vi.fn(() => ({
     hide: mocks.hideCalendar,
+    ...(mocks.checkVisibility ? { isVisible: mocks.isCalendarVisible } : {}),
     setPosition: mocks.setCalendarPosition,
     setSize: mocks.setCalendarSize,
+    onCloseRequested: vi.fn(async (callback: () => void) => {
+      mocks.closeRequested = callback;
+      return () => {
+        mocks.closeRequested = null;
+      };
+    }),
   })),
   LogicalPosition: class LogicalPosition {
     constructor(
@@ -106,12 +118,20 @@ describe("CalendarOverlay window coordination", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 11, 9, 0, 0));
+    window.localStorage.clear();
     mocks.listeners.clear();
     mocks.hideCalendar.mockClear();
     mocks.hideClock.mockClear();
     mocks.emitTo.mockClear();
     mocks.setCalendarPosition.mockClear();
     mocks.setCalendarSize.mockClear();
+    mocks.closeRequested = null;
+    mocks.currentMonitor.mockClear();
+    mocks.checkVisibility = false;
+    mocks.windowVisible = true;
+    mocks.isCalendarVisible
+      .mockReset()
+      .mockImplementation(() => Promise.resolve(mocks.windowVisible));
     mocks.openEditorShouldFail = false;
     mocks.syncShouldFail = false;
     mocks.invoke.mockClear();
@@ -165,7 +185,9 @@ describe("CalendarOverlay window coordination", () => {
 
     expect(mocks.hideCalendar).toHaveBeenCalledOnce();
     expect(mocks.hideClock).not.toHaveBeenCalled();
-    expect(mocks.emitTo).toHaveBeenCalledWith("clock", "calendar-closed");
+    expect(mocks.emitTo).toHaveBeenCalledWith("clock", "calendar-closed", {
+      hideClock: false,
+    });
   });
 
   it("closes a clock opened as part of the calendar session", async () => {
@@ -201,6 +223,18 @@ describe("CalendarOverlay window coordination", () => {
     expect(mocks.hideClock).toHaveBeenCalledOnce();
   });
 
+  it("keeps native close requests on the same lifecycle as the overlay close", async () => {
+    render(<CalendarOverlay />);
+    act(() => {
+      mocks.closeRequested?.();
+      vi.advanceTimersByTime(240);
+    });
+    await act(async () => Promise.resolve());
+
+    expect(mocks.hideCalendar).toHaveBeenCalledOnce();
+    expect(mocks.hideClock).toHaveBeenCalledOnce();
+  });
+
   it("resizes the default calendar with the taller base height", async () => {
     render(<CalendarOverlay />);
 
@@ -220,6 +254,83 @@ describe("CalendarOverlay window coordination", () => {
     };
     expect(size.width).toBe(420);
     expect(size.height).toBe(384);
+  });
+
+  it("does not load or position while the newly created window is hidden", async () => {
+    mocks.checkVisibility = true;
+    mocks.windowVisible = false;
+    render(<CalendarOverlay />);
+    const showCalendar = mocks.listeners.get("calendar-shown");
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.currentMonitor).not.toHaveBeenCalled();
+    expect(
+      mocks.invoke.mock.calls.filter(
+        ([command]) =>
+          command === "list_calendar_events" ||
+          command === "get_next_calendar_event",
+      ),
+    ).toHaveLength(0);
+
+    mocks.windowVisible = true;
+    act(() => {
+      showCalendar?.({
+        payload: { closeClockOnToggle: false, docked: false },
+      });
+      vi.advanceTimersByTime(20);
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.currentMonitor).toHaveBeenCalled();
+    expect(
+      mocks.invoke.mock.calls.filter(
+        ([command]) => command === "list_calendar_events",
+      ),
+    ).not.toHaveLength(0);
+  });
+
+  it("treats an unknown browser visibility result as visible", async () => {
+    mocks.checkVisibility = true;
+    mocks.isCalendarVisible.mockResolvedValue(undefined);
+
+    render(<CalendarOverlay />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("region", { name: "月間カレンダー" }),
+    ).toBeVisible();
+    expect(mocks.currentMonitor).toHaveBeenCalled();
+  });
+
+  it("does not reposition when an unrelated settings update rerenders the overlay", async () => {
+    const view = render(<CalendarOverlay />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const initialMonitorCalls = mocks.currentMonitor.mock.calls.length;
+
+    view.rerender(<CalendarOverlay />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.currentMonitor).toHaveBeenCalledTimes(initialMonitorCalls);
   });
 
   it("opens the event editor when quick entry is requested", async () => {
@@ -288,9 +399,11 @@ describe("CalendarOverlay window coordination", () => {
     const consoleWarn = vi
       .spyOn(console, "warn")
       .mockImplementation(() => undefined);
+    const settings = createMockSettings();
+    settings.calendar.selectedGoogleCalendarIds = ["primary"];
     mocks.syncShouldFail = true;
     mocks.invoke.mockImplementation(async (command: string) => {
-      if (command === "load_settings") return createMockSettings();
+      if (command === "load_settings") return settings;
       if (command === "list_calendar_events") return [];
       if (command === "get_next_calendar_event") return null;
       if (command === "get_google_calendar_connection") {
@@ -338,7 +451,7 @@ describe("CalendarOverlay window coordination", () => {
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(mocks.invoke).toHaveBeenCalledWith("sync_google_calendars", {
-      calendarIds: [],
+      calendarIds: ["primary"],
     });
     consoleWarn.mockRestore();
   });

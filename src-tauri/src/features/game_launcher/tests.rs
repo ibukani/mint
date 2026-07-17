@@ -74,6 +74,18 @@ fn steam_artwork_supports_hashed_cache_layout() {
 }
 
 #[test]
+fn steam_artwork_rejects_unbounded_fallback_files() {
+    let root = std::env::temp_dir().join(format!("mint-steam-art-large-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(&root).unwrap();
+    let artwork = root.join("large.jpg");
+    fs::write(&artwork, vec![0_u8; 512 * 1024 + 1]).unwrap();
+
+    assert_eq!(image_file_data_url(&artwork), None);
+
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn repeated_shortcut_events_are_debounced() {
     let first = Instant::now();
     assert!(toggle_allowed(None, first));

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getClockDimensions, TickingClock } from "./ClockOverlay";
 
@@ -106,5 +106,48 @@ describe("digital clock presentation", () => {
     );
 
     expect(screen.getByRole("img")).toHaveAccessibleName("現在時刻 20時42分");
+  });
+
+  it("pauses its timer while the overlay is hidden", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 10, 8, 42, 18));
+
+    render(
+      <TickingClock
+        isActive={false}
+        showDate={false}
+        showSeconds
+        blinkColon={false}
+        displayMode="digital"
+        hourFormat="24h"
+        glowEffect={false}
+        clockColor="#38bdf8"
+      />,
+    );
+
+    expect(screen.getByText("18")).toBeInTheDocument();
+    vi.advanceTimersByTime(2_000);
+    expect(screen.getByText("18")).toBeInTheDocument();
+  });
+
+  it("sleeps until the next minute when seconds and blinking are disabled", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 10, 8, 42, 18));
+
+    render(
+      <TickingClock
+        showDate={false}
+        showSeconds={false}
+        blinkColon={false}
+        displayMode="digital"
+        hourFormat="24h"
+        glowEffect={false}
+        clockColor="#38bdf8"
+      />,
+    );
+
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => vi.advanceTimersByTime(42_100));
+    expect(screen.getByText("43")).toBeInTheDocument();
   });
 });

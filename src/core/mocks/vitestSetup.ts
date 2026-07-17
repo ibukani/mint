@@ -14,6 +14,7 @@ import { handlePluginIpcCommand } from "./pluginIpcMock";
 import { handleQuickCaptureIpcCommand } from "./quickCaptureIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
 import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
+import { handleWindowIpcCommand } from "./windowIpcMock";
 
 // テスト環境でTauriのウィンドウ管理をモック
 mockWindows(
@@ -99,6 +100,9 @@ mockIPCWithEvents(async (cmd, args) => {
   });
   if (settingsResult.handled) return settingsResult.value;
 
+  const windowResult = await handleWindowIpcCommand(cmd, typedArgs);
+  if (windowResult.handled) return windowResult.value;
+
   const calendarResult = await handleCalendarIpcCommand(cmd, typedArgs);
   if (calendarResult.handled) return calendarResult.value;
   const fileShelfResult = await handleFileShelfIpcCommand(cmd, typedArgs);
@@ -141,6 +145,8 @@ mockIPCWithEvents(async (cmd, args) => {
   if (pluginResult.handled) return pluginResult.value;
 
   switch (cmd) {
+    case "overlay_ready":
+      return null;
     default:
       return null;
   }

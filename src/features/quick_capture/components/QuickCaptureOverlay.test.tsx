@@ -15,6 +15,7 @@ const dialogMocks = vi.hoisted(() => ({
 }));
 const windowMocks = vi.hoisted(() => ({
   hide: vi.fn(),
+  isVisible: vi.fn(),
 }));
 const clipboardMocks = vi.hoisted(() => ({
   writeText: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     hide: windowMocks.hide,
+    isVisible: windowMocks.isVisible,
     onFocusChanged: async () => () => {},
   }),
 }));
@@ -42,6 +44,7 @@ describe("QuickCaptureOverlay", () => {
     dialogMocks.open.mockReset().mockResolvedValue(null);
     dialogMocks.save.mockReset().mockResolvedValue(null);
     windowMocks.hide.mockReset().mockResolvedValue(undefined);
+    windowMocks.isVisible.mockReset().mockResolvedValue(true);
     clipboardMocks.writeText.mockReset().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,

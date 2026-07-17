@@ -126,7 +126,7 @@ describe("FileShelfSettings", () => {
     expect(screen.getByLabelText("縦の位置")).toHaveValue("center");
     expect(
       screen.getByRole("switch", { name: "ハンドルを常に表示する" }),
-    ).toBeChecked();
+    ).not.toBeChecked();
     expect(
       screen.getByRole("switch", {
         name: "クリップボード履歴を保存する",

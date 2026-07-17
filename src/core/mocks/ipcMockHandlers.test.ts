@@ -3,6 +3,7 @@ import { handleGameLauncherIpcCommand } from "./gameLauncherIpcMock";
 import { handlePluginIpcCommand } from "./pluginIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
 import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
+import { handleWindowIpcCommand } from "./windowIpcMock";
 
 describe("shared IPC mock handlers", () => {
   it("validates overlay targets and delegates opening", async () => {
@@ -41,6 +42,19 @@ describe("shared IPC mock handlers", () => {
     expect(onLaunch).toHaveBeenCalledWith("demo");
   });
 
+  it("passes the game scan refresh flag through the browser mock", async () => {
+    const scanResult = { games: [], sources: [] };
+    const onScan = vi.fn().mockResolvedValue(scanResult);
+
+    await handleGameLauncherIpcCommand(
+      "list_installed_games",
+      { force: true },
+      { scanResult, onScan },
+    );
+
+    expect(onScan).toHaveBeenCalledWith(true);
+  });
+
   it("shares transcription validation between browser and Vitest mocks", async () => {
     const result = await handleTranscriptionIpcCommand(
       "transcribe_audio_file",
@@ -75,5 +89,15 @@ describe("shared IPC mock handlers", () => {
     );
 
     expect(result).toEqual({ handled: true, value: update });
+  });
+
+  it("acknowledges the overlay readiness handshake", async () => {
+    const onOverlayReady = vi.fn();
+    const result = await handleWindowIpcCommand("overlay_ready", undefined, {
+      onOverlayReady,
+    });
+
+    expect(result).toEqual({ handled: true, value: undefined });
+    expect(onOverlayReady).toHaveBeenCalledOnce();
   });
 });

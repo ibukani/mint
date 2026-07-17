@@ -10,10 +10,12 @@ const COLLAPSED_HEIGHT: f64 = 96.0;
 const EXPANDED_WIDTH: f64 = 360.0;
 const EXPANDED_HEIGHT: f64 = 520.0;
 
-pub use clipboard::{apply_clipboard_history_settings, start_clipboard_history_monitor};
+pub use clipboard::{
+    apply_clipboard_history_settings, configure_clipboard_history_monitor, ClipboardHistoryMonitor,
+};
 pub use repository::initialize_store;
 pub use shortcut::handle_file_shelf_shortcut_event;
-pub use window::{apply_window_settings, toggle_file_shelf_overlay};
+pub use window::{apply_window_settings, show_file_shelf_overlay, toggle_file_shelf_overlay};
 
 #[allow(unused_imports)]
 pub use models::{
@@ -115,7 +117,7 @@ pub fn should_auto_expand_file_shelf(app: tauri::AppHandle) -> Result<bool, Stri
 }
 
 #[tauri::command]
-pub fn set_file_shelf_expanded(
+pub async fn set_file_shelf_expanded(
     app: tauri::AppHandle,
     expanded: bool,
     focus: bool,

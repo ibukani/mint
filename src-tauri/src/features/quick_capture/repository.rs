@@ -1,6 +1,12 @@
 use chrono::{SecondsFormat, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
-use std::{collections::HashSet, fs, io::ErrorKind, path::Path, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    io::ErrorKind,
+    path::Path,
+    time::Duration,
+};
 use tauri::{AppHandle, Manager};
 use uuid::Uuid;
 
@@ -87,16 +93,28 @@ pub(super) fn normalize_tags(tags: Vec<String>) -> Vec<String> {
         .collect()
 }
 
-fn read_tags(connection: &Connection, note_id: &str) -> Result<Vec<String>, String> {
+fn read_tags_by_note(connection: &Connection) -> Result<HashMap<String, Vec<String>>, String> {
     let mut statement = connection
-        .prepare("SELECT tag FROM quick_capture_note_tags WHERE note_id = ?1 ORDER BY tag COLLATE NOCASE")
+        .prepare(
+            "SELECT note_id, tag FROM quick_capture_note_tags
+             ORDER BY note_id, tag COLLATE NOCASE",
+        )
         .map_err(|error| error.to_string())?;
-    let tags = statement
-        .query_map([note_id], |row| row.get(0))
+    let rows = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
         .map_err(|error| error.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
-    Ok(tags)
+    let mut tags_by_note = HashMap::new();
+    for (note_id, tag) in rows {
+        tags_by_note
+            .entry(note_id)
+            .or_insert_with(Vec::new)
+            .push(tag);
+    }
+    Ok(tags_by_note)
 }
 
 fn read_attachments(
@@ -124,6 +142,42 @@ fn read_attachments(
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     Ok(attachments)
+}
+
+fn read_attachments_by_note(
+    connection: &Connection,
+) -> Result<HashMap<String, Vec<QuickCaptureAttachment>>, String> {
+    let mut statement = connection
+        .prepare(
+            "SELECT note_id, id, file_name, mime_type, size_bytes, stored_path, created_at
+             FROM quick_capture_attachments ORDER BY note_id, created_at DESC",
+        )
+        .map_err(|error| error.to_string())?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                QuickCaptureAttachment {
+                    id: row.get(1)?,
+                    file_name: row.get(2)?,
+                    mime_type: row.get(3)?,
+                    size_bytes: row.get(4)?,
+                    stored_path: row.get(5)?,
+                    created_at: row.get(6)?,
+                },
+            ))
+        })
+        .map_err(|error| error.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    let mut attachments_by_note = HashMap::new();
+    for (note_id, attachment) in rows {
+        attachments_by_note
+            .entry(note_id)
+            .or_insert_with(Vec::new)
+            .push(attachment);
+    }
+    Ok(attachments_by_note)
 }
 
 pub(super) fn load_state_from_store(path: &Path) -> Result<QuickCaptureState, String> {
@@ -175,12 +229,14 @@ pub(super) fn load_state_from_store(path: &Path) -> Result<QuickCaptureState, St
         .map_err(|error| error.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
+    let mut tags_by_note = read_tags_by_note(&connection)?;
+    let mut attachments_by_note = read_attachments_by_note(&connection)?;
     let notes = rows
         .into_iter()
         .map(|(id, content, pinned, created_at, updated_at)| {
             Ok(QuickCaptureNote {
-                tags: read_tags(&connection, &id)?,
-                attachments: read_attachments(&connection, &id)?,
+                tags: tags_by_note.remove(&id).unwrap_or_default(),
+                attachments: attachments_by_note.remove(&id).unwrap_or_default(),
                 id,
                 content,
                 pinned,

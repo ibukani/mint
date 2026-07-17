@@ -285,6 +285,14 @@ export const eventsForDate = (events: CalendarEvent[], date: string) =>
       return left.title.localeCompare(right.title, "ja");
     });
 
+export const countEventsForDate = (events: CalendarEvent[], date: string) => {
+  let count = 0;
+  for (const event of events) {
+    if (eventOccursOnDate(event, date)) count += 1;
+  }
+  return count;
+};
+
 export const formatEventTime = (event: CalendarEvent) => {
   if (event.schedule.kind === "allDay") return "終日";
   const formatter = new Intl.DateTimeFormat("ja-JP", {

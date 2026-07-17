@@ -1,6 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { loadSettings } from "../../../core/settings";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  rememberGoogleCalendarSync,
+  shouldRunAutomaticGoogleCalendarSync,
+} from "../autoSyncPolicy";
 import {
   buildEventCursor,
   buildEventRange,
@@ -20,7 +23,14 @@ export const useCalendarEvents = (
   viewMonth: Date,
   today: Date,
   showSequence: number,
+  calendarIds: string[] | null,
+  isVisible: boolean,
 ) => {
+  const calendarIdsKey = calendarIds?.join("\u0000") ?? "";
+  // Keep the selected IDs stable by content so unrelated overlay renders do
+  // not restart the automatic sync effect.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: calendarIdsKey is the intentional content-based dependency.
+  const stableCalendarIds = useMemo(() => calendarIds, [calendarIdsKey]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [nextEvent, setNextEvent] = useState<CalendarEvent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,33 +43,50 @@ export const useCalendarEvents = (
   const requestSequenceRef = useRef(0);
   const syncSequenceRef = useRef(0);
   const mountedRef = useRef(true);
+  const isVisibleRef = useRef(isVisible);
+  isVisibleRef.current = isVisible;
 
-  const refresh = useCallback(() => setRevision((current) => current + 1), []);
-
-  const sync = useCallback(async () => {
-    const sequence = ++syncSequenceRef.current;
-    setSyncError("");
-
-    try {
-      const settings = await loadSettings();
-      const connection = await getGoogleCalendarConnection();
-      if (!connection.connected || connection.syncing) return;
-
-      setSyncing(true);
-
-      await syncGoogleCalendars(settings.calendar.selectedGoogleCalendarIds);
-      if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
-      refresh();
-    } catch (syncReason) {
-      if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
-      console.warn("Google Calendar sync failed:", syncReason);
-      setSyncError(formatGoogleCalendarError(syncReason));
-    } finally {
-      if (mountedRef.current && syncSequenceRef.current === sequence) {
-        setSyncing(false);
-      }
+  const refresh = useCallback(() => {
+    if (isVisibleRef.current) {
+      setRevision((current) => current + 1);
     }
-  }, [refresh]);
+  }, []);
+
+  const sync = useCallback(
+    async (force = false) => {
+      if (!isVisibleRef.current) return;
+      const sequence = ++syncSequenceRef.current;
+      setSyncError("");
+      const selectedCalendarIds = stableCalendarIds;
+
+      try {
+        if (!selectedCalendarIds || selectedCalendarIds.length === 0) return;
+        const connection = await getGoogleCalendarConnection();
+        if (
+          !force &&
+          !shouldRunAutomaticGoogleCalendarSync(connection, selectedCalendarIds)
+        ) {
+          return;
+        }
+
+        setSyncing(true);
+
+        await syncGoogleCalendars(selectedCalendarIds);
+        rememberGoogleCalendarSync(selectedCalendarIds);
+        if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
+        refresh();
+      } catch (syncReason) {
+        if (!mountedRef.current || syncSequenceRef.current !== sequence) return;
+        console.warn("Google Calendar sync failed:", syncReason);
+        setSyncError(formatGoogleCalendarError(syncReason));
+      } finally {
+        if (mountedRef.current && syncSequenceRef.current === sequence) {
+          setSyncing(false);
+        }
+      }
+    },
+    [refresh, stableCalendarIds],
+  );
 
   useEffect(
     () => () => {
@@ -68,10 +95,11 @@ export const useCalendarEvents = (
     [],
   );
 
+  // showSequence is an explicit event-driven signal for a newly shown window.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence intentionally retriggers sync without being read by the effect body.
   useEffect(() => {
-    void showSequence;
-    void sync();
-  }, [showSequence, sync]);
+    if (isVisible) void sync();
+  }, [isVisible, showSequence, sync]);
 
   useEffect(() => {
     let isMounted = true;
@@ -79,6 +107,7 @@ export const useCalendarEvents = (
     const unlistenPromise = listen<CalendarEventsChangedPayload>(
       CALENDAR_EVENTS_CHANGED_EVENT,
       ({ payload }) => {
+        if (!isVisibleRef.current) return;
         if (payload?.event) setLastChangedEvent(payload.event);
         refresh();
       },
@@ -95,9 +124,11 @@ export const useCalendarEvents = (
     };
   }, [refresh]);
 
+  // Both counters are explicit reload signals; the request itself is derived
+  // from the current view and must restart when either one changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence and revision intentionally retrigger the request.
   useEffect(() => {
-    void showSequence;
-    void revision;
+    if (!isVisible) return;
     const requestSequence = requestSequenceRef.current + 1;
     requestSequenceRef.current = requestSequence;
     setLoading(true);
@@ -120,7 +151,22 @@ export const useCalendarEvents = (
       .finally(() => {
         if (requestSequenceRef.current === requestSequence) setLoading(false);
       });
-  }, [viewMonth, today, showSequence, revision]);
+  }, [isVisible, viewMonth, today, showSequence, revision]);
+
+  useEffect(() => {
+    if (isVisible) return;
+    requestSequenceRef.current += 1;
+    syncSequenceRef.current += 1;
+    setEvents([]);
+    setNextEvent(null);
+    setLastChangedEvent(null);
+    setError("");
+    setSyncError("");
+    setSyncing(false);
+    setLoading(false);
+  }, [isVisible]);
+
+  const retrySync = useCallback(() => sync(true), [sync]);
 
   return {
     events,
@@ -131,6 +177,6 @@ export const useCalendarEvents = (
     refresh,
     syncError,
     syncing,
-    retrySync: sync,
+    retrySync,
   };
 };

@@ -50,7 +50,9 @@ export const defaultAppSettings: AppSettings = {
     shortcut: "Alt+3",
     edge: "right",
     verticalPosition: "center",
-    edgeHandleEnabled: true,
+    // Keep the WebView-backed edge handle opt-in so a fresh install does not
+    // pay the resident WebView cost before the user needs the shelf.
+    edgeHandleEnabled: false,
     clipboardHistoryEnabled: false,
     clipboardHistoryLimit: 25,
     ignoredApplications: [

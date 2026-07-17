@@ -1,5 +1,3 @@
-import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createQuickCaptureNote,
@@ -11,11 +9,10 @@ import {
   saveQuickCaptureDraft,
   updateQuickCaptureNote,
 } from "../api";
-import type { QuickCaptureNoteCreatedPayload } from "../events";
-import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../events";
 import type { QuickCaptureNote } from "../types";
 import { parseTags } from "../utils";
 import { useQuickCaptureAttachments } from "./useQuickCaptureAttachments";
+import { useQuickCaptureWindowLifecycle } from "./useQuickCaptureWindowLifecycle";
 
 export type CaptureSaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -27,7 +24,6 @@ export const useQuickCapture = () => {
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
-  const [windowPinned, setWindowPinnedState] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [status, setStatus] = useState<CaptureSaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -36,15 +32,9 @@ export const useQuickCapture = () => {
   const [focusSequence, setFocusSequence] = useState(0);
   const loaded = useRef(false);
   const revision = useRef(0);
+  const notesReloadSequenceRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef({ content: "", tags: "" });
-  const closeRef = useRef<() => Promise<void>>(async () => {});
-  const windowPinnedRef = useRef(false);
-  const visibleRef = useRef(false);
-  const focusedRef = useRef(true);
-  const closingRef = useRef(false);
-  const autoHideSuppressionDepthRef = useRef(0);
-  const autoHideSuppressedRef = useRef(false);
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
@@ -60,40 +50,6 @@ export const useQuickCapture = () => {
     revision.current += 1;
     setPinned(value);
   }, []);
-  const setWindowPinned = useCallback((value: boolean) => {
-    windowPinnedRef.current = value;
-    setWindowPinnedState(value);
-  }, []);
-
-  const withAutoHideSuspended = useCallback(
-    async <Result>(operation: () => Promise<Result>): Promise<Result> => {
-      autoHideSuppressionDepthRef.current += 1;
-      autoHideSuppressedRef.current = true;
-      try {
-        return await operation();
-      } finally {
-        autoHideSuppressionDepthRef.current = Math.max(
-          0,
-          autoHideSuppressionDepthRef.current - 1,
-        );
-        if (autoHideSuppressionDepthRef.current === 0 && focusedRef.current) {
-          autoHideSuppressedRef.current = false;
-        }
-      }
-    },
-    [],
-  );
-
-  const attachments = useQuickCaptureAttachments({
-    activeId,
-    setNotes,
-    setStatus,
-    setError,
-    setCanRetrySave,
-    setCanRetryDuplicate,
-    withAutoHideSuspended,
-  });
-
   const clearPendingPersist = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -123,8 +79,10 @@ export const useQuickCapture = () => {
   }, []);
 
   const reload = useCallback(async () => {
+    const sequence = ++notesReloadSequenceRef.current;
     try {
       const state = await loadQuickCaptureState();
+      if (sequence !== notesReloadSequenceRef.current) return null;
       const nextDraft = {
         content: state.draft.content,
         tags: tagsToText(state.draft.tags),
@@ -138,6 +96,7 @@ export const useQuickCapture = () => {
       setCanRetrySave(false);
       return null;
     } catch (reason) {
+      if (sequence !== notesReloadSequenceRef.current) return null;
       const message = reason instanceof Error ? reason.message : String(reason);
       setError(message);
       setStatus("error");
@@ -145,6 +104,19 @@ export const useQuickCapture = () => {
       return message;
     }
   }, [showDraft, sortNotes]);
+
+  const reloadNotes = useCallback(async () => {
+    const sequence = ++notesReloadSequenceRef.current;
+    try {
+      const state = await loadQuickCaptureState();
+      if (sequence !== notesReloadSequenceRef.current) return;
+      setNotes(sortNotes(state.notes));
+    } catch (reason) {
+      if (sequence !== notesReloadSequenceRef.current) return;
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setStatus("error");
+    }
+  }, [sortNotes]);
 
   const persist = useCallback((): Promise<boolean> => {
     if (!loaded.current) return Promise.resolve(false);
@@ -380,83 +352,39 @@ export const useQuickCapture = () => {
     [clearPendingPersist, reload],
   );
 
-  const close = useCallback(async () => {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    try {
-      const saved = await persist();
-      if (!saved) return;
-      visibleRef.current = false;
-      try {
-        await getCurrentWindow().hide();
-      } catch (reason) {
-        visibleRef.current = true;
-        setError(reason instanceof Error ? reason.message : String(reason));
-        setStatus("error");
-        setCanRetrySave(false);
-      }
-    } finally {
-      closingRef.current = false;
-    }
-  }, [persist]);
+  const releaseNotes = useCallback(() => {
+    notesReloadSequenceRef.current += 1;
+    setNotes([]);
+  }, []);
+  const addNote = useCallback(
+    (note: QuickCaptureNote) => {
+      setNotes((current) =>
+        sortNotes([note, ...current.filter((item) => item.id !== note.id)]),
+      );
+    },
+    [sortNotes],
+  );
+  const lifecycle = useQuickCaptureWindowLifecycle({
+    persist,
+    reload,
+    reloadNotes,
+    showDraft,
+    releaseNotes,
+    addNote,
+    setError,
+    setStatus,
+    setCanRetrySave,
+  });
+  const attachments = useQuickCaptureAttachments({
+    activeId,
+    setNotes,
+    setStatus,
+    setError,
+    setCanRetrySave,
+    setCanRetryDuplicate,
+    withAutoHideSuspended: lifecycle.withAutoHideSuspended,
+  });
   const retrySave = persist;
-  closeRef.current = close;
-
-  useEffect(() => {
-    void reload();
-    document.body.classList.add("is-overlay");
-    document.documentElement.classList.add("is-overlay");
-    const shown = listen("quick-capture-shown", () => {
-      visibleRef.current = true;
-      focusedRef.current = true;
-      if (autoHideSuppressionDepthRef.current === 0) {
-        autoHideSuppressedRef.current = false;
-      }
-      showDraft();
-    });
-    const noteCreated = listen<QuickCaptureNoteCreatedPayload>(
-      QUICK_CAPTURE_NOTE_CREATED_EVENT,
-      ({ payload }) => {
-        const note = payload?.note;
-        if (!note) return;
-        setNotes((current) =>
-          sortNotes([note, ...current.filter((item) => item.id !== note.id)]),
-        );
-      },
-    );
-    const hide = listen(
-      "quick-capture-hide-requested",
-      () => void closeRef.current(),
-    );
-    const focus = getCurrentWindow().onFocusChanged(({ payload }) => {
-      focusedRef.current = payload;
-      if (payload) {
-        if (autoHideSuppressionDepthRef.current === 0) {
-          autoHideSuppressedRef.current = false;
-        }
-        return;
-      }
-      if (autoHideSuppressionDepthRef.current > 0) {
-        autoHideSuppressedRef.current = true;
-      }
-      if (
-        visibleRef.current &&
-        !windowPinnedRef.current &&
-        !closingRef.current &&
-        !autoHideSuppressedRef.current
-      ) {
-        void closeRef.current();
-      }
-    });
-    return () => {
-      document.body.classList.remove("is-overlay");
-      document.documentElement.classList.remove("is-overlay");
-      void shown.then((unlisten) => unlisten());
-      void noteCreated.then((unlisten) => unlisten());
-      void hide.then((unlisten) => unlisten());
-      void focus.then((unlisten) => unlisten());
-    };
-  }, [reload, showDraft, sortNotes]);
 
   const allTags = useMemo(
     () =>
@@ -470,7 +398,7 @@ export const useQuickCapture = () => {
     activeId,
     ...attachments,
     allTags,
-    close,
+    close: lifecycle.close,
     content,
     draft,
     duplicateActive,
@@ -487,7 +415,7 @@ export const useQuickCapture = () => {
     selectNote,
     setContent: updateContent,
     setPinned: updatePinned,
-    setWindowPinned,
+    setWindowPinned: lifecycle.setWindowPinned,
     setTags: updateTags,
     showDraft,
     status,
@@ -497,7 +425,7 @@ export const useQuickCapture = () => {
     importBackup,
     retryDuplicate: duplicateActive,
     reload,
-    windowPinned,
-    withAutoHideSuspended,
+    withAutoHideSuspended: lifecycle.withAutoHideSuspended,
+    windowPinned: lifecycle.windowPinned,
   };
 };

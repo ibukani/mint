@@ -1,18 +1,14 @@
-import { LogicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { emitTo, listen } from "@tauri-apps/api/event";
-import {
-  currentMonitor,
-  getCurrentWindow,
-  Window,
-} from "@tauri-apps/api/window";
+import { getCurrentWindow, Window } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import type { CalendarOpenMode } from "../types";
+import { useCalendarOverlayPosition } from "./useCalendarOverlayPosition";
 
 const ANIMATION_MS = 240;
-const WINDOW_MARGIN = 20;
-
 interface CalendarShownPayload {
   closeClockOnToggle: boolean;
   docked: boolean;
@@ -21,11 +17,16 @@ interface CalendarShownPayload {
 
 export const useCalendarOverlay = (canClose: () => boolean) => {
   const { settings } = useAppSettings();
-  const [isVisible, setIsVisible] = useState(true);
+  const calendarEnabled = settings?.calendar.enabled;
+  const clockEnabled = settings?.clock.enabled;
+  const clockSizePercent = settings?.clock.sizePercent;
+  const clockDisplayMode = settings?.clock.displayMode;
+  const [isVisible, setIsVisible] = useState(false);
   const [isHiding, setIsHiding] = useState(false);
   const [isDocked, setIsDocked] = useState(false);
   const [showSequence, setShowSequence] = useState(0);
   const [openMode, setOpenMode] = useState<CalendarOpenMode>("month");
+  const isVisibleRef = useRef(false);
   const closeClockOnToggleRef = useRef(false);
   const closingRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,11 +40,43 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const currentWindow = getCurrentWindow();
+    if (typeof currentWindow.isVisible !== "function") {
+      isVisibleRef.current = true;
+      setIsVisible(true);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    void currentWindow
+      .isVisible()
+      .then((visible) => {
+        if (mounted && visible !== false) {
+          isVisibleRef.current = true;
+          setIsVisible(true);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          isVisibleRef.current = true;
+          setIsVisible(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const closeCalendar = useCallback(
     (hideClock: boolean) => {
       if (!canClose()) return;
       if (closingRef.current) return;
       closingRef.current = true;
+      isVisibleRef.current = false;
       setIsVisible(false);
       setIsHiding(true);
 
@@ -63,7 +96,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
                 )
               : Promise.resolve(),
           ])
-            .then(() => emitTo("clock", "calendar-closed"))
+            .then(() => emitTo("clock", "calendar-closed", { hideClock }))
             .catch((error) =>
               console.error("Failed to hide calendar overlay:", error),
             )
@@ -80,6 +113,7 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   );
 
   useEffect(() => {
+    const currentWindow = getCurrentWindow();
     const shownPromise = listen<CalendarShownPayload>(
       "calendar-shown",
       ({ payload }) => {
@@ -92,9 +126,9 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
         setIsDocked(payload.docked);
         setOpenMode(payload.initialMode ?? "month");
         setIsHiding(false);
-        setIsVisible(false);
         setShowSequence((current) => current + 1);
-        requestAnimationFrame(() => setIsVisible(true));
+        isVisibleRef.current = true;
+        setIsVisible(true);
       },
     );
     const hidePromise = listen("calendar-hide-requested", () => {
@@ -107,12 +141,19 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     const hideAllPromise = listen("calendar-hide-all-requested", () => {
       closeCalendar(true);
     });
+    const closeRequested =
+      typeof currentWindow.onCloseRequested === "function"
+        ? currentWindow.onCloseRequested(() => closeCalendar(true))
+        : null;
 
     return () => {
       void shownPromise.then((unlisten) => unlisten());
       void hidePromise.then((unlisten) => unlisten());
       void createPromise.then((unlisten) => unlisten());
       void hideAllPromise.then((unlisten) => unlisten());
+      if (closeRequested) {
+        void closeRequested.then((unlisten) => unlisten());
+      }
     };
   }, [closeCalendar]);
 
@@ -124,97 +165,38 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   );
 
   useEffect(() => {
-    if (settings && !settings.calendar.enabled) {
+    if (calendarEnabled === false) {
       closeCalendar(closeClockOnToggleRef.current);
     }
-  }, [settings, closeCalendar]);
+  }, [calendarEnabled, closeCalendar]);
 
-  // Resize and position the window from the frontend
-  useEffect(() => {
-    if (!settings || !isVisible) return;
+  useOverlayWindowEviction(isVisible);
+  useOverlayWindowReady();
 
-    const percent = settings.clock.sizePercent / 100;
-    const baseW = settings.clock.displayMode === "analog" ? 240 : 420;
-    const contentWidth = Math.max(Math.round(baseW * percent), 320);
-    const width = contentWidth;
-    const height = Math.round(384 * Math.max(contentWidth / 420, 1.0));
-
-    const window = getCurrentWindow();
-
-    currentMonitor()
-      .then(async (monitor) => {
-        if (!monitor) return;
-
-        // 1. Resize the window first
-        if (typeof window.setSize === "function") {
-          await window
-            .setSize(new LogicalSize(width, height))
-            .catch((error) => {
-              console.error("Failed to resize calendar window:", error);
-            });
-        }
-
-        // 2. Position the window
-        const clockWindow = await Window.getByLabel("clock");
-        const isClockVisible =
-          clockWindow && typeof clockWindow.isVisible === "function"
-            ? await clockWindow.isVisible()
-            : false;
-        const docked = settings.clock.enabled && isClockVisible;
-        setIsDocked(docked);
-
-        if (docked && clockWindow) {
-          const clockPosition = await clockWindow.outerPosition();
-          const clockSize = await clockWindow.outerSize();
-          const scaleFactor = monitor.scaleFactor;
-
-          const calendarWidthPhysical = Math.round(width * scaleFactor);
-          const padding = 0;
-
-          const x = clockPosition.x + clockSize.width - calendarWidthPhysical;
-          const y = clockPosition.y + clockSize.height - padding;
-
-          await window
-            .setPosition(new PhysicalPosition(x, y))
-            .catch((error) => {
-              console.error(
-                "Failed to position calendar window (docked):",
-                error,
-              );
-            });
-        } else {
-          // Not docked, position at top-right
-          const scaleFactor = monitor.scaleFactor;
-          const calendarWidthPhysical = Math.round(width * scaleFactor);
-          const margin = Math.round(WINDOW_MARGIN * scaleFactor);
-
-          const x = monitor.size.width - calendarWidthPhysical - margin;
-          const y = margin;
-
-          await window
-            .setPosition(new PhysicalPosition(x, y))
-            .catch((error) => {
-              console.error(
-                "Failed to position calendar window (undocked):",
-                error,
-              );
-            });
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to load monitor details:", error);
-      });
-  }, [settings, isVisible]);
+  useCalendarOverlayPosition({
+    isVisible,
+    clockEnabled,
+    clockSizePercent,
+    clockDisplayMode,
+    setIsDocked,
+  });
 
   const animationClass = isHiding ? "is-hiding" : isVisible ? "is-visible" : "";
   const themeColor =
     settings?.calendar.themeColor ?? defaultAppSettings.calendar.themeColor;
+  const closeCalendarOverlay = useCallback(
+    () => closeCalendar(true),
+    [closeCalendar],
+  );
 
   return {
     animationClass,
-    closeCalendar: () => closeCalendar(true),
+    closeCalendar: closeCalendarOverlay,
     isDocked,
+    isVisible,
     openMode,
+    selectedGoogleCalendarIds:
+      settings?.calendar.selectedGoogleCalendarIds ?? null,
     showSequence,
     themeColor,
   };

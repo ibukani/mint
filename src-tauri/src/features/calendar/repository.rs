@@ -417,7 +417,7 @@ pub fn create_calendar_event(
     input: CalendarEventInput,
     state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<CalendarEvent, String> {
-    let settings = crate::core::settings::load_settings_internal(&app)?;
+    let settings = crate::core::settings::load_settings_cached(&app)?;
     create_calendar_event_with_sync_target(
         &state.path,
         input,

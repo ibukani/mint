@@ -3,6 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import { launchGame, listInstalledGames, openGameStorePage } from "../api";
 import { type GameScanResult, gameKey, type InstalledGame } from "../types";
 
@@ -11,11 +13,11 @@ const HIDE_ANIMATION_MS = 180;
 export const useGameLauncher = () => {
   const { settings, updateSettings } = useAppSettings();
   const [result, setResult] = useState<GameScanResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [launchingGameKey, setLaunchingGameKey] = useState<string | null>(null);
   const [openingStoreId, setOpeningStoreId] = useState<string | null>(null);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [hiding, setHiding] = useState(false);
   const [showSequence, setShowSequence] = useState(0);
   const scanSequence = useRef(0);
@@ -23,13 +25,15 @@ export const useGameLauncher = () => {
   const closingRef = useRef(false);
   const visibleRef = useRef(false);
   const launchingRef = useRef(false);
+  const initialScanStartedRef = useRef(false);
+  const initialShownRef = useRef(false);
 
-  const scan = useCallback(async () => {
+  const scan = useCallback(async (force = false) => {
     const sequence = ++scanSequence.current;
     setLoading(true);
     setError(null);
     try {
-      const next = await listInstalledGames();
+      const next = await listInstalledGames(force);
       if (sequence === scanSequence.current) setResult(next);
     } catch (reason) {
       if (sequence === scanSequence.current) {
@@ -43,6 +47,7 @@ export const useGameLauncher = () => {
   const close = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
+    scanSequence.current += 1;
     visibleRef.current = false;
     setVisible(false);
     setHiding(true);
@@ -53,6 +58,9 @@ export const useGameLauncher = () => {
       () => {
         void getCurrentWindow()
           .hide()
+          .then(() => {
+            setResult(null);
+          })
           .catch((error) => {
             console.error("Failed to hide game launcher window:", error);
           })
@@ -127,10 +135,37 @@ export const useGameLauncher = () => {
   );
 
   useEffect(() => {
+    let mounted = true;
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
-    void scan();
+    const currentWindow = getCurrentWindow();
+    const startInitialScan = () => {
+      if (initialScanStartedRef.current) return;
+      initialScanStartedRef.current = true;
+      void scan();
+    };
+    const assumeVisibleAndScan = () => {
+      if (!mounted) return;
+      visibleRef.current = true;
+      setVisible(true);
+      startInitialScan();
+    };
+
+    if (typeof currentWindow.isVisible !== "function") {
+      assumeVisibleAndScan();
+    } else {
+      void currentWindow
+        .isVisible()
+        .then((isWindowVisible) => {
+          if (!mounted || isWindowVisible === false) return;
+          assumeVisibleAndScan();
+        })
+        .catch(assumeVisibleAndScan);
+    }
+
     const shown = listen("game-launcher-shown", () => {
+      const firstShown = !initialShownRef.current;
+      initialShownRef.current = true;
       if (hideTimer.current) {
         clearTimeout(hideTimer.current);
         hideTimer.current = null;
@@ -140,22 +175,33 @@ export const useGameLauncher = () => {
       setHiding(false);
       setVisible(true);
       setShowSequence((current) => current + 1);
-      void scan();
+      if (!initialScanStartedRef.current) startInitialScan();
+      else if (!firstShown) void scan();
     });
     const hide = listen("game-launcher-hide-requested", close);
-    const currentWindow = getCurrentWindow();
     const focus = currentWindow.onFocusChanged(({ payload }) => {
       if (!payload && !closingRef.current && visibleRef.current) close();
     });
+    const closeRequested =
+      typeof currentWindow.onCloseRequested === "function"
+        ? currentWindow.onCloseRequested(() => close())
+        : null;
     return () => {
+      mounted = false;
       document.body.classList.remove("is-overlay");
       document.documentElement.classList.remove("is-overlay");
       if (hideTimer.current) clearTimeout(hideTimer.current);
       void shown.then((unlisten) => unlisten());
       void hide.then((unlisten) => unlisten());
       void focus.then((unlisten) => unlisten());
+      if (closeRequested) {
+        void closeRequested.then((unlisten) => unlisten());
+      }
     };
   }, [close, scan]);
+
+  useOverlayWindowEviction(visible);
+  useOverlayWindowReady();
 
   return {
     animationClass: hiding ? "is-hiding" : visible ? "is-visible" : "",

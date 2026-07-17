@@ -1,6 +1,6 @@
 import type { DragDropEvent } from "@tauri-apps/api/webview";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFileShelf } from "./useFileShelf";
 
 const apiMocks = vi.hoisted(() => ({
@@ -65,6 +65,8 @@ vi.mock("@tauri-apps/api/webview", () => ({
 }));
 
 describe("useFileShelf", () => {
+  const defaultInnerWidth = window.innerWidth;
+
   beforeEach(() => {
     vi.clearAllMocks();
     eventMocks.handlers.clear();
@@ -92,6 +94,73 @@ describe("useFileShelf", () => {
         return vi.fn();
       },
     );
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: defaultInnerWidth,
+    });
+  });
+
+  it("keeps only a summary while the collapsed shelf is resident", async () => {
+    const shelfState = {
+      groups: [
+        {
+          id: "group",
+          createdAt: "2026-07-15T00:00:00Z",
+          items: [
+            {
+              id: "file",
+              groupId: "group",
+              kind: "file" as const,
+              displayName: "report.pdf",
+              sourcePath: "C:\\Work\\report.pdf",
+              textContent: null,
+              mimeType: "application/pdf",
+              sizeBytes: 10,
+              createdAt: "2026-07-15T00:00:00Z",
+              availability: "ready" as const,
+              source: "manual" as const,
+              pinned: false,
+            },
+            {
+              id: "history",
+              groupId: "group",
+              kind: "text" as const,
+              displayName: "履歴",
+              sourcePath: null,
+              textContent: "clipboard text",
+              mimeType: "text/plain",
+              sizeBytes: 14,
+              createdAt: "2026-07-15T00:00:00Z",
+              availability: "ready" as const,
+              source: "clipboardHistory" as const,
+              pinned: false,
+            },
+          ],
+        },
+      ],
+    };
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 32,
+    });
+    apiMocks.loadFileShelfState.mockResolvedValue(shelfState);
+
+    const { result } = renderHook(() => useFileShelf());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.expanded).toBe(false);
+    expect(result.current.state.groups).toEqual([]);
+    expect(result.current.itemCount).toBe(2);
+    expect(result.current.clipboardHistoryCount).toBe(1);
+
+    await act(async () => {
+      await result.current.changeExpanded(true);
+    });
+    await waitFor(() => expect(result.current.state.groups).toHaveLength(1));
+    expect(apiMocks.loadFileShelfState).toHaveBeenCalledTimes(2);
   });
 
   it("shows shortcut capture success and failure feedback", async () => {

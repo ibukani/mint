@@ -1,252 +1,41 @@
-import {
-  ExternalLink,
-  Gamepad2,
-  Play,
-  RefreshCw,
-  Search,
-  Star,
-  X,
-} from "lucide-react";
+import { Gamepad2, RefreshCw, Search, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  isApplePlatform,
-  OverlayCard,
-  OverlayFrame,
-  revealElementVertically,
-} from "../../../design/layout";
+import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { useGameLauncher } from "../hooks/useGameLauncher";
-import { type GameStore, gameKey, type InstalledGame } from "../types";
+import { useGameLauncherList } from "../hooks/useGameLauncherList";
+import { gameKey } from "../types";
+import { GameArtwork } from "./GameArtwork";
+import { GameLauncherGameList } from "./GameLauncherGameList";
+import { GameLauncherPreview } from "./GameLauncherPreview";
+import { storeLabel } from "./gameLauncherPresentation";
 import "./GameLauncherOverlay.css";
 
-const storeLabel: Record<GameStore, string> = {
-  steam: "Steam",
-  epic: "Epic Games",
-  riot: "Riot Games",
-};
-
-function getAcronym(title: string): string {
-  const words = title.split(/[^a-zA-Z0-9]+/);
-  return words
-    .map((w) => w.charAt(0))
-    .join("")
-    .toLowerCase();
-}
-
-function getArtworkLabel(title: string): string {
-  const acronym = getAcronym(title).toUpperCase();
-  return acronym.length > 1
-    ? acronym.slice(0, 3)
-    : title.trim().slice(0, 1).toUpperCase();
-}
-
-const gameDomId = (game: InstalledGame) =>
-  `game-launcher-game-${gameKey(game).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-
-const GAME_PAGE_STEP = 5;
-
-export const GameArtwork: React.FC<{ game: InstalledGame }> = ({ game }) => {
-  const [failedSource, setFailedSource] = useState<string | null>(null);
-  const [loadedSource, setLoadedSource] = useState<string | null>(null);
-  const source =
-    game.imagePath && failedSource !== game.imagePath
-      ? game.imagePath
-      : game.fallbackImagePath && failedSource !== game.fallbackImagePath
-        ? game.fallbackImagePath
-        : null;
-  if (source) {
-    return (
-      <span
-        className={`game-launcher__artwork-shell is-${game.store}`}
-        aria-hidden="true"
-      >
-        <span className="game-launcher__artwork-initial">
-          {getArtworkLabel(game.title)}
-        </span>
-        <img
-          className={`game-launcher__artwork${loadedSource === source ? " is-loaded" : ""}`}
-          src={source}
-          alt=""
-          onLoad={() => setLoadedSource(source)}
-          onError={() => setFailedSource(source)}
-        />
-      </span>
-    );
-  }
-  return (
-    <span
-      className={`game-launcher__placeholder is-${game.store}`}
-      aria-hidden="true"
-    >
-      {getArtworkLabel(game.title)}
-    </span>
-  );
-};
+export { GameArtwork };
 
 export const GameLauncherOverlay: React.FC = () => {
-  const {
-    animationClass,
-    close,
-    error,
-    launchingGameKey,
-    openingStoreId,
-    loading,
-    result,
-    scan,
-    showSequence,
-    startGame,
-    openStorePage,
-    toggleFavorite,
-    favoriteGameKeys,
-    lastPlayedAtByGame,
-    themeColor,
-  } = useGameLauncher();
-  const [query, setQuery] = useState("");
-  const [selectedGameKey, setSelectedGameKey] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLElement>(null);
-  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const searchShortcutModifier = isApplePlatform() ? "Meta" : "Control";
-
-  const games = useMemo(() => {
-    const rawGames = result?.games ?? [];
-    const normalized = query.trim();
-    let filtered = rawGames;
-    if (normalized) {
-      const term = normalized.toLocaleLowerCase("ja");
-      filtered = rawGames.filter((game) =>
-        [game.title, storeLabel[game.store], getAcronym(game.title)].some(
-          (candidate) => candidate.toLocaleLowerCase("ja").includes(term),
-        ),
-      );
-    }
-    const favoriteSet = new Set(favoriteGameKeys);
-    return [...filtered].sort((left, right) => {
-      const leftKey = gameKey(left);
-      const rightKey = gameKey(right);
-      const favoriteDifference =
-        Number(favoriteSet.has(rightKey)) - Number(favoriteSet.has(leftKey));
-      if (favoriteDifference) return favoriteDifference;
-      const recentDifference =
-        (Date.parse(lastPlayedAtByGame[rightKey] ?? "") || 0) -
-        (Date.parse(lastPlayedAtByGame[leftKey] ?? "") || 0);
-      return recentDifference || left.title.localeCompare(right.title, "ja");
-    });
-  }, [favoriteGameKeys, lastPlayedAtByGame, query, result]);
-
-  useEffect(() => {
-    void showSequence;
-    setQuery("");
-    setSelectedGameKey(null);
-    inputRef.current?.focus({ preventScroll: true });
-  }, [showSequence]);
-
-  const activeIndex = games.length
-    ? Math.max(
-        0,
-        games.findIndex((game) => gameKey(game) === selectedGameKey),
-      )
-    : 0;
-  const selected = games[activeIndex];
-
-  useEffect(() => {
-    if (!games.length) {
-      if (selectedGameKey !== null) setSelectedGameKey(null);
-      return;
-    }
-    if (
-      !selectedGameKey ||
-      !games.some((game) => gameKey(game) === selectedGameKey)
-    ) {
-      setSelectedGameKey(gameKey(games[0]));
-    }
-  }, [games, selectedGameKey]);
-
-  useEffect(() => {
-    const list = listRef.current;
-    const item = itemRefs.current[activeIndex];
-    if (list && item) revealElementVertically(list, item, 4);
-  }, [activeIndex]);
-
-  const selectIndex = (index: number) => {
-    const game = games[index];
-    if (game) setSelectedGameKey(gameKey(game));
-  };
-
-  const handleOverlayKeyDown = (event: React.KeyboardEvent) => {
-    const key = event.key.toLocaleLowerCase();
-    const modifierPressed = event.ctrlKey || event.metaKey;
-    if (event.altKey && event.key === "1") {
-      event.preventDefault();
-      event.stopPropagation();
-      close();
-    } else if (modifierPressed && key === "f") {
-      event.preventDefault();
-      inputRef.current?.focus({ preventScroll: true });
-      inputRef.current?.select();
-    } else if (
-      event.key === "/" &&
-      event.target !== inputRef.current &&
-      !modifierPressed &&
-      !event.altKey
-    ) {
-      event.preventDefault();
-      inputRef.current?.focus({ preventScroll: true });
-      inputRef.current?.select();
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      if (query) {
-        setQuery("");
-        setSelectedGameKey(null);
-        inputRef.current?.focus({ preventScroll: true });
-      } else {
-        close();
-      }
-    }
-  };
-
-  const handleSearchKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (event.key === "ArrowDown" && games.length) {
-      event.preventDefault();
-      event.stopPropagation();
-      selectIndex((activeIndex + 1) % games.length);
-    } else if (event.key === "ArrowUp" && games.length) {
-      event.preventDefault();
-      event.stopPropagation();
-      selectIndex((activeIndex - 1 + games.length) % games.length);
-    } else if (event.key === "PageDown" && games.length) {
-      event.preventDefault();
-      event.stopPropagation();
-      selectIndex(Math.min(games.length - 1, activeIndex + GAME_PAGE_STEP));
-    } else if (event.key === "PageUp" && games.length) {
-      event.preventDefault();
-      event.stopPropagation();
-      selectIndex(Math.max(0, activeIndex - GAME_PAGE_STEP));
-    } else if (event.key === "Home" && games.length) {
-      event.preventDefault();
-      event.stopPropagation();
-      selectIndex(0);
-    } else if (event.key === "End" && games.length) {
-      event.preventDefault();
-      event.stopPropagation();
-      selectIndex(games.length - 1);
-    } else if (event.key === "Enter" && selected) {
-      event.preventDefault();
-      event.stopPropagation();
-      void startGame(selected);
-    }
-  };
+  const launcher = useGameLauncher();
+  const list = useGameLauncherList({
+    result: launcher.result,
+    favoriteGameKeys: launcher.favoriteGameKeys,
+    lastPlayedAtByGame: launcher.lastPlayedAtByGame,
+    showSequence: launcher.showSequence,
+    close: launcher.close,
+    startGame: launcher.startGame,
+  });
+  const selectedKey = list.selected ? gameKey(list.selected) : null;
+  const warning = launcher.result?.sources
+    .filter((source) => source.warning)
+    .map((source) => `${storeLabel[source.store]}を確認できません`)
+    .join(" · ");
 
   return (
     <OverlayFrame>
       <OverlayCard
-        className={`${animationClass} game-launcher theme-accent-scope`}
+        className={`${launcher.animationClass} game-launcher theme-accent-scope`}
         role="dialog"
         aria-label="ゲームランチャー"
-        onKeyDown={handleOverlayKeyDown}
-        style={{ "--color-accent": themeColor } as React.CSSProperties}
+        onKeyDown={list.handleOverlayKeyDown}
+        style={{ "--color-accent": launcher.themeColor } as React.CSSProperties}
       >
         <header className="game-launcher__header">
           <div className="game-launcher__title">
@@ -254,16 +43,16 @@ export const GameLauncherOverlay: React.FC = () => {
             <div>
               <h1>ゲームランチャー</h1>
               <p>
-                {query
-                  ? `${games.length}/${result?.games.length ?? 0}本に絞り込み`
-                  : `${result?.games.length ?? 0}本のゲーム`}
+                {list.query
+                  ? `${list.games.length}/${launcher.result?.games.length ?? 0}本に絞り込み`
+                  : `${launcher.result?.games.length ?? 0}本のゲーム`}
               </p>
             </div>
           </div>
           <button
             type="button"
             className="overlay-close-button"
-            onClick={close}
+            onClick={launcher.close}
             aria-label="閉じる"
             aria-keyshortcuts="Escape"
             title="閉じる（Esc）"
@@ -275,32 +64,29 @@ export const GameLauncherOverlay: React.FC = () => {
         <label className="game-launcher__search">
           <Search size={18} aria-hidden="true" />
           <input
-            ref={inputRef}
+            ref={list.inputRef}
             type="search"
             aria-label="ゲームを検索"
             aria-controls="game-launcher-list"
-            aria-activedescendant={selected ? gameDomId(selected) : undefined}
-            aria-keyshortcuts={`ArrowDown ArrowUp Home End PageUp PageDown Enter Escape ${searchShortcutModifier}+F`}
-            value={query}
-            onKeyDown={handleSearchKeyDown}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setSelectedGameKey(null);
-            }}
+            aria-activedescendant={
+              list.selected
+                ? `game-launcher-game-${selectedKey?.replace(/[^a-zA-Z0-9_-]/g, "-")}`
+                : undefined
+            }
+            aria-keyshortcuts={`ArrowDown ArrowUp Home End PageUp PageDown Enter Escape ${list.searchShortcutModifier}+F`}
+            value={list.query}
+            onKeyDown={list.handleSearchKeyDown}
+            onChange={(event) => list.onQueryChange(event.target.value)}
             placeholder="ゲームまたはストアを検索"
             autoComplete="off"
           />
-          {query ? (
+          {list.query ? (
             <button
               type="button"
               className="game-launcher__search-clear"
               aria-label="ゲーム検索をクリア"
               title="検索をクリア"
-              onClick={() => {
-                setQuery("");
-                setSelectedGameKey(null);
-                inputRef.current?.focus({ preventScroll: true });
-              }}
+              onClick={list.clearQuery}
             >
               <X size={15} aria-hidden="true" />
             </button>
@@ -315,158 +101,55 @@ export const GameLauncherOverlay: React.FC = () => {
         </label>
 
         <div className="game-launcher__body">
-          <section
-            id="game-launcher-list"
-            ref={listRef}
-            className="game-launcher__list"
-            aria-label="ゲーム一覧"
-            data-window-drag-block
-          >
-            {loading ? (
-              <div className="game-launcher__state">
-                ゲームをスキャンしています…
-              </div>
-            ) : games.length ? (
-              games.map((game, index) => {
-                const key = gameKey(game);
-                const favorite = favoriteGameKeys.includes(key);
-                const lastPlayed = lastPlayedAtByGame[key];
-                return (
-                  <div
-                    key={key}
-                    className={`game-launcher__item${index === activeIndex ? " is-selected" : ""}`}
-                  >
-                    <button
-                      ref={(element) => {
-                        itemRefs.current[index] = element;
-                      }}
-                      type="button"
-                      id={gameDomId(game)}
-                      className="game-launcher__launch"
-                      aria-current={index === activeIndex ? "true" : undefined}
-                      onMouseEnter={() => setSelectedGameKey(key)}
-                      onFocus={() => setSelectedGameKey(key)}
-                      onClick={() => void startGame(game)}
-                      disabled={launchingGameKey !== null}
-                    >
-                      <GameArtwork
-                        key={`${key}:${game.imagePath}:${game.fallbackImagePath}`}
-                        game={game}
-                      />
-                      <span className="game-launcher__item-copy">
-                        <strong>{game.title}</strong>
-                        <small>
-                          {storeLabel[game.store]}
-                          {lastPlayed
-                            ? ` · 最終プレイ ${new Date(lastPlayed).toLocaleDateString("ja-JP")}`
-                            : " · 未プレイ"}
-                        </small>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`game-launcher__action${favorite ? " is-favorite" : ""}`}
-                      onFocus={() => setSelectedGameKey(key)}
-                      onClick={() => {
-                        setSelectedGameKey(key);
-                        toggleFavorite(game);
-                      }}
-                      aria-label={`${game.title}を${favorite ? "お気に入りから削除" : "お気に入りに追加"}`}
-                      aria-pressed={favorite}
-                    >
-                      <Star
-                        size={16}
-                        fill={favorite ? "currentColor" : "none"}
-                        aria-hidden="true"
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      className="game-launcher__action"
-                      onFocus={() => setSelectedGameKey(key)}
-                      onClick={() => {
-                        setSelectedGameKey(key);
-                        void openStorePage(game);
-                      }}
-                      aria-label={`${game.title}のストア管理画面を開く`}
-                      disabled={openingStoreId === key}
-                    >
-                      <ExternalLink size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="game-launcher__state">
-                <strong>
-                  {query
-                    ? "一致するゲームがありません"
-                    : "ゲームが見つかりません"}
-                </strong>
-                {!query && (
-                  <span>Steam、Epic Games、Riot Gamesを確認してください。</span>
-                )}
-              </div>
+          <GameLauncherGameList
+            games={list.games}
+            activeIndex={list.activeIndex}
+            favoriteGameKeySet={list.favoriteGameKeySet}
+            lastPlayedAtByGame={launcher.lastPlayedAtByGame}
+            launchingGameKey={launcher.launchingGameKey}
+            openingStoreId={launcher.openingStoreId}
+            listRef={list.listRef}
+            itemRefs={list.itemRefs}
+            onSelect={(game) => list.setSelectedGameKey(gameKey(game))}
+            onLaunch={(game) => void launcher.startGame(game)}
+            onToggleFavorite={launcher.toggleFavorite}
+            onOpenStore={(game) => void launcher.openStorePage(game)}
+            loading={launcher.loading}
+            query={list.query}
+          />
+          <GameLauncherPreview
+            game={list.selected}
+            lastPlayedAt={
+              list.selected
+                ? launcher.lastPlayedAtByGame[gameKey(list.selected)]
+                : undefined
+            }
+            launching={Boolean(
+              list.selected &&
+                launcher.launchingGameKey === gameKey(list.selected),
             )}
-          </section>
-
-          <aside className="game-launcher__preview" aria-live="polite">
-            {selected ? (
-              <>
-                <GameArtwork
-                  key={`${selected.store}:${selected.id}:${selected.imagePath ?? "fallback"}`}
-                  game={selected}
-                />
-                <span className={`game-launcher__store is-${selected.store}`}>
-                  {storeLabel[selected.store]}
-                </span>
-                <h2>{selected.title}</h2>
-                <p>
-                  {lastPlayedAtByGame[gameKey(selected)]
-                    ? `最終プレイ ${new Date(lastPlayedAtByGame[gameKey(selected)]).toLocaleString("ja-JP")}`
-                    : "まだプレイしていません"}
-                </p>
-                <div className="game-launcher__preview-actions">
-                  <button
-                    type="button"
-                    disabled={launchingGameKey !== null}
-                    onClick={() => void startGame(selected)}
-                  >
-                    <Play size={15} aria-hidden="true" />
-                    {launchingGameKey === gameKey(selected)
-                      ? "起動中…"
-                      : "起動"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={
-                      openingStoreId !== null || launchingGameKey !== null
-                    }
-                    onClick={() => void openStorePage(selected)}
-                  >
-                    <ExternalLink size={15} aria-hidden="true" /> 管理画面
-                  </button>
-                </div>
-              </>
-            ) : (
-              <Gamepad2 size={42} aria-hidden="true" />
+            storeOpening={Boolean(
+              list.selected &&
+                launcher.openingStoreId === gameKey(list.selected),
             )}
-          </aside>
+            onLaunch={(game) => void launcher.startGame(game)}
+            onOpenStore={(game) => void launcher.openStorePage(game)}
+          />
         </div>
 
         <footer className="game-launcher__footer">
           <span
-            className={error ? "is-error" : ""}
-            role={error ? "alert" : "status"}
+            className={launcher.error ? "is-error" : ""}
+            role={launcher.error ? "alert" : "status"}
             aria-live="polite"
           >
-            {error ??
-              result?.sources
-                .filter((source) => source.warning)
-                .map((source) => `${storeLabel[source.store]}を確認できません`)
-                .join(" · ")}
+            {launcher.error ?? warning}
           </span>
-          <button type="button" onClick={() => void scan()} disabled={loading}>
+          <button
+            type="button"
+            onClick={() => void launcher.scan(true)}
+            disabled={launcher.loading}
+          >
             <RefreshCw size={14} aria-hidden="true" /> 再スキャン
           </button>
         </footer>

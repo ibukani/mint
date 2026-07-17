@@ -52,27 +52,30 @@ export const useAppSettingsController = () => {
   useEffect(() => {
     void reloadSettings();
 
-    const unlistenPromise = listen("settings-changed", async () => {
-      const sequenceAtEvent = sequenceRef.current;
-      try {
-        const loaded = await loadSettings();
-        if (
-          sequenceRef.current !== sequenceAtEvent ||
-          pendingSaveRef.current !== null
-        ) {
-          return;
-        }
-        setSettings((previous) => {
-          if (!settingsAreEqual(previous, loaded)) {
-            settingsRef.current = loaded;
-            return loaded;
+    const unlistenPromise = listen<AppSettings>(
+      "settings-changed",
+      async (event) => {
+        const sequenceAtEvent = sequenceRef.current;
+        try {
+          const loaded = event?.payload ?? (await loadSettings());
+          if (
+            sequenceRef.current !== sequenceAtEvent ||
+            pendingSaveRef.current !== null
+          ) {
+            return;
           }
-          return previous;
-        });
-      } catch (loadError) {
-        console.error("Failed to reload settings:", loadError);
-      }
-    });
+          setSettings((previous) => {
+            if (!settingsAreEqual(previous, loaded)) {
+              settingsRef.current = loaded;
+              return loaded;
+            }
+            return previous;
+          });
+        } catch (loadError) {
+          console.error("Failed to reload settings:", loadError);
+        }
+      },
+    );
 
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());

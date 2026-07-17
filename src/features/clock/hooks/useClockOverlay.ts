@@ -3,11 +3,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
+import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
+import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 
 const HIDE_ANIMATION_MS = 280;
 
 export const useClockOverlay = () => {
   const { settings } = useAppSettings();
+  const clockEnabled = settings?.clock.enabled;
+  const autoHideSeconds = settings?.clock.autoHideSeconds;
   const [isAnimateVisible, setIsAnimateVisible] = useState(false);
   const [isHiding, setIsHiding] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -15,16 +19,37 @@ export const useClockOverlay = () => {
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setIsAnimateVisible(true);
-    setIsHiding(false);
+    let mounted = true;
+    const currentWindow = getCurrentWindow();
+    const showClock = () => {
+      if (!mounted) return;
+      setIsAnimateVisible(true);
+      setIsHiding(false);
+    };
+
+    if (typeof currentWindow.isVisible !== "function") {
+      showClock();
+    } else {
+      void currentWindow
+        .isVisible()
+        .then((visible) => {
+          if (visible !== false) showClock();
+        })
+        .catch(showClock);
+    }
+
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
 
     return () => {
+      mounted = false;
       document.body.classList.remove("is-overlay");
       document.documentElement.classList.remove("is-overlay");
     };
   }, []);
+
+  useOverlayWindowEviction(isAnimateVisible);
+  useOverlayWindowReady();
 
   const hideClock = useCallback(() => {
     setIsAnimateVisible(false);
@@ -61,12 +86,18 @@ export const useClockOverlay = () => {
   );
 
   useEffect(() => {
-    if (settings && !settings.clock.enabled) {
+    if (clockEnabled === false) {
+      setIsAnimateVisible(false);
+      setIsHiding(false);
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
       getCurrentWindow()
         .hide()
         .catch((error) => console.error("Failed to hide clock window:", error));
     }
-  }, [settings]);
+  }, [clockEnabled]);
 
   useEffect(() => {
     const unlistenPromise = listen("clock-shown", () => {
@@ -82,10 +113,21 @@ export const useClockOverlay = () => {
     const calendarOpenedPromise = listen("calendar-opened", () => {
       setIsCalendarOpen(true);
     });
-    const calendarClosedPromise = listen("calendar-closed", () => {
-      setIsCalendarOpen(false);
-      setShowSequence((current) => current + 1);
-    });
+    const calendarClosedPromise = listen<{ hideClock?: boolean }>(
+      "calendar-closed",
+      ({ payload }) => {
+        if (payload?.hideClock) {
+          if (hideTimerRef.current) {
+            clearTimeout(hideTimerRef.current);
+            hideTimerRef.current = null;
+          }
+          setIsAnimateVisible(false);
+          setIsHiding(false);
+        }
+        setIsCalendarOpen(false);
+        setShowSequence((current) => current + 1);
+      },
+    );
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());
       void calendarOpenedPromise.then((unlisten) => unlisten());
@@ -93,15 +135,16 @@ export const useClockOverlay = () => {
     };
   }, []);
 
+  // showSequence intentionally resets the auto-hide countdown for each show event.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence is an explicit show signal.
   useEffect(() => {
-    if (!settings) return undefined;
-    void showSequence;
+    if (autoHideSeconds === undefined) return undefined;
     if (isCalendarOpen) return undefined;
-    if (settings.clock.autoHideSeconds <= 0) return undefined;
+    if (autoHideSeconds <= 0) return undefined;
 
-    const timer = setTimeout(hideClock, settings.clock.autoHideSeconds * 1000);
+    const timer = setTimeout(hideClock, autoHideSeconds * 1000);
     return () => clearTimeout(timer);
-  }, [settings, showSequence, isCalendarOpen, hideClock]);
+  }, [autoHideSeconds, showSequence, isCalendarOpen, hideClock]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -110,6 +153,23 @@ export const useClockOverlay = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [hideClock]);
+
+  useEffect(() => {
+    const currentWindow = getCurrentWindow();
+    if (typeof currentWindow.onCloseRequested !== "function") return;
+
+    const closeRequested = currentWindow.onCloseRequested(() => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+      setIsAnimateVisible(false);
+      setIsHiding(false);
+    });
+    return () => {
+      void closeRequested.then((unlisten) => unlisten());
+    };
+  }, []);
 
   const animationClass = isHiding
     ? "is-hiding"
@@ -121,6 +181,8 @@ export const useClockOverlay = () => {
     settings,
     hideClock,
     animationClass,
+    isAnimateVisible,
+    isHiding,
     clockColor:
       settings?.clock.clockColor ?? defaultAppSettings.clock.clockColor,
   };

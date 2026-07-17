@@ -1,5 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
+
+use super::CalendarEvent;
+use crate::core::window::{ensure_overlay_window, ensure_window, OverlayTarget};
 
 const CALENDAR_HEIGHT: f64 = 384.0;
 const WINDOW_MARGIN: f64 = 20.0;
@@ -14,7 +17,7 @@ struct CalendarShownPayload {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-enum CalendarOpenMode {
+pub(crate) enum CalendarOpenMode {
     Month,
 }
 
@@ -23,7 +26,7 @@ pub fn position_calendar(
     docked: bool,
     settings: &crate::core::settings::AppSettings,
 ) {
-    let Some(calendar) = app.get_webview_window("calendar") else {
+    let Ok(calendar) = ensure_overlay_window(app, OverlayTarget::Calendar) else {
         return;
     };
 
@@ -91,11 +94,20 @@ pub fn position_calendar(
 }
 
 pub fn toggle_calendar_overlay(app: &AppHandle) {
-    let settings = match crate::core::settings::load_settings_internal(app) {
+    let settings = match crate::core::settings::load_settings_cached(app) {
         Ok(settings) if settings.calendar.enabled => settings,
         _ => return,
     };
-    let Some(calendar) = app.get_webview_window("calendar") else {
+    if app.get_webview_window("calendar").is_none() {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if ensure_overlay_window(&app, OverlayTarget::Calendar).is_ok() {
+                toggle_calendar_overlay(&app);
+            }
+        });
+        return;
+    }
+    let Ok(calendar) = ensure_overlay_window(app, OverlayTarget::Calendar) else {
         return;
     };
 
@@ -107,27 +119,45 @@ pub fn toggle_calendar_overlay(app: &AppHandle) {
     show_calendar_overlay(app, &settings, CalendarOpenMode::Month);
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CalendarEditorPayload {
-    pub mode: String,
+    pub mode: CalendarEditorMode,
     pub date: Option<String>,
-    pub event: Option<serde_json::Value>,
-    pub template: Option<serde_json::Value>,
+    pub event: Option<CalendarEvent>,
+    pub template: Option<CalendarEvent>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalendarEditorMode {
+    Create,
+    Edit,
+    Duplicate,
 }
 
 #[derive(Default)]
 pub struct CalendarEditorState(pub std::sync::Mutex<Option<CalendarEditorPayload>>);
 
 pub fn open_calendar_event_editor(app: &AppHandle) {
-    match crate::core::settings::load_settings_internal(app) {
+    match crate::core::settings::load_settings_cached(app) {
         Ok(settings) if settings.calendar.enabled => {}
         _ => return,
     };
 
-    // Use the command to open it with default empty payload (needs State inside Tauri, so we retrieve it or pass None)
-    if let Some(state) = app.try_state::<CalendarEditorState>() {
-        if let Err(error) = open_calendar_editor_window(app.clone(), state, None) {
+    if app.get_webview_window("calendarEditor").is_none() {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if ensure_window(&app, "calendarEditor", "予定編集").is_ok() {
+                if let Some(state) = app.try_state::<CalendarEditorState>() {
+                    if let Err(error) = open_calendar_editor_window_inner(&app, &state, None) {
+                        eprintln!("Failed to open calendar editor from shortcut: {error}");
+                    }
+                }
+            }
+        });
+    } else if let Some(state) = app.try_state::<CalendarEditorState>() {
+        if let Err(error) = open_calendar_editor_window_inner(app, &state, None) {
             eprintln!("Failed to open calendar editor from shortcut: {error}");
         }
     }
@@ -141,31 +171,36 @@ pub fn get_calendar_editor_payload(
 }
 
 #[tauri::command]
-pub fn open_calendar_editor_window(
+pub async fn open_calendar_editor_window(
     app: tauri::AppHandle,
     state: tauri::State<'_, CalendarEditorState>,
     payload: Option<CalendarEditorPayload>,
 ) -> Result<(), String> {
-    let editor = app
-        .get_webview_window("calendarEditor")
-        .ok_or_else(|| "Calendar editor window is unavailable".to_string())?;
+    open_calendar_editor_window_inner(&app, &state, payload)
+}
 
-    let payload = payload.unwrap_or_else(|| CalendarEditorPayload {
-        mode: "create".to_string(),
+fn open_calendar_editor_window_inner(
+    app: &tauri::AppHandle,
+    state: &CalendarEditorState,
+    payload: Option<CalendarEditorPayload>,
+) -> Result<(), String> {
+    let payload = payload.unwrap_or(CalendarEditorPayload {
+        mode: CalendarEditorMode::Create,
         date: None,
         event: None,
         template: None,
     });
 
-    let payload_is_valid = match payload.mode.as_str() {
-        "create" => true,
-        "edit" => payload.event.is_some(),
-        "duplicate" => payload.template.is_some(),
-        _ => false,
+    let payload_is_valid = match &payload.mode {
+        CalendarEditorMode::Create => true,
+        CalendarEditorMode::Edit => payload.event.is_some(),
+        CalendarEditorMode::Duplicate => payload.template.is_some(),
     };
     if !payload_is_valid {
         return Err("Calendar editor payload is invalid".to_string());
     }
+
+    let editor = ensure_window(app, "calendarEditor", "予定編集")?;
 
     let mut guard = state
         .0
@@ -189,6 +224,10 @@ pub fn open_calendar_editor_window(
             .map_err(|error| format!("Failed to center calendar editor window: {error}"))?;
     }
 
+    if crate::core::window::is_initial_show_pending("calendarEditor") {
+        return Ok(());
+    }
+
     editor
         .show()
         .map_err(|error| format!("Failed to show calendar editor window: {error}"))?;
@@ -209,12 +248,24 @@ pub fn open_calendar_editor_window(
     Ok(())
 }
 
-fn show_calendar_overlay(
+pub(crate) fn show_calendar_editor_when_ready(app: &tauri::AppHandle) -> Result<(), String> {
+    let state = app
+        .try_state::<CalendarEditorState>()
+        .ok_or_else(|| "Calendar editor state is unavailable".to_string())?;
+    let payload = state
+        .0
+        .lock()
+        .map_err(|_| "Calendar editor state is unavailable".to_string())?
+        .clone();
+    open_calendar_editor_window_inner(app, &state, payload)
+}
+
+pub(crate) fn show_calendar_overlay(
     app: &AppHandle,
     settings: &crate::core::settings::AppSettings,
     initial_mode: CalendarOpenMode,
 ) {
-    let Some(calendar) = app.get_webview_window("calendar") else {
+    let Ok(calendar) = ensure_overlay_window(app, OverlayTarget::Calendar) else {
         return;
     };
 
@@ -234,6 +285,10 @@ fn show_calendar_overlay(
             .and_then(|clock| clock.is_visible().ok())
             .unwrap_or(false);
     position_calendar(app, docked, settings);
+
+    if crate::core::window::is_initial_show_pending("calendar") {
+        return;
+    }
 
     let _ = calendar.show();
     let _ = calendar.set_always_on_top(true);

@@ -1,7 +1,6 @@
 mod core;
 mod features;
 
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::{Emitter, Listener, Manager, RunEvent, WindowEvent};
@@ -11,8 +10,8 @@ use core::settings::AppSettingsState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let clipboard_running = Arc::new(AtomicBool::new(true));
-    let clipboard_running_for_event = clipboard_running.clone();
+    let clipboard_monitor = Arc::new(features::file_shelf::ClipboardHistoryMonitor::new());
+    let clipboard_monitor_for_event = clipboard_monitor.clone();
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -62,11 +61,7 @@ pub fn run() {
                         }
                         match feature {
                             "settings" => {
-                                if let Some(main_window) = app.get_webview_window("main") {
-                                    let _ = main_window.show();
-                                    let _ = main_window.unminimize();
-                                    let _ = main_window.set_focus();
-                                }
+                                core::window::show_main_window(app);
                             }
                             "clock" => features::clock::toggle_clock_overlay(app),
                             "calendar" => features::calendar::toggle_calendar_overlay(app),
@@ -94,7 +89,19 @@ pub fn run() {
             app.manage(quick_capture_store);
             let file_shelf_store = features::file_shelf::initialize_store(app.handle())?;
             app.manage(file_shelf_store);
-            features::file_shelf::start_clipboard_history_monitor(app.handle().clone(), clipboard_running);
+            let clipboard_monitor_for_settings = clipboard_monitor.clone();
+            let handle_for_clipboard_settings = app.handle().clone();
+            app.listen("clipboard-settings-changed", move |_| {
+                if let Ok(settings) = core::settings::load_settings_cached(
+                    &handle_for_clipboard_settings,
+                ) {
+                    features::file_shelf::configure_clipboard_history_monitor(
+                        handle_for_clipboard_settings.clone(),
+                        clipboard_monitor_for_settings.clone(),
+                        &settings.file_shelf,
+                    );
+                }
+            });
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Add ready event listener for calendar editor window to resolve timing issues
@@ -117,9 +124,15 @@ pub fn run() {
             // Pre-populate settings cache and register global shortcuts asynchronously
             // so that we don't block window creation.
             let handle = app.handle().clone();
+            let clipboard_monitor_for_start = clipboard_monitor.clone();
             tauri::async_runtime::spawn(async move {
                 match core::settings::load_settings_internal(&handle) {
                     Ok(settings) => {
+                        features::file_shelf::configure_clipboard_history_monitor(
+                            handle.clone(),
+                            clipboard_monitor_for_start,
+                            &settings.file_shelf,
+                        );
                         if let Err(error) =
                             core::settings::sync_autostart(&handle, settings.autostart)
                         {
@@ -200,6 +213,7 @@ pub fn run() {
             }
         })
         .manage(features::calendar::window::CalendarEditorState::default())
+        .manage(features::game_launcher::scan::GameScanCache::default())
         .manage(features::file_shelf::FileShelfWindowState::default())
         .manage(features::file_shelf::FileShelfShortcutState::default())
         .invoke_handler(tauri::generate_handler![
@@ -208,6 +222,7 @@ pub fn run() {
             core::settings::load_api_key,
             core::settings::save_api_key,
             core::window::open_overlay,
+            core::window::overlay_ready,
             features::calendar::repository::list_calendar_events,
             features::calendar::repository::get_next_calendar_event,
             features::calendar::repository::create_calendar_event,
@@ -255,7 +270,7 @@ pub fn run() {
 
     app.run(move |_app, event| {
         if let RunEvent::Exit = event {
-            clipboard_running_for_event.store(false, std::sync::atomic::Ordering::Relaxed);
+            clipboard_monitor_for_event.stop();
         }
     });
 }

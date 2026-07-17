@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
+import { rememberGoogleCalendarSync } from "../autoSyncPolicy";
 import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
@@ -148,9 +149,14 @@ export const useGoogleCalendarSettings = () => {
 
   const sync = useCallback(() => {
     if (!calendar) return Promise.resolve();
+    const calendarIds = calendar.selectedGoogleCalendarIds;
     return run(
       "syncing",
-      () => syncGoogleCalendars(calendar.selectedGoogleCalendarIds),
+      async () => {
+        const result = await syncGoogleCalendars(calendarIds);
+        rememberGoogleCalendarSync(calendarIds);
+        return result;
+      },
       syncNotice,
     );
   }, [calendar, run]);

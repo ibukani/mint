@@ -36,7 +36,7 @@ export const useGameSourceStatus = () => {
   });
   const sequenceRef = useRef(0);
 
-  const scan = useCallback(async () => {
+  const scan = useCallback(async (force = false) => {
     const sequence = ++sequenceRef.current;
     setState((previous) => ({
       ...previous,
@@ -45,7 +45,7 @@ export const useGameSourceStatus = () => {
     }));
 
     try {
-      const result = await listInstalledGames();
+      const result = await listInstalledGames(force);
       if (sequence !== sequenceRef.current) return;
       setState({
         phase: "ready",

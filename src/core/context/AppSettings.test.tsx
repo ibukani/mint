@@ -9,6 +9,7 @@ import {
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockSettings } from "../mocks/mockSettings";
+import type { AppSettings } from "../settingsModel";
 import { AppSettingsProvider, useAppSettings } from "./AppSettings";
 
 // Mock invoke
@@ -20,14 +21,22 @@ const silenceExpectedConsoleError = () =>
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 
 const eventMocks = vi.hoisted(() => ({
-  listeners: new Map<string, () => void | Promise<void>>(),
+  listeners: new Map<
+    string,
+    (event?: { payload?: AppSettings }) => void | Promise<void>
+  >(),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(async (event: string, handler: () => void | Promise<void>) => {
-    eventMocks.listeners.set(event, handler);
-    return () => eventMocks.listeners.delete(event);
-  }),
+  listen: vi.fn(
+    async (
+      event: string,
+      handler: (event?: { payload?: AppSettings }) => void | Promise<void>,
+    ) => {
+      eventMocks.listeners.set(event, handler);
+      return () => eventMocks.listeners.delete(event);
+    },
+  ),
 }));
 
 const TestComponent: React.FC = () => {
@@ -542,5 +551,26 @@ describe("AppSettingsProvider", () => {
         }),
       }),
     );
+  });
+
+  it("applies a settings-changed payload without reloading through IPC", async () => {
+    const initial = createMockSettings();
+    const next = createMockSettings({ theme: "light" });
+    vi.mocked(invoke).mockResolvedValue(initial);
+
+    render(
+      <AppSettingsProvider>
+        <TestComponent />
+      </AppSettingsProvider>,
+    );
+    await act(async () => Promise.resolve());
+    vi.mocked(invoke).mockClear();
+
+    await act(async () => {
+      await eventMocks.listeners.get("settings-changed")?.({ payload: next });
+    });
+
+    expect(screen.getByTestId("theme")).toHaveTextContent("light");
+    expect(invoke).not.toHaveBeenCalledWith("load_settings");
   });
 });

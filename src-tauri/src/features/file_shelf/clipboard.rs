@@ -4,7 +4,8 @@ use std::{
     fs,
     path::Path,
     sync::atomic::{AtomicBool, Ordering},
-    sync::Arc,
+    sync::{Arc, Condvar, Mutex},
+    thread::JoinHandle,
     time::Duration as StdDuration,
 };
 use tauri::{AppHandle, Emitter, Manager};
@@ -41,69 +42,260 @@ use super::{
 };
 
 const CLIPBOARD_POLL_INTERVAL: StdDuration = StdDuration::from_millis(900);
+const CLIPBOARD_MAX_POLL_INTERVAL: StdDuration = StdDuration::from_secs(4);
+const CLIPBOARD_IDLE_INTERVAL: StdDuration = StdDuration::from_secs(30);
 const MAX_CLIPBOARD_HISTORY_BYTES: usize = 64 * 1024;
 const MAX_CLIPBOARD_IMAGE_RGBA_BYTES: usize = 128 * 1024 * 1024;
 
-pub fn start_clipboard_history_monitor(app: AppHandle, running: Arc<AtomicBool>) {
-    let _ = std::thread::Builder::new()
-        .name("mint-clipboard-history".to_string())
-        .spawn(move || {
-            let mut monitoring = false;
-            let mut previous_text = String::new();
+#[derive(Default)]
+struct MonitorWakeState {
+    notified: bool,
+}
 
-            while running.load(Ordering::Relaxed) {
-                std::thread::sleep(CLIPBOARD_POLL_INTERVAL);
+pub struct ClipboardHistoryMonitor {
+    running: AtomicBool,
+    enabled: AtomicBool,
+    starting: AtomicBool,
+    wake: Condvar,
+    wake_state: Mutex<MonitorWakeState>,
+    worker: Mutex<Option<JoinHandle<()>>>,
+}
 
-                let settings = app
-                    .try_state::<AppSettingsState>()
-                    .and_then(|state| state.0.lock().ok().and_then(|value| value.clone()))
-                    .or_else(|| crate::core::settings::load_settings_internal(&app).ok());
-                let Some(settings) = settings.map(|settings| settings.file_shelf) else {
-                    continue;
-                };
+impl ClipboardHistoryMonitor {
+    pub fn new() -> Self {
+        Self {
+            running: AtomicBool::new(true),
+            enabled: AtomicBool::new(false),
+            starting: AtomicBool::new(false),
+            wake: Condvar::new(),
+            wake_state: Mutex::new(MonitorWakeState::default()),
+            worker: Mutex::new(None),
+        }
+    }
 
-                if !should_monitor_clipboard(&settings) {
-                    monitoring = false;
-                    previous_text.clear();
-                    continue;
-                }
+    pub fn configure(self: &Arc<Self>, app: AppHandle, enabled: bool) {
+        self.enabled.store(enabled, Ordering::Release);
+        if !enabled {
+            self.notify();
+            self.join_worker();
+            return;
+        }
+        if !self.is_running() {
+            return;
+        }
+        if self.starting.swap(true, Ordering::AcqRel) {
+            self.notify();
+            return;
+        }
 
-                let current_text = match app.clipboard().read_text() {
-                    Ok(text) => text.trim().to_string(),
-                    Err(_) => {
-                        monitoring = true;
-                        previous_text.clear();
-                        continue;
-                    }
-                };
-                if !monitoring {
-                    monitoring = true;
-                    previous_text.clone_from(&current_text);
-                    continue;
+        let should_start = {
+            let mut worker = self
+                .worker
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            if worker.as_ref().is_some_and(|handle| !handle.is_finished()) {
+                false
+            } else {
+                let stale_worker = worker.take();
+                drop(worker);
+                if let Some(handle) = stale_worker {
+                    let _ = handle.join();
                 }
-                if current_text.is_empty() || current_text == previous_text {
-                    continue;
-                }
-                previous_text.clone_from(&current_text);
-                if is_application_ignored(&settings, clipboard_source_application_name().as_deref())
-                {
-                    continue;
-                }
-
-                let Some(store) = app.try_state::<FileShelfStoreState>() else {
-                    continue;
-                };
-                if let Ok(mutation) = capture_clipboard_text_in_store(
-                    &store.path,
-                    current_text,
-                    settings.clipboard_history_limit,
-                ) {
-                    if mutation.added_count > 0 || mutation.skipped_count == 0 {
-                        let _ = app.emit("file-shelf-state-changed", mutation.state);
-                    }
-                }
+                true
             }
-        });
+        };
+        if !should_start {
+            self.starting.store(false, Ordering::Release);
+            self.notify();
+            return;
+        }
+
+        let monitor = Arc::clone(self);
+        let worker = std::thread::Builder::new()
+            .name("mint-clipboard-history".to_string())
+            .spawn(move || run_clipboard_history_monitor(app, monitor));
+        let Ok(worker) = worker else {
+            self.starting.store(false, Ordering::Release);
+            return;
+        };
+
+        if self.is_running() && self.is_enabled() {
+            *self
+                .worker
+                .lock()
+                .unwrap_or_else(|error| error.into_inner()) = Some(worker);
+        } else {
+            let _ = worker.join();
+        }
+        self.starting.store(false, Ordering::Release);
+    }
+
+    pub fn notify(&self) {
+        let mut state = self
+            .wake_state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        state.notified = true;
+        self.wake.notify_one();
+    }
+
+    pub fn stop(&self) {
+        self.running.store(false, Ordering::Release);
+        self.enabled.store(false, Ordering::Release);
+        self.notify();
+        self.join_worker();
+    }
+
+    fn is_running(&self) -> bool {
+        self.running.load(Ordering::Acquire)
+    }
+
+    fn is_enabled(&self) -> bool {
+        self.enabled.load(Ordering::Acquire)
+    }
+
+    fn join_worker(&self) {
+        let worker = self
+            .worker
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .take();
+        if let Some(worker) = worker {
+            let _ = worker.join();
+        }
+    }
+
+    fn wait(&self, timeout: StdDuration) -> bool {
+        let mut state = self
+            .wake_state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        if !state.notified && self.is_running() {
+            state = match self.wake.wait_timeout(state, timeout) {
+                Ok((state, _)) => state,
+                Err(error) => error.into_inner().0,
+            };
+        }
+        let notified = state.notified;
+        state.notified = false;
+        notified
+    }
+}
+
+impl Default for ClipboardHistoryMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+fn load_file_shelf_settings(app: &AppHandle) -> Option<FileShelfSettings> {
+    app.try_state::<AppSettingsState>()
+        .and_then(|state| state.0.lock().ok().and_then(|value| value.clone()))
+        .or_else(|| crate::core::settings::load_settings_internal(app).ok())
+        .map(|settings| settings.file_shelf)
+}
+
+fn next_clipboard_poll_interval(current: StdDuration, changed: bool) -> StdDuration {
+    if changed {
+        return CLIPBOARD_POLL_INTERVAL;
+    }
+    current.saturating_mul(2).min(CLIPBOARD_MAX_POLL_INTERVAL)
+}
+
+pub fn configure_clipboard_history_monitor(
+    app: AppHandle,
+    monitor: Arc<ClipboardHistoryMonitor>,
+    settings: &FileShelfSettings,
+) {
+    monitor.configure(app, should_monitor_clipboard(settings));
+}
+
+fn run_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHistoryMonitor>) {
+    let mut settings = load_file_shelf_settings(&app);
+    let mut monitoring = false;
+    let mut previous_text = String::new();
+    let mut previous_oversized_length: Option<usize> = None;
+    let mut poll_interval = CLIPBOARD_POLL_INTERVAL;
+
+    while monitor.is_running() && monitor.is_enabled() {
+        let Some(file_shelf_settings) = settings.as_ref() else {
+            monitor.wait(CLIPBOARD_IDLE_INTERVAL);
+            settings = load_file_shelf_settings(&app);
+            continue;
+        };
+
+        if monitor.wait(poll_interval) {
+            settings = load_file_shelf_settings(&app);
+            poll_interval = CLIPBOARD_POLL_INTERVAL;
+            continue;
+        }
+        if !monitor.is_running() || !monitor.is_enabled() {
+            break;
+        }
+
+        let raw_text = match app.clipboard().read_text() {
+            Ok(text) => text,
+            Err(_) => {
+                monitoring = true;
+                previous_text.clear();
+                previous_oversized_length = None;
+                poll_interval = CLIPBOARD_POLL_INTERVAL;
+                continue;
+            }
+        };
+
+        let trimmed_text = raw_text.trim();
+        if trimmed_text.is_empty() {
+            poll_interval = next_clipboard_poll_interval(poll_interval, false);
+            continue;
+        }
+        if trimmed_text.len() > MAX_CLIPBOARD_HISTORY_BYTES {
+            if previous_oversized_length == Some(trimmed_text.len()) {
+                poll_interval = next_clipboard_poll_interval(poll_interval, false);
+                continue;
+            }
+            previous_oversized_length = Some(trimmed_text.len());
+            previous_text.clear();
+            monitoring = true;
+            poll_interval = next_clipboard_poll_interval(poll_interval, true);
+            continue;
+        }
+
+        previous_oversized_length = None;
+        if monitoring && trimmed_text == previous_text {
+            poll_interval = next_clipboard_poll_interval(poll_interval, false);
+            continue;
+        }
+
+        let current_text = trimmed_text.to_string();
+        if !monitoring {
+            monitoring = true;
+            previous_text = current_text;
+            poll_interval = next_clipboard_poll_interval(poll_interval, true);
+            continue;
+        }
+        previous_text.clone_from(&current_text);
+        poll_interval = next_clipboard_poll_interval(poll_interval, true);
+        if is_application_ignored(
+            file_shelf_settings,
+            clipboard_source_application_name().as_deref(),
+        ) {
+            continue;
+        }
+
+        let Some(store) = app.try_state::<FileShelfStoreState>() else {
+            continue;
+        };
+        if let Ok(mutation) = capture_clipboard_text_in_store(
+            &store.path,
+            current_text,
+            file_shelf_settings.clipboard_history_limit,
+        ) {
+            if mutation.added_count > 0 || mutation.skipped_count == 0 {
+                let _ = app.emit("file-shelf-state-changed", mutation.state);
+            }
+        }
+    }
 }
 
 pub fn apply_clipboard_history_settings(app: &AppHandle, settings: &FileShelfSettings) {
@@ -486,4 +678,72 @@ pub(super) fn capture_current_clipboard(app: &AppHandle) -> Result<FileShelfMuta
         .read_text()
         .map_err(|_| "クリップボードに対応する文章、URL、画像がありません。".to_string())?;
     capture_clipboard_text_explicit_in_store(&store.path, text)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn monitor_notifications_are_consumed_without_polling() {
+        let monitor = ClipboardHistoryMonitor::new();
+
+        assert!(!monitor.wait(StdDuration::ZERO));
+        monitor.notify();
+        assert!(monitor.wait(StdDuration::ZERO));
+        assert!(!monitor.wait(StdDuration::ZERO));
+
+        monitor.stop();
+        assert!(!monitor.is_running());
+        assert!(!monitor.is_enabled());
+    }
+
+    #[test]
+    fn monitor_is_not_started_until_explicitly_enabled() {
+        let monitor = ClipboardHistoryMonitor::new();
+
+        assert!(!monitor.is_enabled());
+        assert!(monitor
+            .worker
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .is_none());
+    }
+
+    #[test]
+    fn monitor_idle_wait_stays_asleep_until_notified() {
+        let monitor = Arc::new(ClipboardHistoryMonitor::new());
+        let waiter = monitor.clone();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            sender.send(waiter.wait(StdDuration::from_secs(1))).unwrap();
+        });
+
+        let stayed_asleep = receiver.recv_timeout(StdDuration::from_millis(20)).is_err();
+        monitor.notify();
+
+        assert!(stayed_asleep);
+        assert!(receiver.recv_timeout(StdDuration::from_secs(1)).unwrap());
+        thread.join().unwrap();
+    }
+
+    #[test]
+    fn clipboard_polling_backs_off_only_when_the_clipboard_is_unchanged() {
+        assert_eq!(
+            next_clipboard_poll_interval(CLIPBOARD_POLL_INTERVAL, false),
+            StdDuration::from_millis(1_800)
+        );
+        assert_eq!(
+            next_clipboard_poll_interval(StdDuration::from_secs(2), false),
+            CLIPBOARD_MAX_POLL_INTERVAL
+        );
+        assert_eq!(
+            next_clipboard_poll_interval(CLIPBOARD_MAX_POLL_INTERVAL, false),
+            CLIPBOARD_MAX_POLL_INTERVAL
+        );
+        assert_eq!(
+            next_clipboard_poll_interval(CLIPBOARD_MAX_POLL_INTERVAL, true),
+            CLIPBOARD_POLL_INTERVAL
+        );
+    }
 }

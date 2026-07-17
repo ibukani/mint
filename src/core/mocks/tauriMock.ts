@@ -15,6 +15,7 @@ import { handlePluginIpcCommand } from "./pluginIpcMock";
 import { handleQuickCaptureIpcCommand } from "./quickCaptureIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
 import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
+import { handleWindowIpcCommand } from "./windowIpcMock";
 import { getMockWindowRegistration } from "./windowRegistration";
 
 const mockIPCWithEvents = (handler: Parameters<typeof mockIPC>[0]) =>
@@ -231,6 +232,17 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
     });
     if (settingsResult.handled) return settingsResult.value;
 
+    const windowResult = await handleWindowIpcCommand(cmd, typedArgs, {
+      onOverlayReady: () => {
+        window.dispatchEvent(
+          new CustomEvent("mint-overlay-ready", {
+            detail: { label: currentLabel },
+          }),
+        );
+      },
+    });
+    if (windowResult.handled) return windowResult.value;
+
     const calendarResult = await handleCalendarIpcCommand(cmd, typedArgs);
     if (calendarResult.handled) return calendarResult.value;
     const fileShelfResult = await handleFileShelfIpcCommand(cmd, typedArgs, {
@@ -396,6 +408,8 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
     if (pluginResult.handled) return pluginResult.value;
 
     switch (cmd) {
+      case "overlay_ready":
+        return null;
       default:
         console.warn(
           `[Tauri Mock] 未定義のIPCコマンド呼び出しを受信しました: ${cmd}`,
