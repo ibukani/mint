@@ -146,6 +146,7 @@ export const useQuickCapture = () => {
       setCanRetrySave(false);
       return null;
     } catch (reason) {
+      if (sequence !== notesReloadSequenceRef.current) return null;
       const message = reason instanceof Error ? reason.message : String(reason);
       setError(message);
       setStatus("error");

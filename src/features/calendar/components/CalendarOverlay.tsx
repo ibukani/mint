@@ -33,6 +33,7 @@ const isSameMonth = (left: Date, right: Date) =>
   left.getMonth() === right.getMonth();
 
 export const CalendarOverlay: React.FC = () => {
+  const canClose = useCallback(() => true, []);
   const {
     animationClass,
     closeCalendar,
@@ -42,7 +43,7 @@ export const CalendarOverlay: React.FC = () => {
     selectedGoogleCalendarIds,
     showSequence,
     themeColor,
-  } = useCalendarOverlay(() => true);
+  } = useCalendarOverlay(canClose);
   const [today, setToday] = useState(() => new Date());
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(() =>
@@ -97,8 +98,9 @@ export const CalendarOverlay: React.FC = () => {
     ).zoom = "";
   }, []);
 
+  // A new show sequence is a session reset, even when the open mode is unchanged.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence intentionally resets the overlay session.
   useEffect(() => {
-    void showSequence;
     const nextToday = new Date();
     setToday(nextToday);
     setViewMonth(startOfMonth(nextToday));

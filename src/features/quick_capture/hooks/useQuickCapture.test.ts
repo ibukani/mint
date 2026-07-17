@@ -283,6 +283,32 @@ describe("useQuickCapture", () => {
     expect(mocks.load).toHaveBeenCalledOnce();
   });
 
+  it("ignores a stale reload failure after a newer reload succeeds", async () => {
+    let rejectFirstLoad: ((reason: unknown) => void) | undefined;
+    mocks.load.mockImplementationOnce(
+      () =>
+        new Promise<QuickCaptureState>((_resolve, reject) => {
+          rejectFirstLoad = reject;
+        }),
+    );
+    mocks.load.mockResolvedValueOnce(state);
+
+    const { result } = renderHook(() => useQuickCapture());
+    await waitFor(() => expect(mocks.load).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      await result.current.reload();
+    });
+    expect(result.current.content).toBe("下書きの内容");
+
+    await act(async () => {
+      rejectFirstLoad?.(new Error("古い読み込みの失敗"));
+      await Promise.resolve();
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
   it("saves and hides once when an unpinned visible window loses focus", async () => {
     const { result } = renderHook(() => useQuickCapture());
     await waitFor(() => expect(result.current.content).toBe("下書きの内容"));

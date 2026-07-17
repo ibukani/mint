@@ -151,8 +151,9 @@ export const GameLauncherOverlay: React.FC = () => {
       .map(({ game }) => game);
   }, [orderedGames, query]);
 
+  // A new show sequence starts with a fresh search session.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence is an explicit show signal.
   useEffect(() => {
-    void showSequence;
     setQuery("");
     setSelectedGameKey(null);
     inputRef.current?.focus({ preventScroll: true });

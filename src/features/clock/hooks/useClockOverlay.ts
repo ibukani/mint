@@ -133,9 +133,10 @@ export const useClockOverlay = () => {
     };
   }, []);
 
+  // showSequence intentionally resets the auto-hide countdown for each show event.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showSequence is an explicit show signal.
   useEffect(() => {
     if (autoHideSeconds === undefined) return undefined;
-    void showSequence;
     if (isCalendarOpen) return undefined;
     if (autoHideSeconds <= 0) return undefined;
 

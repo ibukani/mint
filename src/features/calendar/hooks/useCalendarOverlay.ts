@@ -186,27 +186,31 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     const width = contentWidth;
     const height = Math.round(384 * Math.max(contentWidth / 420, 1.0));
 
-    const window = getCurrentWindow();
+    const currentWindow = getCurrentWindow();
+    let cancelled = false;
 
     currentMonitor()
       .then(async (monitor) => {
-        if (!monitor) return;
+        if (!monitor || cancelled) return;
 
         // 1. Resize the window first
-        if (typeof window.setSize === "function") {
-          await window
+        if (typeof currentWindow.setSize === "function") {
+          await currentWindow
             .setSize(new LogicalSize(width, height))
             .catch((error) => {
               console.error("Failed to resize calendar window:", error);
             });
         }
+        if (cancelled) return;
 
         // 2. Position the window
         const clockWindow = await Window.getByLabel("clock");
+        if (cancelled) return;
         const isClockVisible =
           clockWindow && typeof clockWindow.isVisible === "function"
             ? await clockWindow.isVisible()
             : false;
+        if (cancelled) return;
         const docked = clockEnabled && isClockVisible;
         setIsDocked(docked);
 
@@ -221,7 +225,8 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
           const x = clockPosition.x + clockSize.width - calendarWidthPhysical;
           const y = clockPosition.y + clockSize.height - padding;
 
-          await window
+          if (cancelled) return;
+          await currentWindow
             .setPosition(new PhysicalPosition(x, y))
             .catch((error) => {
               console.error(
@@ -238,7 +243,8 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
           const x = monitor.size.width - calendarWidthPhysical - margin;
           const y = margin;
 
-          await window
+          if (cancelled) return;
+          await currentWindow
             .setPosition(new PhysicalPosition(x, y))
             .catch((error) => {
               console.error(
@@ -249,17 +255,27 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
         }
       })
       .catch((error) => {
-        console.error("Failed to load monitor details:", error);
+        if (!cancelled) {
+          console.error("Failed to load monitor details:", error);
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [clockDisplayMode, clockEnabled, clockSizePercent, isVisible]);
 
   const animationClass = isHiding ? "is-hiding" : isVisible ? "is-visible" : "";
   const themeColor =
     settings?.calendar.themeColor ?? defaultAppSettings.calendar.themeColor;
+  const closeCalendarOverlay = useCallback(
+    () => closeCalendar(true),
+    [closeCalendar],
+  );
 
   return {
     animationClass,
-    closeCalendar: () => closeCalendar(true),
+    closeCalendar: closeCalendarOverlay,
     isDocked,
     isVisible,
     openMode,
