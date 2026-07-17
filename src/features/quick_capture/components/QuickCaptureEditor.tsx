@@ -288,6 +288,7 @@ export const QuickCaptureEditor = ({
           ref={editorRef}
           id="quick-capture-content"
           aria-label="メモ本文"
+          aria-keyshortcuts="Control+S Meta+S Control+B Meta+B Control+I Meta+I"
           value={capture.content}
           onChange={(event) => capture.setContent(event.target.value)}
           onKeyDown={(event) => {
@@ -422,7 +423,9 @@ export const QuickCaptureEditor = ({
             onClick={() => void capture.promote()}
           >
             <Check size={14} aria-hidden="true" /> メモに保存{" "}
-            <kbd>{shortcutModifier} ↵</kbd>
+            <kbd>
+              {shortcutModifier} ↵ / {shortcutModifier} S
+            </kbd>
           </button>
         )}
       </div>

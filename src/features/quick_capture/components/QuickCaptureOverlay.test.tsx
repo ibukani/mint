@@ -446,6 +446,28 @@ describe("QuickCaptureOverlay", () => {
     expect(tags).toHaveValue("idea");
   });
 
+  it("saves the current draft with the explicit save shortcut", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, {
+      target: { value: "ショートカットで保存する下書き" },
+    });
+
+    fireEvent.keyDown(screen.getByRole("dialog"), {
+      key: "s",
+      ctrlKey: true,
+    });
+
+    await waitFor(() => {
+      const stored = localStorage.getItem("mint_mock_quick_capture");
+      expect(stored).not.toBeNull();
+      expect(JSON.parse(stored ?? "{}").draft.content).toBe(
+        "ショートカットで保存する下書き",
+      );
+      expect(screen.getByRole("status")).toHaveTextContent("保存済み");
+    });
+  });
+
   it("persists the latest draft before exporting a backup", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

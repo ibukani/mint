@@ -101,6 +101,15 @@ export const useQuickCaptureOverlayController = () => {
       event.preventDefault();
       void capture.promote();
     } else if (
+      event.key.toLocaleLowerCase() === "s" &&
+      (event.ctrlKey || event.metaKey) &&
+      !event.altKey &&
+      !event.shiftKey &&
+      !isSaving
+    ) {
+      event.preventDefault();
+      void capture.retrySave();
+    } else if (
       event.key.toLocaleLowerCase() === "n" &&
       (event.ctrlKey || event.metaKey) &&
       !event.altKey &&
