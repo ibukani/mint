@@ -889,6 +889,18 @@
   font-weight: var(--font-weight-regular);
   line-height: 1.55;
 }
+.quick-capture__empty-action {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+}
+.quick-capture__empty-action:hover,
+.quick-capture__empty-action:focus-visible {
+  border-color: var(--border-control-focus);
+  background: var(--surface-accent-action);
+}
 
 @media (max-width: 620px) {
   .quick-capture__window-pin span {

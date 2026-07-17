@@ -41,6 +41,8 @@ export const QuickCaptureOverlay: React.FC = () => {
     isSaving,
     activeNote,
     filteredNotes,
+    activeNotesCount,
+    libraryTags,
     pinnedCount,
     attachmentCount,
     archivedCount,
@@ -199,8 +201,9 @@ export const QuickCaptureOverlay: React.FC = () => {
           <QuickCaptureLibrary
             notes={capture.notes}
             filteredNotes={filteredNotes}
+            activeNotesCount={activeNotesCount}
             activeId={capture.activeId}
-            allTags={capture.allTags}
+            allTags={libraryTags}
             pinnedCount={pinnedCount}
             attachmentCount={attachmentCount}
             archivedCount={archivedCount}

@@ -33,21 +33,36 @@ export const useQuickCaptureLibrary = ({
     index: Fuse<QuickCaptureNote>;
   } | null>(null);
   const parsedQuery = useMemo(() => parseQuickCaptureSearch(query), [query]);
+  const archiveFilterActive = archivedOnly || parsedQuery.archivedOnly;
+  const scopedNotes = useMemo(
+    () =>
+      notes.filter((note) =>
+        archiveFilterActive ? note.archived : !note.archived,
+      ),
+    [archiveFilterActive, notes],
+  );
   const filteredBaseNotes = useMemo(
     () =>
       notes.filter(
         (note) =>
+          (archiveFilterActive ? note.archived : !note.archived) &&
           (!(pinnedOnly || parsedQuery.pinnedOnly) || note.pinned) &&
           (!(attachmentsOnly || parsedQuery.attachmentsOnly) ||
             note.attachments.length > 0) &&
-          (!(archivedOnly || parsedQuery.archivedOnly) || note.archived) &&
           (!tagFilter || note.tags.includes(tagFilter)) &&
           (!parsedQuery.tag ||
             note.tags.some(
               (tag) => tag.toLowerCase() === parsedQuery.tag?.toLowerCase(),
             )),
       ),
-    [archivedOnly, attachmentsOnly, notes, parsedQuery, pinnedOnly, tagFilter],
+    [
+      archiveFilterActive,
+      attachmentsOnly,
+      notes,
+      parsedQuery,
+      pinnedOnly,
+      tagFilter,
+    ],
   );
   const filteredNotes = useMemo(() => {
     if (!parsedQuery.text) return filteredBaseNotes;
@@ -70,11 +85,22 @@ export const useQuickCaptureLibrary = ({
     filteredNotes[0] ??
     null;
   const pinnedCount = useMemo(
-    () => notes.filter((note) => note.pinned).length,
-    [notes],
+    () => scopedNotes.filter((note) => note.pinned).length,
+    [scopedNotes],
   );
   const attachmentCount = useMemo(
-    () => notes.filter((note) => note.attachments.length > 0).length,
+    () => scopedNotes.filter((note) => note.attachments.length > 0).length,
+    [scopedNotes],
+  );
+  const libraryTags = useMemo(
+    () =>
+      [...new Set(scopedNotes.flatMap((note) => note.tags))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [scopedNotes],
+  );
+  const activeNotesCount = useMemo(
+    () => notes.filter((note) => !note.archived).length,
     [notes],
   );
 
@@ -96,7 +122,7 @@ export const useQuickCaptureLibrary = ({
         setPinnedOnly(false);
         setAttachmentsOnly(false);
         setArchivedOnly(false);
-        setLibraryCursorId(notes[0]?.id ?? null);
+        setLibraryCursorId(notes.find((note) => !note.archived)?.id ?? null);
       } else {
         librarySearchRef.current?.blur();
       }
@@ -194,6 +220,8 @@ export const useQuickCaptureLibrary = ({
 
   return {
     filteredNotes,
+    activeNotesCount,
+    libraryTags,
     handleClearFilters,
     handleQueryChange,
     handleSearchBlur,

@@ -450,7 +450,7 @@ describe("QuickCaptureOverlay", () => {
       name: "ピン留めしたメモ（1件）",
     });
     const allFilter = screen.getByRole("button", {
-      name: "すべてのメモ（2件）",
+      name: "未アーカイブのメモ（2件）",
     });
 
     fireEvent.click(pinnedFilter);
@@ -471,7 +471,7 @@ describe("QuickCaptureOverlay", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "すべてのメモ（2件）" }),
+        screen.getByRole("button", { name: "未アーカイブのメモ（2件）" }),
       ).toHaveAttribute("aria-pressed", "true"),
     );
     expect(screen.getByRole("option", { name: /通常のメモ/ })).toBeVisible();
@@ -545,7 +545,7 @@ describe("QuickCaptureOverlay", () => {
       screen.queryByRole("option", { name: /レビュー用の通常メモ/ }),
     ).not.toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("button", { name: "すべてのメモ（2件）" }),
+      screen.getByRole("button", { name: "未アーカイブのメモ（2件）" }),
     );
     expect(attachmentFilter).toHaveAttribute("aria-pressed", "false");
   });
@@ -588,6 +588,107 @@ describe("QuickCaptureOverlay", () => {
 
     fireEvent.click(work);
     expect(tags).toHaveValue("idea");
+  });
+
+  it("keeps archived notes out of the inbox until explicitly requested", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "inbox-note",
+            content: "受信箱に残るメモ",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+          {
+            id: "archived-note",
+            content: "整理済みのアーカイブメモ",
+            tags: [],
+            pinned: false,
+            archived: true,
+            createdAt: "2026-07-14T07:00:00.000Z",
+            updatedAt: "2026-07-14T07:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    await screen.findByRole("option", { name: /受信箱に残るメモ/ });
+    expect(
+      screen.queryByRole("option", { name: /整理済みのアーカイブメモ/ }),
+    ).not.toBeInTheDocument();
+
+    const allFilter = screen.getByRole("button", {
+      name: "未アーカイブのメモ（1件）",
+    });
+    expect(allFilter).toHaveAttribute("aria-pressed", "true");
+    const archivedFilter = screen.getByRole("button", {
+      name: "アーカイブしたメモ（1件）",
+    });
+    fireEvent.click(archivedFilter);
+
+    await waitFor(() =>
+      expect(archivedFilter).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(
+      screen.getByRole("option", { name: /整理済みのアーカイブメモ/ }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("option", { name: /受信箱に残るメモ/ }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(allFilter);
+    await waitFor(() =>
+      expect(allFilter).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(
+      screen.getByRole("option", { name: /受信箱に残るメモ/ }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("option", { name: /整理済みのアーカイブメモ/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers an archive shortcut when the inbox is empty", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "only-archived-note",
+            content: "受信箱から整理したメモ",
+            tags: [],
+            pinned: false,
+            archived: true,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    expect(await screen.findByText("受信箱は空です")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "アーカイブを表示" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "アーカイブしたメモ（1件）" }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(
+      await screen.findByRole("option", { name: /受信箱から整理したメモ/ }),
+    ).toBeVisible();
   });
 
   it("saves the current draft with the explicit save shortcut", async () => {

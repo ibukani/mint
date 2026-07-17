@@ -16,6 +16,7 @@ import { formatUpdatedAt, noteTitle } from "../utils";
 interface QuickCaptureLibraryProps {
   notes: QuickCaptureNote[];
   filteredNotes: QuickCaptureNote[];
+  activeNotesCount: number;
   activeId: string | null;
   allTags: string[];
   pinnedCount: number;
@@ -53,6 +54,7 @@ interface QuickCaptureLibraryProps {
 export const QuickCaptureLibrary = ({
   notes,
   filteredNotes,
+  activeNotesCount,
   activeId,
   allTags,
   pinnedCount,
@@ -156,14 +158,14 @@ export const QuickCaptureLibrary = ({
             ? "is-active"
             : ""
         }
-        aria-label={`すべてのメモ（${notes.length}件）`}
+        aria-label={`未アーカイブのメモ（${activeNotesCount}件）`}
         aria-pressed={
           !pinnedOnly && !attachmentsOnly && !archivedOnly && !tagFilter
         }
         onClick={onClearFilters}
       >
         すべて
-        <span aria-hidden="true">{notes.length}</span>
+        <span aria-hidden="true">{activeNotesCount}</span>
       </button>
       <button
         type="button"
@@ -272,13 +274,32 @@ export const QuickCaptureLibrary = ({
           <strong>
             {query || tagFilter || pinnedOnly || attachmentsOnly || archivedOnly
               ? "一致するメモがありません"
-              : "まだメモはありません"}
+              : activeNotesCount === 0 && archivedCount > 0
+                ? "受信箱は空です"
+                : "まだメモはありません"}
           </strong>
           <span>
             {query || tagFilter || pinnedOnly || attachmentsOnly || archivedOnly
               ? "検索条件を変えてみてください"
-              : `${shortcutModifier}+Enterで保存すると、ここからすぐ開けます`}
+              : activeNotesCount === 0 && archivedCount > 0
+                ? "アーカイブしたメモから、必要なものを戻せます"
+                : `${shortcutModifier}+Enterで保存すると、ここからすぐ開けます`}
           </span>
+          {!query &&
+            !tagFilter &&
+            !pinnedOnly &&
+            !attachmentsOnly &&
+            !archivedOnly &&
+            activeNotesCount === 0 &&
+            archivedCount > 0 && (
+              <button
+                type="button"
+                className="quick-capture__empty-action"
+                onClick={onToggleArchivedOnly}
+              >
+                アーカイブを表示
+              </button>
+            )}
         </div>
       )}
     </div>
