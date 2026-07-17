@@ -11,7 +11,7 @@ const EXPANDED_WIDTH: f64 = 360.0;
 const EXPANDED_HEIGHT: f64 = 520.0;
 
 pub use clipboard::{
-    apply_clipboard_history_settings, start_clipboard_history_monitor, ClipboardHistoryMonitor,
+    apply_clipboard_history_settings, configure_clipboard_history_monitor, ClipboardHistoryMonitor,
 };
 pub use repository::initialize_store;
 pub use shortcut::handle_file_shelf_shortcut_event;

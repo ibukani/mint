@@ -5,6 +5,7 @@ use std::{
     path::Path,
     sync::atomic::{AtomicBool, Ordering},
     sync::{Arc, Condvar, Mutex},
+    thread::JoinHandle,
     time::Duration as StdDuration,
 };
 use tauri::{AppHandle, Emitter, Manager};
@@ -53,17 +54,80 @@ struct MonitorWakeState {
 
 pub struct ClipboardHistoryMonitor {
     running: AtomicBool,
+    enabled: AtomicBool,
+    starting: AtomicBool,
     wake: Condvar,
     wake_state: Mutex<MonitorWakeState>,
+    worker: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl ClipboardHistoryMonitor {
     pub fn new() -> Self {
         Self {
             running: AtomicBool::new(true),
+            enabled: AtomicBool::new(false),
+            starting: AtomicBool::new(false),
             wake: Condvar::new(),
             wake_state: Mutex::new(MonitorWakeState::default()),
+            worker: Mutex::new(None),
         }
+    }
+
+    pub fn configure(self: &Arc<Self>, app: AppHandle, enabled: bool) {
+        self.enabled.store(enabled, Ordering::Release);
+        if !enabled {
+            self.notify();
+            self.join_worker();
+            return;
+        }
+        if !self.is_running() {
+            return;
+        }
+        if self.starting.swap(true, Ordering::AcqRel) {
+            self.notify();
+            return;
+        }
+
+        let should_start = {
+            let mut worker = self
+                .worker
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            if worker.as_ref().is_some_and(|handle| !handle.is_finished()) {
+                false
+            } else {
+                let stale_worker = worker.take();
+                drop(worker);
+                if let Some(handle) = stale_worker {
+                    let _ = handle.join();
+                }
+                true
+            }
+        };
+        if !should_start {
+            self.starting.store(false, Ordering::Release);
+            self.notify();
+            return;
+        }
+
+        let monitor = Arc::clone(self);
+        let worker = std::thread::Builder::new()
+            .name("mint-clipboard-history".to_string())
+            .spawn(move || run_clipboard_history_monitor(app, monitor));
+        let Ok(worker) = worker else {
+            self.starting.store(false, Ordering::Release);
+            return;
+        };
+
+        if self.is_running() && self.is_enabled() {
+            *self
+                .worker
+                .lock()
+                .unwrap_or_else(|error| error.into_inner()) = Some(worker);
+        } else {
+            let _ = worker.join();
+        }
+        self.starting.store(false, Ordering::Release);
     }
 
     pub fn notify(&self) {
@@ -77,11 +141,28 @@ impl ClipboardHistoryMonitor {
 
     pub fn stop(&self) {
         self.running.store(false, Ordering::Release);
+        self.enabled.store(false, Ordering::Release);
         self.notify();
+        self.join_worker();
     }
 
     fn is_running(&self) -> bool {
         self.running.load(Ordering::Acquire)
+    }
+
+    fn is_enabled(&self) -> bool {
+        self.enabled.load(Ordering::Acquire)
+    }
+
+    fn join_worker(&self) {
+        let worker = self
+            .worker
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .take();
+        if let Some(worker) = worker {
+            let _ = worker.join();
+        }
     }
 
     fn wait(&self, timeout: StdDuration) -> bool {
@@ -94,22 +175,6 @@ impl ClipboardHistoryMonitor {
                 Ok((state, _)) => state,
                 Err(error) => error.into_inner().0,
             };
-        }
-        let notified = state.notified;
-        state.notified = false;
-        notified
-    }
-
-    fn wait_for_notification(&self) -> bool {
-        let mut state = self
-            .wake_state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        while !state.notified && self.is_running() {
-            state = self
-                .wake
-                .wait(state)
-                .unwrap_or_else(|error| error.into_inner());
         }
         let notified = state.notified;
         state.notified = false;
@@ -137,108 +202,100 @@ fn next_clipboard_poll_interval(current: StdDuration, changed: bool) -> StdDurat
     current.saturating_mul(2).min(CLIPBOARD_MAX_POLL_INTERVAL)
 }
 
-pub fn start_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHistoryMonitor>) {
-    let _ = std::thread::Builder::new()
-        .name("mint-clipboard-history".to_string())
-        .spawn(move || {
-            let mut settings = load_file_shelf_settings(&app);
-            let mut monitoring = false;
-            let mut previous_text = String::new();
-            let mut previous_oversized_length: Option<usize> = None;
-            let mut poll_interval = CLIPBOARD_POLL_INTERVAL;
+pub fn configure_clipboard_history_monitor(
+    app: AppHandle,
+    monitor: Arc<ClipboardHistoryMonitor>,
+    settings: &FileShelfSettings,
+) {
+    monitor.configure(app, should_monitor_clipboard(settings));
+}
 
-            while monitor.is_running() {
-                let Some(file_shelf_settings) = settings.as_ref() else {
-                    monitor.wait(CLIPBOARD_IDLE_INTERVAL);
-                    settings = load_file_shelf_settings(&app);
-                    continue;
-                };
+fn run_clipboard_history_monitor(app: AppHandle, monitor: Arc<ClipboardHistoryMonitor>) {
+    let mut settings = load_file_shelf_settings(&app);
+    let mut monitoring = false;
+    let mut previous_text = String::new();
+    let mut previous_oversized_length: Option<usize> = None;
+    let mut poll_interval = CLIPBOARD_POLL_INTERVAL;
 
-                if !should_monitor_clipboard(file_shelf_settings) {
-                    monitoring = false;
-                    previous_text.clear();
-                    previous_oversized_length = None;
-                    poll_interval = CLIPBOARD_POLL_INTERVAL;
-                    if !monitor.wait_for_notification() {
-                        break;
-                    }
-                    settings = load_file_shelf_settings(&app);
-                    continue;
-                }
+    while monitor.is_running() && monitor.is_enabled() {
+        let Some(file_shelf_settings) = settings.as_ref() else {
+            monitor.wait(CLIPBOARD_IDLE_INTERVAL);
+            settings = load_file_shelf_settings(&app);
+            continue;
+        };
 
-                if monitor.wait(poll_interval) {
-                    settings = load_file_shelf_settings(&app);
-                    poll_interval = CLIPBOARD_POLL_INTERVAL;
-                    continue;
-                }
-                if !monitor.is_running() {
-                    break;
-                }
+        if monitor.wait(poll_interval) {
+            settings = load_file_shelf_settings(&app);
+            poll_interval = CLIPBOARD_POLL_INTERVAL;
+            continue;
+        }
+        if !monitor.is_running() || !monitor.is_enabled() {
+            break;
+        }
 
-                let raw_text = match app.clipboard().read_text() {
-                    Ok(text) => text,
-                    Err(_) => {
-                        monitoring = true;
-                        previous_text.clear();
-                        previous_oversized_length = None;
-                        poll_interval = CLIPBOARD_POLL_INTERVAL;
-                        continue;
-                    }
-                };
-
-                let trimmed_text = raw_text.trim();
-                if trimmed_text.is_empty() {
-                    poll_interval = next_clipboard_poll_interval(poll_interval, false);
-                    continue;
-                }
-                if trimmed_text.len() > MAX_CLIPBOARD_HISTORY_BYTES {
-                    if previous_oversized_length == Some(trimmed_text.len()) {
-                        poll_interval = next_clipboard_poll_interval(poll_interval, false);
-                        continue;
-                    }
-                    previous_oversized_length = Some(trimmed_text.len());
-                    previous_text.clear();
-                    monitoring = true;
-                    poll_interval = next_clipboard_poll_interval(poll_interval, true);
-                    continue;
-                }
-
+        let raw_text = match app.clipboard().read_text() {
+            Ok(text) => text,
+            Err(_) => {
+                monitoring = true;
+                previous_text.clear();
                 previous_oversized_length = None;
-                if monitoring && trimmed_text == previous_text {
-                    poll_interval = next_clipboard_poll_interval(poll_interval, false);
-                    continue;
-                }
-
-                let current_text = trimmed_text.to_string();
-                if !monitoring {
-                    monitoring = true;
-                    previous_text = current_text;
-                    poll_interval = next_clipboard_poll_interval(poll_interval, true);
-                    continue;
-                }
-                previous_text.clone_from(&current_text);
-                poll_interval = next_clipboard_poll_interval(poll_interval, true);
-                if is_application_ignored(
-                    file_shelf_settings,
-                    clipboard_source_application_name().as_deref(),
-                ) {
-                    continue;
-                }
-
-                let Some(store) = app.try_state::<FileShelfStoreState>() else {
-                    continue;
-                };
-                if let Ok(mutation) = capture_clipboard_text_in_store(
-                    &store.path,
-                    current_text,
-                    file_shelf_settings.clipboard_history_limit,
-                ) {
-                    if mutation.added_count > 0 || mutation.skipped_count == 0 {
-                        let _ = app.emit("file-shelf-state-changed", mutation.state);
-                    }
-                }
+                poll_interval = CLIPBOARD_POLL_INTERVAL;
+                continue;
             }
-        });
+        };
+
+        let trimmed_text = raw_text.trim();
+        if trimmed_text.is_empty() {
+            poll_interval = next_clipboard_poll_interval(poll_interval, false);
+            continue;
+        }
+        if trimmed_text.len() > MAX_CLIPBOARD_HISTORY_BYTES {
+            if previous_oversized_length == Some(trimmed_text.len()) {
+                poll_interval = next_clipboard_poll_interval(poll_interval, false);
+                continue;
+            }
+            previous_oversized_length = Some(trimmed_text.len());
+            previous_text.clear();
+            monitoring = true;
+            poll_interval = next_clipboard_poll_interval(poll_interval, true);
+            continue;
+        }
+
+        previous_oversized_length = None;
+        if monitoring && trimmed_text == previous_text {
+            poll_interval = next_clipboard_poll_interval(poll_interval, false);
+            continue;
+        }
+
+        let current_text = trimmed_text.to_string();
+        if !monitoring {
+            monitoring = true;
+            previous_text = current_text;
+            poll_interval = next_clipboard_poll_interval(poll_interval, true);
+            continue;
+        }
+        previous_text.clone_from(&current_text);
+        poll_interval = next_clipboard_poll_interval(poll_interval, true);
+        if is_application_ignored(
+            file_shelf_settings,
+            clipboard_source_application_name().as_deref(),
+        ) {
+            continue;
+        }
+
+        let Some(store) = app.try_state::<FileShelfStoreState>() else {
+            continue;
+        };
+        if let Ok(mutation) = capture_clipboard_text_in_store(
+            &store.path,
+            current_text,
+            file_shelf_settings.clipboard_history_limit,
+        ) {
+            if mutation.added_count > 0 || mutation.skipped_count == 0 {
+                let _ = app.emit("file-shelf-state-changed", mutation.state);
+            }
+        }
+    }
 }
 
 pub fn apply_clipboard_history_settings(app: &AppHandle, settings: &FileShelfSettings) {
@@ -638,6 +695,19 @@ mod tests {
 
         monitor.stop();
         assert!(!monitor.is_running());
+        assert!(!monitor.is_enabled());
+    }
+
+    #[test]
+    fn monitor_is_not_started_until_explicitly_enabled() {
+        let monitor = ClipboardHistoryMonitor::new();
+
+        assert!(!monitor.is_enabled());
+        assert!(monitor
+            .worker
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .is_none());
     }
 
     #[test]
@@ -646,7 +716,7 @@ mod tests {
         let waiter = monitor.clone();
         let (sender, receiver) = std::sync::mpsc::channel();
         let thread = std::thread::spawn(move || {
-            sender.send(waiter.wait_for_notification()).unwrap();
+            sender.send(waiter.wait(StdDuration::from_secs(1))).unwrap();
         });
 
         let stayed_asleep = receiver.recv_timeout(StdDuration::from_millis(20)).is_err();

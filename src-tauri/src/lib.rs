@@ -89,13 +89,18 @@ pub fn run() {
             app.manage(quick_capture_store);
             let file_shelf_store = features::file_shelf::initialize_store(app.handle())?;
             app.manage(file_shelf_store);
-            features::file_shelf::start_clipboard_history_monitor(
-                app.handle().clone(),
-                clipboard_monitor.clone(),
-            );
             let clipboard_monitor_for_settings = clipboard_monitor.clone();
+            let handle_for_clipboard_settings = app.handle().clone();
             app.listen("clipboard-settings-changed", move |_| {
-                clipboard_monitor_for_settings.notify();
+                if let Ok(settings) = core::settings::load_settings_cached(
+                    &handle_for_clipboard_settings,
+                ) {
+                    features::file_shelf::configure_clipboard_history_monitor(
+                        handle_for_clipboard_settings.clone(),
+                        clipboard_monitor_for_settings.clone(),
+                        &settings.file_shelf,
+                    );
+                }
             });
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
@@ -119,9 +124,15 @@ pub fn run() {
             // Pre-populate settings cache and register global shortcuts asynchronously
             // so that we don't block window creation.
             let handle = app.handle().clone();
+            let clipboard_monitor_for_start = clipboard_monitor.clone();
             tauri::async_runtime::spawn(async move {
                 match core::settings::load_settings_internal(&handle) {
                     Ok(settings) => {
+                        features::file_shelf::configure_clipboard_history_monitor(
+                            handle.clone(),
+                            clipboard_monitor_for_start,
+                            &settings.file_shelf,
+                        );
                         if let Err(error) =
                             core::settings::sync_autostart(&handle, settings.autostart)
                         {
