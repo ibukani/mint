@@ -1,5 +1,12 @@
 import type React from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import {
@@ -21,6 +28,7 @@ export const useQuickCaptureOverlayController = () => {
   const { settings } = useAppSettings();
   const capture = useQuickCapture();
   const [preview, setPreview] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLElement | null>(null);
   const noteListId = useId();
@@ -45,6 +53,12 @@ export const useQuickCaptureOverlayController = () => {
     editorRef,
     setContent: capture.setContent,
   });
+  const openCommandPalette = useCallback(() => {
+    setCommandPaletteOpen(true);
+  }, []);
+  const closeCommandPalette = useCallback(() => {
+    setCommandPaletteOpen(false);
+  }, []);
 
   useEffect(() => {
     void capture.focusSequence;
@@ -80,7 +94,15 @@ export const useQuickCaptureOverlayController = () => {
       hasSearchModifier &&
       !event.altKey &&
       !event.shiftKey &&
-      ["f", "k"].includes(event.key.toLocaleLowerCase())
+      event.key.toLocaleLowerCase() === "k"
+    ) {
+      event.preventDefault();
+      openCommandPalette();
+    } else if (
+      hasSearchModifier &&
+      !event.altKey &&
+      !event.shiftKey &&
+      event.key.toLocaleLowerCase() === "f"
     ) {
       event.preventDefault();
       library.focusSearch();
@@ -93,6 +115,9 @@ export const useQuickCaptureOverlayController = () => {
     ) {
       event.preventDefault();
       library.focusSearch();
+    } else if (event.key === "Escape" && commandPaletteOpen) {
+      event.preventDefault();
+      closeCommandPalette();
     } else if (event.key === "Escape" || (event.altKey && event.key === "2")) {
       event.preventDefault();
       void capture.close();
@@ -155,6 +180,7 @@ export const useQuickCaptureOverlayController = () => {
   };
 
   const selectLibraryNote = (note: QuickCaptureNote) => {
+    closeCommandPalette();
     library.setLibraryCursorId(note.id);
     void capture.selectNote(note);
   };
@@ -164,6 +190,8 @@ export const useQuickCaptureOverlayController = () => {
     ...library,
     activeNote,
     capture,
+    closeCommandPalette,
+    commandPaletteOpen,
     continueList: actions.continueList,
     editorRef,
     handleKeyDown,
@@ -175,6 +203,7 @@ export const useQuickCaptureOverlayController = () => {
     insertTemplate: actions.insertTemplate,
     formatBlock: actions.formatBlock,
     noteListId,
+    openCommandPalette,
     preview,
     previewRef,
     selectLibraryNote,

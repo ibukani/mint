@@ -1,10 +1,11 @@
-import { CopyPlus, FileText, Pin, X } from "lucide-react";
+import { Command, CopyPlus, FileText, Pin, X } from "lucide-react";
 import type React from "react";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { useQuickCaptureOverlayController } from "../hooks/useQuickCaptureOverlayController";
 import type { QuickCaptureTemplate } from "../templates";
 import { noteTitle } from "../utils";
+import { QuickCaptureCommandPalette } from "./QuickCaptureCommandPalette";
 import { QuickCaptureEditor } from "./QuickCaptureEditor";
 import { QuickCaptureLibrary } from "./QuickCaptureLibrary";
 import "./QuickCaptureOverlay.css";
@@ -58,8 +59,11 @@ export const QuickCaptureOverlay: React.FC = () => {
     requestDeleteNote,
     confirmDestructiveAction,
     cancelConfirmation,
+    closeCommandPalette,
+    commandPaletteOpen,
     handleLibrarySearchFocus,
     handleLibrarySearchBlur,
+    focusSearch,
     handleQueryChange,
     handleClearFilters,
     handleTogglePinnedOnly,
@@ -68,6 +72,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     handleToggleTag,
     selectLibraryNote,
     indentSelection,
+    openCommandPalette,
   } = useQuickCaptureOverlayController();
   return (
     <OverlayFrame>
@@ -108,6 +113,18 @@ export const QuickCaptureOverlay: React.FC = () => {
             </div>
           </div>
           <div className="quick-capture__header-actions">
+            <button
+              type="button"
+              className="quick-capture__command-trigger"
+              aria-label="コマンドパレットを開く"
+              aria-keyshortcuts="Control+K Meta+K"
+              title={`コマンドパレット（${shortcutModifier}+K）`}
+              onClick={openCommandPalette}
+            >
+              <Command size={14} aria-hidden="true" />
+              <span>コマンド</span>
+              <kbd>{shortcutModifier} K</kbd>
+            </button>
             <button
               type="button"
               className={`quick-capture__window-pin${capture.windowPinned ? " is-active" : ""}`}
@@ -217,6 +234,26 @@ export const QuickCaptureOverlay: React.FC = () => {
           />
         </main>
       </OverlayCard>
+      <QuickCaptureCommandPalette
+        open={commandPaletteOpen}
+        capture={capture}
+        preview={preview}
+        isSaving={isSaving}
+        shortcutModifier={shortcutModifier}
+        onClose={closeCommandPalette}
+        onFocusSearch={focusSearch}
+        onSetPreview={setPreview}
+        onPasteClipboard={() => void pasteClipboard()}
+        onCaptureClipboard={() => void captureClipboard()}
+        onCopyClipboard={() => void copyClipboard()}
+        onExportMarkdown={() => void exportMarkdown()}
+        onExportBackup={() => void exportBackup()}
+        onImportBackup={() => void requestImportBackup()}
+        onInsertTemplate={insertTemplate}
+        onRequestDelete={() => {
+          if (activeNote) requestDeleteNote(activeNote);
+        }}
+      />
       <ConfirmDialog
         open={confirmation !== null}
         title={

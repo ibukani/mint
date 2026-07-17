@@ -677,7 +677,7 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
   });
 
-  it("focuses the library search and opens notes with the keyboard", async () => {
+  it("focuses the library search and opens notes with Ctrl+F", async () => {
     localStorage.setItem(
       "mint_mock_quick_capture",
       JSON.stringify({
@@ -719,13 +719,8 @@ describe("QuickCaptureOverlay", () => {
     expect(search).toHaveFocus();
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
-      "Control+F Control+K / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
+      "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
-    act(() => {
-      search.blur();
-      fireEvent.keyDown(editor, { key: "k", ctrlKey: true });
-    });
-    expect(search).toHaveFocus();
 
     const options = screen.getAllByRole("option");
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
@@ -774,14 +769,98 @@ describe("QuickCaptureOverlay", () => {
     expect(options).toHaveLength(8);
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
-      "Control+F Control+K / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
+      "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
-    expect(screen.getByText("Ctrl F / K")).toBeInTheDocument();
+    expect(screen.getByText("Ctrl F")).toBeInTheDocument();
 
     fireEvent.keyDown(search, { key: "PageDown" });
     expect(search).toHaveAttribute("aria-activedescendant", options[5].id);
     fireEvent.keyDown(search, { key: "PageUp" });
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
+  });
+
+  it("opens the command palette with Ctrl+K and executes the selected command", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+
+    fireEvent.keyDown(editor, { key: "k", ctrlKey: true });
+
+    const palette = await screen.findByRole("dialog", {
+      name: "コマンドパレット",
+    });
+    const search = within(palette).getByRole("combobox", {
+      name: "コマンドを検索",
+    });
+    await waitFor(() => expect(search).toHaveFocus());
+    expect(within(palette).getByText("Ctrl K")).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "プレビュー" } });
+    const previewCommand = within(palette).getByRole("option", {
+      name: /プレビューを表示/,
+    });
+    expect(previewCommand).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    await waitFor(() => expect(palette).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "プレビュー" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("moves from the command palette to library search", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+
+    fireEvent.keyDown(editor, { key: "k", ctrlKey: true });
+    const palette = await screen.findByRole("dialog", {
+      name: "コマンドパレット",
+    });
+    const commandSearch = within(palette).getByRole("combobox", {
+      name: "コマンドを検索",
+    });
+    await waitFor(() => expect(commandSearch).toHaveFocus());
+    fireEvent.change(commandSearch, {
+      target: { value: "保存済みメモを検索" },
+    });
+    fireEvent.keyDown(commandSearch, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: "保存済みメモを検索" }),
+      ).toHaveFocus(),
+    );
+    expect(palette).not.toBeInTheDocument();
+  });
+
+  it("duplicates the active note from the command palette", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "パレットから複製するメモ" } });
+    fireEvent.click(screen.getByRole("button", { name: /メモに保存/ }));
+    const savedNote = await screen.findByRole("option", {
+      name: /パレットから複製するメモ/,
+    });
+    fireEvent.click(savedNote);
+
+    fireEvent.keyDown(screen.getByRole("dialog"), {
+      key: "k",
+      ctrlKey: true,
+    });
+    const palette = await screen.findByRole("dialog", {
+      name: "コマンドパレット",
+    });
+    const search = within(palette).getByRole("combobox", {
+      name: "コマンドを検索",
+    });
+    fireEvent.change(search, { target: { value: "複製" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("option", { name: /パレットから複製するメモ/ }),
+      ).toHaveLength(2),
+    );
   });
 
   it("clears library filters before Escape closes the overlay", async () => {
