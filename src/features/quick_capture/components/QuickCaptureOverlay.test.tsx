@@ -18,6 +18,7 @@ const windowMocks = vi.hoisted(() => ({
   isVisible: vi.fn(),
 }));
 const clipboardMocks = vi.hoisted(() => ({
+  readText: vi.fn(),
   writeText: vi.fn(),
 }));
 
@@ -45,6 +46,7 @@ describe("QuickCaptureOverlay", () => {
     dialogMocks.save.mockReset().mockResolvedValue(null);
     windowMocks.hide.mockReset().mockResolvedValue(undefined);
     windowMocks.isVisible.mockReset().mockResolvedValue(true);
+    clipboardMocks.readText.mockReset().mockResolvedValue("");
     clipboardMocks.writeText.mockReset().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -128,6 +130,25 @@ describe("QuickCaptureOverlay", () => {
       expect(clipboardMocks.writeText).toHaveBeenCalledWith("共有する本文");
       expect(screen.getByRole("status")).toHaveTextContent(
         "クリップボードへコピーしました",
+      );
+    });
+  });
+
+  it("saves clipboard text as a new note without replacing the current draft", async () => {
+    clipboardMocks.readText.mockResolvedValue("別の場所から取り込むメモ");
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    fireEvent.change(editor, { target: { value: "編集中の下書き" } });
+
+    fireEvent.click(await screen.findByRole("button", { name: "即保存" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: /別の場所から取り込むメモ/ }),
+      ).toBeInTheDocument();
+      expect(editor).toHaveValue("編集中の下書き");
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "クリップボードを新しいメモとして保存しました",
       );
     });
   });

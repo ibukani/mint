@@ -15,6 +15,7 @@ export type QuickCaptureConfirmation =
 interface CaptureActionSource {
   content: string;
   tags: string;
+  captureText: (text: string) => Promise<boolean>;
   exportBackup: (path: string) => Promise<void>;
   importBackup: (path: string) => Promise<string | null>;
   removeNote: (noteId: string) => Promise<string | null>;
@@ -77,6 +78,21 @@ export const useQuickCaptureOverlayActions = ({
       setActionStatus("メモをクリップボードへコピーしました");
     } catch {
       setActionStatus("メモをコピーできませんでした");
+    }
+  };
+
+  const captureClipboard = async () => {
+    try {
+      const value = await navigator.clipboard.readText();
+      if (!value.trim()) {
+        setActionStatus("クリップボードが空です");
+        return;
+      }
+      if (await capture.captureText(value)) {
+        setActionStatus("クリップボードを新しいメモとして保存しました");
+      }
+    } catch {
+      setActionStatus("クリップボードを読み取れませんでした");
     }
   };
 
@@ -157,6 +173,7 @@ export const useQuickCaptureOverlayActions = ({
       setConfirmation(null);
       setConfirmationError("");
     },
+    captureClipboard,
     confirmation,
     confirmationBusy,
     confirmationError,

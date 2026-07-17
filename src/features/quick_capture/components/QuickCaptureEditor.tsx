@@ -2,6 +2,7 @@ import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import {
   Check,
   ClipboardPaste,
+  ClipboardPlus,
   Copy,
   Download,
   Edit3,
@@ -32,6 +33,7 @@ interface QuickCaptureEditorProps {
   activeNote: QuickCaptureNote | null;
   onSetPreview: (preview: boolean) => void;
   onPasteClipboard: () => void;
+  onCaptureClipboard: () => void;
   onCopyClipboard: () => void;
   onExportMarkdown: () => void;
   onRequestDelete: () => void;
@@ -48,6 +50,7 @@ export const QuickCaptureEditor = ({
   activeNote,
   onSetPreview,
   onPasteClipboard,
+  onCaptureClipboard,
   onCopyClipboard,
   onExportMarkdown,
   onRequestDelete,
@@ -88,6 +91,15 @@ export const QuickCaptureEditor = ({
           title="クリップボードから貼り付け"
         >
           <ClipboardPaste size={14} aria-hidden="true" /> 貼り付け
+        </button>
+        <button
+          type="button"
+          className="quick-capture__toolbar-button"
+          disabled={isSaving}
+          onClick={onCaptureClipboard}
+          title="クリップボードの本文を新しいメモとして保存"
+        >
+          <ClipboardPlus size={14} aria-hidden="true" /> 即保存
         </button>
         {capture.content.trim() && (
           <>

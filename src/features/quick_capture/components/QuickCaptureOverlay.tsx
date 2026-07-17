@@ -40,6 +40,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     handleKeyDown,
     handleLibrarySearchKeyDown,
     pasteClipboard,
+    captureClipboard,
     copyClipboard,
     copySavedNote,
     exportMarkdown,
@@ -152,6 +153,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             activeNote={activeNote}
             onSetPreview={setPreview}
             onPasteClipboard={() => void pasteClipboard()}
+            onCaptureClipboard={() => void captureClipboard()}
             onCopyClipboard={() => void copyClipboard()}
             onExportMarkdown={() => void exportMarkdown()}
             onRequestDelete={() => {

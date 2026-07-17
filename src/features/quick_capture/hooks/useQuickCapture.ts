@@ -38,6 +38,7 @@ export const useQuickCapture = () => {
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
+  const clipboardCaptureInFlightRef = useRef(false);
   const updateContent = useCallback((value: string) => {
     revision.current += 1;
     setContent(value);
@@ -280,6 +281,33 @@ export const useQuickCapture = () => {
     }
   }, [activeId, content, persist, pinned, sortNotes, tags]);
 
+  const captureText = useCallback(
+    async (text: string) => {
+      if (!text.trim() || clipboardCaptureInFlightRef.current) return false;
+      clipboardCaptureInFlightRef.current = true;
+      setStatus("saving");
+      setError(null);
+      setCanRetrySave(false);
+      try {
+        const note = await createQuickCaptureNote({
+          content: text,
+          tags: [],
+          pinned: false,
+        });
+        setNotes((current) => sortNotes([note, ...current]));
+        setStatus("saved");
+        return true;
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
+        setStatus("error");
+        return false;
+      } finally {
+        clipboardCaptureInFlightRef.current = false;
+      }
+    },
+    [sortNotes],
+  );
+
   const removeNote = useCallback(
     async (noteId: string) => {
       setStatus("saving");
@@ -398,6 +426,7 @@ export const useQuickCapture = () => {
     activeId,
     ...attachments,
     allTags,
+    captureText,
     close: lifecycle.close,
     content,
     draft,
