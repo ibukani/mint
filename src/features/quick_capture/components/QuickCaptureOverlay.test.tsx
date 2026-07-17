@@ -134,6 +134,19 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => expect(editor).toHaveValue("**選択**する本文"));
   });
 
+  it("formats the current selection with the keyboard shortcut", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "キーボード書式" } });
+    editor.setSelectionRange(0, 5);
+
+    fireEvent.keyDown(editor, { key: "b", ctrlKey: true });
+
+    await waitFor(() => expect(editor).toHaveValue("**キーボード**書式"));
+  });
+
   it("copies the current draft to the clipboard", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

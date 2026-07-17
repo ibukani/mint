@@ -100,6 +100,7 @@ export const QuickCaptureEditor = ({
             className="quick-capture__toolbar-button"
             disabled={preview || isSaving}
             aria-label="太字"
+            aria-keyshortcuts="Control+B Meta+B"
             title="太字にする"
             onClick={() => onFormat("**", "**", "太字")}
           >
@@ -110,6 +111,7 @@ export const QuickCaptureEditor = ({
             className="quick-capture__toolbar-button"
             disabled={preview || isSaving}
             aria-label="斜体"
+            aria-keyshortcuts="Control+I Meta+I"
             title="斜体にする"
             onClick={() => onFormat("_", "_", "斜体")}
           >
@@ -248,6 +250,18 @@ export const QuickCaptureEditor = ({
           aria-label="メモ本文"
           value={capture.content}
           onChange={(event) => capture.setContent(event.target.value)}
+          onKeyDown={(event) => {
+            if (preview || event.altKey || event.shiftKey) return;
+            if (!(event.ctrlKey || event.metaKey)) return;
+            const key = event.key.toLocaleLowerCase();
+            if (key === "b") {
+              event.preventDefault();
+              onFormat("**", "**", "太字");
+            } else if (key === "i") {
+              event.preventDefault();
+              onFormat("_", "_", "斜体");
+            }
+          }}
           placeholder="何を残しておきますか？"
           spellCheck="true"
         />
