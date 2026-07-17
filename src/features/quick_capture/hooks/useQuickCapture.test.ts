@@ -264,6 +264,25 @@ describe("useQuickCapture", () => {
     expect(mocks.load).toHaveBeenCalledTimes(2);
   });
 
+  it("does not load the saved state until a hidden window is shown", async () => {
+    mocks.isVisible.mockResolvedValue(false);
+    const { result } = renderHook(() => useQuickCapture());
+    const showQuickCapture = mocks.listeners.get("quick-capture-shown");
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(result.current.notes).toEqual([]);
+
+    act(() => showQuickCapture?.({}));
+    await waitFor(() => expect(result.current.content).toBe("下書きの内容"));
+
+    expect(mocks.load).toHaveBeenCalledOnce();
+  });
+
   it("saves and hides once when an unpinned visible window loses focus", async () => {
     const { result } = renderHook(() => useQuickCapture());
     await waitFor(() => expect(result.current.content).toBe("下書きの内容"));

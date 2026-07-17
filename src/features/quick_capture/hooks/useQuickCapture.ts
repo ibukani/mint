@@ -429,16 +429,25 @@ export const useQuickCapture = () => {
   closeRef.current = close;
 
   useEffect(() => {
-    initialLoadPromiseRef.current = reload();
-    void getCurrentWindow()
+    const currentWindow = getCurrentWindow();
+    const loadInitialState = () => {
+      if (initialLoadPromiseRef.current) return;
+      initialLoadPromiseRef.current = reload();
+    };
+    void currentWindow
       .isVisible()
       .then((visible) => {
-        if (visible) {
+        if (visible !== false) {
           visibleRef.current = true;
           setWindowVisible(true);
+          loadInitialState();
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        visibleRef.current = true;
+        setWindowVisible(true);
+        loadInitialState();
+      });
     document.body.classList.add("is-overlay");
     document.documentElement.classList.add("is-overlay");
     const shown = listen("quick-capture-shown", () => {
@@ -461,7 +470,7 @@ export const useQuickCapture = () => {
             if (error) void reload();
           });
         } else {
-          void reloadNotes();
+          loadInitialState();
         }
       }
     });
