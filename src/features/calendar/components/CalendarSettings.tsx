@@ -43,7 +43,6 @@ export const CalendarSettings: React.FC = () => {
       />
 
       <div className="calendar-settings-grid">
-        <GoogleCalendarSettings />
         <section
           className="settings-group"
           aria-labelledby="calendar-shortcut-title"
@@ -125,6 +124,7 @@ export const CalendarSettings: React.FC = () => {
             時計が非表示の場合は、時計とカレンダーをまとめて表示します。
           </p>
         </section>
+        <GoogleCalendarSettings />
       </div>
     </SettingsSection>
   );

@@ -4,7 +4,7 @@ export interface ClockSettings {
   autoHideSeconds: number;
   showDate: boolean;
   showSeconds: boolean;
-  clockColor: string;
+  themeColor: string;
   blinkColon: boolean;
   sizePercent: number;
   displayMode: "digital" | "analog";

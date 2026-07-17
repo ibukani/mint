@@ -99,8 +99,8 @@ export const ClockAppearanceSettings: React.FC<{
 
       <Field id="clock-color-picker" label="時計のテーマカラー">
         <ColorPresetPicker
-          value={clock.clockColor}
-          onChange={(value) => handleChange("clockColor", value)}
+          value={clock.themeColor}
+          onChange={(value) => handleChange("themeColor", value)}
           ariaLabel="時計のテーマカラー"
         />
       </Field>

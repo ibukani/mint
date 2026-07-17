@@ -12,7 +12,7 @@ describe("QuickCaptureSettings", () => {
     );
 
     await screen.findByRole("heading", {
-      name: "クイックキャプチャー",
+      name: "クイックキャプチャー設定",
       level: 2,
     });
 

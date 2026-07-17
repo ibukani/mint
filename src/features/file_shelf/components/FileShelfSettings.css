@@ -6,9 +6,11 @@
 
 .file-shelf-settings-note {
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--color-text-subtle);
   font-size: var(--font-size-xs);
-  line-height: 1.6;
+  line-height: 1.55;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-accent);
 }
 
 .file-shelf-settings-history,

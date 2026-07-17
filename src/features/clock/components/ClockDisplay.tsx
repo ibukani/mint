@@ -30,7 +30,7 @@ export interface TickingClockProps {
   displayMode: "digital" | "analog";
   hourFormat: "12h" | "24h";
   glowEffect: boolean;
-  clockColor: string;
+  themeColor: string;
 }
 
 export const getClockDimensions = (
@@ -48,8 +48,8 @@ const AnalogClock: React.FC<{
   time: Date;
   showSeconds: boolean;
   glowEffect: boolean;
-  clockColor: string;
-}> = ({ time, showSeconds, glowEffect, clockColor }) => {
+  themeColor: string;
+}> = ({ time, showSeconds, glowEffect, themeColor }) => {
   const ms = time.getMilliseconds();
   const secs = time.getSeconds() + ms / 1000;
   const mins = time.getMinutes() + secs / 60;
@@ -83,7 +83,7 @@ const AnalogClock: React.FC<{
       aria-label={`現在時刻 ${String(time.getHours()).padStart(2, "0")}時${String(time.getMinutes()).padStart(2, "0")}分`}
       style={
         {
-          "--clock-dynamic-color": clockColor,
+          "--clock-dynamic-color": themeColor,
         } as React.CSSProperties
       }
     >
@@ -144,7 +144,7 @@ export const TickingClock: React.FC<TickingClockProps> = ({
   displayMode,
   hourFormat,
   glowEffect,
-  clockColor,
+  themeColor,
 }) => {
   const [time, setTime] = useState(new Date());
 
@@ -204,7 +204,7 @@ export const TickingClock: React.FC<TickingClockProps> = ({
           time={time}
           showSeconds={showSeconds}
           glowEffect={glowEffect}
-          clockColor={clockColor}
+          themeColor={themeColor}
         />
       ) : (
         <div className="digital-clock">

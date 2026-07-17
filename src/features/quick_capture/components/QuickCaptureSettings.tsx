@@ -41,7 +41,7 @@ export const QuickCaptureSettings: React.FC = () => {
 
   return (
     <SettingsSection
-      title="クイックキャプチャー"
+      title="クイックキャプチャー設定"
       description="アプリを開かず、下書きやメモをすぐ呼び出します。"
     >
       <FeatureSettingsHeader

@@ -71,7 +71,7 @@ export const FileShelfSettings: React.FC = () => {
 
   return (
     <SettingsSection
-      title="ファイルシェル"
+      title="ファイルシェル設定"
       description="ファイルやフォルダを画面端へ一時的に預け、別の場所へすばやく取り出します。"
     >
       <FeatureSettingsHeader
