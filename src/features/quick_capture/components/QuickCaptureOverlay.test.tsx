@@ -485,8 +485,13 @@ describe("QuickCaptureOverlay", () => {
     expect(search).toHaveFocus();
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
-      "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
+      "Control+F Control+K / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
+    act(() => {
+      search.blur();
+      fireEvent.keyDown(editor, { key: "k", ctrlKey: true });
+    });
+    expect(search).toHaveFocus();
 
     const options = screen.getAllByRole("option");
     expect(search).toHaveAttribute("aria-activedescendant", options[0].id);
@@ -535,9 +540,9 @@ describe("QuickCaptureOverlay", () => {
     expect(options).toHaveLength(8);
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
-      "Control+F / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
+      "Control+F Control+K / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape",
     );
-    expect(screen.getByText("Ctrl F")).toBeInTheDocument();
+    expect(screen.getByText("Ctrl F / K")).toBeInTheDocument();
 
     fireEvent.keyDown(search, { key: "PageDown" });
     expect(search).toHaveAttribute("aria-activedescendant", options[5].id);

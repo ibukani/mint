@@ -77,7 +77,7 @@ export const useQuickCaptureOverlayController = () => {
       hasSearchModifier &&
       !event.altKey &&
       !event.shiftKey &&
-      event.key.toLocaleLowerCase() === "f"
+      ["f", "k"].includes(event.key.toLocaleLowerCase())
     ) {
       event.preventDefault();
       library.focusSearch();

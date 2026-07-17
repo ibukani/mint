@@ -116,7 +116,7 @@ export const QuickCaptureLibrary = ({
             ? `${noteListId}-${cursorNote.id}`
             : undefined
         }
-        aria-keyshortcuts={`${usesMetaShortcut ? "Meta+F" : "Control+F"} / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape`}
+        aria-keyshortcuts={`${usesMetaShortcut ? "Meta+F Meta+K" : "Control+F Control+K"} / ArrowDown ArrowUp Home End PageUp PageDown Enter Escape`}
         value={query}
         onFocus={onSearchFocus}
         onBlur={onSearchBlur}
@@ -126,9 +126,9 @@ export const QuickCaptureLibrary = ({
       />
       <kbd
         className="quick-capture__search-shortcut"
-        title={`検索へ移動（${shortcutModifier}+F /）・↑↓: 1件移動・PageUp/PageDown: 5件移動`}
+        title={`検索へ移動（${shortcutModifier}+F / ${shortcutModifier}+K）・↑↓: 1件移動・PageUp/PageDown: 5件移動`}
       >
-        {shortcutModifier} F
+        {shortcutModifier} F / K
       </kbd>
     </label>
     <fieldset
