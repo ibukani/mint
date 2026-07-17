@@ -24,6 +24,7 @@ export const useQuickCaptureOverlayController = () => {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLElement | null>(null);
   const noteListId = useId();
+  const previousActiveIdRef = useRef<string | null>(null);
   const shortcutModifier = getPlatformShortcutModifier();
   const usesMetaShortcut = isApplePlatform();
   const isSaving = capture.status === "saving";
@@ -58,16 +59,18 @@ export const useQuickCaptureOverlayController = () => {
 
   useEffect(() => {
     void capture.focusSequence;
-    if (capture.activeId !== null) return;
-    setPreview(false);
-    library.reset();
-    actions.clearActionStatus();
-  }, [
-    actions.clearActionStatus,
-    capture.activeId,
-    capture.focusSequence,
-    library.reset,
-  ]);
+    if (capture.activeId === null) {
+      setPreview(false);
+      library.reset();
+    }
+  }, [capture.activeId, capture.focusSequence, library.reset]);
+
+  useEffect(() => {
+    if (capture.activeId === null && previousActiveIdRef.current !== null) {
+      actions.clearActionStatus();
+    }
+    previousActiveIdRef.current = capture.activeId;
+  }, [actions.clearActionStatus, capture.activeId]);
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     const hasSearchModifier = usesMetaShortcut
