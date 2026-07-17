@@ -161,6 +161,7 @@ interface QuickCaptureEditorProps {
   onCopyClipboard: () => void;
   onFormat: (prefix: string, suffix: string, fallbackText: string) => void;
   onContinueList: () => boolean;
+  onFormatBlock: (prefix: string) => void;
   onIndentSelection: (outdent: boolean) => void;
   onInsertTemplate: (template: QuickCaptureTemplate) => void;
   onExportMarkdown: () => void;
@@ -182,6 +183,7 @@ export const QuickCaptureEditor = ({
   onCopyClipboard,
   onFormat,
   onContinueList,
+  onFormatBlock,
   onIndentSelection,
   onInsertTemplate,
   onExportMarkdown,
@@ -261,6 +263,51 @@ export const QuickCaptureEditor = ({
             onClick={() => onFormat("[", "](URL)", "リンク")}
           >
             <Link2 size={14} aria-hidden="true" />
+          </button>
+        </fieldset>
+        <fieldset
+          className="quick-capture__format-actions quick-capture__block-format-actions"
+          aria-label="Markdownブロック書式"
+        >
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="見出し"
+            title="現在行を見出しにする"
+            onClick={() => onFormatBlock("## ")}
+          >
+            H2
+          </button>
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="チェックリスト"
+            title="現在行をチェックリストにする"
+            onClick={() => onFormatBlock("- [ ] ")}
+          >
+            ☑
+          </button>
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="箇条書き"
+            title="現在行を箇条書きにする"
+            onClick={() => onFormatBlock("- ")}
+          >
+            •
+          </button>
+          <button
+            type="button"
+            className="quick-capture__toolbar-button"
+            disabled={preview || isSaving}
+            aria-label="引用"
+            title="現在行を引用にする"
+            onClick={() => onFormatBlock("> ")}
+          >
+            ❯
           </button>
         </fieldset>
         <QuickCaptureTemplateMenu

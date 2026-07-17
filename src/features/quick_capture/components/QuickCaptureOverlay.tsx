@@ -49,6 +49,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     copyClipboard,
     copySavedNote,
     exportMarkdown,
+    formatBlock,
     exportBackup,
     formatSelection,
     requestImportBackup,
@@ -165,6 +166,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             onCopyClipboard={() => void copyClipboard()}
             onFormat={formatSelection}
             onContinueList={continueList}
+            onFormatBlock={formatBlock}
             onIndentSelection={indentSelection}
             onInsertTemplate={(template: QuickCaptureTemplate) =>
               insertTemplate(template)

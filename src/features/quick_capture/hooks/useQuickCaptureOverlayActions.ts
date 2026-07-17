@@ -9,6 +9,7 @@ import type { QuickCaptureTemplate } from "../templates";
 import type { QuickCaptureNote } from "../types";
 import {
   continueMarkdownList,
+  formatMarkdownLines,
   indentMarkdownSelection,
   insertMarkdownTemplate,
   type MarkdownTextEdit,
@@ -151,6 +152,19 @@ export const useQuickCaptureOverlayActions = ({
     );
   };
 
+  const formatBlock = (prefix: string) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    applyEditorEdit(
+      formatMarkdownLines(
+        capture.content,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        prefix,
+      ),
+    );
+  };
+
   const insertTemplate = (template: QuickCaptureTemplate) => {
     const textarea = editorRef.current;
     const start = textarea?.selectionStart ?? capture.content.length;
@@ -264,6 +278,7 @@ export const useQuickCaptureOverlayActions = ({
     continueList,
     exportBackup,
     exportMarkdown,
+    formatBlock,
     formatSelection,
     indentSelection,
     insertTemplate,

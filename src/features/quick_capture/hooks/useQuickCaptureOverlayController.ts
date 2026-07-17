@@ -163,6 +163,7 @@ export const useQuickCaptureOverlayController = () => {
     isSaving,
     indentSelection: actions.indentSelection,
     insertTemplate: actions.insertTemplate,
+    formatBlock: actions.formatBlock,
     noteListId,
     preview,
     previewRef,

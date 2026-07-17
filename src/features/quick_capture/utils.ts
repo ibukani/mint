@@ -116,6 +116,46 @@ export const indentMarkdownSelection = (
   };
 };
 
+export const formatMarkdownLines = (
+  content: string,
+  selectionStart: number,
+  selectionEnd: number,
+  prefix: string,
+): MarkdownTextEdit => {
+  const firstLineStart =
+    content.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+  const selectionIncludesNextLine =
+    selectionEnd > selectionStart && content[selectionEnd - 1] === "\n";
+  const lastLineEnd = selectionIncludesNextLine
+    ? selectionEnd - 1
+    : (() => {
+        const lineEnd = content.indexOf("\n", selectionEnd);
+        return lineEnd === -1 ? content.length : lineEnd;
+      })();
+  const selectedLines = content.slice(firstLineStart, lastLineEnd);
+  const lines = selectedLines.split("\n");
+  const removePrefix = lines.every((line) => line.startsWith(prefix));
+  const editedLines = lines.map((line) =>
+    removePrefix
+      ? line.slice(prefix.length)
+      : `${prefix}${line
+          .replace(/^(\s*)(?:[-*+]\s+\[[ xX]\]\s+|[-*+]\s+)/, "$1")
+          .replace(/^(\s*)#+\s+/, "$1")
+          .replace(/^(\s*)>\s+/, "$1")}`,
+  );
+  const replacement = editedLines.join("\n");
+  const nextContent = `${content.slice(0, firstLineStart)}${replacement}${content.slice(lastLineEnd)}`;
+  const lengthDelta = replacement.length - selectedLines.length;
+  const prefixDelta = removePrefix ? -prefix.length : prefix.length;
+  const nextStart = selectionStart + prefixDelta;
+  const nextEnd = selectionEnd + lengthDelta;
+  return {
+    content: nextContent,
+    selectionStart: Math.max(firstLineStart, nextStart),
+    selectionEnd: Math.max(firstLineStart, nextEnd),
+  };
+};
+
 export const insertMarkdownTemplate = (
   content: string,
   selectionStart: number,

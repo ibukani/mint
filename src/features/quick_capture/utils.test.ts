@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { QUICK_CAPTURE_TEMPLATES } from "./templates";
 import {
   continueMarkdownList,
+  formatMarkdownLines,
   indentMarkdownSelection,
   insertMarkdownTemplate,
   mergeTags,
@@ -101,5 +102,22 @@ describe("quick capture utilities", () => {
       pinnedOnly: true,
       attachmentsOnly: true,
     });
+  });
+
+  it("applies and toggles a block prefix across selected lines", () => {
+    const content = "一つ目\n二つ目";
+    const formatted = formatMarkdownLines(content, 0, content.length, "- ");
+    expect(formatted.content).toBe("- 一つ目\n- 二つ目");
+    expect(
+      formatMarkdownLines(
+        formatted.content,
+        formatted.selectionStart,
+        formatted.selectionEnd,
+        "- ",
+      ).content,
+    ).toBe(content);
+    expect(formatMarkdownLines("- 作業", 0, 0, "- [ ] ").content).toBe(
+      "- [ ] 作業",
+    );
   });
 });

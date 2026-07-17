@@ -134,6 +134,21 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => expect(editor).toHaveValue("**選択**する本文"));
   });
 
+  it("formats selected lines with a Markdown block action", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "一つ目\n二つ目" } });
+    editor.setSelectionRange(0, editor.value.length);
+
+    fireEvent.click(screen.getByRole("button", { name: "チェックリスト" }));
+
+    await waitFor(() =>
+      expect(editor).toHaveValue("- [ ] 一つ目\n- [ ] 二つ目"),
+    );
+  });
+
   it("formats the current selection with the keyboard shortcut", async () => {
     render(<QuickCaptureOverlay />);
     const editor = (await screen.findByLabelText(
