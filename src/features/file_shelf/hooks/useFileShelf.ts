@@ -2,30 +2,12 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  addFileShelfContent,
-  addFileShelfPaths,
-  chooseFileShelfFolders,
-  chooseFileShelfPaths,
-  clearFileShelf,
-  clearFileShelfClipboardHistory,
   loadFileShelfState,
-  openFileShelfPath,
-  openFileShelfUrl,
-  removeFileShelfItems,
-  renameFileShelfItem,
-  restoreFileShelfRemoval,
-  restoreRecentFileShelfRemoval,
-  revealFileShelfPath,
   setFileShelfExpanded,
-  setFileShelfItemsPinned,
   shouldAutoExpandFileShelf,
-  startFileShelfDrag,
 } from "../api";
-import type {
-  AddFileShelfContentInput,
-  FileShelfItem,
-  FileShelfState,
-} from "../types";
+import type { FileShelfState } from "../types";
+import { useFileShelfActions } from "./useFileShelfActions";
 
 const emptyState: FileShelfState = { groups: [] };
 
@@ -93,26 +75,6 @@ export const useFileShelf = () => {
     setError(reason instanceof Error ? reason.message : String(reason));
   }, []);
 
-  const load = useCallback(async () => {
-    const revision = ++operationRevision.current;
-    setLoading(true);
-    setError("");
-    try {
-      const next = await loadFileShelfState();
-      if (revision === operationRevision.current) applyState(next);
-    } catch (reason) {
-      if (revision === operationRevision.current) fail(reason);
-    } finally {
-      if (revision === operationRevision.current) setLoading(false);
-    }
-  }, [applyState, fail]);
-
-  useEffect(() => {
-    if (expanded && stateLoadedRef.current) return;
-    if (!expanded && summaryLoadedRef.current) return;
-    void load();
-  }, [expanded, load]);
-
   const changeExpanded = useCallback(
     async (next: boolean, focus = next, transient = false) => {
       setError("");
@@ -133,31 +95,38 @@ export const useFileShelf = () => {
     [fail],
   );
 
-  const addPaths = useCallback(
-    async (paths: string[]) => {
-      if (!paths.length) return;
-      const revision = ++operationRevision.current;
-      setBusy(true);
-      setError("");
-      setNotice("");
-      try {
-        const mutation = await addFileShelfPaths({ paths });
-        if (revision === operationRevision.current) {
-          applyState(mutation.state);
-          setNotice(
-            mutation.addedCount > 0
-              ? `${mutation.addedCount}件を預かりました${mutation.skippedCount ? `（${mutation.skippedCount}件は追加済みまたは無効）` : ""}`
-              : "追加できる新しい項目がありませんでした",
-          );
-        }
-      } catch (reason) {
-        if (revision === operationRevision.current) fail(reason);
-      } finally {
-        if (revision === operationRevision.current) setBusy(false);
-      }
-    },
-    [applyState, fail],
-  );
+  const actions = useFileShelfActions({
+    operationRevision,
+    applyState,
+    reportError: fail,
+    setBusy,
+    setError,
+    setNotice,
+    setUndoToken,
+    undoToken,
+    pendingDragItemIds,
+    setPendingDragItemIds,
+  });
+
+  const load = useCallback(async () => {
+    const revision = ++operationRevision.current;
+    setLoading(true);
+    setError("");
+    try {
+      const next = await loadFileShelfState();
+      if (revision === operationRevision.current) applyState(next);
+    } catch (reason) {
+      if (revision === operationRevision.current) fail(reason);
+    } finally {
+      if (revision === operationRevision.current) setLoading(false);
+    }
+  }, [applyState, fail]);
+
+  useEffect(() => {
+    if (expanded && stateLoadedRef.current) return;
+    if (!expanded && summaryLoadedRef.current) return;
+    void load();
+  }, [expanded, load]);
 
   useEffect(() => {
     let unlistenMode: (() => void) | undefined;
@@ -224,7 +193,7 @@ export const useFileShelf = () => {
         } else if (event.payload.type === "drop") {
           dragEnterRevision.current += 1;
           setIsDropTarget(false);
-          void addPaths(event.payload.paths);
+          void actions.addPaths(event.payload.paths);
         }
       })
       .then((cleanup) => {
@@ -240,7 +209,7 @@ export const useFileShelf = () => {
       dragEnterRevision.current += 1;
       setIsDropTarget(false);
     };
-  }, [addPaths, applyState, changeExpanded]);
+  }, [actions.addPaths, applyState, changeExpanded]);
 
   useEffect(() => {
     if (!undoToken) return;
@@ -259,316 +228,6 @@ export const useFileShelf = () => {
     });
   }, [state.groups]);
 
-  const addContent = useCallback(
-    async (input: AddFileShelfContentInput) => {
-      const revision = ++operationRevision.current;
-      setBusy(true);
-      setError("");
-      setNotice("");
-      try {
-        const mutation = await addFileShelfContent(input);
-        if (revision === operationRevision.current) {
-          applyState(mutation.state);
-          setNotice("クリップボードから1件預かりました");
-        }
-      } catch (reason) {
-        if (revision === operationRevision.current) fail(reason);
-      } finally {
-        if (revision === operationRevision.current) setBusy(false);
-      }
-    },
-    [applyState, fail],
-  );
-
-  const choosePaths = useCallback(async () => {
-    try {
-      const selection = await chooseFileShelfPaths();
-      if (!selection) return;
-      await addPaths(Array.isArray(selection) ? selection : [selection]);
-    } catch (reason) {
-      fail(reason);
-    }
-  }, [addPaths, fail]);
-
-  const chooseFolders = useCallback(async () => {
-    try {
-      const selection = await chooseFileShelfFolders();
-      if (!selection) return;
-      await addPaths(Array.isArray(selection) ? selection : [selection]);
-    } catch (reason) {
-      fail(reason);
-    }
-  }, [addPaths, fail]);
-
-  const removeItems = useCallback(
-    async (itemIds: string[]) => {
-      const revision = ++operationRevision.current;
-      setBusy(true);
-      setError("");
-      try {
-        const removal = await removeFileShelfItems(itemIds);
-        if (revision === operationRevision.current) {
-          applyState(removal.state);
-          setUndoToken(removal.undoToken);
-          setNotice(`${itemIds.length}件を棚から外しました`);
-        }
-      } catch (reason) {
-        if (revision === operationRevision.current) fail(reason);
-      } finally {
-        if (revision === operationRevision.current) setBusy(false);
-      }
-    },
-    [applyState, fail],
-  );
-
-  const clear = useCallback(async () => {
-    const revision = ++operationRevision.current;
-    setBusy(true);
-    setError("");
-    try {
-      const removal = await clearFileShelf();
-      if (revision === operationRevision.current) {
-        applyState(removal.state);
-        setUndoToken(removal.undoToken);
-        setNotice("棚を空にしました");
-      }
-    } catch (reason) {
-      if (revision === operationRevision.current) fail(reason);
-    } finally {
-      if (revision === operationRevision.current) setBusy(false);
-    }
-  }, [applyState, fail]);
-
-  const clearClipboardHistory = useCallback(async () => {
-    const revision = ++operationRevision.current;
-    setBusy(true);
-    setError("");
-    try {
-      const removal = await clearFileShelfClipboardHistory();
-      if (revision === operationRevision.current) {
-        applyState(removal.state);
-        setUndoToken(removal.undoToken);
-        setNotice("クリップボード履歴を消去しました");
-      }
-    } catch (reason) {
-      if (revision === operationRevision.current) fail(reason);
-    } finally {
-      if (revision === operationRevision.current) setBusy(false);
-    }
-  }, [applyState, fail]);
-
-  const undo = useCallback(async () => {
-    if (!undoToken) return;
-    const revision = ++operationRevision.current;
-    setBusy(true);
-    setError("");
-    try {
-      const next = await restoreFileShelfRemoval(undoToken);
-      if (revision === operationRevision.current) {
-        applyState(next);
-        setUndoToken("");
-        setNotice("棚へ戻しました");
-      }
-    } catch (reason) {
-      if (revision === operationRevision.current) fail(reason);
-    } finally {
-      if (revision === operationRevision.current) setBusy(false);
-    }
-  }, [applyState, fail, undoToken]);
-
-  const restoreRecent = useCallback(async () => {
-    const revision = ++operationRevision.current;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const next = await restoreRecentFileShelfRemoval();
-      if (revision === operationRevision.current) {
-        applyState(next);
-        setUndoToken("");
-        setNotice("最近外した項目を棚へ戻しました");
-      }
-    } catch (reason) {
-      if (revision === operationRevision.current) fail(reason);
-    } finally {
-      if (revision === operationRevision.current) setBusy(false);
-    }
-  }, [applyState, fail]);
-
-  const pinItems = useCallback(
-    async (items: FileShelfItem[], pinned: boolean) => {
-      if (!items.length) return;
-      const revision = ++operationRevision.current;
-      setBusy(true);
-      setError("");
-      try {
-        const next = await setFileShelfItemsPinned(
-          items.map((item) => item.id),
-          pinned,
-        );
-        if (revision === operationRevision.current) {
-          applyState(next);
-          setNotice(
-            pinned
-              ? `${items.length}件を棚に固定しました`
-              : `${items.length}件の固定を解除しました`,
-          );
-        }
-      } catch (reason) {
-        if (revision === operationRevision.current) fail(reason);
-      } finally {
-        if (revision === operationRevision.current) setBusy(false);
-      }
-    },
-    [applyState, fail],
-  );
-
-  const renameItem = useCallback(
-    async (item: FileShelfItem, displayName: string) => {
-      const revision = ++operationRevision.current;
-      setBusy(true);
-      setError("");
-      try {
-        const next = await renameFileShelfItem(item.id, displayName);
-        if (revision === operationRevision.current) {
-          applyState(next);
-          setNotice(`「${displayName.trim()}」として棚に表示します`);
-        }
-        return true;
-      } catch (reason) {
-        if (revision === operationRevision.current) fail(reason);
-        return false;
-      } finally {
-        if (revision === operationRevision.current) setBusy(false);
-      }
-    },
-    [applyState, fail],
-  );
-
-  const dragItems = useCallback(
-    async (items: FileShelfItem[], move = false) => {
-      const ready = items.filter(
-        (item) => item.availability === "ready" && item.sourcePath,
-      );
-      if (!ready.length) {
-        setError("文章とURLは、項目を選択してコピーしてください。");
-        return;
-      }
-      const paths = ready.map((item) => item.sourcePath as string);
-
-      setBusy(true);
-      setError("");
-      try {
-        const result = await startFileShelfDrag(paths, move ? "move" : "copy");
-        if (result === "Dropped") {
-          const removable = ready.filter((item) => !item.pinned);
-          if (removable.length) {
-            setPendingDragItemIds((previous) =>
-              Array.from(
-                new Set([...previous, ...removable.map((item) => item.id)]),
-              ),
-            );
-          }
-          const retainedCount = ready.length - removable.length;
-          setNotice(
-            removable.length
-              ? `${ready.length}件の取り出し操作を完了しました。ドロップ先を確認してください${retainedCount ? `（固定中の${retainedCount}件は棚に残ります）` : ""}`
-              : `${ready.length}件を取り出しました（固定中の項目は棚に残ります）`,
-          );
-        }
-      } catch (reason) {
-        fail(reason);
-      } finally {
-        setBusy(false);
-      }
-    },
-    [fail],
-  );
-
-  const confirmDraggedItems = useCallback(async () => {
-    if (!pendingDragItemIds.length) return;
-    const revision = ++operationRevision.current;
-    setBusy(true);
-    setError("");
-    try {
-      const removal = await removeFileShelfItems(pendingDragItemIds);
-      if (revision === operationRevision.current) {
-        applyState(removal.state);
-        setUndoToken(removal.undoToken);
-        setPendingDragItemIds([]);
-        setNotice(`${pendingDragItemIds.length}件を棚から外しました`);
-      }
-    } catch (reason) {
-      if (revision === operationRevision.current) fail(reason);
-    } finally {
-      if (revision === operationRevision.current) setBusy(false);
-    }
-  }, [applyState, fail, pendingDragItemIds]);
-
-  const keepDraggedItems = useCallback(() => {
-    if (!pendingDragItemIds.length) return;
-    const count = pendingDragItemIds.length;
-    setPendingDragItemIds([]);
-    setNotice(`${count}件を棚に残しました`);
-  }, [pendingDragItemIds]);
-
-  const copyItem = useCallback(
-    async (item: FileShelfItem) => {
-      const value = item.textContent ?? item.sourcePath;
-      if (!value) return;
-      try {
-        await navigator.clipboard.writeText(value);
-        setNotice("クリップボードへコピーしました");
-      } catch (reason) {
-        fail(reason);
-      }
-    },
-    [fail],
-  );
-
-  const copyItems = useCallback(
-    async (items: FileShelfItem[]) => {
-      const values = items
-        .map((item) => item.textContent ?? item.sourcePath)
-        .filter((value): value is string => Boolean(value));
-      if (!values.length) return;
-      try {
-        await navigator.clipboard.writeText(values.join("\n"));
-        setNotice(`${values.length}件をクリップボードへコピーしました`);
-      } catch (reason) {
-        fail(reason);
-      }
-    },
-    [fail],
-  );
-
-  const openItem = useCallback(
-    async (item: FileShelfItem) => {
-      try {
-        if (item.kind === "url" && item.textContent) {
-          await openFileShelfUrl(item.textContent);
-        } else if (item.sourcePath) {
-          await openFileShelfPath(item.sourcePath);
-        }
-      } catch (reason) {
-        fail(reason);
-      }
-    },
-    [fail],
-  );
-
-  const revealItem = useCallback(
-    async (item: FileShelfItem) => {
-      if (!item.sourcePath) return;
-      try {
-        await revealFileShelfPath(item.sourcePath);
-      } catch (reason) {
-        fail(reason);
-      }
-    },
-    [fail],
-  );
-
   return {
     state,
     expanded,
@@ -585,23 +244,8 @@ export const useFileShelf = () => {
     pendingDragCount: pendingDragItemIds.length,
     reportError: fail,
     changeExpanded,
-    addPaths,
-    addContent,
-    choosePaths,
-    chooseFolders,
-    removeItems,
-    clear,
-    clearClipboardHistory,
-    undo,
-    restoreRecent,
-    pinItems,
-    renameItem,
-    dragItems,
-    confirmDraggedItems,
-    keepDraggedItems,
-    copyItem,
-    copyItems,
-    openItem,
-    revealItem,
+    ...actions,
   };
 };
+
+export type FileShelfController = ReturnType<typeof useFileShelf>;

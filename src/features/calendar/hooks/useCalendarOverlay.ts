@@ -1,20 +1,14 @@
-import { LogicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { emitTo, listen } from "@tauri-apps/api/event";
-import {
-  currentMonitor,
-  getCurrentWindow,
-  Window,
-} from "@tauri-apps/api/window";
+import { getCurrentWindow, Window } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import type { CalendarOpenMode } from "../types";
+import { useCalendarOverlayPosition } from "./useCalendarOverlayPosition";
 
 const ANIMATION_MS = 240;
-const WINDOW_MARGIN = 20;
-
 interface CalendarShownPayload {
   closeClockOnToggle: boolean;
   docked: boolean;
@@ -179,101 +173,13 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   useOverlayWindowEviction(isVisible);
   useOverlayWindowReady();
 
-  // Resize and position the window from the frontend
-  useEffect(() => {
-    if (
-      !isVisible ||
-      clockSizePercent === undefined ||
-      clockDisplayMode === undefined ||
-      clockEnabled === undefined
-    ) {
-      return;
-    }
-
-    const percent = clockSizePercent / 100;
-    const baseW = clockDisplayMode === "analog" ? 240 : 420;
-    const contentWidth = Math.max(Math.round(baseW * percent), 320);
-    const width = contentWidth;
-    const height = Math.round(384 * Math.max(contentWidth / 420, 1.0));
-
-    const currentWindow = getCurrentWindow();
-    let cancelled = false;
-
-    currentMonitor()
-      .then(async (monitor) => {
-        if (!monitor || cancelled) return;
-
-        // 1. Resize the window first
-        if (typeof currentWindow.setSize === "function") {
-          await currentWindow
-            .setSize(new LogicalSize(width, height))
-            .catch((error) => {
-              console.error("Failed to resize calendar window:", error);
-            });
-        }
-        if (cancelled) return;
-
-        // 2. Position the window
-        const clockWindow = await Window.getByLabel("clock");
-        if (cancelled) return;
-        const isClockVisible =
-          clockWindow && typeof clockWindow.isVisible === "function"
-            ? await clockWindow.isVisible()
-            : false;
-        if (cancelled) return;
-        const docked = clockEnabled && isClockVisible;
-        setIsDocked(docked);
-
-        if (docked && clockWindow) {
-          const clockPosition = await clockWindow.outerPosition();
-          const clockSize = await clockWindow.outerSize();
-          const scaleFactor = monitor.scaleFactor;
-
-          const calendarWidthPhysical = Math.round(width * scaleFactor);
-          const padding = 0;
-
-          const x = clockPosition.x + clockSize.width - calendarWidthPhysical;
-          const y = clockPosition.y + clockSize.height - padding;
-
-          if (cancelled) return;
-          await currentWindow
-            .setPosition(new PhysicalPosition(x, y))
-            .catch((error) => {
-              console.error(
-                "Failed to position calendar window (docked):",
-                error,
-              );
-            });
-        } else {
-          // Not docked, position at top-right
-          const scaleFactor = monitor.scaleFactor;
-          const calendarWidthPhysical = Math.round(width * scaleFactor);
-          const margin = Math.round(WINDOW_MARGIN * scaleFactor);
-
-          const x = monitor.size.width - calendarWidthPhysical - margin;
-          const y = margin;
-
-          if (cancelled) return;
-          await currentWindow
-            .setPosition(new PhysicalPosition(x, y))
-            .catch((error) => {
-              console.error(
-                "Failed to position calendar window (undocked):",
-                error,
-              );
-            });
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Failed to load monitor details:", error);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [clockDisplayMode, clockEnabled, clockSizePercent, isVisible]);
+  useCalendarOverlayPosition({
+    isVisible,
+    clockEnabled,
+    clockSizePercent,
+    clockDisplayMode,
+    setIsDocked,
+  });
 
   const animationClass = isHiding ? "is-hiding" : isVisible ? "is-visible" : "";
   const themeColor =

@@ -1,6 +1,7 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
+use super::CalendarEvent;
 use crate::core::window::{ensure_overlay_window, ensure_window, OverlayTarget};
 
 const CALENDAR_HEIGHT: f64 = 384.0;
@@ -118,13 +119,21 @@ pub fn toggle_calendar_overlay(app: &AppHandle) {
     show_calendar_overlay(app, &settings, CalendarOpenMode::Month);
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CalendarEditorPayload {
-    pub mode: String,
+    pub mode: CalendarEditorMode,
     pub date: Option<String>,
-    pub event: Option<serde_json::Value>,
-    pub template: Option<serde_json::Value>,
+    pub event: Option<CalendarEvent>,
+    pub template: Option<CalendarEvent>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalendarEditorMode {
+    Create,
+    Edit,
+    Duplicate,
 }
 
 #[derive(Default)]
@@ -175,18 +184,17 @@ fn open_calendar_editor_window_inner(
     state: &CalendarEditorState,
     payload: Option<CalendarEditorPayload>,
 ) -> Result<(), String> {
-    let payload = payload.unwrap_or_else(|| CalendarEditorPayload {
-        mode: "create".to_string(),
+    let payload = payload.unwrap_or(CalendarEditorPayload {
+        mode: CalendarEditorMode::Create,
         date: None,
         event: None,
         template: None,
     });
 
-    let payload_is_valid = match payload.mode.as_str() {
-        "create" => true,
-        "edit" => payload.event.is_some(),
-        "duplicate" => payload.template.is_some(),
-        _ => false,
+    let payload_is_valid = match &payload.mode {
+        CalendarEditorMode::Create => true,
+        CalendarEditorMode::Edit => payload.event.is_some(),
+        CalendarEditorMode::Duplicate => payload.template.is_some(),
     };
     if !payload_is_valid {
         return Err("Calendar editor payload is invalid".to_string());

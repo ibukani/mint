@@ -1,8 +1,4 @@
-import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
-import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import {
   createQuickCaptureNote,
   deleteQuickCaptureNote,
@@ -13,11 +9,10 @@ import {
   saveQuickCaptureDraft,
   updateQuickCaptureNote,
 } from "../api";
-import type { QuickCaptureNoteCreatedPayload } from "../events";
-import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../events";
 import type { QuickCaptureNote } from "../types";
 import { parseTags } from "../utils";
 import { useQuickCaptureAttachments } from "./useQuickCaptureAttachments";
+import { useQuickCaptureWindowLifecycle } from "./useQuickCaptureWindowLifecycle";
 
 export type CaptureSaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -29,29 +24,17 @@ export const useQuickCapture = () => {
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
-  const [windowPinned, setWindowPinnedState] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [status, setStatus] = useState<CaptureSaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [canRetrySave, setCanRetrySave] = useState(false);
   const [canRetryDuplicate, setCanRetryDuplicate] = useState(false);
   const [focusSequence, setFocusSequence] = useState(0);
-  const [windowVisible, setWindowVisible] = useState(false);
   const loaded = useRef(false);
   const revision = useRef(0);
   const notesReloadSequenceRef = useRef(0);
-  const initialLoadPromiseRef = useRef<Promise<string | null> | null>(null);
-  const initialShownRef = useRef(false);
-  const notesReleasedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef({ content: "", tags: "" });
-  const closeRef = useRef<() => Promise<void>>(async () => {});
-  const windowPinnedRef = useRef(false);
-  const visibleRef = useRef(false);
-  const focusedRef = useRef(true);
-  const closingRef = useRef(false);
-  const autoHideSuppressionDepthRef = useRef(0);
-  const autoHideSuppressedRef = useRef(false);
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
@@ -67,40 +50,6 @@ export const useQuickCapture = () => {
     revision.current += 1;
     setPinned(value);
   }, []);
-  const setWindowPinned = useCallback((value: boolean) => {
-    windowPinnedRef.current = value;
-    setWindowPinnedState(value);
-  }, []);
-
-  const withAutoHideSuspended = useCallback(
-    async <Result>(operation: () => Promise<Result>): Promise<Result> => {
-      autoHideSuppressionDepthRef.current += 1;
-      autoHideSuppressedRef.current = true;
-      try {
-        return await operation();
-      } finally {
-        autoHideSuppressionDepthRef.current = Math.max(
-          0,
-          autoHideSuppressionDepthRef.current - 1,
-        );
-        if (autoHideSuppressionDepthRef.current === 0 && focusedRef.current) {
-          autoHideSuppressedRef.current = false;
-        }
-      }
-    },
-    [],
-  );
-
-  const attachments = useQuickCaptureAttachments({
-    activeId,
-    setNotes,
-    setStatus,
-    setError,
-    setCanRetrySave,
-    setCanRetryDuplicate,
-    withAutoHideSuspended,
-  });
-
   const clearPendingPersist = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -403,132 +352,39 @@ export const useQuickCapture = () => {
     [clearPendingPersist, reload],
   );
 
-  const close = useCallback(async () => {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    try {
-      const saved = await persist();
-      if (!saved) return;
-      visibleRef.current = false;
-      setWindowVisible(false);
-      try {
-        await getCurrentWindow().hide();
-        notesReloadSequenceRef.current += 1;
-        notesReleasedRef.current = true;
-        setNotes([]);
-      } catch (reason) {
-        visibleRef.current = true;
-        setWindowVisible(true);
-        setError(reason instanceof Error ? reason.message : String(reason));
-        setStatus("error");
-        setCanRetrySave(false);
-      }
-    } finally {
-      closingRef.current = false;
-    }
-  }, [persist]);
+  const releaseNotes = useCallback(() => {
+    notesReloadSequenceRef.current += 1;
+    setNotes([]);
+  }, []);
+  const addNote = useCallback(
+    (note: QuickCaptureNote) => {
+      setNotes((current) =>
+        sortNotes([note, ...current.filter((item) => item.id !== note.id)]),
+      );
+    },
+    [sortNotes],
+  );
+  const lifecycle = useQuickCaptureWindowLifecycle({
+    persist,
+    reload,
+    reloadNotes,
+    showDraft,
+    releaseNotes,
+    addNote,
+    setError,
+    setStatus,
+    setCanRetrySave,
+  });
+  const attachments = useQuickCaptureAttachments({
+    activeId,
+    setNotes,
+    setStatus,
+    setError,
+    setCanRetrySave,
+    setCanRetryDuplicate,
+    withAutoHideSuspended: lifecycle.withAutoHideSuspended,
+  });
   const retrySave = persist;
-  closeRef.current = close;
-
-  useEffect(() => {
-    const currentWindow = getCurrentWindow();
-    const loadInitialState = () => {
-      if (initialLoadPromiseRef.current) return;
-      initialLoadPromiseRef.current = reload();
-    };
-    void currentWindow
-      .isVisible()
-      .then((visible) => {
-        if (visible !== false) {
-          visibleRef.current = true;
-          setWindowVisible(true);
-          loadInitialState();
-        }
-      })
-      .catch(() => {
-        visibleRef.current = true;
-        setWindowVisible(true);
-        loadInitialState();
-      });
-    document.body.classList.add("is-overlay");
-    document.documentElement.classList.add("is-overlay");
-    const shown = listen("quick-capture-shown", () => {
-      const firstShown = !initialShownRef.current;
-      initialShownRef.current = true;
-      visibleRef.current = true;
-      setWindowVisible(true);
-      focusedRef.current = true;
-      if (autoHideSuppressionDepthRef.current === 0) {
-        autoHideSuppressedRef.current = false;
-      }
-      showDraft();
-      if (!firstShown || notesReleasedRef.current) {
-        notesReleasedRef.current = false;
-        void reloadNotes();
-      } else {
-        const initialLoad = initialLoadPromiseRef.current;
-        if (initialLoad) {
-          void initialLoad.then((error) => {
-            if (error) void reload();
-          });
-        } else {
-          loadInitialState();
-        }
-      }
-    });
-    const noteCreated = listen<QuickCaptureNoteCreatedPayload>(
-      QUICK_CAPTURE_NOTE_CREATED_EVENT,
-      ({ payload }) => {
-        const note = payload?.note;
-        if (!note) return;
-        setNotes((current) =>
-          sortNotes([note, ...current.filter((item) => item.id !== note.id)]),
-        );
-      },
-    );
-    const hide = listen(
-      "quick-capture-hide-requested",
-      () => void closeRef.current(),
-    );
-    const focus = getCurrentWindow().onFocusChanged(({ payload }) => {
-      focusedRef.current = payload;
-      if (payload) {
-        if (autoHideSuppressionDepthRef.current === 0) {
-          autoHideSuppressedRef.current = false;
-        }
-        return;
-      }
-      if (autoHideSuppressionDepthRef.current > 0) {
-        autoHideSuppressedRef.current = true;
-      }
-      if (
-        visibleRef.current &&
-        !windowPinnedRef.current &&
-        !closingRef.current &&
-        !autoHideSuppressedRef.current
-      ) {
-        void closeRef.current();
-      }
-    });
-    const closeRequested =
-      typeof currentWindow.onCloseRequested === "function"
-        ? currentWindow.onCloseRequested(() => void closeRef.current())
-        : null;
-    return () => {
-      document.body.classList.remove("is-overlay");
-      document.documentElement.classList.remove("is-overlay");
-      void shown.then((unlisten) => unlisten());
-      void noteCreated.then((unlisten) => unlisten());
-      void hide.then((unlisten) => unlisten());
-      void focus.then((unlisten) => unlisten());
-      if (closeRequested) {
-        void closeRequested.then((unlisten) => unlisten());
-      }
-    };
-  }, [reload, reloadNotes, showDraft, sortNotes]);
-
-  useOverlayWindowEviction(windowVisible);
-  useOverlayWindowReady();
 
   const allTags = useMemo(
     () =>
@@ -542,7 +398,7 @@ export const useQuickCapture = () => {
     activeId,
     ...attachments,
     allTags,
-    close,
+    close: lifecycle.close,
     content,
     draft,
     duplicateActive,
@@ -559,7 +415,7 @@ export const useQuickCapture = () => {
     selectNote,
     setContent: updateContent,
     setPinned: updatePinned,
-    setWindowPinned,
+    setWindowPinned: lifecycle.setWindowPinned,
     setTags: updateTags,
     showDraft,
     status,
@@ -569,7 +425,7 @@ export const useQuickCapture = () => {
     importBackup,
     retryDuplicate: duplicateActive,
     reload,
-    windowPinned,
-    withAutoHideSuspended,
+    withAutoHideSuspended: lifecycle.withAutoHideSuspended,
+    windowPinned: lifecycle.windowPinned,
   };
 };
