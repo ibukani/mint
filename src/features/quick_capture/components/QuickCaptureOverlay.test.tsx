@@ -147,6 +147,35 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => expect(editor).toHaveValue("**キーボード**書式"));
   });
 
+  it("continues Markdown checklists when pressing Enter", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "- [ ] 最初の作業" } });
+    editor.setSelectionRange(editor.value.length, editor.value.length);
+
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    await waitFor(() => expect(editor).toHaveValue("- [ ] 最初の作業\n- [ ] "));
+  });
+
+  it("indents selected Markdown lines with Tab and outdents with Shift+Tab", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "項目1\n項目2" } });
+    editor.setSelectionRange(0, editor.value.length);
+
+    fireEvent.keyDown(editor, { key: "Tab" });
+    await waitFor(() => expect(editor).toHaveValue("  項目1\n  項目2"));
+
+    editor.setSelectionRange(2, editor.value.length);
+    fireEvent.keyDown(editor, { key: "Tab", shiftKey: true });
+    await waitFor(() => expect(editor).toHaveValue("項目1\n項目2"));
+  });
+
   it("copies the current draft to the clipboard", async () => {
     render(<QuickCaptureOverlay />);
     const editor = await screen.findByLabelText("メモ本文");

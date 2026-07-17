@@ -81,6 +81,8 @@ interface QuickCaptureEditorProps {
   onCaptureClipboard: () => void;
   onCopyClipboard: () => void;
   onFormat: (prefix: string, suffix: string, fallbackText: string) => void;
+  onContinueList: () => boolean;
+  onIndentSelection: (outdent: boolean) => void;
   onExportMarkdown: () => void;
   onRequestDelete: () => void;
 }
@@ -99,6 +101,8 @@ export const QuickCaptureEditor = ({
   onCaptureClipboard,
   onCopyClipboard,
   onFormat,
+  onContinueList,
+  onIndentSelection,
   onExportMarkdown,
   onRequestDelete,
 }: QuickCaptureEditorProps) => (
@@ -292,7 +296,22 @@ export const QuickCaptureEditor = ({
           value={capture.content}
           onChange={(event) => capture.setContent(event.target.value)}
           onKeyDown={(event) => {
-            if (preview || event.altKey || event.shiftKey) return;
+            if (preview || event.altKey) return;
+            if (event.key === "Tab" && !event.ctrlKey && !event.metaKey) {
+              event.preventDefault();
+              onIndentSelection(event.shiftKey);
+              return;
+            }
+            if (event.shiftKey) return;
+            if (
+              event.key === "Enter" &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              onContinueList()
+            ) {
+              event.preventDefault();
+              return;
+            }
             if (!(event.ctrlKey || event.metaKey)) return;
             const key = event.key.toLocaleLowerCase();
             if (key === "b") {

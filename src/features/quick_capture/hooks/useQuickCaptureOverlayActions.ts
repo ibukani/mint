@@ -6,7 +6,14 @@ import {
   exportQuickCaptureMarkdown,
 } from "../api";
 import type { QuickCaptureNote } from "../types";
-import { noteTitle, parseTags, safeFileName } from "../utils";
+import {
+  continueMarkdownList,
+  indentMarkdownSelection,
+  type MarkdownTextEdit,
+  noteTitle,
+  parseTags,
+  safeFileName,
+} from "../utils";
 
 export type QuickCaptureConfirmation =
   | { kind: "delete"; note: QuickCaptureNote }
@@ -39,6 +46,18 @@ export const useQuickCaptureOverlayActions = ({
   const [confirmationBusy, setConfirmationBusy] = useState(false);
   const [confirmationError, setConfirmationError] = useState("");
   const clearActionStatus = useCallback(() => setActionStatus(""), []);
+
+  const applyEditorEdit = useCallback(
+    (edit: MarkdownTextEdit) => {
+      setContent(edit.content);
+      requestAnimationFrame(() => {
+        const textarea = editorRef.current;
+        textarea?.focus();
+        textarea?.setSelectionRange(edit.selectionStart, edit.selectionEnd);
+      });
+    },
+    [editorRef, setContent],
+  );
 
   const pasteClipboard = async () => {
     try {
@@ -93,16 +112,39 @@ export const useQuickCaptureOverlayActions = ({
     const selected = capture.content.slice(start, end);
     const replacement = selected || fallbackText;
     const nextContent = `${capture.content.slice(0, start)}${prefix}${replacement}${suffix}${capture.content.slice(end)}`;
-    setContent(nextContent);
-    requestAnimationFrame(() => {
-      textarea.focus();
-      const nextStart = start + prefix.length;
-      const nextEnd = nextStart + replacement.length;
-      textarea.setSelectionRange(
-        selected ? nextEnd + suffix.length : nextStart,
-        selected ? nextEnd + suffix.length : nextEnd,
-      );
+    const nextStart = start + prefix.length;
+    const nextEnd = nextStart + replacement.length;
+    applyEditorEdit({
+      content: nextContent,
+      selectionStart: selected ? nextEnd + suffix.length : nextStart,
+      selectionEnd: selected ? nextEnd + suffix.length : nextEnd,
     });
+  };
+
+  const continueList = () => {
+    const textarea = editorRef.current;
+    if (!textarea) return false;
+    const edit = continueMarkdownList(
+      capture.content,
+      textarea.selectionStart,
+      textarea.selectionEnd,
+    );
+    if (!edit) return false;
+    applyEditorEdit(edit);
+    return true;
+  };
+
+  const indentSelection = (outdent: boolean) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    applyEditorEdit(
+      indentMarkdownSelection(
+        capture.content,
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        outdent,
+      ),
+    );
   };
 
   const captureClipboard = async () => {
@@ -204,9 +246,11 @@ export const useQuickCaptureOverlayActions = ({
     confirmDestructiveAction,
     copyClipboard,
     copySavedNote,
+    continueList,
     exportBackup,
     exportMarkdown,
     formatSelection,
+    indentSelection,
     pasteClipboard,
     requestDeleteNote,
     requestImportBackup,

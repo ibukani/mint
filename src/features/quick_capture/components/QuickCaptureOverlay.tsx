@@ -14,6 +14,7 @@ export const QuickCaptureOverlay: React.FC = () => {
   const {
     capture,
     themeColor,
+    continueList,
     preview,
     setPreview,
     query,
@@ -57,6 +58,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     handleTogglePinnedOnly,
     handleToggleTag,
     selectLibraryNote,
+    indentSelection,
   } = useQuickCaptureOverlayController();
   return (
     <OverlayFrame>
@@ -157,6 +159,8 @@ export const QuickCaptureOverlay: React.FC = () => {
             onCaptureClipboard={() => void captureClipboard()}
             onCopyClipboard={() => void copyClipboard()}
             onFormat={formatSelection}
+            onContinueList={continueList}
+            onIndentSelection={indentSelection}
             onExportMarkdown={() => void exportMarkdown()}
             onRequestDelete={() => {
               if (activeNote) requestDeleteNote(activeNote);
