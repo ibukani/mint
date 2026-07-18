@@ -67,14 +67,16 @@ const QuickCaptureTemplateMenu = ({
       <button
         ref={triggerRef}
         type="button"
-        className="quick-capture__toolbar-button"
+        className="quick-capture__toolbar-button quick-capture__quick-action"
+        aria-label="テンプレート"
         disabled={disabled}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
         title="Markdownテンプレートを挿入"
       >
-        <FilePlus2 size={14} aria-hidden="true" /> テンプレート
+        <FilePlus2 size={14} aria-hidden="true" />
+        <span className="quick-capture__toolbar-label">テンプレート</span>
       </button>
       {open && (
         <div
@@ -202,20 +204,24 @@ export const QuickCaptureEditor = ({
         <button
           type="button"
           className={!preview ? "is-active" : ""}
+          aria-label="編集"
           aria-pressed={!preview}
           aria-controls="quick-capture-content"
           onClick={() => onSetPreview(false)}
+          title="編集"
         >
-          <Edit3 size={14} aria-hidden="true" /> 編集
+          <Edit3 size={14} aria-hidden="true" />
         </button>
         <button
           type="button"
           className={preview ? "is-active" : ""}
+          aria-label="プレビュー"
           aria-pressed={preview}
           aria-controls="quick-capture-content"
           onClick={() => onSetPreview(true)}
+          title="プレビュー"
         >
-          <Eye size={14} aria-hidden="true" /> プレビュー
+          <Eye size={14} aria-hidden="true" />
         </button>
       </fieldset>
       <div className="quick-capture__toolbar-actions">
@@ -317,38 +323,46 @@ export const QuickCaptureEditor = ({
         />
         <button
           type="button"
-          className="quick-capture__toolbar-button"
+          className="quick-capture__toolbar-button quick-capture__quick-action"
+          aria-label="貼り付け"
           onClick={onPasteClipboard}
           title="クリップボードから貼り付け"
         >
-          <ClipboardPaste size={14} aria-hidden="true" /> 貼り付け
+          <ClipboardPaste size={14} aria-hidden="true" />
+          <span className="quick-capture__toolbar-label">貼り付け</span>
         </button>
         <button
           type="button"
-          className="quick-capture__toolbar-button"
+          className="quick-capture__toolbar-button quick-capture__quick-action"
+          aria-label="即保存"
           disabled={isSaving}
           onClick={onCaptureClipboard}
           title="クリップボードの本文を新しいメモとして保存"
         >
-          <ClipboardPlus size={14} aria-hidden="true" /> 即保存
+          <ClipboardPlus size={14} aria-hidden="true" />
+          <span className="quick-capture__toolbar-label">即保存</span>
         </button>
         {capture.content.trim() && (
           <>
             <button
               type="button"
-              className="quick-capture__toolbar-button"
+              className="quick-capture__toolbar-button quick-capture__secondary-action"
+              aria-label="コピー"
               onClick={onCopyClipboard}
               title="本文をクリップボードへコピー"
             >
-              <Copy size={14} aria-hidden="true" /> コピー
+              <Copy size={14} aria-hidden="true" />
+              <span className="quick-capture__toolbar-label">コピー</span>
             </button>
             <button
               type="button"
-              className="quick-capture__toolbar-button"
+              className="quick-capture__toolbar-button quick-capture__secondary-action"
+              aria-label="書き出し"
               onClick={onExportMarkdown}
               title="Markdownとして書き出し"
             >
-              <Download size={14} aria-hidden="true" /> 書き出し
+              <Download size={14} aria-hidden="true" />
+              <span className="quick-capture__toolbar-label">書き出し</span>
             </button>
           </>
         )}
@@ -356,26 +370,31 @@ export const QuickCaptureEditor = ({
           <>
             <button
               type="button"
-              className="quick-capture__toolbar-button"
+              className="quick-capture__toolbar-button quick-capture__secondary-action"
+              aria-label="添付"
               disabled={isSaving}
               onClick={() => void capture.addAttachment()}
               title="ファイルを添付"
             >
-              <Paperclip size={14} aria-hidden="true" /> 添付
+              <Paperclip size={14} aria-hidden="true" />
+              <span className="quick-capture__toolbar-label">添付</span>
             </button>
             <button
               type="button"
-              className={`quick-capture__pin${capture.pinned ? " is-active" : ""}`}
+              className={`quick-capture__pin quick-capture__secondary-action${capture.pinned ? " is-active" : ""}`}
+              aria-label="ピン留め"
               aria-pressed={capture.pinned}
               aria-keyshortcuts="Control+Shift+P Meta+Shift+P"
               title={`ピン留めを切り替え（${shortcutModifier}+Shift+P）`}
               onClick={() => capture.setPinned(!capture.pinned)}
             >
-              <Pin size={14} aria-hidden="true" /> ピン留め
+              <Pin size={14} aria-hidden="true" />
+              <span className="quick-capture__toolbar-label">ピン留め</span>
             </button>
             <button
               type="button"
-              className={`quick-capture__pin${capture.archived ? " is-active" : ""}`}
+              className={`quick-capture__pin quick-capture__secondary-action${capture.archived ? " is-active" : ""}`}
+              aria-label={capture.archived ? "アーカイブ解除" : "アーカイブ"}
               disabled={isSaving}
               aria-pressed={capture.archived}
               aria-keyshortcuts="Control+Shift+A Meta+Shift+A"
@@ -383,7 +402,9 @@ export const QuickCaptureEditor = ({
               onClick={() => void capture.toggleArchived()}
             >
               <Archive size={14} aria-hidden="true" />
-              {capture.archived ? "アーカイブ解除" : "アーカイブ"}
+              <span className="quick-capture__toolbar-label">
+                {capture.archived ? "アーカイブ解除" : "アーカイブ"}
+              </span>
             </button>
           </>
         )}

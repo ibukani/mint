@@ -1097,4 +1097,36 @@ describe("QuickCaptureOverlay", () => {
       screen.getByText("Ctrl+Enterで保存すると、ここからすぐ開けます"),
     ).toBeVisible();
   });
+
+  it("shows result metadata only when the library is filtered", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "compact-library-note",
+            content: "検索対象のメモ",
+            tags: [],
+            pinned: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    await screen.findByRole("option", { name: /検索対象のメモ/ });
+    const resultMeta = document.querySelector(".quick-capture__search-meta");
+    expect(resultMeta).toBeEmptyDOMElement();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "保存済みメモを検索" }),
+      { target: { value: "検索対象" } },
+    );
+
+    await waitFor(() => expect(resultMeta).toHaveTextContent("1件関連度順"));
+  });
 });

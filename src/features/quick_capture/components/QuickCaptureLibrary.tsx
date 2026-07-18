@@ -166,7 +166,7 @@ export const QuickCaptureLibrary = ({
     >
       <div className="quick-capture__library-header">
         <strong>
-          <Archive size={14} aria-hidden="true" /> 保存済みメモ
+          <Archive size={14} aria-hidden="true" /> メモ
           <span className="quick-capture__library-count">{notes.length}</span>
         </strong>
         <div className="quick-capture__library-tools">
@@ -238,11 +238,7 @@ export const QuickCaptureLibrary = ({
         </kbd>
       </label>
       <div className="quick-capture__search-meta" aria-live="polite">
-        <span>
-          {hasRefinement
-            ? `${filteredNotes.length}件`
-            : `${filteredNotes.length}件表示`}
-        </span>
+        {hasRefinement && <span>{filteredNotes.length}件</span>}
         {searchText && <span>関連度順</span>}
       </div>
       <fieldset

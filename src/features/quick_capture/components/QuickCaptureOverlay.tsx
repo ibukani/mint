@@ -1,4 +1,4 @@
-import { Command, CopyPlus, FileText, Pin, X } from "lucide-react";
+import { Command, CopyPlus, FilePlus2, FileText, Pin, X } from "lucide-react";
 import type React from "react";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
@@ -104,7 +104,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             <span className="quick-capture__heading-icon" aria-hidden="true">
               <FileText size={17} />
             </span>
-            <div>
+            <div className="quick-capture__heading-copy">
               <h1>
                 {capture.activeId
                   ? noteTitle({ content: capture.content })
@@ -154,21 +154,24 @@ export const QuickCaptureOverlay: React.FC = () => {
                 <button
                   type="button"
                   disabled={isSaving}
+                  aria-label="複製"
                   aria-keyshortcuts="Control+Shift+D Meta+Shift+D"
                   title={`メモを複製（${shortcutModifier}+Shift+D）`}
                   onClick={() => void capture.duplicateActive()}
                 >
                   <CopyPlus size={14} aria-hidden="true" />
-                  複製
+                  <span>複製</span>
                 </button>
                 <button
                   type="button"
                   disabled={isSaving}
+                  aria-label="下書きへ"
                   aria-keyshortcuts="Control+N Meta+N"
                   title={`新しい下書きを開く（${shortcutModifier}+N）`}
                   onClick={() => void capture.openDraft()}
                 >
-                  下書きへ
+                  <FilePlus2 size={14} aria-hidden="true" />
+                  <span>下書きへ</span>
                 </button>
               </>
             )}
