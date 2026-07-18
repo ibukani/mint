@@ -7,8 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useAppSettings } from "../../../core/context/AppSettings";
-import { defaultAppSettings } from "../../../core/defaultSettings";
 import {
   getPlatformShortcutModifier,
   isApplePlatform,
@@ -25,7 +23,6 @@ const isEditableTarget = (target: EventTarget | null) =>
   (target instanceof HTMLElement && target.isContentEditable);
 
 export const useQuickCaptureOverlayController = () => {
-  const { settings } = useAppSettings();
   const capture = useQuickCapture();
   const [preview, setPreview] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -209,9 +206,6 @@ export const useQuickCaptureOverlayController = () => {
     selectLibraryNote,
     setPreview,
     shortcutModifier,
-    themeColor:
-      settings?.quickCapture.themeColor ||
-      defaultAppSettings.quickCapture.themeColor,
     usesMetaShortcut,
   };
 };

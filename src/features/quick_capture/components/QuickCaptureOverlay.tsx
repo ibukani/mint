@@ -15,7 +15,6 @@ export { noteTitle };
 export const QuickCaptureOverlay: React.FC = () => {
   const {
     capture,
-    themeColor,
     continueList,
     insertTemplate,
     preview,
@@ -82,11 +81,10 @@ export const QuickCaptureOverlay: React.FC = () => {
   return (
     <OverlayFrame>
       <OverlayCard
-        className="quick-capture theme-accent-scope is-visible"
+        className="quick-capture is-visible"
         role="dialog"
         aria-label="クイックキャプチャー"
         onKeyDown={handleKeyDown}
-        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <button
           type="button"

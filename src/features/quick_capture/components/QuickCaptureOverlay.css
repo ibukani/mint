@@ -79,7 +79,13 @@
   gap: var(--space-1);
   min-height: 28px;
   padding: var(--space-1) var(--space-2);
+  color: var(--color-accent);
   font-size: var(--font-size-xs);
+}
+
+.quick-capture__header-actions button:hover {
+  background: var(--surface-accent-action-hover);
+  color: var(--color-accent);
 }
 
 .quick-capture__command-trigger kbd {
@@ -156,7 +162,13 @@
   display: grid;
   flex: 0 0 auto;
   padding: var(--space-1);
+  color: var(--color-accent);
   place-items: center;
+}
+
+.quick-capture__command-header button:hover {
+  background: var(--surface-accent-action-hover);
+  color: var(--color-accent);
 }
 
 .quick-capture__command-search {
@@ -442,8 +454,13 @@
   gap: var(--space-1);
   min-height: 30px;
   padding: var(--space-1) var(--space-2);
-  color: var(--color-text-muted);
+  color: var(--color-accent);
   font-size: var(--font-size-xs);
+}
+
+.quick-capture__toolbar-button:hover {
+  background: var(--surface-accent-action-hover);
+  color: var(--color-accent);
 }
 .quick-capture__mode-switch {
   gap: var(--space-1);
@@ -867,13 +884,13 @@
   place-items: center;
   padding: 0;
   border-color: transparent;
-  color: var(--color-text-subtle);
+  color: var(--color-accent);
 }
 .quick-capture__note-actions button:hover,
 .quick-capture__note-actions button:focus-visible {
-  border-color: var(--border-control);
-  background: var(--surface-elevated);
-  color: var(--color-text-primary);
+  border-color: var(--border-accent);
+  background: var(--surface-accent-action-hover);
+  color: var(--color-accent);
 }
 .quick-capture__note-actions .quick-capture__note-delete:hover,
 .quick-capture__note-actions .quick-capture__note-delete:focus-visible {
