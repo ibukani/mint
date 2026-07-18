@@ -1,4 +1,4 @@
-import { Command, CopyPlus, FilePlus2, FileText, Pin, X } from "lucide-react";
+import { Command, FileText, Pin, X } from "lucide-react";
 import type React from "react";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
@@ -77,6 +77,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     selectLibraryNote,
     indentSelection,
     openCommandPalette,
+    createNewNote,
   } = useQuickCaptureOverlayController();
   return (
     <OverlayFrame>
@@ -147,32 +148,6 @@ export const QuickCaptureOverlay: React.FC = () => {
               <Pin size={14} aria-hidden="true" />
               <span>{capture.windowPinned ? "固定中" : "ウィンドウ固定"}</span>
             </button>
-            {capture.activeId && (
-              <>
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  aria-label="複製"
-                  aria-keyshortcuts="Control+Shift+D Meta+Shift+D"
-                  title={`メモを複製（${shortcutModifier}+Shift+D）`}
-                  onClick={() => void capture.duplicateActive()}
-                >
-                  <CopyPlus size={14} aria-hidden="true" />
-                  <span>複製</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  aria-label="下書きへ"
-                  aria-keyshortcuts="Control+N Meta+N"
-                  title={`新しい下書きを開く（${shortcutModifier}+N）`}
-                  onClick={() => void capture.openDraft()}
-                >
-                  <FilePlus2 size={14} aria-hidden="true" />
-                  <span>下書きへ</span>
-                </button>
-              </>
-            )}
           </div>
         </header>
 
@@ -226,6 +201,8 @@ export const QuickCaptureOverlay: React.FC = () => {
             noteListId={noteListId}
             shortcutModifier={shortcutModifier}
             usesMetaShortcut={usesMetaShortcut}
+            isSaving={isSaving}
+            onCreateNewNote={() => void createNewNote()}
             onExportBackup={() => void exportBackup()}
             onImportBackup={() => void requestImportBackup()}
             onSearchFocus={handleLibrarySearchFocus}
@@ -251,6 +228,7 @@ export const QuickCaptureOverlay: React.FC = () => {
         isSaving={isSaving}
         shortcutModifier={shortcutModifier}
         onClose={closeCommandPalette}
+        onCreateNewNote={() => void createNewNote()}
         onFocusSearch={focusSearch}
         onSetPreview={setPreview}
         onPasteClipboard={() => void pasteClipboard()}

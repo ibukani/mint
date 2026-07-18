@@ -56,6 +56,14 @@ export const useQuickCaptureOverlayController = () => {
   const closeCommandPalette = useCallback(() => {
     setCommandPaletteOpen(false);
   }, []);
+  const createNewNote = useCallback(async () => {
+    closeCommandPalette();
+    if (capture.activeId || !capture.content.trim()) {
+      await capture.openDraft();
+      return;
+    }
+    await capture.promote();
+  }, [capture, closeCommandPalette]);
 
   useEffect(() => {
     void capture.focusSequence;
@@ -139,11 +147,10 @@ export const useQuickCaptureOverlayController = () => {
       (event.ctrlKey || event.metaKey) &&
       !event.altKey &&
       !event.shiftKey &&
-      capture.activeId &&
       !isSaving
     ) {
       event.preventDefault();
-      void capture.openDraft();
+      void createNewNote();
     } else if (
       event.key.toLocaleLowerCase() === "p" &&
       (event.ctrlKey || event.metaKey) &&
@@ -190,6 +197,7 @@ export const useQuickCaptureOverlayController = () => {
     closeCommandPalette,
     commandPaletteOpen,
     continueList: actions.continueList,
+    createNewNote,
     editorRef,
     handleKeyDown,
     handleLibrarySearchBlur: library.handleSearchBlur,

@@ -231,7 +231,11 @@ describe("QuickCaptureOverlay", () => {
     const editor = await screen.findByLabelText("メモ本文");
     fireEvent.change(editor, { target: { value: "編集中の下書き" } });
 
-    fireEvent.click(await screen.findByRole("button", { name: "即保存" }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "クリップボードを新しいメモとして保存",
+      }),
+    );
 
     await waitFor(() => {
       expect(
@@ -325,7 +329,7 @@ describe("QuickCaptureOverlay", () => {
     const note = await screen.findByRole("option", { name: /保存済みメモ/ });
     fireEvent.click(note);
     const backToDraft = await screen.findByRole("button", {
-      name: "下書きへ",
+      name: "新しいメモを作成",
     });
     fireEvent.click(screen.getByRole("button", { name: "プレビュー" }));
     fireEvent.change(screen.getByLabelText("保存済みメモを検索"), {
@@ -399,7 +403,9 @@ describe("QuickCaptureOverlay", () => {
       expect(pinButton).toHaveAttribute("aria-pressed", "true"),
     );
 
-    const draftButton = screen.getByRole("button", { name: "下書きへ" });
+    const draftButton = screen.getByRole("button", {
+      name: "新しいメモを作成",
+    });
     expect(draftButton).toHaveAttribute(
       "aria-keyshortcuts",
       "Control+N Meta+N",
@@ -409,6 +415,29 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("メモ本文")).toHaveValue("");
       expect(screen.getByText("思いついたことを、そのままメモ")).toBeVisible();
+    });
+  });
+
+  it("keeps the new-note action visible and starts another blank note", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    const newNoteButton = screen.getByRole("button", {
+      name: "新しいメモを作成",
+    });
+    expect(newNoteButton).toBeVisible();
+    expect(newNoteButton).toHaveTextContent("");
+
+    fireEvent.change(editor, { target: { value: "次へ進む前のメモ" } });
+    fireEvent.click(newNoteButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: /次へ進む前のメモ/ }),
+      ).toBeVisible();
+      expect(screen.getByLabelText("メモ本文")).toHaveValue("");
+      expect(
+        screen.getByRole("button", { name: "新しいメモを作成" }),
+      ).toBeVisible();
     });
   });
 

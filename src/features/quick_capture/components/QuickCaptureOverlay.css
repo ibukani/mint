@@ -660,10 +660,31 @@
   font-size: var(--font-size-xs);
 }
 .quick-capture__editor-footer > div {
-  gap: var(--space-2);
+  min-width: 0;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 2px;
 }
 .quick-capture__editor-footer .is-error {
   color: var(--color-error);
+}
+.quick-capture__editor-action {
+  display: grid;
+  width: 30px;
+  min-height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+.quick-capture__editor-action:hover {
+  background: var(--surface-accent-action-hover);
+  color: var(--color-accent);
+}
+.quick-capture__editor-action.is-active {
+  border-color: var(--border-control-focus);
+  background: var(--surface-accent-action);
+  color: var(--color-accent);
 }
 .quick-capture__editor-footer .quick-capture__save {
   display: flex;
@@ -725,9 +746,17 @@
   align-items: center;
 }
 .quick-capture__library-header {
-  justify-content: space-between;
+  min-width: 0;
+  align-items: stretch;
+  flex-direction: column;
+  gap: var(--space-1);
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
+}
+.quick-capture__library-heading {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
 }
 .quick-capture__library-header strong {
   display: inline-flex;
@@ -751,7 +780,26 @@
   gap: var(--space-1);
 }
 .quick-capture__library-tools {
+  width: 100%;
   min-width: 0;
+  justify-content: flex-end;
+}
+.quick-capture__new-note {
+  display: grid;
+  width: 28px;
+  min-height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border-color: var(--border-accent);
+  background: var(--surface-accent-action);
+  color: var(--color-accent);
+}
+.quick-capture__new-note:hover,
+.quick-capture__new-note.is-active {
+  border-color: var(--border-action-hover);
+  background: var(--surface-accent-action-hover);
+  color: var(--color-accent);
 }
 .quick-capture__sort-select {
   min-width: 0;
@@ -783,7 +831,7 @@
 .quick-capture__search-meta span:last-child {
   color: var(--color-accent);
 }
-.quick-capture__library-header button {
+.quick-capture__library-tools button {
   display: grid;
   padding: var(--space-1);
   place-items: center;
@@ -1011,10 +1059,6 @@
   .quick-capture__toolbar-actions > .quick-capture__format-actions {
     flex: 0 0 auto;
     order: 1;
-  }
-
-  .quick-capture__toolbar-actions > .quick-capture__secondary-action {
-    order: 2;
   }
 
   .quick-capture__save kbd {

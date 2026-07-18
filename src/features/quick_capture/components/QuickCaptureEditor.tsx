@@ -7,6 +7,7 @@ import {
   ClipboardPlus,
   Code2,
   Copy,
+  CopyPlus,
   Download,
   Edit3,
   Eye,
@@ -321,93 +322,6 @@ export const QuickCaptureEditor = ({
           disabled={preview || isSaving}
           onSelect={onInsertTemplate}
         />
-        <button
-          type="button"
-          className="quick-capture__toolbar-button quick-capture__quick-action"
-          aria-label="貼り付け"
-          onClick={onPasteClipboard}
-          title="クリップボードから貼り付け"
-        >
-          <ClipboardPaste size={14} aria-hidden="true" />
-          <span className="quick-capture__toolbar-label">貼り付け</span>
-        </button>
-        <button
-          type="button"
-          className="quick-capture__toolbar-button quick-capture__quick-action"
-          aria-label="即保存"
-          disabled={isSaving}
-          onClick={onCaptureClipboard}
-          title="クリップボードの本文を新しいメモとして保存"
-        >
-          <ClipboardPlus size={14} aria-hidden="true" />
-          <span className="quick-capture__toolbar-label">即保存</span>
-        </button>
-        {capture.content.trim() && (
-          <>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button quick-capture__secondary-action"
-              aria-label="コピー"
-              onClick={onCopyClipboard}
-              title="本文をクリップボードへコピー"
-            >
-              <Copy size={14} aria-hidden="true" />
-              <span className="quick-capture__toolbar-label">コピー</span>
-            </button>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button quick-capture__secondary-action"
-              aria-label="書き出し"
-              onClick={onExportMarkdown}
-              title="Markdownとして書き出し"
-            >
-              <Download size={14} aria-hidden="true" />
-              <span className="quick-capture__toolbar-label">書き出し</span>
-            </button>
-          </>
-        )}
-        {capture.activeId && (
-          <>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button quick-capture__secondary-action"
-              aria-label="添付"
-              disabled={isSaving}
-              onClick={() => void capture.addAttachment()}
-              title="ファイルを添付"
-            >
-              <Paperclip size={14} aria-hidden="true" />
-              <span className="quick-capture__toolbar-label">添付</span>
-            </button>
-            <button
-              type="button"
-              className={`quick-capture__pin quick-capture__secondary-action${capture.pinned ? " is-active" : ""}`}
-              aria-label="ピン留め"
-              aria-pressed={capture.pinned}
-              aria-keyshortcuts="Control+Shift+P Meta+Shift+P"
-              title={`ピン留めを切り替え（${shortcutModifier}+Shift+P）`}
-              onClick={() => capture.setPinned(!capture.pinned)}
-            >
-              <Pin size={14} aria-hidden="true" />
-              <span className="quick-capture__toolbar-label">ピン留め</span>
-            </button>
-            <button
-              type="button"
-              className={`quick-capture__pin quick-capture__secondary-action${capture.archived ? " is-active" : ""}`}
-              aria-label={capture.archived ? "アーカイブ解除" : "アーカイブ"}
-              disabled={isSaving}
-              aria-pressed={capture.archived}
-              aria-keyshortcuts="Control+Shift+A Meta+Shift+A"
-              title={`アーカイブを切り替え（${shortcutModifier}+Shift+A）`}
-              onClick={() => void capture.toggleArchived()}
-            >
-              <Archive size={14} aria-hidden="true" />
-              <span className="quick-capture__toolbar-label">
-                {capture.archived ? "アーカイブ解除" : "アーカイブ"}
-              </span>
-            </button>
-          </>
-        )}
       </div>
     </div>
 
@@ -559,6 +473,96 @@ export const QuickCaptureEditor = ({
               : "")}
       </span>
       <div>
+        <button
+          type="button"
+          className="quick-capture__editor-action"
+          aria-label="貼り付け"
+          disabled={preview || isSaving}
+          onClick={onPasteClipboard}
+          title="クリップボードから貼り付け"
+        >
+          <ClipboardPaste size={14} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="quick-capture__editor-action"
+          aria-label="クリップボードを新しいメモとして保存"
+          disabled={isSaving}
+          onClick={onCaptureClipboard}
+          title="クリップボードを新しいメモとして保存"
+        >
+          <ClipboardPlus size={14} aria-hidden="true" />
+        </button>
+        {capture.content.trim() && (
+          <>
+            <button
+              type="button"
+              className="quick-capture__editor-action"
+              aria-label="コピー"
+              onClick={onCopyClipboard}
+              title="本文をクリップボードへコピー"
+            >
+              <Copy size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="quick-capture__editor-action"
+              aria-label="書き出し"
+              onClick={onExportMarkdown}
+              title="Markdownとして書き出し"
+            >
+              <Download size={14} aria-hidden="true" />
+            </button>
+          </>
+        )}
+        {capture.activeId && (
+          <>
+            <button
+              type="button"
+              className="quick-capture__editor-action"
+              aria-label="添付"
+              disabled={isSaving}
+              onClick={() => void capture.addAttachment()}
+              title="ファイルを添付"
+            >
+              <Paperclip size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={`quick-capture__editor-action${capture.pinned ? " is-active" : ""}`}
+              aria-label="ピン留め"
+              aria-pressed={capture.pinned}
+              aria-keyshortcuts="Control+Shift+P Meta+Shift+P"
+              title={`ピン留めを切り替え（${shortcutModifier}+Shift+P）`}
+              onClick={() => capture.setPinned(!capture.pinned)}
+            >
+              <Pin size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={`quick-capture__editor-action${capture.archived ? " is-active" : ""}`}
+              aria-label={capture.archived ? "アーカイブ解除" : "アーカイブ"}
+              disabled={isSaving}
+              aria-pressed={capture.archived}
+              aria-keyshortcuts="Control+Shift+A Meta+Shift+A"
+              title={`アーカイブを切り替え（${shortcutModifier}+Shift+A）`}
+              onClick={() => void capture.toggleArchived()}
+            >
+              <Archive size={14} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="quick-capture__editor-action"
+              aria-label="複製"
+              disabled={isSaving}
+              aria-keyshortcuts="Control+Shift+D Meta+Shift+D"
+              title={`メモを複製（${shortcutModifier}+Shift+D）`}
+              onClick={() => void capture.duplicateActive()}
+            >
+              <CopyPlus size={14} aria-hidden="true" />
+            </button>
+          </>
+        )}
         {capture.canUndoDelete && (
           <button
             type="button"
