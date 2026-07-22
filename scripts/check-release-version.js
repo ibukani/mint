@@ -1,11 +1,14 @@
 import fs from "node:fs";
 
-const expectedTag = process.argv[2];
+const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, "utf8"));
+const packageJson = readJson("package.json");
 
-if (!expectedTag) {
-  console.error("Usage: node scripts/check-release-version.js v<version>");
-  process.exit(1);
-}
+const arg = process.argv[2];
+const expectedTag = arg
+  ? arg.startsWith("v")
+    ? arg
+    : `v${arg}`
+  : `v${packageJson.version}`;
 
 const expectedVersion = expectedTag.startsWith("v") ? expectedTag.slice(1) : "";
 const semverPattern =
@@ -16,8 +19,6 @@ if (!expectedVersion || !semverPattern.test(expectedVersion)) {
   process.exit(1);
 }
 
-const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, "utf8"));
-const packageJson = readJson("package.json");
 const packageLock = readJson("package-lock.json");
 const tauriConfig = readJson("src-tauri/tauri.conf.json");
 const cargoToml = fs.readFileSync("src-tauri/Cargo.toml", "utf8");
