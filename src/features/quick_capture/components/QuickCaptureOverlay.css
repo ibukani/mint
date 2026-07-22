@@ -366,9 +366,12 @@
 .quick-capture__editor-pane {
   position: relative;
   display: grid;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
   padding: var(--space-2) var(--space-3);
 }
 
@@ -730,12 +733,16 @@
   color: var(--color-text-muted);
 }
 .quick-capture__editor-footer {
-  min-height: 38px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 34px;
   justify-content: space-between;
   gap: var(--space-2);
   padding-top: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
+  overflow: hidden;
 }
 .quick-capture__editor-status {
   display: flex;
@@ -753,15 +760,22 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
+  max-width: 100%;
   flex-shrink: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.quick-capture__editor-actions::-webkit-scrollbar {
+  display: none;
 }
 .quick-capture__action-group {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding-right: var(--space-2);
+  flex-shrink: 0;
+  gap: 1px;
+  padding-right: var(--space-1);
   border-right: 1px solid var(--border-subtle);
 }
 .quick-capture__action-group:last-child,
@@ -774,9 +788,9 @@
 }
 .quick-capture__editor-action {
   display: grid;
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
   flex: 0 0 auto;
   place-items: center;
   padding: 0;
@@ -798,10 +812,10 @@
 .quick-capture__editor-footer .quick-capture__save {
   display: inline-flex;
   align-items: center;
-  height: 28px;
-  min-height: 28px;
+  height: 26px;
+  min-height: 26px;
   gap: var(--space-1);
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-2);
   border-radius: var(--radius-xs);
   background: var(--color-accent);
   color: var(--surface-page);
@@ -816,8 +830,8 @@
 .quick-capture__editor-footer .quick-capture__danger {
   display: inline-flex;
   align-items: center;
-  height: 28px;
-  min-height: 28px;
+  height: 26px;
+  min-height: 26px;
   gap: var(--space-1);
   padding: 0 var(--space-2);
   border: 1px solid color-mix(in srgb, var(--color-error) 25%, transparent);
@@ -836,8 +850,8 @@
 .quick-capture__editor-footer .quick-capture__retry {
   display: inline-flex;
   align-items: center;
-  height: 28px;
-  min-height: 28px;
+  height: 26px;
+  min-height: 26px;
   gap: var(--space-1);
   padding: 0 var(--space-2);
   border: 1px solid var(--border-control);
@@ -855,8 +869,8 @@
 .quick-capture__editor-footer .quick-capture__undo {
   display: inline-flex;
   align-items: center;
-  height: 28px;
-  min-height: 28px;
+  height: 26px;
+  min-height: 26px;
   gap: var(--space-1);
   padding: 0 var(--space-2);
   border: 1px solid color-mix(in srgb, var(--color-success) 25%, transparent);
