@@ -45,6 +45,7 @@ const CLIPBOARD_POLL_INTERVAL: StdDuration = StdDuration::from_millis(900);
 const CLIPBOARD_MAX_POLL_INTERVAL: StdDuration = StdDuration::from_secs(4);
 const CLIPBOARD_IDLE_INTERVAL: StdDuration = StdDuration::from_secs(30);
 const MAX_CLIPBOARD_HISTORY_BYTES: usize = 64 * 1024;
+#[allow(dead_code)]
 const MAX_CLIPBOARD_IMAGE_RGBA_BYTES: usize = 128 * 1024 * 1024;
 
 #[derive(Default)]
@@ -524,6 +525,7 @@ pub(super) fn capture_clipboard_text_in_store(
     })
 }
 
+#[allow(dead_code)]
 pub(super) fn capture_clipboard_text_explicit_in_store(
     database_path: &Path,
     text: String,
@@ -588,6 +590,7 @@ pub(super) fn capture_clipboard_text_explicit_in_store(
     add_content_in_store(database_path, Path::new(""), input)
 }
 
+#[allow(dead_code)]
 pub(super) fn capture_clipboard_image_in_store(
     database_path: &Path,
     assets_dir: &Path,
@@ -714,6 +717,7 @@ pub(super) fn clear_clipboard_history_in_store(
     remove_items_in_store(database_path, ids)
 }
 
+#[allow(dead_code)]
 pub(super) fn capture_current_clipboard(app: &AppHandle) -> Result<FileShelfMutation, String> {
     let store = app
         .try_state::<FileShelfStoreState>()
