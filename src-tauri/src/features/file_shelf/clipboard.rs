@@ -607,6 +607,57 @@ pub(super) fn capture_clipboard_image_in_store(
         return Err("クリップボード画像のサイズが大きすぎます。".to_string());
     }
 
+    use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(width.to_le_bytes());
+    hasher.update(height.to_le_bytes());
+    hasher.update(rgba);
+    let hash_string = format!("hash:sha256:{:x}", hasher.finalize());
+
+    let connection = open_store(database_path)?;
+    let existing = connection
+        .query_row(
+            "SELECT group_id, origin
+             FROM file_shelf_items
+             WHERE text_content = ?1 AND removed_at IS NULL
+             LIMIT 1",
+            [&hash_string],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+
+    if let Some((group_id, origin)) = existing {
+        if origin == FileShelfItemSource::ClipboardHistory.as_str() {
+            let created_at = timestamp();
+            connection
+                .execute(
+                    "UPDATE file_shelf_items
+                     SET origin = 'manual', created_at = ?1
+                     WHERE group_id = ?2",
+                    params![created_at, group_id],
+                )
+                .map_err(|error| error.to_string())?;
+            connection
+                .execute(
+                    "UPDATE file_shelf_groups SET created_at = ?1 WHERE id = ?2",
+                    params![created_at, group_id],
+                )
+                .map_err(|error| error.to_string())?;
+            return Ok(FileShelfMutation {
+                state: load_state_from_store(database_path)?,
+                added_count: 1,
+                skipped_count: 0,
+            });
+        }
+        return Ok(FileShelfMutation {
+            state: load_state_from_store(database_path)?,
+            added_count: 0,
+            skipped_count: 1,
+        });
+    }
+    drop(connection);
+
     let mut png = Vec::new();
     PngEncoder::new(&mut png)
         .write_image(rgba, width, height, ExtendedColorType::Rgba8)
@@ -624,7 +675,7 @@ pub(super) fn capture_clipboard_image_in_store(
             kind: FileShelfItemKind::Image,
             display_name: "クリップボード画像.png".to_string(),
             source_path: Some(destination.to_string_lossy().to_string()),
-            text_content: None,
+            text_content: Some(hash_string),
             mime_type: Some("image/png".to_string()),
             size_bytes: Some(png.len() as u64),
             source: FileShelfItemSource::Manual,

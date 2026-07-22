@@ -35,21 +35,9 @@ pub(super) fn set_window_mode(
     // 明示的に影を無効化（ウィンドウ境界が不透明な灰色で残るバグの対策）
     let _ = window.set_shadow(false);
 
-    if let Some(ref monitor) = monitor {
-        let scale = monitor.scale_factor();
-        let physical_width = (width * scale).round() as u32;
-        let physical_height = (height * scale).round() as u32;
-        window
-            .set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-                physical_width,
-                physical_height,
-            )))
-            .map_err(|error| error.to_string())?;
-    } else {
-        window
-            .set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))
-            .map_err(|error| error.to_string())?;
-    }
+    window
+        .set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))
+        .map_err(|error| error.to_string())?;
 
     if let Some(monitor) = monitor {
         let scale = monitor.scale_factor();

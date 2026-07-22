@@ -100,7 +100,7 @@ export const FileShelfSettings: React.FC = () => {
             id="file-shelf-shortcut"
             label="起動ショートカットキー"
             error={shortcutError}
-            helpText="1回で展開・折りたたみ、すばやく2回でクリップボードを保存、800ms以上の長押しで最近外した項目を戻します。"
+            helpText="押して展開・折りたたみ、800ms以上の長押しで最近外した項目を戻します。"
           >
             <ShortcutInput
               id="file-shelf-shortcut"
@@ -295,7 +295,7 @@ export const FileShelfSettings: React.FC = () => {
             </p>
           )}
           <p className="file-shelf-settings-note">
-            初期状態では主要なパスワード管理アプリを除外します。ショートカットからの手動表示や2連打での明示的な取り込みは引き続き使えます。
+            初期状態では主要なパスワード管理アプリを除外します。ショートカットからの手動表示は引き続き使えます。
           </p>
         </section>
       </div>

@@ -82,13 +82,9 @@ pub fn show_clock_overlay(app: &AppHandle, settings: &crate::core::settings::App
         let monitor_size = monitor.size();
         let scale_factor = monitor.scale_factor();
         let physical_width = (width * scale_factor) as u32;
-        let physical_height = (height * scale_factor) as u32;
         let margin = (20.0 * scale_factor) as u32;
 
-        let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-            physical_width,
-            physical_height,
-        )));
+        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)));
 
         let x = monitor_size.width.saturating_sub(physical_width + margin);
         let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(

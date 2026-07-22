@@ -5,28 +5,12 @@ use tauri_plugin_global_shortcut::ShortcutState;
 
 use crate::core::settings::{AppSettings, AppSettingsState, FileShelfSettings};
 
-use super::clipboard::{
-    capture_current_clipboard, foreground_application_name, is_application_ignored,
-};
+use super::clipboard::{foreground_application_name, is_application_ignored};
 use super::models::{FileShelfShortcutState, FileShelfStoreState, FileShelfWindowState};
 use super::repository::restore_recent_removal_in_store;
 use super::window::{set_window_mode, toggle_file_shelf_overlay};
 
-pub(super) const SHORTCUT_DOUBLE_PRESS_INTERVAL: StdDuration = StdDuration::from_millis(550);
 pub(super) const SHORTCUT_LONG_PRESS_INTERVAL: StdDuration = StdDuration::from_millis(800);
-
-pub(super) fn is_double_shortcut_press(previous: &mut Option<Instant>, now: Instant) -> bool {
-    if previous
-        .take()
-        .and_then(|value| now.checked_duration_since(value))
-        .is_some_and(|elapsed| elapsed <= SHORTCUT_DOUBLE_PRESS_INTERVAL)
-    {
-        true
-    } else {
-        *previous = Some(now);
-        false
-    }
-}
 
 pub(super) fn shortcut_hold_duration(
     pressed_at: &mut Option<Instant>,
@@ -44,47 +28,20 @@ pub fn handle_file_shelf_shortcut_event(
 ) {
     let now = Instant::now();
     if shortcut_state == ShortcutState::Pressed {
-        let double_pressed = app.try_state::<FileShelfShortcutState>().and_then(|state| {
+        let is_first_press = app.try_state::<FileShelfShortcutState>().and_then(|state| {
             state.0.lock().ok().and_then(|mut timing| {
                 if timing.is_pressed {
                     return None;
                 }
                 timing.is_pressed = true;
                 timing.current_pressed_at = Some(now);
-                Some(is_double_shortcut_press(&mut timing.last_pressed_at, now))
+                Some(())
             })
         });
 
-        let Some(double_pressed) = double_pressed else {
-            return;
-        };
-
-        if !double_pressed {
+        if is_first_press.is_some() {
             toggle_file_shelf_overlay(app);
-            return;
         }
-
-        let app = app.clone();
-        let settings = settings.clone();
-        let _ = std::thread::Builder::new()
-            .name("mint-file-shelf-shortcut-capture".to_string())
-            .spawn(move || {
-                match capture_current_clipboard(&app) {
-                    Ok(mutation) => {
-                        let notice = if mutation.added_count > 0 {
-                            "クリップボードから棚へ保存しました"
-                        } else {
-                            "同じ内容はすでに棚にあります"
-                        };
-                        let _ = app.emit("file-shelf-state-changed", mutation.state);
-                        let _ = app.emit("file-shelf-notice", notice);
-                    }
-                    Err(error) => {
-                        let _ = app.emit("file-shelf-error", error);
-                    }
-                }
-                let _ = set_window_mode(&app, &settings, true, true);
-            });
         return;
     }
 

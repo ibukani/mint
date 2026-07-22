@@ -1158,4 +1158,36 @@ describe("QuickCaptureOverlay", () => {
 
     await waitFor(() => expect(resultMeta).toHaveTextContent("1件関連度順"));
   });
+
+  it("truncates extremely long note titles without overflowing the header", async () => {
+    const longTitleText = `https://github.com/ibukani/iris-mind_v2/issues ${"あ".repeat(100)}`;
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "long-title-note",
+            content: longTitleText,
+            tags: [],
+            pinned: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const note = await screen.findByRole("option", {
+      name: new RegExp(longTitleText.slice(0, 20)),
+    });
+    fireEvent.click(note);
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(longTitleText);
+    expect(document.querySelector(".quick-capture__header")).toBeVisible();
+    expect(document.querySelector(".quick-capture__library")).toBeVisible();
+  });
 });
