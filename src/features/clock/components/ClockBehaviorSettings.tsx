@@ -1,4 +1,4 @@
-import { Minus, Plus, TimerReset } from "lucide-react";
+import { Keyboard, Minus, Plus } from "lucide-react";
 import type React from "react";
 import {
   Button,
@@ -22,11 +22,11 @@ export const ClockBehaviorSettings: React.FC<{
     controller;
 
   return (
-    <section className="settings-group" aria-labelledby="clock-behavior-title">
+    <section className="settings-group" aria-labelledby="clock-shortcut-title">
       <div className="settings-group__heading">
-        <TimerReset size={17} aria-hidden="true" />
+        <Keyboard size={18} aria-hidden="true" />
         <div>
-          <h3 id="clock-behavior-title">呼び出し</h3>
+          <h3 id="clock-shortcut-title">呼び出し操作</h3>
           <p>表示するキーと閉じるタイミング</p>
         </div>
       </div>

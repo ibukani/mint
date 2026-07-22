@@ -2,6 +2,7 @@ import {
   AppWindow,
   History,
   Keyboard,
+  Palette,
   PanelRightOpen,
   Plus,
   X,
@@ -71,7 +72,7 @@ export const FileShelfSettings: React.FC = () => {
 
   return (
     <SettingsSection
-      title="ファイルシェル"
+      title="ファイルシェル設定"
       description="ファイルやフォルダを画面端へ一時的に預け、別の場所へすばやく取り出します。"
     >
       <FeatureSettingsHeader
@@ -99,7 +100,7 @@ export const FileShelfSettings: React.FC = () => {
             id="file-shelf-shortcut"
             label="起動ショートカットキー"
             error={shortcutError}
-            helpText="1回で展開・折りたたみ、すばやく2回でクリップボードを保存、800ms以上の長押しで最近外した項目を戻します。"
+            helpText="押して展開・折りたたみ、800ms以上の長押しで最近外した項目を戻します。"
           >
             <ShortcutInput
               id="file-shelf-shortcut"
@@ -109,6 +110,19 @@ export const FileShelfSettings: React.FC = () => {
               placeholderText="例: Alt+3"
             />
           </Field>
+        </section>
+
+        <section
+          className="settings-group"
+          aria-labelledby="file-shelf-style-title"
+        >
+          <div className="settings-group__heading">
+            <Palette size={18} aria-hidden="true" />
+            <div>
+              <h3 id="file-shelf-style-title">表示スタイル</h3>
+              <p>アクセントカラーの設定</p>
+            </div>
+          </div>
           <Field
             id="file-shelf-theme-color-picker"
             label="ファイルシェルのテーマカラー"
@@ -281,7 +295,7 @@ export const FileShelfSettings: React.FC = () => {
             </p>
           )}
           <p className="file-shelf-settings-note">
-            初期状態では主要なパスワード管理アプリを除外します。ショートカットからの手動表示や2連打での明示的な取り込みは引き続き使えます。
+            初期状態では主要なパスワード管理アプリを除外します。ショートカットからの手動表示は引き続き使えます。
           </p>
         </section>
       </div>

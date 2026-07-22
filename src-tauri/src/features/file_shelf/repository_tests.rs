@@ -3,9 +3,7 @@ use super::super::clipboard::{
     capture_clipboard_text_in_store, clear_clipboard_history_in_store, is_application_ignored,
     should_monitor_clipboard,
 };
-use super::super::shortcut::{
-    is_double_shortcut_press, shortcut_hold_duration, SHORTCUT_LONG_PRESS_INTERVAL,
-};
+use super::super::shortcut::{shortcut_hold_duration, SHORTCUT_LONG_PRESS_INTERVAL};
 use super::super::window::shelf_vertical_offset;
 use super::*;
 use crate::core::settings::{FileShelfSettings, FileShelfVerticalPosition};
@@ -373,26 +371,6 @@ fn clipboard_images_are_encoded_as_managed_png_files() {
         .is_some_and(|path| Path::new(path).exists()));
     assert!(capture_clipboard_image_in_store(&database, &assets, &[0; 4], 2, 1).is_err());
     let _ = fs::remove_dir_all(root);
-}
-
-#[test]
-fn shortcut_double_press_uses_a_bounded_interval() {
-    let start = Instant::now();
-    let mut previous = None;
-    assert!(!is_double_shortcut_press(&mut previous, start));
-    assert!(is_double_shortcut_press(
-        &mut previous,
-        start + StdDuration::from_millis(400)
-    ));
-    assert!(previous.is_none());
-    assert!(!is_double_shortcut_press(
-        &mut previous,
-        start + StdDuration::from_millis(1_000)
-    ));
-    assert!(!is_double_shortcut_press(
-        &mut previous,
-        start + StdDuration::from_millis(1_700)
-    ));
 }
 
 #[test]

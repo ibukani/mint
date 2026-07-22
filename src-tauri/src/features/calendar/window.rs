@@ -48,13 +48,11 @@ pub fn position_calendar(
                 clock.current_monitor(),
             ) {
                 let scale = monitor.scale_factor();
-                // Same formula as clock.rs: (width * scale) as u32
                 let physical_width = (calendar_width_logical * scale) as u32;
-                let calendar_h = (calendar_height_logical * scale).round() as u32;
 
-                let _ = calendar.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-                    physical_width,
-                    calendar_h,
+                let _ = calendar.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
+                    calendar_width_logical,
+                    calendar_height_logical,
                 )));
 
                 let overlap = 0;
@@ -75,14 +73,12 @@ pub fn position_calendar(
         .or_else(|| app.primary_monitor().ok().flatten());
     if let Some(monitor) = monitor {
         let scale = monitor.scale_factor();
-        // Same conversion as clock.rs: (width * scale) as u32
         let physical_width = (calendar_width_logical * scale) as u32;
-        let calendar_h = (calendar_height_logical * scale).round() as u32;
         let margin = (WINDOW_MARGIN * scale) as u32;
 
-        let _ = calendar.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-            physical_width,
-            calendar_h,
+        let _ = calendar.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
+            calendar_width_logical,
+            calendar_height_logical,
         )));
 
         let x = monitor.size().width.saturating_sub(physical_width + margin);
@@ -209,15 +205,13 @@ fn open_calendar_editor_window_inner(
     *guard = Some(payload.clone());
     drop(guard);
 
-    if let Ok(Some(monitor)) = editor.current_monitor().or_else(|_| app.primary_monitor()) {
-        let scale = monitor.scale_factor();
-        let physical_width = (420.0 * scale) as u32;
-        let physical_height = (640.0 * scale) as u32;
+    if editor
+        .current_monitor()
+        .or_else(|_| app.primary_monitor())
+        .is_ok()
+    {
         editor
-            .set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
-                physical_width,
-                physical_height,
-            )))
+            .set_size(tauri::Size::Logical(tauri::LogicalSize::new(420.0, 640.0)))
             .map_err(|error| format!("Failed to size calendar editor window: {error}"))?;
         editor
             .center()

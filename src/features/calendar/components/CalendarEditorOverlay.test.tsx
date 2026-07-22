@@ -16,7 +16,6 @@ const mocks = vi.hoisted(() => ({
   hide: vi.fn().mockResolvedValue(undefined),
   invoke: vi.fn().mockResolvedValue(null),
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
-  useEmptySettings: false,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -42,7 +41,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 
 vi.mock("../../../core/context/AppSettings", () => ({
   useAppSettings: () => ({
-    settings: mocks.useEmptySettings ? null : createMockSettings(),
+    settings: createMockSettings(),
   }),
 }));
 
@@ -52,7 +51,6 @@ describe("CalendarEditorOverlay", () => {
     mocks.listeners.clear();
     mocks.hide.mockReset().mockResolvedValue(undefined);
     mocks.invoke.mockReset().mockResolvedValue(null);
-    mocks.useEmptySettings = false;
   });
 
   it("keeps unsaved input until the user explicitly discards it", async () => {
@@ -136,17 +134,6 @@ describe("CalendarEditorOverlay", () => {
 
     await waitFor(() => expect(mocks.hide).toHaveBeenCalledOnce());
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-  });
-
-  it("uses the shared default accent while settings are unavailable", async () => {
-    mocks.useEmptySettings = true;
-    render(<CalendarEditorOverlay />);
-
-    const dialog = await screen.findByRole("dialog", {
-      name: "カレンダー予定エディタ",
-    });
-
-    expect(dialog).toHaveStyle({ "--color-accent": "#818cf8" });
   });
 
   it("notifies the calendar overlay after saving an event", async () => {

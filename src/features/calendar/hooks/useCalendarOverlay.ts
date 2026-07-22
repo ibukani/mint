@@ -2,7 +2,6 @@ import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow, Window } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
-import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import type { CalendarOpenMode } from "../types";
@@ -182,8 +181,6 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
   });
 
   const animationClass = isHiding ? "is-hiding" : isVisible ? "is-visible" : "";
-  const themeColor =
-    settings?.calendar.themeColor ?? defaultAppSettings.calendar.themeColor;
   const closeCalendarOverlay = useCallback(
     () => closeCalendar(true),
     [closeCalendar],
@@ -198,6 +195,5 @@ export const useCalendarOverlay = (canClose: () => boolean) => {
     selectedGoogleCalendarIds:
       settings?.calendar.selectedGoogleCalendarIds ?? null,
     showSequence,
-    themeColor,
   };
 };

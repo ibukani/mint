@@ -104,23 +104,14 @@ export const SETTINGS_TABS = [
       "履歴",
       "除外アプリ",
       "パスワード管理",
-      "二度押し",
       "Alt+3",
     ],
     searchItems: [
       {
         id: "file-shelf-shortcut",
         label: "起動ショートカットキー",
-        description: "1回で呼び出し、2回で保存、長押しで呼び戻し",
-        keywords: [
-          "Alt+3",
-          "キー",
-          "二度押し",
-          "長押し",
-          "クリップボード",
-          "保存",
-          "復元",
-        ],
+        description: "押して呼び出し、長押しで呼び戻し",
+        keywords: ["Alt+3", "キー", "長押し", "クリップボード", "保存", "復元"],
         targetId: "file-shelf-shortcut",
       },
       {

@@ -31,11 +31,10 @@ export const GameLauncherOverlay: React.FC = () => {
   return (
     <OverlayFrame>
       <OverlayCard
-        className={`${launcher.animationClass} game-launcher theme-accent-scope`}
+        className={`${launcher.animationClass} game-launcher`}
         role="dialog"
         aria-label="ゲームランチャー"
         onKeyDown={list.handleOverlayKeyDown}
-        style={{ "--color-accent": launcher.themeColor } as React.CSSProperties}
       >
         <header className="game-launcher__header">
           <div className="game-launcher__title">

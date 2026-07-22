@@ -4,6 +4,7 @@ import {
   Download,
   Paperclip,
   Pin,
+  Plus,
   Search,
   Trash2,
   Upload,
@@ -11,7 +12,7 @@ import {
 import type React from "react";
 import type { RefObject } from "react";
 import type { QuickCaptureNote, QuickCaptureSortMode } from "../types";
-import { formatUpdatedAt, noteTitle } from "../utils";
+import { countLinesAndChars, formatUpdatedAt, noteTitle } from "../utils";
 
 const searchTerms = (query: string) =>
   [...new Set(query.toLocaleLowerCase().split(/\s+/).filter(Boolean))].sort(
@@ -97,6 +98,8 @@ interface QuickCaptureLibraryProps {
   noteListId: string;
   shortcutModifier: string;
   usesMetaShortcut: boolean;
+  isSaving: boolean;
+  onCreateNewNote: () => void;
   onExportBackup: () => void;
   onImportBackup: () => void;
   onSearchFocus: () => void;
@@ -138,6 +141,8 @@ export const QuickCaptureLibrary = ({
   noteListId,
   shortcutModifier,
   usesMetaShortcut,
+  isSaving,
+  onCreateNewNote,
   onExportBackup,
   onImportBackup,
   onSearchFocus,
@@ -165,10 +170,23 @@ export const QuickCaptureLibrary = ({
       aria-label="保存済みメモ"
     >
       <div className="quick-capture__library-header">
-        <strong>
-          <Archive size={14} aria-hidden="true" /> 保存済みメモ
-          <span className="quick-capture__library-count">{notes.length}</span>
-        </strong>
+        <div className="quick-capture__library-heading">
+          <strong>
+            <Archive size={14} aria-hidden="true" /> メモ
+            <span className="quick-capture__library-count">{notes.length}</span>
+          </strong>
+          <button
+            type="button"
+            className={`quick-capture__new-note${activeId === null ? " is-active" : ""}`}
+            aria-label="新しいメモを作成"
+            aria-keyshortcuts="Control+N Meta+N"
+            disabled={isSaving}
+            title={`新しいメモを作成（${shortcutModifier}+N）`}
+            onClick={onCreateNewNote}
+          >
+            <Plus size={15} aria-hidden="true" />
+          </button>
+        </div>
         <div className="quick-capture__library-tools">
           <select
             className="quick-capture__sort-select"
@@ -238,11 +256,7 @@ export const QuickCaptureLibrary = ({
         </kbd>
       </label>
       <div className="quick-capture__search-meta" aria-live="polite">
-        <span>
-          {hasRefinement
-            ? `${filteredNotes.length}件`
-            : `${filteredNotes.length}件表示`}
-        </span>
+        {hasRefinement && <span>{filteredNotes.length}件</span>}
         {searchText && <span>関連度順</span>}
       </div>
       <fieldset
@@ -340,7 +354,12 @@ export const QuickCaptureLibrary = ({
                     )}
                     <strong>{highlightSearchText(title, searchText)}</strong>
                   </span>
-                  <small>{formatUpdatedAt(note.updatedAt)}</small>
+                  <span className="quick-capture__note-meta">
+                    <small>{formatUpdatedAt(note.updatedAt)}</small>
+                    <small className="quick-capture__note-lines">
+                      {countLinesAndChars(note.content).lines}行
+                    </small>
+                  </span>
                   {excerpt && (
                     <small className="quick-capture__note-excerpt">
                       {highlightSearchText(excerpt, searchText)}

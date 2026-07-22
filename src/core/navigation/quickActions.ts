@@ -88,8 +88,8 @@ export const SETTINGS_QUICK_ACTIONS = [
   {
     id: "open-file-shelf",
     label: "ファイルシェルを開く",
-    description: "ファイルとクリップボードを預ける",
-    keywords: ["ファイル", "フォルダ", "クリップボード", "二度押し", "Alt+3"],
+    description: "ファイルやフォルダの一時置き場",
+    keywords: ["ファイル", "フォルダ", "クリップボード", "Alt+3"],
     targetId: "fileShelf",
     icon: React.createElement(Archive, { size: 16, "aria-hidden": true }),
   },

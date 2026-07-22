@@ -26,7 +26,7 @@ export const ClockPreview: React.FC<{
             {
               "--preview-width": `${previewDimensions.width}px`,
               "--preview-height": `${previewDimensions.height}px`,
-              "--clock-accent-color": clock.clockColor,
+              "--clock-accent-color": clock.themeColor,
               "--clock-size-scale": Math.min(clock.sizePercent / 100, 1.15),
             } as React.CSSProperties
           }
@@ -50,7 +50,7 @@ export const ClockPreview: React.FC<{
               displayMode={clock.displayMode}
               hourFormat={clock.hourFormat}
               glowEffect={clock.glowEffect}
-              clockColor={clock.clockColor}
+              themeColor={clock.themeColor}
             />
           </div>
         </div>

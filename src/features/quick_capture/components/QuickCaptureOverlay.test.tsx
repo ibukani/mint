@@ -85,6 +85,43 @@ describe("QuickCaptureOverlay", () => {
     expect(noteTitle({ content: "\n  見出し  \n本文" })).toBe("見出し");
   });
 
+  it("displays line and character stats in the editor and line count in library notes", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "line-count-note",
+            content: "1行目\n2行目\n3行目",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "1行目\n2行目\n3行目" } });
+
+    const stats = screen.getByTitle("文字数と行数");
+    expect(stats).toHaveTextContent("3 行 (11 文字)");
+
+    const lineNumbers = editor.parentElement?.querySelector(
+      ".quick-capture__line-numbers",
+    );
+    expect(lineNumbers).toHaveTextContent("123");
+
+    const noteOption = await screen.findByRole("option", { name: /1行目/ });
+    expect(noteOption).toHaveTextContent("3行");
+  });
+
   it("promotes a draft and exposes it in the library", async () => {
     render(<QuickCaptureOverlay />);
     const editor = (await screen.findByLabelText(
@@ -231,7 +268,11 @@ describe("QuickCaptureOverlay", () => {
     const editor = await screen.findByLabelText("メモ本文");
     fireEvent.change(editor, { target: { value: "編集中の下書き" } });
 
-    fireEvent.click(await screen.findByRole("button", { name: "即保存" }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "クリップボードを新しいメモとして保存",
+      }),
+    );
 
     await waitFor(() => {
       expect(
@@ -325,7 +366,7 @@ describe("QuickCaptureOverlay", () => {
     const note = await screen.findByRole("option", { name: /保存済みメモ/ });
     fireEvent.click(note);
     const backToDraft = await screen.findByRole("button", {
-      name: "下書きへ",
+      name: "新しいメモを作成",
     });
     fireEvent.click(screen.getByRole("button", { name: "プレビュー" }));
     fireEvent.change(screen.getByLabelText("保存済みメモを検索"), {
@@ -399,7 +440,9 @@ describe("QuickCaptureOverlay", () => {
       expect(pinButton).toHaveAttribute("aria-pressed", "true"),
     );
 
-    const draftButton = screen.getByRole("button", { name: "下書きへ" });
+    const draftButton = screen.getByRole("button", {
+      name: "新しいメモを作成",
+    });
     expect(draftButton).toHaveAttribute(
       "aria-keyshortcuts",
       "Control+N Meta+N",
@@ -409,6 +452,29 @@ describe("QuickCaptureOverlay", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("メモ本文")).toHaveValue("");
       expect(screen.getByText("思いついたことを、そのままメモ")).toBeVisible();
+    });
+  });
+
+  it("keeps the new-note action visible and starts another blank note", async () => {
+    render(<QuickCaptureOverlay />);
+    const editor = await screen.findByLabelText("メモ本文");
+    const newNoteButton = screen.getByRole("button", {
+      name: "新しいメモを作成",
+    });
+    expect(newNoteButton).toBeVisible();
+    expect(newNoteButton).toHaveTextContent("");
+
+    fireEvent.change(editor, { target: { value: "次へ進む前のメモ" } });
+    fireEvent.click(newNoteButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: /次へ進む前のメモ/ }),
+      ).toBeVisible();
+      expect(screen.getByLabelText("メモ本文")).toHaveValue("");
+      expect(
+        screen.getByRole("button", { name: "新しいメモを作成" }),
+      ).toBeVisible();
     });
   });
 
@@ -1096,5 +1162,69 @@ describe("QuickCaptureOverlay", () => {
     expect(
       screen.getByText("Ctrl+Enterで保存すると、ここからすぐ開けます"),
     ).toBeVisible();
+  });
+
+  it("shows result metadata only when the library is filtered", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "compact-library-note",
+            content: "検索対象のメモ",
+            tags: [],
+            pinned: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    await screen.findByRole("option", { name: /検索対象のメモ/ });
+    const resultMeta = document.querySelector(".quick-capture__search-meta");
+    expect(resultMeta).toBeEmptyDOMElement();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "保存済みメモを検索" }),
+      { target: { value: "検索対象" } },
+    );
+
+    await waitFor(() => expect(resultMeta).toHaveTextContent("1件関連度順"));
+  });
+
+  it("truncates extremely long note titles without overflowing the header", async () => {
+    const longTitleText = `https://github.com/ibukani/iris-mind_v2/issues ${"あ".repeat(100)}`;
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "long-title-note",
+            content: longTitleText,
+            tags: [],
+            pinned: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+
+    const note = await screen.findByRole("option", {
+      name: new RegExp(longTitleText.slice(0, 20)),
+    });
+    fireEvent.click(note);
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(longTitleText);
+    expect(document.querySelector(".quick-capture__header")).toBeVisible();
+    expect(document.querySelector(".quick-capture__library")).toBeVisible();
   });
 });

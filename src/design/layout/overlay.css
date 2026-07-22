@@ -1,8 +1,8 @@
 .overlay-frame {
-  contain: layout paint;
+  contain: layout;
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   align-items: center;
   justify-content: center;
   margin: 0;
@@ -78,6 +78,9 @@
 .overlay-card.is-hiding {
   opacity: 0;
   transform: scale(0.985) translateY(4px);
+  transition:
+    opacity 180ms ease-in,
+    transform 200ms ease-in;
 }
 
 .overlay-card .overlay-close-button,
@@ -101,7 +104,7 @@
     color var(--transition-fast),
     background var(--transition-fast),
     border-color var(--transition-fast),
-    transform var(--transition-fast);
+    transform var(--transition-smooth);
 }
 
 .overlay-card .overlay-close-button:hover,
@@ -109,11 +112,12 @@
   border-color: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
   background: color-mix(in srgb, var(--surface-control-hover) 70%, transparent);
   color: var(--color-text-primary);
+  transform: scale(1.08) rotate(90deg);
 }
 
 .overlay-card .overlay-close-button:active,
 .overlay-frame .overlay-close-button:active {
-  transform: scale(0.94);
+  transform: scale(0.92) rotate(90deg);
 }
 
 .overlay-card--digital {
