@@ -10,7 +10,7 @@ export const defaultAppSettings: AppSettings = {
     autoHideSeconds: 3,
     showDate: true,
     showSeconds: true,
-    themeColor: "#818cf8",
+    clockColor: "#818cf8",
     blinkColon: true,
     sizePercent: 100,
     displayMode: "digital",

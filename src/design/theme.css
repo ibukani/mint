@@ -122,3 +122,43 @@
   --page-accent-bottom: rgb(196 93 56 / 3%);
   --surface-selection: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
+
+.theme-accent-scope {
+  --surface-accent: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --surface-accent-action: color-mix(
+    in srgb,
+    var(--color-accent) 16%,
+    transparent
+  );
+  --surface-accent-action-hover: color-mix(
+    in srgb,
+    var(--color-accent) 24%,
+    transparent
+  );
+  --border-control-focus: var(--color-accent);
+  --border-accent: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --border-action: color-mix(in srgb, var(--color-accent) 48%, transparent);
+  --border-action-hover: var(--color-accent);
+  --page-accent-top: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --surface-selection: color-mix(in srgb, var(--color-accent) 24%, transparent);
+}
+
+[data-theme="light"] .theme-accent-scope {
+  --surface-accent: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --surface-accent-action: color-mix(
+    in srgb,
+    var(--color-accent) 10%,
+    transparent
+  );
+  --surface-accent-action-hover: color-mix(
+    in srgb,
+    var(--color-accent) 16%,
+    transparent
+  );
+  --border-control-focus: var(--color-accent);
+  --border-accent: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --border-action: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --border-action-hover: var(--color-accent);
+  --page-accent-top: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  --surface-selection: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}

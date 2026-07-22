@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import {
   getPlatformShortcutModifier,
   isApplePlatform,
@@ -23,6 +25,7 @@ const isEditableTarget = (target: EventTarget | null) =>
   (target instanceof HTMLElement && target.isContentEditable);
 
 export const useQuickCaptureOverlayController = () => {
+  const { settings } = useAppSettings();
   const capture = useQuickCapture();
   const [preview, setPreview] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -56,14 +59,6 @@ export const useQuickCaptureOverlayController = () => {
   const closeCommandPalette = useCallback(() => {
     setCommandPaletteOpen(false);
   }, []);
-  const createNewNote = useCallback(async () => {
-    closeCommandPalette();
-    if (capture.activeId || !capture.content.trim()) {
-      await capture.openDraft();
-      return;
-    }
-    await capture.promote();
-  }, [capture, closeCommandPalette]);
 
   useEffect(() => {
     void capture.focusSequence;
@@ -147,10 +142,11 @@ export const useQuickCaptureOverlayController = () => {
       (event.ctrlKey || event.metaKey) &&
       !event.altKey &&
       !event.shiftKey &&
+      capture.activeId &&
       !isSaving
     ) {
       event.preventDefault();
-      void createNewNote();
+      void capture.openDraft();
     } else if (
       event.key.toLocaleLowerCase() === "p" &&
       (event.ctrlKey || event.metaKey) &&
@@ -197,7 +193,6 @@ export const useQuickCaptureOverlayController = () => {
     closeCommandPalette,
     commandPaletteOpen,
     continueList: actions.continueList,
-    createNewNote,
     editorRef,
     handleKeyDown,
     handleLibrarySearchBlur: library.handleSearchBlur,
@@ -214,6 +209,9 @@ export const useQuickCaptureOverlayController = () => {
     selectLibraryNote,
     setPreview,
     shortcutModifier,
+    themeColor:
+      settings?.quickCapture.themeColor ||
+      defaultAppSettings.quickCapture.themeColor,
     usesMetaShortcut,
   };
 };

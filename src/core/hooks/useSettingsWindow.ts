@@ -59,19 +59,15 @@ export const useSettingsWindow = (theme: ThemeMode | undefined) => {
   }, []);
 
   useEffect(() => {
-    const effectiveTheme = theme ?? "system";
+    if (!theme) return undefined;
 
     const mediaQuery =
-      effectiveTheme === "system" && typeof window.matchMedia === "function"
+      theme === "system" && typeof window.matchMedia === "function"
         ? window.matchMedia("(prefers-color-scheme: light)")
         : null;
     const applyTheme = () => {
       const resolvedTheme =
-        effectiveTheme === "system"
-          ? mediaQuery?.matches
-            ? "light"
-            : "dark"
-          : effectiveTheme;
+        theme === "system" ? (mediaQuery?.matches ? "light" : "dark") : theme;
       document.documentElement.dataset.theme = resolvedTheme;
     };
 

@@ -1,10 +1,4 @@
-import {
-  CalendarDays,
-  Clock3,
-  Keyboard,
-  MoveDown,
-  Palette,
-} from "lucide-react";
+import { CalendarDays, Clock3, Keyboard, MoveDown } from "lucide-react";
 import type React from "react";
 import { useAppSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
@@ -49,71 +43,57 @@ export const CalendarSettings: React.FC = () => {
       />
 
       <div className="calendar-settings-grid">
-        <div className="calendar-settings-column">
-          <section
-            className="settings-group"
-            aria-labelledby="calendar-shortcut-title"
-          >
-            <div className="settings-group__heading">
-              <Keyboard size={18} aria-hidden="true" />
-              <div>
-                <h3 id="calendar-shortcut-title">呼び出し操作</h3>
-                <p>どのアプリを使用中でもすぐに月表示を開けます。</p>
-              </div>
+        <GoogleCalendarSettings />
+        <section
+          className="settings-group"
+          aria-labelledby="calendar-shortcut-title"
+        >
+          <div className="settings-group__heading">
+            <Keyboard size={18} aria-hidden="true" />
+            <div>
+              <h3 id="calendar-shortcut-title">呼び出し操作</h3>
+              <p>どのアプリを使用中でもすぐに月表示を開けます。</p>
             </div>
-            <Field
+          </div>
+          <Field
+            id="calendar-shortcut-input"
+            label="起動ショートカットキー"
+            error={shortcutError}
+            helpText="入力欄を選択して、使いたいキーの組み合わせを押します。"
+          >
+            <ShortcutInput
               id="calendar-shortcut-input"
-              label="起動ショートカットキー"
-              error={shortcutError}
-              helpText="入力欄を選択して、使いたいキーの組み合わせを押します。"
-            >
-              <ShortcutInput
-                id="calendar-shortcut-input"
-                invalid={Boolean(shortcutError)}
-                value={calendar.shortcut}
-                onChange={(value) => handleChange("shortcut", value)}
-                placeholderText="例: Alt+Down"
-              />
-            </Field>
-            <Field
-              id="calendar-create-event-shortcut-input"
-              label="予定登録ショートカットキー"
-              error={shortcutErrors.calendarCreateEvent}
-              helpText="カレンダーを開かず、予定入力画面へ直接移動します。"
-            >
-              <ShortcutInput
-                id="calendar-create-event-shortcut-input"
-                invalid={Boolean(shortcutErrors.calendarCreateEvent)}
-                value={calendar.createEventShortcut}
-                onChange={(value) => handleChange("createEventShortcut", value)}
-                placeholderText="例: Alt+Up"
-              />
-            </Field>
-          </section>
-
-          <section
-            className="settings-group"
-            aria-labelledby="calendar-style-title"
+              invalid={Boolean(shortcutError)}
+              value={calendar.shortcut}
+              onChange={(value) => handleChange("shortcut", value)}
+              placeholderText="例: Alt+Down"
+            />
+          </Field>
+          <Field
+            id="calendar-create-event-shortcut-input"
+            label="予定登録ショートカットキー"
+            error={shortcutErrors.calendarCreateEvent}
+            helpText="カレンダーを開かず、予定入力画面へ直接移動します。"
           >
-            <div className="settings-group__heading">
-              <Palette size={18} aria-hidden="true" />
-              <div>
-                <h3 id="calendar-style-title">表示スタイル</h3>
-                <p>アクセントカラーの設定</p>
-              </div>
-            </div>
-            <Field
-              id="calendar-theme-color-picker"
-              label="カレンダーのテーマカラー"
-            >
-              <ColorPresetPicker
-                value={calendar.themeColor}
-                onChange={(value) => handleChange("themeColor", value)}
-                ariaLabel="カレンダーのテーマカラー"
-              />
-            </Field>
-          </section>
-        </div>
+            <ShortcutInput
+              id="calendar-create-event-shortcut-input"
+              invalid={Boolean(shortcutErrors.calendarCreateEvent)}
+              value={calendar.createEventShortcut}
+              onChange={(value) => handleChange("createEventShortcut", value)}
+              placeholderText="例: Alt+Up"
+            />
+          </Field>
+          <Field
+            id="calendar-theme-color-picker"
+            label="カレンダーのテーマカラー"
+          >
+            <ColorPresetPicker
+              value={calendar.themeColor}
+              onChange={(value) => handleChange("themeColor", value)}
+              ariaLabel="カレンダーのテーマカラー"
+            />
+          </Field>
+        </section>
 
         <section
           className="settings-group calendar-behavior-card"
@@ -145,7 +125,6 @@ export const CalendarSettings: React.FC = () => {
             時計が非表示の場合は、時計とカレンダーをまとめて表示します。
           </p>
         </section>
-        <GoogleCalendarSettings />
       </div>
     </SettingsSection>
   );

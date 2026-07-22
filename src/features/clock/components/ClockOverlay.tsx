@@ -11,7 +11,7 @@ export const ClockOverlay: React.FC = () => {
     settings,
     hideClock,
     animationClass,
-    themeColor,
+    clockColor,
     isAnimateVisible,
     isHiding,
   } = useClockOverlay();
@@ -24,7 +24,7 @@ export const ClockOverlay: React.FC = () => {
         aria-label="時計オーバーレイ"
         style={
           {
-            "--clock-accent-color": themeColor,
+            "--clock-accent-color": clockColor,
             "--clock-size-scale": settings
               ? settings.clock.sizePercent / 100
               : 1,
@@ -50,7 +50,7 @@ export const ClockOverlay: React.FC = () => {
             displayMode={settings?.clock.displayMode ?? "digital"}
             hourFormat={settings?.clock.hourFormat ?? "24h"}
             glowEffect={settings?.clock.glowEffect ?? true}
-            themeColor={themeColor}
+            clockColor={clockColor}
           />
         </div>
       </OverlayCard>

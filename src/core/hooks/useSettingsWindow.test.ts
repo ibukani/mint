@@ -62,24 +62,6 @@ describe("useSettingsWindow theme handling", () => {
     unmount();
   });
 
-  it("falls back to system preference when theme is undefined (loading state)", () => {
-    const mediaQuery = {
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    };
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn(() => mediaQuery),
-    );
-
-    const { unmount } = renderHook(() => useSettingsWindow(undefined));
-
-    expect(document.documentElement.dataset.theme).toBe("light");
-
-    unmount();
-  });
-
   it("records a focus target when navigating to an individual setting", () => {
     const { result } = renderHook(() => useSettingsWindow("dark"));
 

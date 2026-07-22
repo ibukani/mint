@@ -1,16 +1,19 @@
 .file-shelf-settings-grid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
 .file-shelf-settings-note {
   margin: 0;
-  color: var(--color-text-subtle);
+  color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.55;
-  padding-left: var(--space-3);
-  border-left: 2px solid var(--border-accent);
+  line-height: 1.6;
+}
+
+.file-shelf-settings-history,
+.file-shelf-settings-ignored {
+  grid-column: 1 / -1;
 }
 
 .file-shelf-settings-apps {
@@ -71,4 +74,10 @@
 
 .file-shelf-settings-add-app {
   align-self: flex-start;
+}
+
+@media (max-width: 760px) {
+  .file-shelf-settings-grid {
+    grid-template-columns: 1fr;
+  }
 }

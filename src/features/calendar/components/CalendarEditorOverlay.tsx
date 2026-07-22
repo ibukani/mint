@@ -3,6 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import { ConfirmDialog } from "../../../design/components";
@@ -29,6 +31,10 @@ const getTodayMachineDate = () => {
 };
 
 export const CalendarEditorOverlay: React.FC = () => {
+  const { settings } = useAppSettings();
+  const themeColor =
+    settings?.calendar.themeColor || defaultAppSettings.calendar.themeColor;
+
   const [editorState, setEditorState] = useState<EditorState>(() => ({
     kind: "create",
     date: getTodayMachineDate(),
@@ -178,9 +184,10 @@ export const CalendarEditorOverlay: React.FC = () => {
   return (
     <OverlayFrame>
       <OverlayCard
-        className="calendar-overlay-card is-visible"
+        className="calendar-overlay-card theme-accent-scope is-visible"
         role="dialog"
         aria-label="カレンダー予定エディタ"
+        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <button
           type="button"

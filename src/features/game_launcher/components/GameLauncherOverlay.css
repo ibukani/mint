@@ -84,14 +84,14 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-text-muted);
   place-items: center;
   cursor: pointer;
 }
 .game-launcher__search-clear:hover,
 .game-launcher__search-clear:focus-visible {
-  background: var(--surface-accent-action-hover);
-  color: var(--color-accent);
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
 }
 
 .game-launcher__body {
@@ -170,13 +170,13 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 .game-launcher__action:hover,
 .game-launcher__action:focus-visible,
 .game-launcher__action.is-favorite {
-  background: var(--surface-accent-action-hover);
+  background: var(--surface-control);
   color: var(--color-accent);
 }
 .game-launcher__action:disabled {
@@ -323,10 +323,10 @@
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-2);
-  border: 1px solid var(--border-accent);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
-  background: var(--surface-accent);
-  color: var(--color-accent);
+  background: var(--surface-control);
+  color: var(--color-text-primary);
   cursor: pointer;
   transition:
     background var(--transition-fast),
@@ -341,8 +341,8 @@
 }
 .game-launcher__preview-actions button:hover:not(:disabled) {
   border-color: var(--border-control-focus);
-  background: var(--surface-accent-action-hover);
-  color: var(--color-accent);
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
   transform: translateY(-1px);
 }
 .game-launcher__preview-actions button:first-child:hover:not(:disabled) {
@@ -393,15 +393,11 @@
 .game-launcher__footer button {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-accent);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
-  background: var(--surface-accent);
-  color: var(--color-accent);
+  background: var(--surface-control);
+  color: var(--color-text-secondary);
   cursor: pointer;
-}
-
-.game-launcher__footer button:hover:not(:disabled) {
-  background: var(--surface-accent-action-hover);
 }
 
 @media (max-width: 620px) {
