@@ -22,7 +22,8 @@
         "transparent": false,
         "shadow": true,
         "maximizable": false,
-        "resizable": false
+        "resizable": false,
+        "visible": false
       },
       {
         "label": "clock",
