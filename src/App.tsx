@@ -13,14 +13,13 @@ import {
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
 import { useMainWindowEviction } from "./core/hooks/useMainWindowEviction";
 import { useSettingsWindow } from "./core/hooks/useSettingsWindow";
-import { useWindowThemeColor } from "./core/hooks/useWindowThemeColor";
 import { getAvailableQuickActions } from "./core/navigation/quickActions";
 import {
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
 } from "./core/navigation/settingsTabs";
 import { isOverlayTarget, openOverlay } from "./core/windowCommands";
-import { isWindowRouteLabel, WINDOW_ROUTES } from "./core/windowRoutes";
+import { WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
 import {
   rememberGoogleCalendarSync,
@@ -66,7 +65,6 @@ const AppContent: React.FC = () => {
   const { label, activeTab, setActiveTab, focusRequest } = useSettingsWindow(
     settings?.theme,
   );
-  useWindowThemeColor(label, settings);
   useMainWindowEviction(label === "main");
   const startupSyncStarted = useRef(false);
   const initialActiveTab = useRef(activeTab);
@@ -99,8 +97,8 @@ const AppContent: React.FC = () => {
 
   if (loading) return <AppLoading />;
 
-  if (isWindowRouteLabel(label)) {
-    const OverlayComponent = WINDOW_ROUTES[label].component;
+  if (label && label in WINDOW_ROUTES) {
+    const OverlayComponent = WINDOW_ROUTES[label];
     return (
       <Suspense>
         <OverlayComponent />

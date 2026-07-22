@@ -1,4 +1,4 @@
-import { ClipboardPaste, Eye, EyeOff, Keyboard, Server } from "lucide-react";
+import { ClipboardPaste, Eye, EyeOff, Mic2, Server } from "lucide-react";
 import type React from "react";
 import {
   Button,
@@ -70,11 +70,11 @@ export const VoiceToTextConnectionSettings: React.FC<{
 
   return (
     <div className="v2t-settings-column">
-      <section className="settings-group" aria-labelledby="v2t-shortcut-title">
+      <section className="settings-group" aria-labelledby="v2t-launch-title">
         <div className="settings-group__heading">
-          <Keyboard size={18} aria-hidden="true" />
+          <Mic2 size={18} aria-hidden="true" />
           <div>
-            <h3 id="v2t-shortcut-title">呼び出し操作</h3>
+            <h3 id="v2t-launch-title">呼び出し</h3>
             <p>文字起こし画面を直接開くグローバルショートカット</p>
           </div>
         </div>

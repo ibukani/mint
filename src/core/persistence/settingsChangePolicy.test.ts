@@ -19,7 +19,7 @@ describe("settings change policy", () => {
   it("allows presentation-only changes to use the debounce queue", () => {
     const previous = cloneSettings();
     const next = cloneSettings();
-    next.clock.themeColor = "#ffffff";
+    next.clock.clockColor = "#ffffff";
 
     expect(requiresImmediateSettingsSave(previous, next)).toBe(false);
   });

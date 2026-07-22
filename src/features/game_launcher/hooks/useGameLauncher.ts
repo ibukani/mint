@@ -222,5 +222,8 @@ export const useGameLauncher = () => {
     lastPlayedAtByGame:
       settings?.gameLauncher.lastPlayedAtByGame ??
       defaultAppSettings.gameLauncher.lastPlayedAtByGame,
+    themeColor:
+      settings?.gameLauncher.themeColor ??
+      defaultAppSettings.gameLauncher.themeColor,
   };
 };

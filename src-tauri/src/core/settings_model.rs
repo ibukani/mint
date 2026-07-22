@@ -17,8 +17,8 @@ pub struct ClockSettings {
     pub show_date: bool,
     #[serde(default = "default_show_seconds")]
     pub show_seconds: bool,
-    #[serde(default = "default_clock_color", alias = "clockColor")]
-    pub theme_color: String,
+    #[serde(default = "default_clock_color")]
+    pub clock_color: String,
     #[serde(default = "default_blink_colon")]
     pub blink_colon: bool,
     #[serde(default = "default_size_percent")]
@@ -71,7 +71,7 @@ impl Default for ClockSettings {
             auto_hide_seconds: 3,
             show_date: true,
             show_seconds: true,
-            theme_color: "#818cf8".to_string(),
+            clock_color: "#818cf8".to_string(),
             blink_colon: true,
             size_percent: 100,
             display_mode: "digital".to_string(),
@@ -443,7 +443,7 @@ mod tests {
         assert_eq!(settings.clock.auto_hide_seconds, 3);
         assert!(settings.clock.show_date);
         assert!(settings.clock.show_seconds);
-        assert_eq!(settings.clock.theme_color, "#818cf8");
+        assert_eq!(settings.clock.clock_color, "#818cf8");
         assert!(settings.clock.blink_colon);
         assert_eq!(settings.clock.size_percent, 100);
         assert_eq!(settings.clock.display_mode, "digital");
@@ -497,7 +497,7 @@ mod tests {
         assert_eq!(settings.clock.auto_hide_seconds, 3); // デフォルト補完
         assert!(settings.clock.show_date); // デフォルト補完
         assert!(settings.clock.show_seconds); // デフォルト補完
-        assert_eq!(settings.clock.theme_color, "#818cf8"); // デフォルト補完
+        assert_eq!(settings.clock.clock_color, "#818cf8"); // デフォルト補完
         assert!(settings.clock.blink_colon); // デフォルト補完
         assert_eq!(settings.clock.size_percent, 100); // デフォルト補完
         assert_eq!(settings.clock.display_mode, "digital"); // デフォルト補完
@@ -533,15 +533,5 @@ mod tests {
             settings.file_shelf.vertical_position,
             FileShelfVerticalPosition::Center
         );
-
-        // clockColor から theme_color へのマイグレーションを検証
-        let legacy_clock_json = r##"{
-          "clock": {
-            "enabled": true,
-            "clockColor": "#ff0000"
-          }
-        }"##;
-        let settings: AppSettings = serde_json::from_str(legacy_clock_json).unwrap();
-        assert_eq!(settings.clock.theme_color, "#ff0000");
     }
 }

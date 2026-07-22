@@ -137,9 +137,35 @@
 }
 
 .feature-overview__open {
+  display: inline-flex;
   min-height: 30px;
+  align-items: center;
+  gap: 4px;
   padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
   font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.feature-overview__open:hover {
+  border-color: var(--border-control-focus);
+  background: var(--surface-control-hover);
+  color: var(--color-text-primary);
+}
+
+.feature-overview__open:focus-visible {
+  border-color: var(--border-control-focus);
+  outline: none;
+  box-shadow: var(--shadow-focus);
 }
 
 .theme-choice-grid {

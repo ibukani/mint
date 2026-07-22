@@ -48,7 +48,7 @@ describe("digital clock presentation", () => {
         displayMode="digital"
         hourFormat="24h"
         glowEffect={false}
-        themeColor="#38bdf8"
+        clockColor="#38bdf8"
       />,
     );
 
@@ -75,7 +75,7 @@ describe("digital clock presentation", () => {
         displayMode="digital"
         hourFormat="12h"
         glowEffect={false}
-        themeColor="#38bdf8"
+        clockColor="#38bdf8"
       />,
     );
 
@@ -101,7 +101,7 @@ describe("digital clock presentation", () => {
         displayMode="analog"
         hourFormat="24h"
         glowEffect={false}
-        themeColor="#38bdf8"
+        clockColor="#38bdf8"
       />,
     );
 
@@ -121,7 +121,7 @@ describe("digital clock presentation", () => {
         displayMode="digital"
         hourFormat="24h"
         glowEffect={false}
-        themeColor="#38bdf8"
+        clockColor="#38bdf8"
       />,
     );
 
@@ -142,7 +142,7 @@ describe("digital clock presentation", () => {
         displayMode="digital"
         hourFormat="24h"
         glowEffect={false}
-        themeColor="#38bdf8"
+        clockColor="#38bdf8"
       />,
     );
 

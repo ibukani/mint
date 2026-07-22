@@ -14,6 +14,7 @@ export const FileShelfOverlay: React.FC = () => {
   const {
     shelf,
     rowDrag,
+    themeColor,
     expandedGroups,
     selectedIds,
     query,
@@ -59,9 +60,10 @@ export const FileShelfOverlay: React.FC = () => {
       <OverlayFrame>
         <button
           type="button"
-          className={`file-shelf-handle${shelf.isDropTarget ? " is-drop-target" : ""}`}
+          className={`file-shelf-handle theme-accent-scope${shelf.isDropTarget ? " is-drop-target" : ""}`}
           onClick={() => void shelf.changeExpanded(true)}
           aria-label={`ファイルシェルを開く、${shelf.itemCount}件`}
+          style={{ "--color-accent": themeColor } as React.CSSProperties}
         >
           <Archive size={17} aria-hidden="true" />
           <strong>{shelf.itemCount}</strong>
@@ -85,7 +87,7 @@ export const FileShelfOverlay: React.FC = () => {
       </button>
       <section
         ref={containerRef}
-        className={`file-shelf${shelf.isDropTarget ? " is-drop-target" : ""}`}
+        className={`file-shelf theme-accent-scope${shelf.isDropTarget ? " is-drop-target" : ""}`}
         aria-label="ファイルシェル"
         aria-keyshortcuts="F2"
         tabIndex={-1}
@@ -93,6 +95,7 @@ export const FileShelfOverlay: React.FC = () => {
         onKeyDown={handleKeyDown}
         onMouseEnter={stopCollapseTimer}
         onMouseLeave={scheduleCollapse}
+        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <FileShelfOverlayHeader
           shelf={shelf}

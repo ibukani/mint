@@ -183,7 +183,7 @@ export const useClockOverlay = () => {
     animationClass,
     isAnimateVisible,
     isHiding,
-    themeColor:
-      settings?.clock.themeColor ?? defaultAppSettings.clock.themeColor,
+    clockColor:
+      settings?.clock.clockColor ?? defaultAppSettings.clock.clockColor,
   };
 };

@@ -13,7 +13,6 @@ pub struct FileShelfWindowState(pub(crate) Mutex<bool>);
 pub(crate) struct FileShelfShortcutTiming {
     pub(crate) last_pressed_at: Option<Instant>,
     pub(crate) current_pressed_at: Option<Instant>,
-    pub(crate) is_pressed: bool,
 }
 
 #[derive(Default)]

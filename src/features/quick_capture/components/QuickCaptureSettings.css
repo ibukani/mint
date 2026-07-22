@@ -150,9 +150,3 @@
     flex-direction: column;
   }
 }
-
-.quick-capture-settings-column {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}

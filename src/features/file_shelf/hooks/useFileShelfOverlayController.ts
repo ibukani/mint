@@ -1,4 +1,5 @@
 import { useAppSettings } from "../../../core/context/AppSettings";
+import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import {
@@ -65,5 +66,7 @@ export const useFileShelfOverlayController = () => {
     shelf,
     shortcutModifier: getPlatformShortcutModifier(),
     shortcutAriaModifier: isApplePlatform() ? "Meta" : "Control",
+    themeColor:
+      settings?.fileShelf.themeColor || defaultAppSettings.fileShelf.themeColor,
   };
 };

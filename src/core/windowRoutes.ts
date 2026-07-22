@@ -1,12 +1,5 @@
 import type React from "react";
 import { lazy } from "react";
-import { defaultAppSettings } from "./defaultSettings";
-import type { AppSettings } from "./settingsModel";
-
-interface WindowRouteDefinition {
-  component: React.LazyExoticComponent<React.FC>;
-  getThemeColor: (settings: AppSettings) => string;
-}
 
 const ClockOverlay = lazy(() =>
   import("../features/clock/components/ClockOverlay").then((m) => ({
@@ -46,46 +39,14 @@ const CalendarEditorOverlay = lazy(() =>
   })),
 );
 
-export const WINDOW_ROUTES = {
-  clock: {
-    component: ClockOverlay,
-    getThemeColor: (settings) => settings.clock.themeColor,
-  },
-  calendar: {
-    component: CalendarOverlay,
-    getThemeColor: (settings) => settings.calendar.themeColor,
-  },
-  calendarEditor: {
-    component: CalendarEditorOverlay,
-    getThemeColor: (settings) => settings.calendar.themeColor,
-  },
-  gameLauncher: {
-    component: GameLauncherOverlay,
-    getThemeColor: (settings) => settings.gameLauncher.themeColor,
-  },
-  quickCapture: {
-    component: QuickCaptureOverlay,
-    getThemeColor: (settings) => settings.quickCapture.themeColor,
-  },
-  fileShelf: {
-    component: FileShelfOverlay,
-    getThemeColor: (settings) => settings.fileShelf.themeColor,
-  },
-} satisfies Record<string, WindowRouteDefinition>;
-
-export type WindowRouteLabel = keyof typeof WINDOW_ROUTES;
-
-export const isWindowRouteLabel = (
-  label: string | null,
-): label is WindowRouteLabel => label !== null && label in WINDOW_ROUTES;
-
-export const getWindowThemeColor = (
-  label: WindowRouteLabel,
-  settings: AppSettings | null,
-) => {
-  const route = WINDOW_ROUTES[label];
-  return (
-    route.getThemeColor(settings ?? defaultAppSettings) ||
-    route.getThemeColor(defaultAppSettings)
-  );
+export const WINDOW_ROUTES: Record<
+  string,
+  React.LazyExoticComponent<React.FC>
+> = {
+  clock: ClockOverlay,
+  calendar: CalendarOverlay,
+  calendarEditor: CalendarEditorOverlay,
+  gameLauncher: GameLauncherOverlay,
+  quickCapture: QuickCaptureOverlay,
+  fileShelf: FileShelfOverlay,
 };

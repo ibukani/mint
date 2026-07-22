@@ -17,7 +17,6 @@ import {
 import "./GeneralSettings.css";
 import type React from "react";
 import {
-  Button,
   Field,
   SettingsSection,
   ShortcutInput,
@@ -185,15 +184,15 @@ export const GeneralSettings: React.FC = () => {
                           {isEnabled ? "有効" : "無効"}
                         </span>
                       </span>
-                      <Button
-                        variant="ghost"
+                      <button
+                        type="button"
                         className="feature-overview__open"
                         onClick={() => setActiveTab(id)}
                         aria-label={`${label}の詳細設定を開く`}
                       >
                         詳細設定
                         <ArrowRight size={14} aria-hidden="true" />
-                      </Button>
+                      </button>
                     </div>
                   </article>
                 );
