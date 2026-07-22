@@ -298,8 +298,9 @@
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
+    background var(--transition-smooth),
+    border-color var(--transition-smooth),
+    transform var(--transition-smooth),
     color var(--transition-fast);
 }
 
@@ -356,6 +357,7 @@
 .month-calendar__day:hover {
   background: var(--surface-control-hover);
   color: var(--color-text-primary);
+  transform: translateY(-1px) scale(1.05);
 }
 
 .month-calendar__day:focus-visible {

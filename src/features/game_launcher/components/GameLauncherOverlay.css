@@ -116,9 +116,10 @@
   background: transparent;
   color: var(--color-text-primary);
   transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast);
+    background var(--transition-smooth),
+    border-color var(--transition-smooth),
+    box-shadow var(--transition-smooth),
+    transform var(--transition-smooth);
 }
 .game-launcher__item::before {
   position: absolute;
@@ -129,14 +130,17 @@
   border-radius: 999px;
   background: transparent;
   content: "";
-  transition: background var(--transition-fast);
+  transition: background var(--transition-smooth);
 }
-.game-launcher__item:hover,
+.game-launcher__item:hover {
+  border-color: var(--border-control-focus);
+  background: var(--surface-accent-action);
+  transform: translateX(3px);
+}
 .game-launcher__item.is-selected {
   border-color: var(--border-control-focus);
   background: var(--surface-accent-action);
-}
-.game-launcher__item.is-selected {
+  transform: translateX(2px);
   box-shadow: var(--shadow-card);
 }
 .game-launcher__item.is-selected::before {

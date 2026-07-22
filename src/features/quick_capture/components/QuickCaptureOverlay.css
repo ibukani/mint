@@ -109,6 +109,7 @@
   padding: clamp(48px, 12vh, 92px) var(--space-4) var(--space-4);
   background: color-mix(in srgb, var(--surface-page) 24%, transparent);
   backdrop-filter: blur(4px);
+  animation: quick-capture-backdrop-enter 180ms ease-out;
 }
 
 .quick-capture__command-palette {
@@ -122,6 +123,24 @@
   background: var(--surface-elevated);
   box-shadow: var(--shadow-card-raised), var(--shadow-focus);
   color: var(--color-text-primary);
+  animation: quick-capture-palette-enter var(--transition-smooth);
+}
+
+@keyframes quick-capture-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes quick-capture-palette-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .quick-capture__command-header,
