@@ -1,4 +1,4 @@
-import { Gamepad2, Keyboard, RefreshCw } from "lucide-react";
+import { Gamepad2, Keyboard, Palette, RefreshCw } from "lucide-react";
 import type React from "react";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
@@ -95,7 +95,7 @@ export const GameLauncherSettings: React.FC = () => {
 
   return (
     <SettingsSection
-      title="ゲームランチャー"
+      title="ゲームランチャー設定"
       description="Steam、Epic Games、Riot Gamesのインストール済みゲームを一箇所から起動します。"
     >
       <FeatureSettingsHeader
@@ -106,114 +106,135 @@ export const GameLauncherSettings: React.FC = () => {
         onReset={() => updateFeatureSettings(defaultAppSettings.gameLauncher)}
         ariaLabel="ゲームランチャーを有効にする"
       />
-      <section
-        className="settings-group"
-        aria-labelledby="game-launcher-shortcut-title"
-      >
-        <div className="settings-group__heading">
-          <Keyboard size={18} aria-hidden="true" />
-          <div>
-            <h3 id="game-launcher-shortcut-title">呼び出し操作</h3>
-            <p>中央のオーバーレイをどのアプリからでも開きます。</p>
-          </div>
-        </div>
-        <Field
-          id="game-launcher-shortcut"
-          label="起動ショートカットキー"
-          error={shortcutError}
-          helpText="同じキーでもう一度押すか、Escで閉じます。"
-        >
-          <ShortcutInput
-            id="game-launcher-shortcut"
-            invalid={Boolean(shortcutError)}
-            value={settings.shortcut}
-            onChange={(value) => handleChange("shortcut", value)}
-            placeholderText="例: Alt+1"
-          />
-        </Field>
-        <Field
-          id="game-launcher-theme-color-picker"
-          label="ランチャーのテーマカラー"
-        >
-          <ColorPresetPicker
-            value={settings.themeColor}
-            onChange={(value) => handleChange("themeColor", value)}
-            ariaLabel="ランチャーのテーマカラー"
-          />
-        </Field>
-      </section>
-      <section
-        className="settings-group"
-        aria-labelledby="game-launcher-sources-title"
-      >
-        <div className="game-launcher-sources-header">
-          <div className="settings-group__heading">
-            <Gamepad2 size={18} aria-hidden="true" />
-            <div>
-              <h3 id="game-launcher-sources-title">対応ランチャー</h3>
-              <p>Steam・Epic Games・Riot Gamesをローカルで検出します。</p>
-            </div>
-          </div>
-          <Button
-            id="game-launcher-sources-refresh"
-            variant="ghost"
-            className="game-launcher-sources-refresh"
-            onClick={() => void scanGameSources(true)}
-            disabled={sourceScanPhase === "loading"}
-            aria-label="対応ランチャーを再確認"
+      <div className="game-launcher-settings-grid">
+        <div className="game-launcher-settings-column">
+          <section
+            className="settings-group"
+            aria-labelledby="game-launcher-shortcut-title"
           >
-            <RefreshCw
-              size={15}
-              aria-hidden="true"
-              className={
-                sourceScanPhase === "loading"
-                  ? "game-launcher-sources-refresh__icon is-spinning"
-                  : "game-launcher-sources-refresh__icon"
-              }
-            />
-            {sourceScanPhase === "loading" ? "確認中…" : "再確認"}
-          </Button>
+            <div className="settings-group__heading">
+              <Keyboard size={18} aria-hidden="true" />
+              <div>
+                <h3 id="game-launcher-shortcut-title">呼び出し操作</h3>
+                <p>中央のオーバーレイをどのアプリからでも開きます。</p>
+              </div>
+            </div>
+            <Field
+              id="game-launcher-shortcut"
+              label="起動ショートカットキー"
+              error={shortcutError}
+              helpText="同じキーでもう一度押すか、Escで閉じます。"
+            >
+              <ShortcutInput
+                id="game-launcher-shortcut"
+                invalid={Boolean(shortcutError)}
+                value={settings.shortcut}
+                onChange={(value) => handleChange("shortcut", value)}
+                placeholderText="例: Alt+1"
+              />
+            </Field>
+          </section>
+
+          <section
+            className="settings-group"
+            aria-labelledby="game-launcher-style-title"
+          >
+            <div className="settings-group__heading">
+              <Palette size={18} aria-hidden="true" />
+              <div>
+                <h3 id="game-launcher-style-title">表示スタイル</h3>
+                <p>アクセントカラーの設定</p>
+              </div>
+            </div>
+            <Field
+              id="game-launcher-theme-color-picker"
+              label="ゲームランチャーのテーマカラー"
+            >
+              <ColorPresetPicker
+                value={settings.themeColor}
+                onChange={(value) => handleChange("themeColor", value)}
+                ariaLabel="ゲームランチャーのテーマカラー"
+              />
+            </Field>
+          </section>
         </div>
-        {sourceScanError && (
-          <p className="game-launcher-source-error" role="alert">
-            ランチャーを確認できませんでした。再確認してください。
-          </p>
-        )}
-        <div className="game-launcher-source-list">
-          {SUPPORTED_LAUNCHERS.map((launcher) => {
-            const source = sources.find(
-              (item) => item.store === launcher.store,
-            );
-            const presentation = getSourcePresentation(
-              sourceScanPhase,
-              source,
-              gameCounts[launcher.store],
-            );
-            return (
-              <article className="game-launcher-source" key={launcher.name}>
-                <span className="game-launcher-source__mark" aria-hidden="true">
-                  {launcher.mark}
-                </span>
-                <div className="game-launcher-source__copy">
-                  <h4>{launcher.name}</h4>
-                  <p>{launcher.description}</p>
-                </div>
-                <div className="game-launcher-source__meta">
-                  <StatusBadge tone={presentation.tone}>
-                    {presentation.label}
-                  </StatusBadge>
-                  <span className="game-launcher-source__count">
-                    {presentation.count}
+
+        <section
+          className="settings-group"
+          aria-labelledby="game-launcher-sources-title"
+        >
+          <div className="game-launcher-sources-header">
+            <div className="settings-group__heading">
+              <Gamepad2 size={18} aria-hidden="true" />
+              <div>
+                <h3 id="game-launcher-sources-title">対応ランチャー</h3>
+                <p>Steam・Epic Games・Riot Gamesをローカルで検出します。</p>
+              </div>
+            </div>
+            <Button
+              id="game-launcher-sources-refresh"
+              variant="ghost"
+              className="game-launcher-sources-refresh"
+              onClick={() => void scanGameSources(true)}
+              disabled={sourceScanPhase === "loading"}
+              aria-label="対応ランチャーを再確認"
+            >
+              <RefreshCw
+                size={15}
+                aria-hidden="true"
+                className={
+                  sourceScanPhase === "loading"
+                    ? "game-launcher-sources-refresh__icon is-spinning"
+                    : "game-launcher-sources-refresh__icon"
+                }
+              />
+              {sourceScanPhase === "loading" ? "確認中…" : "再確認"}
+            </Button>
+          </div>
+          {sourceScanError && (
+            <p className="game-launcher-source-error" role="alert">
+              ランチャーを確認できませんでした。再確認してください。
+            </p>
+          )}
+          <div className="game-launcher-source-list">
+            {SUPPORTED_LAUNCHERS.map((launcher) => {
+              const source = sources.find(
+                (item) => item.store === launcher.store,
+              );
+              const presentation = getSourcePresentation(
+                sourceScanPhase,
+                source,
+                gameCounts[launcher.store],
+              );
+              return (
+                <article className="game-launcher-source" key={launcher.name}>
+                  <span
+                    className="game-launcher-source__mark"
+                    aria-hidden="true"
+                  >
+                    {launcher.mark}
                   </span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-        <p className="game-launcher-source-note">
-          ライブラリ情報はこのPC上でのみ確認され、外部へ送信されません。
-        </p>
-      </section>
+                  <div className="game-launcher-source__copy">
+                    <h4>{launcher.name}</h4>
+                    <p>{launcher.description}</p>
+                  </div>
+                  <div className="game-launcher-source__meta">
+                    <StatusBadge tone={presentation.tone}>
+                      {presentation.label}
+                    </StatusBadge>
+                    <span className="game-launcher-source__count">
+                      {presentation.count}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <p className="game-launcher-source-note">
+            ライブラリ情報はこのPC上でのみ確認され、外部へ送信されません。
+          </p>
+        </section>
+      </div>
     </SettingsSection>
   );
 };

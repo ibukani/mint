@@ -50,7 +50,7 @@ describe("GameLauncherSettings", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "ゲームランチャー", level: 2 }),
+        screen.getByRole("heading", { name: "ゲームランチャー設定", level: 2 }),
       ).toBeInTheDocument();
     });
 

@@ -29,7 +29,10 @@ describe("FileShelfSettings", () => {
       </AppSettingsProvider>,
     );
 
-    await screen.findByRole("heading", { name: "ファイルシェル", level: 2 });
+    await screen.findByRole("heading", {
+      name: "ファイルシェル設定",
+      level: 2,
+    });
     expect(
       screen.getByRole("switch", { name: "ファイルシェルを有効にする" }),
     ).toBeChecked();

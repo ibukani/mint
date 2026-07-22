@@ -1,4 +1,4 @@
-import { Command, CopyPlus, FileText, Pin, X } from "lucide-react";
+import { Command, FileText, Pin, X } from "lucide-react";
 import type React from "react";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
@@ -15,7 +15,6 @@ export { noteTitle };
 export const QuickCaptureOverlay: React.FC = () => {
   const {
     capture,
-    themeColor,
     continueList,
     insertTemplate,
     preview,
@@ -78,15 +77,15 @@ export const QuickCaptureOverlay: React.FC = () => {
     selectLibraryNote,
     indentSelection,
     openCommandPalette,
+    createNewNote,
   } = useQuickCaptureOverlayController();
   return (
     <OverlayFrame>
       <OverlayCard
-        className="quick-capture theme-accent-scope is-visible"
+        className="quick-capture is-visible"
         role="dialog"
         aria-label="クイックキャプチャー"
         onKeyDown={handleKeyDown}
-        style={{ "--color-accent": themeColor } as React.CSSProperties}
       >
         <button
           type="button"
@@ -104,7 +103,7 @@ export const QuickCaptureOverlay: React.FC = () => {
             <span className="quick-capture__heading-icon" aria-hidden="true">
               <FileText size={17} />
             </span>
-            <div>
+            <div className="quick-capture__heading-copy">
               <h1>
                 {capture.activeId
                   ? noteTitle({ content: capture.content })
@@ -149,29 +148,6 @@ export const QuickCaptureOverlay: React.FC = () => {
               <Pin size={14} aria-hidden="true" />
               <span>{capture.windowPinned ? "固定中" : "ウィンドウ固定"}</span>
             </button>
-            {capture.activeId && (
-              <>
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  aria-keyshortcuts="Control+Shift+D Meta+Shift+D"
-                  title={`メモを複製（${shortcutModifier}+Shift+D）`}
-                  onClick={() => void capture.duplicateActive()}
-                >
-                  <CopyPlus size={14} aria-hidden="true" />
-                  複製
-                </button>
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  aria-keyshortcuts="Control+N Meta+N"
-                  title={`新しい下書きを開く（${shortcutModifier}+N）`}
-                  onClick={() => void capture.openDraft()}
-                >
-                  下書きへ
-                </button>
-              </>
-            )}
           </div>
         </header>
 
@@ -225,6 +201,8 @@ export const QuickCaptureOverlay: React.FC = () => {
             noteListId={noteListId}
             shortcutModifier={shortcutModifier}
             usesMetaShortcut={usesMetaShortcut}
+            isSaving={isSaving}
+            onCreateNewNote={() => void createNewNote()}
             onExportBackup={() => void exportBackup()}
             onImportBackup={() => void requestImportBackup()}
             onSearchFocus={handleLibrarySearchFocus}
@@ -250,6 +228,7 @@ export const QuickCaptureOverlay: React.FC = () => {
         isSaving={isSaving}
         shortcutModifier={shortcutModifier}
         onClose={closeCommandPalette}
+        onCreateNewNote={() => void createNewNote()}
         onFocusSearch={focusSearch}
         onSetPreview={setPreview}
         onPasteClipboard={() => void pasteClipboard()}

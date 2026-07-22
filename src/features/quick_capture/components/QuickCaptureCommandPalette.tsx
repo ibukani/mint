@@ -45,6 +45,7 @@ interface QuickCaptureCommandPaletteProps {
   isSaving: boolean;
   shortcutModifier: string;
   onClose: () => void;
+  onCreateNewNote: () => void;
   onFocusSearch: () => void;
   onSetPreview: (preview: boolean) => void;
   onPasteClipboard: () => void;
@@ -66,6 +67,7 @@ export const QuickCaptureCommandPalette = ({
   isSaving,
   shortcutModifier,
   onClose,
+  onCreateNewNote,
   onFocusSearch,
   onSetPreview,
   onPasteClipboard,
@@ -99,13 +101,13 @@ export const QuickCaptureCommandPalette = ({
       {
         id: "new-draft",
         group: "移動",
-        label: "新しい下書きを開く",
-        description: "編集中のメモを保存して空の下書きへ戻ります",
+        label: "新しいメモを作成",
+        description: "現在の内容を保存して、新しいメモを開きます",
         keywords: "下書き new draft",
         shortcut: `${shortcutModifier}+N`,
         Icon: Plus,
-        run: () => void capture.openDraft(),
-        available: Boolean(capture.activeId) && !isSaving,
+        run: onCreateNewNote,
+        available: !isSaving,
       },
       {
         id: "preview",
@@ -272,6 +274,7 @@ export const QuickCaptureCommandPalette = ({
     [
       capture,
       isSaving,
+      onCreateNewNote,
       onCaptureClipboard,
       onCopyClipboard,
       onExportBackup,

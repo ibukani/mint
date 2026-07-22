@@ -49,7 +49,7 @@ const defaultMockSettings: AppSettings = {
     autoHideSeconds: defaultAppSettings.clock.autoHideSeconds,
     showDate: defaultAppSettings.clock.showDate,
     showSeconds: defaultAppSettings.clock.showSeconds,
-    clockColor: defaultAppSettings.clock.clockColor,
+    themeColor: defaultAppSettings.clock.themeColor,
     blinkColon: defaultAppSettings.clock.blinkColon,
     sizePercent: defaultAppSettings.clock.sizePercent,
     displayMode: defaultAppSettings.clock.displayMode,

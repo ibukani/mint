@@ -5,10 +5,10 @@ mod repository;
 mod shortcut;
 mod window;
 
-const COLLAPSED_WIDTH: f64 = 32.0;
-const COLLAPSED_HEIGHT: f64 = 96.0;
-const EXPANDED_WIDTH: f64 = 360.0;
-const EXPANDED_HEIGHT: f64 = 520.0;
+const COLLAPSED_WIDTH: f64 = 36.0;
+const COLLAPSED_HEIGHT: f64 = 100.0;
+const EXPANDED_WIDTH: f64 = 364.0;
+const EXPANDED_HEIGHT: f64 = 524.0;
 
 pub use clipboard::{
     apply_clipboard_history_settings, configure_clipboard_history_monitor, ClipboardHistoryMonitor,

@@ -44,15 +44,21 @@ pub fn handle_file_shelf_shortcut_event(
 ) {
     let now = Instant::now();
     if shortcut_state == ShortcutState::Pressed {
-        let double_pressed = app
-            .try_state::<FileShelfShortcutState>()
-            .and_then(|state| {
-                state.0.lock().ok().map(|mut timing| {
-                    timing.current_pressed_at = Some(now);
-                    is_double_shortcut_press(&mut timing.last_pressed_at, now)
-                })
+        let double_pressed = app.try_state::<FileShelfShortcutState>().and_then(|state| {
+            state.0.lock().ok().and_then(|mut timing| {
+                if timing.is_pressed {
+                    return None;
+                }
+                timing.is_pressed = true;
+                timing.current_pressed_at = Some(now);
+                Some(is_double_shortcut_press(&mut timing.last_pressed_at, now))
             })
-            .unwrap_or(false);
+        });
+
+        let Some(double_pressed) = double_pressed else {
+            return;
+        };
+
         if !double_pressed {
             toggle_file_shelf_overlay(app);
             return;
@@ -86,6 +92,7 @@ pub fn handle_file_shelf_shortcut_event(
         .try_state::<FileShelfShortcutState>()
         .and_then(|state| {
             state.0.lock().ok().map(|mut timing| {
+                timing.is_pressed = false;
                 let duration = shortcut_hold_duration(&mut timing.current_pressed_at, now);
                 let long_pressed =
                     duration.is_some_and(|value| value >= SHORTCUT_LONG_PRESS_INTERVAL);
