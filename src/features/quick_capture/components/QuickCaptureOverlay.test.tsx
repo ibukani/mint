@@ -85,6 +85,43 @@ describe("QuickCaptureOverlay", () => {
     expect(noteTitle({ content: "\n  見出し  \n本文" })).toBe("見出し");
   });
 
+  it("displays line and character stats in the editor and line count in library notes", async () => {
+    localStorage.setItem(
+      "mint_mock_quick_capture",
+      JSON.stringify({
+        draft: { content: "", tags: [], updatedAt: "2026-07-14T09:00:00.000Z" },
+        notes: [
+          {
+            id: "line-count-note",
+            content: "1行目\n2行目\n3行目",
+            tags: [],
+            pinned: false,
+            archived: false,
+            createdAt: "2026-07-14T08:00:00.000Z",
+            updatedAt: "2026-07-14T08:00:00.000Z",
+            attachments: [],
+          },
+        ],
+      }),
+    );
+    render(<QuickCaptureOverlay />);
+    const editor = (await screen.findByLabelText(
+      "メモ本文",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "1行目\n2行目\n3行目" } });
+
+    const stats = screen.getByTitle("文字数と行数");
+    expect(stats).toHaveTextContent("3 行 (11 文字)");
+
+    const lineNumbers = editor.parentElement?.querySelector(
+      ".quick-capture__line-numbers",
+    );
+    expect(lineNumbers).toHaveTextContent("123");
+
+    const noteOption = await screen.findByRole("option", { name: /1行目/ });
+    expect(noteOption).toHaveTextContent("3行");
+  });
+
   it("promotes a draft and exposes it in the library", async () => {
     render(<QuickCaptureOverlay />);
     const editor = (await screen.findByLabelText(

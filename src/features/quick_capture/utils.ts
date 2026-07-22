@@ -13,6 +13,14 @@ export const noteTitle = (note: Pick<QuickCaptureNote, "content">) =>
     .find((line) => line.trim())
     ?.trim() || "無題のメモ";
 
+export const countLinesAndChars = (content: string) => {
+  if (!content) return { lines: 0, chars: 0 };
+  return {
+    lines: content.split("\n").length,
+    chars: content.length,
+  };
+};
+
 export const formatUpdatedAt = (value: string) =>
   new Intl.DateTimeFormat("ja-JP", {
     month: "numeric",

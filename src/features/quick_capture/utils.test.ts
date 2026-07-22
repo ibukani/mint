@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { QUICK_CAPTURE_TEMPLATES } from "./templates";
 import {
   continueMarkdownList,
+  countLinesAndChars,
   formatMarkdownLines,
   indentMarkdownSelection,
   insertMarkdownTemplate,
@@ -16,6 +17,15 @@ describe("quick capture utilities", () => {
   it("extracts a useful note title", () => {
     expect(noteTitle({ content: "\n  見出し  \n本文" })).toBe("見出し");
     expect(noteTitle({ content: "\n  " })).toBe("無題のメモ");
+  });
+
+  it("counts lines and characters accurately", () => {
+    expect(countLinesAndChars("")).toEqual({ lines: 0, chars: 0 });
+    expect(countLinesAndChars("hello")).toEqual({ lines: 1, chars: 5 });
+    expect(countLinesAndChars("line1\nline2\nline3")).toEqual({
+      lines: 3,
+      chars: 17,
+    });
   });
 
   it("parses comma-separated tags", () => {

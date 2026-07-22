@@ -12,7 +12,7 @@ import {
 import type React from "react";
 import type { RefObject } from "react";
 import type { QuickCaptureNote, QuickCaptureSortMode } from "../types";
-import { formatUpdatedAt, noteTitle } from "../utils";
+import { countLinesAndChars, formatUpdatedAt, noteTitle } from "../utils";
 
 const searchTerms = (query: string) =>
   [...new Set(query.toLocaleLowerCase().split(/\s+/).filter(Boolean))].sort(
@@ -354,7 +354,12 @@ export const QuickCaptureLibrary = ({
                     )}
                     <strong>{highlightSearchText(title, searchText)}</strong>
                   </span>
-                  <small>{formatUpdatedAt(note.updatedAt)}</small>
+                  <span className="quick-capture__note-meta">
+                    <small>{formatUpdatedAt(note.updatedAt)}</small>
+                    <small className="quick-capture__note-lines">
+                      {countLinesAndChars(note.content).lines}行
+                    </small>
+                  </span>
                   {excerpt && (
                     <small className="quick-capture__note-excerpt">
                       {highlightSearchText(excerpt, searchText)}
