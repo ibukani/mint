@@ -6,6 +6,7 @@ import {
   Pin,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -187,42 +188,47 @@ export const QuickCaptureLibrary = ({
             <Plus size={15} aria-hidden="true" />
           </button>
         </div>
-        <div className="quick-capture__library-tools">
-          <select
-            className="quick-capture__sort-select"
-            aria-label="メモの並び順"
-            disabled={Boolean(searchText)}
-            title={
-              searchText
-                ? "検索中は関連度順で表示しています"
-                : "メモの並び順を変更"
-            }
-            value={sortMode}
-            onChange={(event) =>
-              onSortChange(event.target.value as QuickCaptureSortMode)
-            }
-          >
-            <option value="updated">更新順</option>
-            <option value="created">作成順</option>
-            <option value="title">タイトル順</option>
-          </select>
-          <button
-            type="button"
-            aria-label="バックアップを書き出す"
-            title="バックアップを書き出す"
-            onClick={onExportBackup}
-          >
-            <Download size={13} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-label="バックアップから復元する"
-            title="バックアップから復元する"
-            onClick={onImportBackup}
-          >
-            <Upload size={13} aria-hidden="true" />
-          </button>
-        </div>
+        <details className="quick-capture__library-menu">
+          <summary aria-label="メモ一覧の表示とデータ操作">
+            <SlidersHorizontal size={14} aria-hidden="true" />
+          </summary>
+          <div className="quick-capture__library-tools">
+            <select
+              className="quick-capture__sort-select"
+              aria-label="メモの並び順"
+              disabled={Boolean(searchText)}
+              title={
+                searchText
+                  ? "検索中は関連度順で表示しています"
+                  : "メモの並び順を変更"
+              }
+              value={sortMode}
+              onChange={(event) =>
+                onSortChange(event.target.value as QuickCaptureSortMode)
+              }
+            >
+              <option value="updated">更新順</option>
+              <option value="created">作成順</option>
+              <option value="title">タイトル順</option>
+            </select>
+            <button
+              type="button"
+              aria-label="バックアップを書き出す"
+              title="バックアップを書き出す"
+              onClick={onExportBackup}
+            >
+              <Download size={13} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="バックアップから復元する"
+              title="バックアップから復元する"
+              onClick={onImportBackup}
+            >
+              <Upload size={13} aria-hidden="true" />
+            </button>
+          </div>
+        </details>
       </div>
       <label className="quick-capture__search">
         <Search size={14} aria-hidden="true" />
@@ -259,71 +265,83 @@ export const QuickCaptureLibrary = ({
         {hasRefinement && <span>{filteredNotes.length}件</span>}
         {searchText && <span>関連度順</span>}
       </div>
-      <fieldset
-        className="quick-capture__library-filters"
-        aria-label="メモの絞り込み"
+      <details
+        className="quick-capture__filter-menu"
+        open={Boolean(
+          tagFilter || pinnedOnly || attachmentsOnly || archivedOnly,
+        )}
       >
-        <button
-          type="button"
-          className={
-            !pinnedOnly && !attachmentsOnly && !archivedOnly && !tagFilter
-              ? "is-active"
-              : ""
-          }
-          aria-label={`未アーカイブのメモ（${activeNotesCount}件）`}
-          aria-pressed={
-            !pinnedOnly && !attachmentsOnly && !archivedOnly && !tagFilter
-          }
-          onClick={onClearFilters}
+        <summary>
+          <SlidersHorizontal size={13} aria-hidden="true" />
+          絞り込み
+          {hasRefinement && <span>{filteredNotes.length}</span>}
+        </summary>
+        <fieldset
+          className="quick-capture__library-filters"
+          aria-label="メモの絞り込み"
         >
-          すべて
-          <span aria-hidden="true">{activeNotesCount}</span>
-        </button>
-        <button
-          type="button"
-          className={pinnedOnly ? "is-active" : ""}
-          aria-label={`ピン留めしたメモ（${pinnedCount}件）`}
-          aria-pressed={pinnedOnly}
-          onClick={onTogglePinnedOnly}
-        >
-          <Pin size={11} aria-hidden="true" />
-          ピン留め
-          <span aria-hidden="true">{pinnedCount}</span>
-        </button>
-        <button
-          type="button"
-          className={attachmentsOnly ? "is-active" : ""}
-          aria-label={`添付ファイル付きメモ（${attachmentCount}件）`}
-          aria-pressed={attachmentsOnly}
-          onClick={onToggleAttachmentsOnly}
-        >
-          <Paperclip size={11} aria-hidden="true" />
-          添付あり
-          <span aria-hidden="true">{attachmentCount}</span>
-        </button>
-        <button
-          type="button"
-          className={archivedOnly ? "is-active" : ""}
-          aria-label={`アーカイブしたメモ（${archivedCount}件）`}
-          aria-pressed={archivedOnly}
-          onClick={onToggleArchivedOnly}
-        >
-          <Archive size={11} aria-hidden="true" />
-          アーカイブ
-          <span aria-hidden="true">{archivedCount}</span>
-        </button>
-        {allTags.map((tag) => (
           <button
             type="button"
-            key={tag}
-            className={tagFilter === tag ? "is-active" : ""}
-            aria-pressed={tagFilter === tag}
-            onClick={() => onToggleTag(tag)}
+            className={
+              !pinnedOnly && !attachmentsOnly && !archivedOnly && !tagFilter
+                ? "is-active"
+                : ""
+            }
+            aria-label={`未アーカイブのメモ（${activeNotesCount}件）`}
+            aria-pressed={
+              !pinnedOnly && !attachmentsOnly && !archivedOnly && !tagFilter
+            }
+            onClick={onClearFilters}
           >
-            #{tag}
+            すべて
+            <span aria-hidden="true">{activeNotesCount}</span>
           </button>
-        ))}
-      </fieldset>
+          <button
+            type="button"
+            className={pinnedOnly ? "is-active" : ""}
+            aria-label={`ピン留めしたメモ（${pinnedCount}件）`}
+            aria-pressed={pinnedOnly}
+            onClick={onTogglePinnedOnly}
+          >
+            <Pin size={11} aria-hidden="true" />
+            ピン留め
+            <span aria-hidden="true">{pinnedCount}</span>
+          </button>
+          <button
+            type="button"
+            className={attachmentsOnly ? "is-active" : ""}
+            aria-label={`添付ファイル付きメモ（${attachmentCount}件）`}
+            aria-pressed={attachmentsOnly}
+            onClick={onToggleAttachmentsOnly}
+          >
+            <Paperclip size={11} aria-hidden="true" />
+            添付あり
+            <span aria-hidden="true">{attachmentCount}</span>
+          </button>
+          <button
+            type="button"
+            className={archivedOnly ? "is-active" : ""}
+            aria-label={`アーカイブしたメモ（${archivedCount}件）`}
+            aria-pressed={archivedOnly}
+            onClick={onToggleArchivedOnly}
+          >
+            <Archive size={11} aria-hidden="true" />
+            アーカイブ
+            <span aria-hidden="true">{archivedCount}</span>
+          </button>
+          {allTags.map((tag) => (
+            <button
+              type="button"
+              key={tag}
+              className={tagFilter === tag ? "is-active" : ""}
+              aria-pressed={tagFilter === tag}
+              onClick={() => onToggleTag(tag)}
+            >
+              #{tag}
+            </button>
+          ))}
+        </fieldset>
+      </details>
       <div
         id={noteListId}
         ref={noteListRef}

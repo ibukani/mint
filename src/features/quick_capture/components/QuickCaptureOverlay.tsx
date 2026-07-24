@@ -1,4 +1,4 @@
-import { Command, FileText, Pin, X } from "lucide-react";
+import { Command, Pin, X } from "lucide-react";
 import type React from "react";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
@@ -100,20 +100,12 @@ export const QuickCaptureOverlay: React.FC = () => {
 
         <header className="quick-capture__header">
           <div className="quick-capture__heading">
-            <span className="quick-capture__heading-icon" aria-hidden="true">
-              <FileText size={17} />
-            </span>
             <div className="quick-capture__heading-copy">
               <h1>
                 {capture.activeId
                   ? noteTitle({ content: capture.content })
                   : "クイックキャプチャー"}
               </h1>
-              <span>
-                {capture.activeId
-                  ? "保存済みメモを編集中"
-                  : "思いついたことを、そのままメモ"}
-              </span>
             </div>
           </div>
           <div className="quick-capture__header-actions">

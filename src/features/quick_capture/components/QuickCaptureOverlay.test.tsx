@@ -451,7 +451,9 @@ describe("QuickCaptureOverlay", () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText("メモ本文")).toHaveValue("");
-      expect(screen.getByText("思いついたことを、そのままメモ")).toBeVisible();
+      expect(
+        screen.getByRole("heading", { name: "クイックキャプチャー" }),
+      ).toBeVisible();
     });
   });
 
