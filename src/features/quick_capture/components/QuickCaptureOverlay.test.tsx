@@ -64,6 +64,20 @@ describe("QuickCaptureOverlay", () => {
     );
   });
 
+  it("reveals editing tools from the compact toolbar menu", async () => {
+    render(<QuickCaptureOverlay />);
+
+    const trigger = await screen.findByLabelText("編集ツールを表示");
+    const menu = trigger.closest("details");
+    expect(menu).not.toHaveAttribute("open");
+
+    fireEvent.click(trigger);
+
+    expect(menu).toHaveAttribute("open");
+    expect(screen.getByRole("button", { name: "太字" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "テンプレート" })).toBeVisible();
+  });
+
   it("toggles window pinning separately from note pinning", async () => {
     render(<QuickCaptureOverlay />);
 
@@ -117,10 +131,57 @@ describe("QuickCaptureOverlay", () => {
       ".quick-capture__line-numbers",
     );
     expect(lineNumbers).toHaveTextContent("123");
-    expect(editor).toHaveAttribute("wrap", "off");
+    expect(
+      editor.parentElement?.querySelector(".quick-capture__mirror"),
+    ).not.toBeNull();
 
     const noteOption = await screen.findByRole("option", { name: /1行目/ });
     expect(noteOption).toHaveTextContent("3行");
+  });
+
+  it("remeasures wrapped line heights whenever the content changes", async () => {
+    const lineRect = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        const height = this.parentElement?.classList.contains(
+          "quick-capture__mirror",
+        )
+          ? this.textContent?.startsWith("折り返す本文")
+            ? 48.5
+            : 24.5
+          : 0;
+        return {
+          bottom: height,
+          height,
+          left: 0,
+          right: 0,
+          top: 0,
+          width: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        };
+      });
+
+    try {
+      render(<QuickCaptureOverlay />);
+      const editor = await screen.findByLabelText("メモ本文");
+
+      fireEvent.change(editor, {
+        target: { value: "折り返す本文\n短い行" },
+      });
+
+      await waitFor(() => {
+        const lineNumbers = document.querySelectorAll(
+          ".quick-capture__line-number",
+        );
+        expect(lineNumbers).toHaveLength(2);
+        expect(lineNumbers[0]).toHaveStyle({ height: "48.5px" });
+        expect(lineNumbers[1]).toHaveStyle({ height: "24.5px" });
+      });
+    } finally {
+      lineRect.mockRestore();
+    }
   });
 
   it("promotes a draft and exposes it in the library", async () => {

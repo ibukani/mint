@@ -738,6 +738,10 @@ const designBoundaryAllowlist = new Map([
     new Set(["inline-style", "color-literal"]),
   ],
   [
+    "src/features/quick_capture/components/QuickCaptureEditor.tsx",
+    new Set(["inline-style"]),
+  ],
+  [
     "src/features/quick_capture/components/QuickCaptureOverlay.tsx",
     new Set(["inline-style"]),
   ],

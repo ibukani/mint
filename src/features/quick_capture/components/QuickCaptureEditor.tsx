@@ -14,6 +14,7 @@ import {
   FilePlus2,
   Italic,
   Link2,
+  MoreHorizontal,
   Paperclip,
   Pin,
   RefreshCw,
@@ -22,7 +23,13 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { useQuickCapture } from "../hooks/useQuickCapture";
@@ -194,8 +201,52 @@ export const QuickCaptureEditor = ({
   onRequestDelete,
 }: QuickCaptureEditorProps) => {
   const { lines, chars } = countLinesAndChars(capture.content);
+  const content = capture.content;
+  const contentLines = content ? content.split("\n") : [""];
   const lineNumbersRef = useRef<HTMLDivElement>(null);
-  const displayLineCount = Math.max(1, lines);
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const [lineHeights, setLineHeights] = useState<number[]>([]);
+
+  useLayoutEffect(() => {
+    if (preview) return;
+    const updateHeights = () => {
+      if (!editorRef.current || !mirrorRef.current) return;
+      const editorWidth = editorRef.current.clientWidth;
+      if (editorWidth > 0) {
+        mirrorRef.current.style.width = `${editorWidth}px`;
+      }
+      const expectedLineCount = content ? content.split("\n").length : 1;
+      const children = (
+        Array.from(mirrorRef.current.children) as HTMLElement[]
+      ).slice(0, expectedLineCount);
+      const heights = children.map(
+        (child) => child.getBoundingClientRect().height,
+      );
+      setLineHeights((prev) => {
+        if (
+          prev.length === heights.length &&
+          prev.every((h, idx) => h === heights[idx])
+        ) {
+          return prev;
+        }
+        return heights;
+      });
+    };
+
+    updateHeights();
+    window.addEventListener("resize", updateHeights);
+
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined" && editorRef.current) {
+      observer = new ResizeObserver(updateHeights);
+      observer.observe(editorRef.current);
+    }
+
+    return () => {
+      window.removeEventListener("resize", updateHeights);
+      observer?.disconnect();
+    };
+  }, [content, preview, editorRef]);
 
   return (
     <section
@@ -230,104 +281,109 @@ export const QuickCaptureEditor = ({
             <Eye size={14} aria-hidden="true" />
           </button>
         </fieldset>
-        <div className="quick-capture__toolbar-actions">
-          <fieldset
-            className="quick-capture__format-actions"
-            aria-label="Markdown書式"
-          >
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
-              disabled={preview || isSaving}
-              aria-label="太字"
-              aria-keyshortcuts="Control+B Meta+B"
-              title="太字にする"
-              onClick={() => onFormat("**", "**", "太字")}
+        <details className="quick-capture__editor-tools">
+          <summary aria-label="編集ツールを表示" title="書式とテンプレート">
+            <MoreHorizontal size={15} aria-hidden="true" />
+          </summary>
+          <div className="quick-capture__toolbar-actions">
+            <fieldset
+              className="quick-capture__format-actions"
+              aria-label="Markdown書式"
             >
-              <Bold size={14} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
-              disabled={preview || isSaving}
-              aria-label="斜体"
-              aria-keyshortcuts="Control+I Meta+I"
-              title="斜体にする"
-              onClick={() => onFormat("_", "_", "斜体")}
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="太字"
+                aria-keyshortcuts="Control+B Meta+B"
+                title="太字にする"
+                onClick={() => onFormat("**", "**", "太字")}
+              >
+                <Bold size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="斜体"
+                aria-keyshortcuts="Control+I Meta+I"
+                title="斜体にする"
+                onClick={() => onFormat("_", "_", "斜体")}
+              >
+                <Italic size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="コード"
+                title="インラインコードにする"
+                onClick={() => onFormat("`", "`", "コード")}
+              >
+                <Code2 size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="リンク"
+                title="Markdownリンクを挿入"
+                onClick={() => onFormat("[", "](URL)", "リンク")}
+              >
+                <Link2 size={14} aria-hidden="true" />
+              </button>
+            </fieldset>
+            <fieldset
+              className="quick-capture__format-actions quick-capture__block-format-actions"
+              aria-label="Markdownブロック書式"
             >
-              <Italic size={14} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="見出し"
+                title="現在行を見出しにする"
+                onClick={() => onFormatBlock("## ")}
+              >
+                H2
+              </button>
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="チェックリスト"
+                title="現在行をチェックリストにする"
+                onClick={() => onFormatBlock("- [ ] ")}
+              >
+                ☑
+              </button>
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="箇条書き"
+                title="現在行を箇条書きにする"
+                onClick={() => onFormatBlock("- ")}
+              >
+                •
+              </button>
+              <button
+                type="button"
+                className="quick-capture__toolbar-button"
+                disabled={preview || isSaving}
+                aria-label="引用"
+                title="現在行を引用にする"
+                onClick={() => onFormatBlock("> ")}
+              >
+                ❯
+              </button>
+            </fieldset>
+            <QuickCaptureTemplateMenu
               disabled={preview || isSaving}
-              aria-label="コード"
-              title="インラインコードにする"
-              onClick={() => onFormat("`", "`", "コード")}
-            >
-              <Code2 size={14} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
-              disabled={preview || isSaving}
-              aria-label="リンク"
-              title="Markdownリンクを挿入"
-              onClick={() => onFormat("[", "](URL)", "リンク")}
-            >
-              <Link2 size={14} aria-hidden="true" />
-            </button>
-          </fieldset>
-          <fieldset
-            className="quick-capture__format-actions quick-capture__block-format-actions"
-            aria-label="Markdownブロック書式"
-          >
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
-              disabled={preview || isSaving}
-              aria-label="見出し"
-              title="現在行を見出しにする"
-              onClick={() => onFormatBlock("## ")}
-            >
-              H2
-            </button>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
-              disabled={preview || isSaving}
-              aria-label="チェックリスト"
-              title="現在行をチェックリストにする"
-              onClick={() => onFormatBlock("- [ ] ")}
-            >
-              ☑
-            </button>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
-              disabled={preview || isSaving}
-              aria-label="箇条書き"
-              title="現在行を箇条書きにする"
-              onClick={() => onFormatBlock("- ")}
-            >
-              •
-            </button>
-            <button
-              type="button"
-              className="quick-capture__toolbar-button"
-              disabled={preview || isSaving}
-              aria-label="引用"
-              title="現在行を引用にする"
-              onClick={() => onFormatBlock("> ")}
-            >
-              ❯
-            </button>
-          </fieldset>
-          <QuickCaptureTemplateMenu
-            disabled={preview || isSaving}
-            onSelect={onInsertTemplate}
-          />
-        </div>
+              onSelect={onInsertTemplate}
+            />
+          </div>
+        </details>
       </div>
 
       {capture.isDropTarget && (
@@ -379,23 +435,26 @@ export const QuickCaptureEditor = ({
               className="quick-capture__line-numbers"
               aria-hidden="true"
             >
-              {Array.from({ length: displayLineCount }, (_, i) => i + 1).map(
-                (lineNumber) => (
-                  <div
-                    key={`line-${lineNumber}`}
-                    className="quick-capture__line-number"
-                  >
-                    {lineNumber}
-                  </div>
-                ),
-              )}
+              {contentLines.map((_, i) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: line numbers are indexed by line position
+                  key={`line-${i + 1}`}
+                  className="quick-capture__line-number"
+                  style={
+                    lineHeights[i] !== undefined
+                      ? { height: `${lineHeights[i]}px` }
+                      : undefined
+                  }
+                >
+                  {i + 1}
+                </div>
+              ))}
             </div>
             <textarea
               ref={editorRef}
               id="quick-capture-content"
               aria-label="メモ本文"
               aria-keyshortcuts="Control+S Meta+S Control+B Meta+B Control+I Meta+I"
-              wrap="off"
               value={capture.content}
               onScroll={(event) => {
                 if (lineNumbersRef.current) {
@@ -434,6 +493,20 @@ export const QuickCaptureEditor = ({
               placeholder="何を残しておきますか？"
               spellCheck="true"
             />
+            <div
+              ref={mirrorRef}
+              className="quick-capture__mirror"
+              aria-hidden="true"
+            >
+              {contentLines.map((line, idx) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: mirror lines are indexed by line position
+                  key={`mirror-${idx}`}
+                >
+                  {line || "\u200B"}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
