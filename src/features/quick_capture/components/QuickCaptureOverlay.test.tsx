@@ -117,6 +117,7 @@ describe("QuickCaptureOverlay", () => {
       ".quick-capture__line-numbers",
     );
     expect(lineNumbers).toHaveTextContent("123");
+    expect(editor).toHaveAttribute("wrap", "off");
 
     const noteOption = await screen.findByRole("option", { name: /1行目/ });
     expect(noteOption).toHaveTextContent("3行");

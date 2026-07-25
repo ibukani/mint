@@ -395,6 +395,7 @@ export const QuickCaptureEditor = ({
               id="quick-capture-content"
               aria-label="メモ本文"
               aria-keyshortcuts="Control+S Meta+S Control+B Meta+B Control+I Meta+I"
+              wrap="off"
               value={capture.content}
               onScroll={(event) => {
                 if (lineNumbersRef.current) {
