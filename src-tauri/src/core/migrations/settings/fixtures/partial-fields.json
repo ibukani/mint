@@ -1,0 +1,7 @@
+{
+  "theme": "light",
+  "settingsShortcut": "Ctrl+Alt+S",
+  "clock": {
+    "enabled": true
+  }
+}

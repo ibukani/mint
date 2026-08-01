@@ -1,0 +1,1 @@
+{"theme": "dark", "autostart": "not-a-boolean", "broken

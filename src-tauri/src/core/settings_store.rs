@@ -195,13 +195,29 @@ pub fn load_settings_internal(app: &AppHandle) -> Result<AppSettings, String> {
     let path = get_config_path(app)?;
     if !path.exists() {
         let defaults = AppSettings::default();
-        let json = serde_json::to_string_pretty(&defaults).map_err(|e| e.to_string())?;
+        let envelope = crate::core::migrations::settings::wrap_settings(
+            &serde_json::to_value(&defaults).map_err(|e| e.to_string())?,
+        );
+        let json = serde_json::to_string_pretty(&envelope).map_err(|e| e.to_string())?;
         write_settings_atomically(&path, &json)?;
         return Ok(defaults);
     }
 
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let settings: AppSettings = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    let outcome = crate::core::migrations::settings::migrate_settings_content(&content)
+        .map_err(|e| e.to_string())?;
+
+    if !outcome.applied.is_empty() {
+        crate::core::migrations::backup::create_backup(&path, "settings", outcome.from_version)
+            .map_err(|error| {
+                format!("移行前バックアップの作成に失敗したため移行を中止しました: {error}")
+            })?;
+        let json = serde_json::to_string_pretty(&outcome.data).map_err(|e| e.to_string())?;
+        write_settings_atomically(&path, &json)?;
+    }
+
+    let data = crate::core::migrations::settings::extract_envelope_data(&outcome.data)?;
+    let settings: AppSettings = serde_json::from_value(data.clone()).map_err(|e| e.to_string())?;
     Ok(settings)
 }
 
@@ -293,7 +309,15 @@ pub fn save_settings(
         clipboard_monitor_settings_changed(old_settings.as_ref(), &settings);
     let clock_layout_changed = clock_layout_settings_changed(old_settings.as_ref(), &settings);
     let path = get_config_path(&app)?;
-    let json = serde_json::to_string_pretty(&settings).map_err(|error| {
+    let envelope = crate::core::migrations::settings::wrap_settings(
+        &serde_json::to_value(&settings).map_err(|error| {
+            SettingsError::IoError {
+                message: error.to_string(),
+            }
+            .to_string()
+        })?,
+    );
+    let json = serde_json::to_string_pretty(&envelope).map_err(|error| {
         SettingsError::IoError {
             message: error.to_string(),
         }
@@ -400,6 +424,72 @@ pub fn save_settings(
 mod tests {
     use super::*;
     use std::fs;
+
+    fn settings_fixture(name: &str) -> String {
+        let path = format!(
+            "{}/src/core/migrations/settings/fixtures/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        fs::read_to_string(path).expect("fixture file must exist")
+    }
+
+    fn migrate_and_read(content: &str) -> Result<AppSettings, String> {
+        let outcome = crate::core::migrations::settings::migrate_settings_content(content)
+            .map_err(|e| e.to_string())?;
+        let data = crate::core::migrations::settings::extract_envelope_data(&outcome.data)?;
+        serde_json::from_value(data.clone()).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn legacy_settings_without_version_migrate_without_losing_values() {
+        let content = settings_fixture("legacy-settings-v0.json");
+        let settings = migrate_and_read(&content).unwrap();
+
+        assert_eq!(settings.theme, "dark");
+        assert!(!settings.autostart);
+        assert!(settings.file_shelf.enabled);
+        assert_eq!(
+            settings.file_shelf.edge,
+            crate::core::settings_model::FileShelfEdge::Right
+        );
+        assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
+        assert_eq!(settings.clock.theme_color, "#5B8CFF");
+        assert_eq!(settings.calendar.create_event_shortcut, "Ctrl+Alt+E");
+        assert_eq!(settings.voice_to_text.model, "whisper-1");
+        assert_eq!(settings.game_launcher.favorite_game_keys, vec!["appid-440"]);
+    }
+
+    #[test]
+    fn partial_settings_migrate_with_defaults_filling_missing_fields() {
+        let content = settings_fixture("partial-fields.json");
+        let settings = migrate_and_read(&content).unwrap();
+
+        assert_eq!(settings.theme, "light");
+        assert!(settings.clock.enabled);
+        assert!(settings.file_shelf.enabled);
+    }
+
+    #[test]
+    fn invalid_types_fail_to_deserialize_after_migration() {
+        let content = settings_fixture("invalid-types.json");
+        let error = migrate_and_read(&content).unwrap_err();
+        assert!(error.contains("invalid type") || error.contains("invalid value"));
+    }
+
+    #[test]
+    fn future_version_fails_before_any_deserialization() {
+        let content = settings_fixture("future-version.json");
+        let error = migrate_and_read(&content).unwrap_err();
+        assert!(error.contains("v99"));
+        assert!(error.contains("最新版"));
+    }
+
+    #[test]
+    fn corrupt_file_fails_with_corruption_message() {
+        let content = settings_fixture("corrupt-settings.txt");
+        let error = migrate_and_read(&content).unwrap_err();
+        assert!(error.contains("破損"));
+    }
 
     #[test]
     fn development_builds_never_enable_autostart() {

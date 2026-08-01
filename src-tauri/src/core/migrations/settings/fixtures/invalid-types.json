@@ -1,0 +1,7 @@
+{
+  "theme": "dark",
+  "autostart": "not-a-boolean",
+  "clock": {
+    "enabled": "also-not-a-boolean"
+  }
+}

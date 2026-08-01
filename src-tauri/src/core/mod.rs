@@ -1,3 +1,4 @@
+pub mod migrations;
 pub mod settings;
 mod settings_api_keys;
 mod settings_model;
