@@ -81,11 +81,14 @@ pub fn position_calendar(
             calendar_height_logical,
         )));
 
-        let x = monitor.size().width.saturating_sub(physical_width + margin);
-        let y = margin;
-        let _ = calendar.set_position(tauri::Position::Physical(PhysicalPosition::new(
-            x as i32, y as i32,
-        )));
+        let restored = crate::core::window_state::restore::restore(app, &calendar).unwrap_or(false);
+        if !restored {
+            let x = monitor.size().width.saturating_sub(physical_width + margin);
+            let y = margin;
+            let _ = calendar.set_position(tauri::Position::Physical(PhysicalPosition::new(
+                x as i32, y as i32,
+            )));
+        }
     }
 }
 
@@ -215,9 +218,12 @@ fn open_calendar_editor_window_inner(
         editor
             .set_size(tauri::Size::Logical(tauri::LogicalSize::new(420.0, 640.0)))
             .map_err(|error| format!("Failed to size calendar editor window: {error}"))?;
-        editor
-            .center()
-            .map_err(|error| format!("Failed to center calendar editor window: {error}"))?;
+        let restored = crate::core::window_state::restore::restore(app, &editor).unwrap_or(false);
+        if !restored {
+            editor
+                .center()
+                .map_err(|error| format!("Failed to center calendar editor window: {error}"))?;
+        }
     }
 
     if crate::core::window::is_initial_show_pending("calendarEditor") {

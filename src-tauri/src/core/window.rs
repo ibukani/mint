@@ -247,6 +247,7 @@ fn show_main_window_ready(app: &AppHandle) {
     let Ok(window) = ensure_window(app, "main", "設定画面") else {
         return;
     };
+    let _ = crate::core::window_state::restore::restore(app, &window);
     let _ = window.show();
     let _ = window.unminimize();
     let _ = window.set_focus();

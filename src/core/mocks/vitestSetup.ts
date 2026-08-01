@@ -147,6 +147,8 @@ mockIPCWithEvents(async (cmd, args) => {
   switch (cmd) {
     case "overlay_ready":
       return null;
+    case "reset_window_state":
+      return null;
     default:
       return null;
   }

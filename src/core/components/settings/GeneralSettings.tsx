@@ -28,6 +28,7 @@ import { useAppSettings } from "../../context/AppSettings";
 import { useSettingsNavigation } from "../../context/SettingsNavigation";
 import type { FeatureSettingsKey } from "../../settingsModel";
 import { UpdaterSettings } from "./UpdaterSettings";
+import { WindowStateResetSettings } from "./WindowStateResetSettings";
 
 const themeOptions = [
   {
@@ -304,6 +305,7 @@ export const GeneralSettings: React.FC = () => {
         </section>
 
         <UpdaterSettings />
+        <WindowStateResetSettings />
       </div>
     </SettingsSection>
   );

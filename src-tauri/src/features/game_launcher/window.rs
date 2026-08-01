@@ -48,14 +48,19 @@ pub fn show_game_launcher_overlay(app: &AppHandle) {
     if window.is_visible().unwrap_or(false) {
         return;
     }
-    if let Ok(Some(monitor)) = window.current_monitor().or_else(|_| app.primary_monitor()) {
-        let size = window
-            .outer_size()
-            .unwrap_or(tauri::PhysicalSize::new(760, 520));
-        let monitor_size = monitor.size();
-        let x = monitor.position().x + (monitor_size.width.saturating_sub(size.width) / 2) as i32;
-        let y = monitor.position().y + (monitor_size.height.saturating_sub(size.height) / 2) as i32;
-        let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));
+    let restored = crate::core::window_state::restore::restore(app, &window).unwrap_or(false);
+    if !restored {
+        if let Ok(Some(monitor)) = window.current_monitor().or_else(|_| app.primary_monitor()) {
+            let size = window
+                .outer_size()
+                .unwrap_or(tauri::PhysicalSize::new(760, 520));
+            let monitor_size = monitor.size();
+            let x =
+                monitor.position().x + (monitor_size.width.saturating_sub(size.width) / 2) as i32;
+            let y =
+                monitor.position().y + (monitor_size.height.saturating_sub(size.height) / 2) as i32;
+            let _ = window.set_position(tauri::Position::Physical(PhysicalPosition::new(x, y)));
+        }
     }
     if crate::core::window::is_initial_show_pending("gameLauncher") {
         return;

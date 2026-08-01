@@ -19,7 +19,7 @@ fn should_enable_autostart(requested: bool, debug_build: bool) -> bool {
     requested && !debug_build
 }
 
-fn temporary_path(destination: &Path) -> Result<PathBuf, String> {
+pub(crate) fn temporary_path(destination: &Path) -> Result<PathBuf, String> {
     let file_name = destination
         .file_name()
         .and_then(|value| value.to_str())
@@ -29,7 +29,7 @@ fn temporary_path(destination: &Path) -> Result<PathBuf, String> {
     Ok(parent.join(format!(".{file_name}.mint-tmp-{}", Uuid::new_v4())))
 }
 
-fn replace_file(temp_path: &Path, destination: &Path) -> Result<(), String> {
+pub(crate) fn replace_file(temp_path: &Path, destination: &Path) -> Result<(), String> {
     let previous_path = temporary_path(destination)?.with_extension("previous");
     let had_previous = destination.exists();
     if had_previous {
@@ -52,7 +52,7 @@ fn replace_file(temp_path: &Path, destination: &Path) -> Result<(), String> {
     }
 }
 
-fn write_settings_atomically(path: &Path, json: &str) -> Result<(), String> {
+pub(crate) fn write_settings_atomically(path: &Path, json: &str) -> Result<(), String> {
     let temp_path = temporary_path(path)?;
     let result = (|| {
         let mut file = OpenOptions::new()

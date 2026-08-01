@@ -5,3 +5,4 @@ mod settings_model;
 mod settings_store;
 pub mod tray;
 pub mod window;
+pub mod window_state;

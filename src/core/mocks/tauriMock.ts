@@ -410,6 +410,8 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
     switch (cmd) {
       case "overlay_ready":
         return null;
+      case "reset_window_state":
+        return null;
       default:
         console.warn(
           `[Tauri Mock] 未定義のIPCコマンド呼び出しを受信しました: ${cmd}`,
