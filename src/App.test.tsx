@@ -128,7 +128,7 @@ describe("App Window Routing", () => {
     await screen.findByRole("heading", { name: "一般設定" });
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    const searchInput = screen.getByRole("combobox", {
+    const searchInput = await screen.findByRole("combobox", {
       name: "設定や項目、操作を検索",
     });
     fireEvent.change(searchInput, { target: { value: "今日の予定" } });
@@ -159,7 +159,7 @@ describe("App Window Routing", () => {
     await screen.findByRole("heading", { name: "一般設定" });
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    const searchInput = screen.getByRole("combobox", {
+    const searchInput = await screen.findByRole("combobox", {
       name: "設定や項目、操作を検索",
     });
     fireEvent.change(searchInput, { target: { value: "時計を開く" } });
@@ -204,7 +204,7 @@ describe("App Window Routing", () => {
     await screen.findByRole("heading", { name: "一般設定" });
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    const searchInput = screen.getByRole("combobox", {
+    const searchInput = await screen.findByRole("combobox", {
       name: "設定や項目、操作を検索",
     });
     fireEvent.change(searchInput, { target: { value: "ライトテーマ" } });

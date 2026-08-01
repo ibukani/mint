@@ -275,20 +275,11 @@ impl Default for MintPaletteSettings {
 /// Must stay in sync with `ONBOARDING_VERSION` in src/core/onboarding/onboardingModel.ts.
 pub const ONBOARDING_VERSION: u32 = 1;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default, rename_all = "camelCase")]
 pub struct OnboardingSettings {
     pub completed_version: u32,
     pub completed_at: Option<String>,
-}
-
-impl Default for OnboardingSettings {
-    fn default() -> Self {
-        Self {
-            completed_version: 0,
-            completed_at: None,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
