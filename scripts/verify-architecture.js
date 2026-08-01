@@ -505,6 +505,115 @@ if (fs.existsSync(TAURI_CONF_PATH) && fs.existsSync(WINDOW_ROUTES_PATH)) {
   reportError(`Tauri config or window routes file is missing.`);
 }
 
+// 6.5 Check Tauri capabilities (per-window split & permission allowlist)
+const CAPABILITIES_DIR = path.join(ROOT_DIR, "src-tauri/capabilities");
+
+// Permissions that must never be granted via capabilities (handled on the
+// Rust backend side only: lib.rs registers global shortcuts, save_settings
+// syncs the autostart entry).
+const FORBIDDEN_CAPABILITY_PERMISSIONS = new Set([
+  "global-shortcut:default",
+  "autostart:default",
+]);
+
+// High-impact permissions and the only capability identifiers allowed to
+// declare them. Keep in sync with docs/security-capabilities.md.
+const RESTRICTED_CAPABILITY_PERMISSIONS = {
+  "updater:default": ["main"],
+  "process:default": ["main"],
+  "dialog:allow-open": ["main", "quick-capture", "file-shelf"],
+  "dialog:allow-save": ["quick-capture"],
+  "opener:default": ["quick-capture", "file-shelf"],
+  "opener:allow-open-path": ["quick-capture", "file-shelf"],
+  "drag:default": ["file-shelf"],
+  "core:window:allow-minimize": ["main"],
+  "core:window:allow-close": ["main"],
+  "core:window:allow-set-position": ["calendar"],
+  "core:window:allow-set-size": ["calendar"],
+};
+
+if (fs.existsSync(CAPABILITIES_DIR)) {
+  const tauriConf = fs.existsSync(TAURI_CONF_PATH)
+    ? JSON.parse(fs.readFileSync(TAURI_CONF_PATH, "utf-8"))
+    : null;
+  const definedWindowLabels = new Set(
+    (tauriConf?.app?.windows || []).map((w) => w.label),
+  );
+  const capabilityFiles = fs
+    .readdirSync(CAPABILITIES_DIR)
+    .filter((name) => name.endsWith(".json"))
+    .sort();
+  const declaredWindowLabels = new Set();
+
+  if (capabilityFiles.includes("default.json")) {
+    reportError(
+      'Capability split: legacy "default.json" must not exist; split capabilities into per-window files',
+    );
+  }
+
+  for (const fileName of capabilityFiles) {
+    const capabilityPath = path.join(CAPABILITIES_DIR, fileName);
+    let capability;
+    try {
+      capability = JSON.parse(fs.readFileSync(capabilityPath, "utf-8"));
+    } catch (err) {
+      reportError(
+        `Capability split: failed to parse ${fileName}: ${err.message}`,
+      );
+      continue;
+    }
+
+    const identifier = capability.identifier || "?";
+    const windows = capability.windows || [];
+    const permissions = capability.permissions || [];
+
+    for (const label of windows) {
+      if (!definedWindowLabels.has(label)) {
+        reportError(
+          `Capability split: "${identifier}" references unknown window label "${label}" (not defined in tauri.conf.json)`,
+        );
+      } else {
+        declaredWindowLabels.add(label);
+      }
+    }
+
+    for (const permission of permissions) {
+      if (FORBIDDEN_CAPABILITY_PERMISSIONS.has(permission)) {
+        reportError(
+          `Capability split: "${identifier}" must not grant "${permission}" (handled on the Rust backend side)`,
+        );
+      }
+      if (RESTRICTED_CAPABILITY_PERMISSIONS[permission] !== undefined) {
+        if (
+          !RESTRICTED_CAPABILITY_PERMISSIONS[permission].includes(identifier)
+        ) {
+          reportError(
+            `Capability split: "${identifier}" must not grant restricted permission "${permission}" (allowed only for: ${RESTRICTED_CAPABILITY_PERMISSIONS[permission].join(", ")})`,
+          );
+        } else {
+          reportSuccess(
+            `Capability split: "${identifier}" is an allowed owner of restricted permission "${permission}"`,
+          );
+        }
+      }
+    }
+  }
+
+  for (const label of definedWindowLabels) {
+    if (!declaredWindowLabels.has(label)) {
+      reportError(
+        `Capability split: window label "${label}" is not covered by any capability file`,
+      );
+    } else {
+      reportSuccess(
+        `Capability split: window label "${label}" is covered by a capability`,
+      );
+    }
+  }
+} else {
+  reportError(`Capabilities directory not found at: ${CAPABILITIES_DIR}`);
+}
+
 // 7. Check Rust commands & generate_handler! sync
 if (fs.existsSync(RS_LIB_PATH)) {
   const libContent = fs.readFileSync(RS_LIB_PATH, "utf-8");

@@ -169,9 +169,11 @@ pub fn get_calendar_editor_payload(
 #[tauri::command]
 pub async fn open_calendar_editor_window(
     app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
     state: tauri::State<'_, CalendarEditorState>,
     payload: Option<CalendarEditorPayload>,
 ) -> Result<(), String> {
+    crate::core::window::ensure_window_allowed(&window, &["calendar", "main"])?;
     open_calendar_editor_window_inner(&app, &state, payload)
 }
 

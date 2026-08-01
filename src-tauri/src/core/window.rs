@@ -160,6 +160,27 @@ pub fn ensure_overlay_window(
     ensure_window(app, target.label(), target.display_name())
 }
 
+/// Rejects a high-impact command when it is invoked from a window outside the
+/// allowed label allowlist. High-impact commands may only run from the windows
+/// declared in docs/security-capabilities.md.
+pub fn ensure_window_allowed(
+    window: &WebviewWindow,
+    allowed_labels: &[&str],
+) -> Result<(), String> {
+    let label = window.label();
+    if window_label_allowed(label, allowed_labels) {
+        Ok(())
+    } else {
+        Err(format!(
+            "この操作はウィンドウ \"{label}\" からは実行できません。"
+        ))
+    }
+}
+
+fn window_label_allowed(label: &str, allowed_labels: &[&str]) -> bool {
+    allowed_labels.contains(&label)
+}
+
 fn show_ready_overlay_windows(app: &AppHandle) -> Result<(), String> {
     loop {
         let mut showed_window = false;
@@ -246,7 +267,13 @@ pub fn show_main_window(app: &AppHandle) {
 }
 
 #[tauri::command]
-pub async fn open_overlay(app: AppHandle, target: OverlayTarget) -> Result<(), String> {
+pub async fn open_overlay(
+    app: AppHandle,
+    window: WebviewWindow,
+    target: OverlayTarget,
+) -> Result<(), String> {
+    ensure_window_allowed(&window, &["main"])?;
+
     let settings = crate::core::settings::load_settings_cached(&app)?;
     if !target.is_enabled(&settings) {
         return Err(format!(
@@ -324,5 +351,13 @@ mod tests {
         assert!(!OverlayTarget::Clock.is_enabled(&settings));
         settings.file_shelf.enabled = false;
         assert!(!OverlayTarget::FileShelf.is_enabled(&settings));
+    }
+
+    #[test]
+    fn window_label_allowed_matches_exact_allowlist_members() {
+        assert!(window_label_allowed("main", &["main"]));
+        assert!(window_label_allowed("calendar", &["calendar", "main"]));
+        assert!(!window_label_allowed("clock", &["main"]));
+        assert!(!window_label_allowed("fileShelf", &["calendar", "main"]));
     }
 }
