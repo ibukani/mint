@@ -33,7 +33,10 @@ pub fn show_quick_capture_overlay(app: &AppHandle) {
     if window.is_visible().unwrap_or(false) {
         return;
     }
-    let _ = window.center();
+    let restored = crate::core::window_state::restore::restore(app, &window).unwrap_or(false);
+    if !restored {
+        let _ = window.center();
+    }
     if crate::core::window::is_initial_show_pending("quickCapture") {
         return;
     }
