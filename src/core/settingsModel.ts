@@ -2,12 +2,14 @@ import type { CalendarSettings } from "../features/calendar/types";
 import type { ClockSettings } from "../features/clock/types";
 import type { FileShelfSettings } from "../features/file_shelf/types";
 import type { GameLauncherSettings } from "../features/game_launcher/types";
+import type { MintPaletteSettings } from "../features/mint_palette/types";
 import type { QuickCaptureSettings } from "../features/quick_capture/types";
 import type { VoiceToTextSettings } from "../features/v2t/types";
 
 export type ThemeMode = "dark" | "light" | "system";
 
 export interface AppSettings {
+  mintPalette: MintPaletteSettings;
   fileShelf: FileShelfSettings;
   quickCapture: QuickCaptureSettings;
   gameLauncher: GameLauncherSettings;

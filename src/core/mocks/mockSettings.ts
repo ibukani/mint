@@ -2,6 +2,11 @@ import { defaultAppSettings } from "../defaultSettings";
 import type { AppSettings } from "../settingsModel";
 
 const defaultMockSettings: AppSettings = {
+  mintPalette: {
+    enabled: defaultAppSettings.mintPalette.enabled,
+    shortcut: defaultAppSettings.mintPalette.shortcut,
+  },
+
   fileShelf: {
     enabled: defaultAppSettings.fileShelf.enabled,
     shortcut: defaultAppSettings.fileShelf.shortcut,

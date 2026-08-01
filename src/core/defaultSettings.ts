@@ -66,4 +66,8 @@ export const defaultAppSettings: AppSettings = {
     ],
     themeColor: "#818cf8",
   },
+  mintPalette: {
+    enabled: false,
+    shortcut: "Ctrl+Alt+M",
+  },
 };

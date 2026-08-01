@@ -1,27 +1,16 @@
 import type React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  prependRecentActionKey,
+  RECENT_ACTIONS_STORAGE_KEY,
+  readRecentActionKeys,
+} from "../../core/navigation/quickActions";
 import type { SidebarQuickAction, SidebarTab } from "./Sidebar";
 import { revealElementVertically } from "./scrollVisibility";
 import {
   buildSettingsSearchResults,
   type SettingsSearchResult,
 } from "./settingsQuickSwitcherSearch";
-
-const MAX_RECENT_RESULTS = 4;
-const RECENT_RESULTS_STORAGE_KEY =
-  "mint.settings-quick-switcher.recent-results";
-
-const readRecentKeys = () => {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = window.localStorage.getItem(RECENT_RESULTS_STORAGE_KEY);
-    return stored
-      ? stored.split("\n").filter(Boolean).slice(0, MAX_RECENT_RESULTS)
-      : [];
-  } catch {
-    return [];
-  }
-};
 
 interface UseSettingsQuickSwitcherProps<TTabId extends string> {
   tabs: readonly SidebarTab<TTabId>[];
@@ -48,7 +37,7 @@ export const useSettingsQuickSwitcher = <TTabId extends string>({
   const [disabledAction, setDisabledAction] =
     useState<SidebarQuickAction<TTabId> | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
-  const [recentKeys, setRecentKeys] = useState<string[]>(readRecentKeys);
+  const [recentKeys, setRecentKeys] = useState<string[]>(readRecentActionKeys);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
@@ -103,10 +92,10 @@ export const useSettingsQuickSwitcher = <TTabId extends string>({
   useEffect(() => {
     try {
       if (recentKeys.length === 0) {
-        window.localStorage.removeItem(RECENT_RESULTS_STORAGE_KEY);
+        window.localStorage.removeItem(RECENT_ACTIONS_STORAGE_KEY);
       } else {
         window.localStorage.setItem(
-          RECENT_RESULTS_STORAGE_KEY,
+          RECENT_ACTIONS_STORAGE_KEY,
           recentKeys.join("\n"),
         );
       }
@@ -121,12 +110,7 @@ export const useSettingsQuickSwitcher = <TTabId extends string>({
   };
 
   const rememberResult = (result: SettingsSearchResult<TTabId>) => {
-    setRecentKeys((current) =>
-      [result.key, ...current.filter((key) => key !== result.key)].slice(
-        0,
-        MAX_RECENT_RESULTS,
-      ),
-    );
+    setRecentKeys((current) => prependRecentActionKey(current, result.key));
   };
 
   const selectResult = async (result: SettingsSearchResult<TTabId>) => {

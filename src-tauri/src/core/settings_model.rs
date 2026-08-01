@@ -256,7 +256,24 @@ impl Default for FileShelfSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
+pub struct MintPaletteSettings {
+    pub enabled: bool,
+    pub shortcut: String,
+}
+
+impl Default for MintPaletteSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            shortcut: "Ctrl+Alt+M".to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub mint_palette: MintPaletteSettings,
     pub file_shelf: FileShelfSettings,
     pub quick_capture: QuickCaptureSettings,
     pub game_launcher: GameLauncherSettings,
@@ -271,6 +288,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            mint_palette: MintPaletteSettings::default(),
             file_shelf: FileShelfSettings::default(),
             quick_capture: QuickCaptureSettings::default(),
             game_launcher: GameLauncherSettings::default(),
@@ -377,6 +395,21 @@ impl ShortcutProvider for FileShelfSettings {
     }
 }
 
+impl ShortcutProvider for MintPaletteSettings {
+    fn shortcut(&self) -> Option<&str> {
+        let shortcut = self.shortcut.trim();
+        if !self.enabled || shortcut.is_empty() {
+            None
+        } else {
+            Some(shortcut)
+        }
+    }
+
+    fn feature_id(&self) -> &str {
+        "mintPalette"
+    }
+}
+
 impl AppSettings {
     pub fn active_shortcuts(&self) -> Vec<(&str, &str)> {
         let mut list = Vec::new();
@@ -405,6 +438,9 @@ impl AppSettings {
         }
         if let Some(s) = self.voice_to_text.shortcut() {
             list.push((self.voice_to_text.feature_id(), s));
+        }
+        if let Some(s) = self.mint_palette.shortcut() {
+            list.push((self.mint_palette.feature_id(), s));
         }
         list
     }

@@ -15,7 +15,13 @@ struct OverlayWindowState {
 fn defers_initial_show(label: &str) -> bool {
     matches!(
         label,
-        "clock" | "calendar" | "gameLauncher" | "quickCapture" | "fileShelf" | "calendarEditor"
+        "clock"
+            | "calendar"
+            | "gameLauncher"
+            | "quickCapture"
+            | "fileShelf"
+            | "calendarEditor"
+            | "mintPalette"
     )
 }
 
@@ -66,6 +72,7 @@ pub enum OverlayTarget {
     GameLauncher,
     QuickCapture,
     FileShelf,
+    MintPalette,
 }
 
 impl OverlayTarget {
@@ -76,6 +83,7 @@ impl OverlayTarget {
             Self::GameLauncher => "gameLauncher",
             Self::QuickCapture => "quickCapture",
             Self::FileShelf => "fileShelf",
+            Self::MintPalette => "mintPalette",
         }
     }
 
@@ -86,6 +94,7 @@ impl OverlayTarget {
             Self::GameLauncher => "ゲームランチャー",
             Self::QuickCapture => "クイックキャプチャー",
             Self::FileShelf => "ファイルシェル",
+            Self::MintPalette => "MintPalette",
         }
     }
 
@@ -96,6 +105,7 @@ impl OverlayTarget {
             Self::GameLauncher => settings.game_launcher.enabled,
             Self::QuickCapture => settings.quick_capture.enabled,
             Self::FileShelf => settings.file_shelf.enabled,
+            Self::MintPalette => settings.mint_palette.enabled,
         }
     }
 }
@@ -222,6 +232,11 @@ fn show_ready_overlay_windows(app: &AppHandle) -> Result<(), String> {
             showed_window = true;
         }
 
+        if take_initial_show_if_ready("mintPalette") {
+            crate::features::mint_palette::show_mint_palette_overlay(app);
+            showed_window = true;
+        }
+
         if !showed_window {
             break;
         }
@@ -267,13 +282,61 @@ pub fn show_main_window(app: &AppHandle) {
     show_main_window_ready(app);
 }
 
+/// Settings-tab navigation requested by the MintPalette overlay. Kept in
+/// pending state so the request survives the case where the main window's
+/// WebView was evicted while hidden.
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsTabRequest {
+    pub tab: String,
+    pub target_id: Option<String>,
+}
+
+static PENDING_SETTINGS_TAB_REQUEST: OnceLock<Mutex<Option<SettingsTabRequest>>> = OnceLock::new();
+
+/// Shows the main settings window and asks it to open a settings tab. Available
+/// from the main window and the MintPalette overlay.
+#[tauri::command]
+pub fn open_settings_tab(
+    app: AppHandle,
+    window: WebviewWindow,
+    tab: String,
+    target_id: Option<String>,
+) -> Result<(), String> {
+    ensure_window_allowed(&window, &["main", "mintPalette"])?;
+
+    let request = SettingsTabRequest { tab, target_id };
+    *PENDING_SETTINGS_TAB_REQUEST
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .unwrap_or_else(|error| error.into_inner()) = Some(request.clone());
+
+    show_main_window(&app);
+    app.emit_to("main", "settings-tab-requested", request)
+        .map_err(|error| format!("設定画面を開けませんでした: {error}"))
+}
+
+/// Consumes a pending settings-tab navigation requested by the MintPalette
+/// overlay. Only the main window may call this.
+#[tauri::command]
+pub fn take_pending_settings_tab(
+    window: WebviewWindow,
+) -> Result<Option<SettingsTabRequest>, String> {
+    ensure_window_allowed(&window, &["main"])?;
+    Ok(PENDING_SETTINGS_TAB_REQUEST
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .take())
+}
+
 #[tauri::command]
 pub async fn open_overlay(
     app: AppHandle,
     window: WebviewWindow,
     target: OverlayTarget,
 ) -> Result<(), String> {
-    ensure_window_allowed(&window, &["main"])?;
+    ensure_window_allowed(&window, &["main", "mintPalette"])?;
 
     let settings = crate::core::settings::load_settings_cached(&app)?;
     if !target.is_enabled(&settings) {
@@ -316,6 +379,9 @@ pub async fn open_overlay(
             crate::features::quick_capture::toggle_quick_capture_overlay(&app)
         }
         OverlayTarget::FileShelf => crate::features::file_shelf::toggle_file_shelf_overlay(&app),
+        OverlayTarget::MintPalette => {
+            crate::features::mint_palette::toggle_mint_palette_overlay(&app)
+        }
     }
 
     if !window.is_visible().map_err(|error| error.to_string())?
@@ -342,6 +408,7 @@ mod tests {
         assert_eq!(OverlayTarget::GameLauncher.label(), "gameLauncher");
         assert_eq!(OverlayTarget::QuickCapture.label(), "quickCapture");
         assert_eq!(OverlayTarget::FileShelf.label(), "fileShelf");
+        assert_eq!(OverlayTarget::MintPalette.label(), "mintPalette");
     }
 
     #[test]
@@ -352,6 +419,9 @@ mod tests {
         assert!(!OverlayTarget::Clock.is_enabled(&settings));
         settings.file_shelf.enabled = false;
         assert!(!OverlayTarget::FileShelf.is_enabled(&settings));
+        assert!(!OverlayTarget::MintPalette.is_enabled(&settings));
+        settings.mint_palette.enabled = true;
+        assert!(OverlayTarget::MintPalette.is_enabled(&settings));
     }
 
     #[test]

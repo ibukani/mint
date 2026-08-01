@@ -18,6 +18,7 @@ describe("getMockWindowRegistration", () => {
       "gameLauncher",
       "quickCapture",
       "fileShelf",
+      "mintPalette",
     ]);
     expect(new Set(labels).size).toBe(labels.length);
   });

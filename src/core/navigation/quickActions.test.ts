@@ -34,7 +34,10 @@ describe("getAvailableQuickActions", () => {
   });
 
   it("leaves enabled features and theme actions available", () => {
-    const actions = getAvailableQuickActions(createMockSettings());
+    const settings = createMockSettings({
+      mintPalette: { ...createMockSettings().mintPalette, enabled: true },
+    });
+    const actions = getAvailableQuickActions(settings);
 
     expect(actions).toHaveLength(SETTINGS_QUICK_ACTIONS.length);
     expect(actions.every((action) => !("disabled" in action))).toBe(true);

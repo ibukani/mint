@@ -60,6 +60,7 @@ describe("useWindowThemeColor", () => {
         themeColor: "#100004",
       },
       fileShelf: { ...defaultAppSettings.fileShelf, themeColor: "#100005" },
+      mintPalette: { ...defaultAppSettings.mintPalette },
     });
 
     expect(Object.keys(WINDOW_ROUTES)).toEqual([
@@ -69,6 +70,7 @@ describe("useWindowThemeColor", () => {
       "gameLauncher",
       "quickCapture",
       "fileShelf",
+      "mintPalette",
     ]);
     expect(getWindowThemeColor("clock", settings)).toBe("#100001");
     expect(getWindowThemeColor("calendar", settings)).toBe("#100002");
@@ -76,6 +78,7 @@ describe("useWindowThemeColor", () => {
     expect(getWindowThemeColor("gameLauncher", settings)).toBe("#100003");
     expect(getWindowThemeColor("quickCapture", settings)).toBe("#100004");
     expect(getWindowThemeColor("fileShelf", settings)).toBe("#100005");
+    expect(getWindowThemeColor("mintPalette", settings)).toBe("dark");
   });
 
   it("falls back to defaults until settings are available", () => {

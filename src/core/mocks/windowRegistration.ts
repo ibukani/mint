@@ -6,6 +6,7 @@ const MOCK_WINDOW_LABELS = [
   "calendarEditor",
   "quickCapture",
   "fileShelf",
+  "mintPalette",
 ] as const;
 
 export const getMockWindowRegistration = (currentLabel: string) => [
