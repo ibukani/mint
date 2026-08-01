@@ -206,6 +206,7 @@ pub fn run() {
                     || label == "quickCapture"
                     || label == "fileShelf"
                 {
+                    let _ = core::window_state::persist_now(window.app_handle(), label);
                     api.prevent_close();
                     let _ = window.hide();
                     if label == "fileShelf" {
@@ -217,6 +218,8 @@ pub fn run() {
                         }
                     }
                 }
+            } else if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_)) {
+                core::window_state::maybe_persist(window.app_handle(), window.label());
             }
         })
         .manage(features::calendar::window::CalendarEditorState::default())
@@ -230,6 +233,7 @@ pub fn run() {
             core::settings::save_api_key,
             core::window::open_overlay,
             core::window::overlay_ready,
+            core::window_state::reset_window_state,
             features::calendar::repository::list_calendar_events,
             features::calendar::repository::get_next_calendar_event,
             features::calendar::repository::create_calendar_event,
@@ -277,9 +281,10 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(move |_app, event| {
+    app.run(move |app, event| {
         if let RunEvent::Exit = event {
             clipboard_monitor_for_event.stop();
+            core::window_state::flush_all(app);
         }
     });
 }
