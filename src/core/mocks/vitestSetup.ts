@@ -24,6 +24,7 @@ mockWindows(
   "gameLauncher",
   "quickCapture",
   "fileShelf",
+  "mintPalette",
 );
 
 import { createMockSettings } from "./mockSettings";
@@ -96,6 +97,7 @@ mockIPCWithEvents(async (cmd, args) => {
       gameLauncher: true,
       quickCapture: true,
       fileShelf: true,
+      mintPalette: true,
     },
   });
   if (settingsResult.handled) return settingsResult.value;
@@ -148,6 +150,10 @@ mockIPCWithEvents(async (cmd, args) => {
     case "overlay_ready":
       return null;
     case "reset_window_state":
+      return null;
+    case "open_settings_tab":
+      return null;
+    case "take_pending_settings_tab":
       return null;
     default:
       return null;

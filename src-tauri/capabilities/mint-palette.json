@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "mint-palette",
+  "description": "Capability for the Mint Palette overlay window",
+  "windows": ["mintPalette"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-hide",
+    "core:window:allow-destroy"
+  ]
+}

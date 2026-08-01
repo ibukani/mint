@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CalendarPlus,
   Clock3,
+  Command,
   Gamepad2,
   Monitor,
   Moon,
@@ -93,6 +94,14 @@ export const SETTINGS_QUICK_ACTIONS = [
     targetId: "fileShelf",
     icon: React.createElement(Archive, { size: 16, "aria-hidden": true }),
   },
+  {
+    id: "open-mint-palette",
+    label: "MintPalette を開く",
+    description: "コマンドパレットを表示",
+    keywords: ["コマンドパレット", "パレット", "検索", "ランチャー"],
+    targetId: "mintPalette",
+    icon: React.createElement(Command, { size: 16, "aria-hidden": true }),
+  },
 ] as const satisfies readonly SidebarQuickAction[];
 
 export type QuickActionTarget =
@@ -103,7 +112,8 @@ type OverlayFeatureSettingsKey =
   | "calendar"
   | "gameLauncher"
   | "quickCapture"
-  | "fileShelf";
+  | "fileShelf"
+  | "mintPalette";
 
 type QuickActionAvailability = {
   settingsKey: OverlayFeatureSettingsKey;
@@ -151,6 +161,12 @@ const quickActionAvailability: Partial<
     targetId: "file-shelf-enabled",
     label: "ファイルシェル",
   },
+  mintPalette: {
+    settingsKey: "mintPalette",
+    tabId: "mintPalette",
+    targetId: "mint-palette-enabled",
+    label: "MintPalette",
+  },
 };
 
 export const getAvailableQuickActions = (settings: AppSettings | null) => {
@@ -173,3 +189,25 @@ export const getAvailableQuickActions = (settings: AppSettings | null) => {
     };
   });
 };
+
+export const MAX_RECENT_ACTIONS = 4;
+
+export const RECENT_ACTIONS_STORAGE_KEY =
+  "mint.settings-quick-switcher.recent-results";
+
+export const readRecentActionKeys = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_ACTIONS_STORAGE_KEY);
+    if (!raw) return [];
+    return raw.split("\n").filter(Boolean).slice(0, MAX_RECENT_ACTIONS);
+  } catch {
+    return [];
+  }
+};
+
+export const prependRecentActionKey = (keys: string[], key: string): string[] =>
+  [key, ...keys.filter((candidate) => candidate !== key)].slice(
+    0,
+    MAX_RECENT_ACTIONS,
+  );

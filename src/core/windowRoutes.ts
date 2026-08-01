@@ -46,6 +46,14 @@ const CalendarEditorOverlay = lazy(() =>
   })),
 );
 
+const MintPaletteOverlay = lazy(() =>
+  import("../features/mint_palette/components/MintPaletteOverlay").then(
+    (m) => ({
+      default: m.MintPaletteOverlay,
+    }),
+  ),
+);
+
 export const WINDOW_ROUTES = {
   clock: {
     component: ClockOverlay,
@@ -70,6 +78,10 @@ export const WINDOW_ROUTES = {
   fileShelf: {
     component: FileShelfOverlay,
     getThemeColor: (settings) => settings.fileShelf.themeColor,
+  },
+  mintPalette: {
+    component: MintPaletteOverlay,
+    getThemeColor: (settings) => settings.theme,
   },
 } satisfies Record<string, WindowRouteDefinition>;
 

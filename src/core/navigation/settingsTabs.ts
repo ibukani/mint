@@ -2,6 +2,7 @@ import {
   Archive,
   CalendarDays,
   Clock3,
+  Command,
   Gamepad2,
   Mic2,
   NotebookPen,
@@ -51,7 +52,29 @@ const FileShelfSettings = lazy(() =>
   ),
 );
 
+const MintPaletteSettings = lazy(() =>
+  import("../../features/mint_palette/components/MintPaletteSettings").then(
+    (m) => ({ default: m.MintPaletteSettings }),
+  ),
+);
+
 export const SETTINGS_TABS = [
+  {
+    id: "mintPalette",
+    label: "MintPalette 設定",
+    description: "グローバルコマンドパレット",
+    keywords: ["コマンドパレット", "検索", "Ctrl+K", "ランチャー", "起動"],
+    searchItems: [
+      {
+        id: "mint-palette-shortcut",
+        label: "起動ショートカットキー",
+        description: "MintPaletteの呼び出し",
+        keywords: ["Ctrl+Alt+M", "キー", "コマンドパレット"],
+        targetId: "mint-palette-shortcut-input",
+      },
+    ],
+    icon: React.createElement(Command, { size: 18, "aria-hidden": true }),
+  },
   {
     id: "general",
     label: "一般設定",
@@ -298,6 +321,7 @@ export const SETTINGS_TAB_COMPONENTS: Record<
   SettingsTabId,
   React.LazyExoticComponent<React.FC>
 > = {
+  mintPalette: MintPaletteSettings,
   fileShelf: FileShelfSettings,
   quickCapture: QuickCaptureSettings,
   gameLauncher: GameLauncherSettings,

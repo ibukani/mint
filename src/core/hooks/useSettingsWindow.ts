@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../navigation/settingsTabs";
 import type { ThemeMode } from "../settingsModel";
+import { takePendingSettingsTab } from "../windowCommands";
 
 const ACTIVE_TAB_STORAGE_KEY = "mint.active-settings-tab";
 
@@ -141,6 +142,31 @@ export const useSettingsWindow = (theme: ThemeMode | undefined) => {
       void unlistenPromise.then((unlisten) => unlisten());
     };
   }, [label]);
+
+  useEffect(() => {
+    if (label !== "main") return undefined;
+
+    const unlistenPromise = listen<{ tab: string; targetId?: string | null }>(
+      "settings-tab-requested",
+      (event) => {
+        if (!isSettingsTabId(event.payload.tab)) return;
+        navigateToTab(event.payload.tab, event.payload.targetId ?? undefined);
+        void takePendingSettingsTab();
+      },
+    );
+
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [label, navigateToTab]);
+
+  useEffect(() => {
+    if (label !== "main") return;
+    void takePendingSettingsTab().then((request) => {
+      if (!request || !isSettingsTabId(request.tab)) return;
+      navigateToTab(request.tab, request.targetId ?? undefined);
+    });
+  }, [label, navigateToTab]);
 
   return {
     label,

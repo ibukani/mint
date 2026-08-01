@@ -100,4 +100,36 @@ describe("shared IPC mock handlers", () => {
     expect(result).toEqual({ handled: true, value: undefined });
     expect(onOverlayReady).toHaveBeenCalledOnce();
   });
+
+  it("forwards settings tab requests to the main window", async () => {
+    const onOpenSettingsTab = vi.fn();
+    const result = await handleWindowIpcCommand(
+      "open_settings_tab",
+      { tab: "clock", targetId: "clock-enabled-checkbox" },
+      { onOpenSettingsTab },
+    );
+
+    expect(result).toEqual({ handled: true, value: undefined });
+    expect(onOpenSettingsTab).toHaveBeenCalledWith({
+      tab: "clock",
+      targetId: "clock-enabled-checkbox",
+    });
+  });
+
+  it("returns pending settings tab requests for the main window", async () => {
+    const onTakePendingSettingsTab = vi
+      .fn()
+      .mockResolvedValue({ tab: "clock", targetId: null });
+    const result = await handleWindowIpcCommand(
+      "take_pending_settings_tab",
+      undefined,
+      { onTakePendingSettingsTab },
+    );
+
+    expect(result).toEqual({
+      handled: true,
+      value: { tab: "clock", targetId: null },
+    });
+    expect(onTakePendingSettingsTab).toHaveBeenCalledOnce();
+  });
 });

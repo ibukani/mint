@@ -1,3 +1,4 @@
+import { emitTo } from "@tauri-apps/api/event";
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type {
   GoogleCalendarConnection,
@@ -97,6 +98,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
             defaultSettings.fileShelf,
             parsed.fileShelf,
           ),
+          mintPalette: mergeSettingsSection(
+            defaultSettings.mintPalette,
+            parsed.mintPalette,
+          ),
         };
       } catch (error) {
         console.error(
@@ -118,6 +123,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
     gameLauncher: defaultSettings.gameLauncher.enabled,
     quickCapture: defaultSettings.quickCapture.enabled,
     fileShelf: defaultSettings.fileShelf.enabled,
+    mintPalette: defaultSettings.mintPalette.enabled,
   };
 
   const openBrowserOverlay = (target: string) => {
@@ -239,6 +245,26 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
             detail: { label: currentLabel },
           }),
         );
+      },
+      onOpenSettingsTab: async (openArgs) => {
+        const tab = typeof openArgs.tab === "string" ? openArgs.tab : "";
+        const targetId =
+          typeof openArgs.targetId === "string" ? openArgs.targetId : null;
+        localStorage.setItem(
+          "mint_mock_pending_settings_tab",
+          JSON.stringify({ tab, targetId }),
+        );
+        await emitTo("main", "settings-tab-requested", { tab, targetId });
+      },
+      onTakePendingSettingsTab: () => {
+        const stored = localStorage.getItem("mint_mock_pending_settings_tab");
+        if (!stored) return null;
+        localStorage.removeItem("mint_mock_pending_settings_tab");
+        try {
+          return JSON.parse(stored) as unknown;
+        } catch {
+          return null;
+        }
       },
     });
     if (windowResult.handled) return windowResult.value;
@@ -411,6 +437,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       case "overlay_ready":
         return null;
       case "reset_window_state":
+        return null;
+      case "open_settings_tab":
+        return null;
+      case "take_pending_settings_tab":
         return null;
       default:
         console.warn(
