@@ -12,6 +12,7 @@ import {
   Moon,
   NotebookPen,
   Power,
+  Rocket,
   Sun,
 } from "lucide-react";
 import "./GeneralSettings.css";
@@ -104,7 +105,7 @@ const featureOverview = [
 
 export const GeneralSettings: React.FC = () => {
   const { settings, updateSettings, shortcutErrors } = useAppSettings();
-  const { setActiveTab } = useSettingsNavigation();
+  const { setActiveTab, requestOnboarding } = useSettingsNavigation();
 
   if (!settings) return null;
 
@@ -302,6 +303,23 @@ export const GeneralSettings: React.FC = () => {
               onChange={(e) => updateSettings({ autostart: e.target.checked })}
             />
           </Field>
+        </section>
+
+        <section className="settings-group" aria-labelledby="onboarding-title">
+          <div className="settings-group__heading">
+            <Rocket size={18} aria-hidden="true" />
+            <div>
+              <h3 id="onboarding-title">セットアップ</h3>
+              <p>利用機能やショートカットを、もう一度まとめて確認できます。</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => requestOnboarding()}
+            aria-label="初回セットアップを再実行"
+          >
+            初回セットアップを再実行
+          </Button>
         </section>
 
         <UpdaterSettings />

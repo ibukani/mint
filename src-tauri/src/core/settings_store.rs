@@ -457,6 +457,20 @@ mod tests {
         assert_eq!(settings.calendar.create_event_shortcut, "Ctrl+Alt+E");
         assert_eq!(settings.voice_to_text.model, "whisper-1");
         assert_eq!(settings.game_launcher.favorite_game_keys, vec!["appid-440"]);
+
+        // 既存ユーザーは初回セットアップを強制されないよう、完了扱いになる
+        assert_eq!(
+            settings.onboarding.completed_version,
+            crate::core::settings_model::ONBOARDING_VERSION
+        );
+        assert!(settings.onboarding.completed_at.is_none());
+    }
+
+    #[test]
+    fn fresh_defaults_keep_onboarding_incomplete() {
+        let settings = AppSettings::default();
+        assert_eq!(settings.onboarding.completed_version, 0);
+        assert!(settings.onboarding.completed_at.is_none());
     }
 
     #[test]

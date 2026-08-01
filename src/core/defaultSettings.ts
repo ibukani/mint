@@ -70,4 +70,9 @@ export const defaultAppSettings: AppSettings = {
     enabled: false,
     shortcut: "Ctrl+Alt+M",
   },
+  // 0 = 未完了。新規インストールでは初回セットアップを表示する。
+  // 既存ユーザーはマイグレーションで完了バージョンが設定される。
+  onboarding: {
+    completedVersion: 0,
+  },
 };

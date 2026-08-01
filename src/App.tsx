@@ -1,5 +1,5 @@
 import type React from "react";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { AppErrorState } from "./core/components/AppErrorState";
 import { AppLoading } from "./core/components/AppLoading";
 import { AutoFocusTrigger } from "./core/components/AutoFocusTrigger";
@@ -19,6 +19,8 @@ import {
   SETTINGS_TAB_COMPONENTS,
   SETTINGS_TABS,
 } from "./core/navigation/settingsTabs";
+import { OnboardingFlow } from "./core/onboarding/OnboardingFlow";
+import { ONBOARDING_VERSION } from "./core/onboarding/onboardingModel";
 import { isOverlayTarget, openOverlay } from "./core/windowCommands";
 import { isWindowRouteLabel, WINDOW_ROUTES } from "./core/windowRoutes";
 import { AppShell } from "./design/layout";
@@ -70,6 +72,13 @@ const AppContent: React.FC = () => {
   useMainWindowEviction(label === "main");
   const startupSyncStarted = useRef(false);
   const initialActiveTab = useRef(activeTab);
+  const [onboardingRequested, setOnboardingRequested] = useState(false);
+
+  const showOnboarding =
+    label === "main" &&
+    settings !== null &&
+    (onboardingRequested ||
+      settings.onboarding.completedVersion < ONBOARDING_VERSION);
 
   useEffect(() => {
     if (
@@ -108,6 +117,10 @@ const AppContent: React.FC = () => {
     );
   }
 
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={() => setOnboardingRequested(false)} />;
+  }
+
   const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab];
   const activeTabLabel =
     SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "設定";
@@ -120,6 +133,7 @@ const AppContent: React.FC = () => {
       <SettingsNavigationProvider
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        requestOnboarding={() => setOnboardingRequested(true)}
       >
         <AppShell
           title="mint"
