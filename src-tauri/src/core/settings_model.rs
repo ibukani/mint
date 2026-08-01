@@ -270,6 +270,27 @@ impl Default for MintPaletteSettings {
     }
 }
 
+/// Current version of the onboarding flow. Bump when the setup content
+/// changes materially so returning users can be shown only the new parts.
+/// Must stay in sync with `ONBOARDING_VERSION` in src/core/onboarding/onboardingModel.ts.
+pub const ONBOARDING_VERSION: u32 = 1;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
+pub struct OnboardingSettings {
+    pub completed_version: u32,
+    pub completed_at: Option<String>,
+}
+
+impl Default for OnboardingSettings {
+    fn default() -> Self {
+        Self {
+            completed_version: 0,
+            completed_at: None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
@@ -283,6 +304,7 @@ pub struct AppSettings {
     pub settings_shortcut: String,
     pub clock: ClockSettings,
     pub voice_to_text: VoiceToTextSettings,
+    pub onboarding: OnboardingSettings,
 }
 
 impl Default for AppSettings {
@@ -298,6 +320,7 @@ impl Default for AppSettings {
             settings_shortcut: "Ctrl+Alt+S".to_string(),
             clock: ClockSettings::default(),
             voice_to_text: VoiceToTextSettings::default(),
+            onboarding: OnboardingSettings::default(),
         }
     }
 }
@@ -524,6 +547,9 @@ mod tests {
         assert!(settings
             .active_shortcuts()
             .contains(&("fileShelf", "Alt+3")));
+        assert_eq!(settings.onboarding.completed_version, 0);
+        assert_eq!(settings.onboarding.completed_at, None);
+        assert_eq!(crate::core::settings_model::ONBOARDING_VERSION, 1);
 
         // 一部だけ存在するJSONから復元
         let partial_json = r#"{"theme": "light", "clock": {"shortcut": "Ctrl+C"}}"#;

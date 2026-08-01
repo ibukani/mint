@@ -69,6 +69,12 @@ const defaultMockSettings: AppSettings = {
     language: defaultAppSettings.voiceToText.language,
     status: defaultAppSettings.voiceToText.status,
   },
+
+  // ブラウザモックは既存ユーザー扱いにする。
+  // オンボーディングを検証するテストは overrides で completedVersion: 0 を渡す。
+  onboarding: {
+    completedVersion: 1,
+  },
 };
 
 export const createMockSettings = (

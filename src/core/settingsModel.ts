@@ -8,6 +8,11 @@ import type { VoiceToTextSettings } from "../features/v2t/types";
 
 export type ThemeMode = "dark" | "light" | "system";
 
+export interface OnboardingSettings {
+  completedVersion: number;
+  completedAt?: string;
+}
+
 export interface AppSettings {
   mintPalette: MintPaletteSettings;
   fileShelf: FileShelfSettings;
@@ -19,6 +24,7 @@ export interface AppSettings {
   settingsShortcut: string;
   clock: ClockSettings;
   voiceToText: VoiceToTextSettings;
+  onboarding: OnboardingSettings;
 }
 
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
@@ -29,5 +35,5 @@ export type SettingsUpdate =
 
 export type FeatureSettingsKey = Exclude<
   keyof AppSettings,
-  "theme" | "settingsShortcut" | "autostart"
+  "theme" | "settingsShortcut" | "autostart" | "onboarding"
 >;

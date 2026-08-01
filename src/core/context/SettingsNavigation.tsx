@@ -5,6 +5,7 @@ import type { SettingsTabId } from "../navigation/settingsTabs";
 interface SettingsNavigationContextType {
   activeTab: SettingsTabId;
   setActiveTab: (tabId: SettingsTabId) => void;
+  requestOnboarding: () => void;
 }
 
 const noop = () => {};
@@ -12,19 +13,23 @@ const noop = () => {};
 const SettingsNavigationContext = createContext<SettingsNavigationContextType>({
   activeTab: "general",
   setActiveTab: noop,
+  requestOnboarding: noop,
 });
 
 interface SettingsNavigationProviderProps {
   activeTab: SettingsTabId;
   setActiveTab: (tabId: SettingsTabId) => void;
+  requestOnboarding?: () => void;
   children: React.ReactNode;
 }
 
 export const SettingsNavigationProvider: React.FC<
   SettingsNavigationProviderProps
-> = ({ activeTab, setActiveTab, children }) => {
+> = ({ activeTab, setActiveTab, requestOnboarding = noop, children }) => {
   return (
-    <SettingsNavigationContext.Provider value={{ activeTab, setActiveTab }}>
+    <SettingsNavigationContext.Provider
+      value={{ activeTab, setActiveTab, requestOnboarding }}
+    >
       {children}
     </SettingsNavigationContext.Provider>
   );
