@@ -22,3 +22,13 @@ export const openOverlay = (target: OverlayTarget) =>
   invoke<void>("open_overlay", { target });
 
 export const notifyOverlayReady = () => invoke<void>("overlay_ready");
+
+export type WindowStateTarget =
+  | "main"
+  | "quickCapture"
+  | "gameLauncher"
+  | "calendar"
+  | "calendarEditor";
+
+export const resetWindowState = (label: WindowStateTarget) =>
+  invoke<void>("reset_window_state", { label });

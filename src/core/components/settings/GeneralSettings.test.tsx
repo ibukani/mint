@@ -118,4 +118,35 @@ describe("GeneralSettings", () => {
 
     expect(setActiveTab).toHaveBeenCalledWith("calendar");
   });
+
+  it("resets a window state from the general settings", async () => {
+    render(
+      <AppSettingsProvider>
+        <GeneralSettings />
+      </AppSettingsProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "クイックキャプチャーの位置・サイズをリセット",
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(invoke).toHaveBeenCalledWith("reset_window_state", {
+      label: "quickCapture",
+    });
+    expect(
+      await screen.findByText(
+        "クイックキャプチャーの位置・サイズを既定値に戻しました",
+      ),
+    ).toBeInTheDocument();
+  });
 });
