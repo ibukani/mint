@@ -182,7 +182,10 @@ pub async fn open_calendar_editor_window(
     state: tauri::State<'_, CalendarEditorState>,
     payload: Option<CalendarEditorPayload>,
 ) -> Result<(), String> {
-    crate::core::window::ensure_window_allowed(&window, &["calendar", "main", "mintPalette", "quickCapture"])?;
+    crate::core::window::ensure_window_allowed(
+        &window,
+        &["calendar", "main", "mintPalette", "quickCapture"],
+    )?;
     open_calendar_editor_window_inner(&app, &state, payload)
 }
 

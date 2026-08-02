@@ -264,7 +264,13 @@ pub fn open_v2t_with_audio_file(
 ) -> Result<(), String> {
     crate::core::window::ensure_window_allowed(
         &window,
-        &["main", "mintPalette", "quickCapture", "fileShelf", "calendar"],
+        &[
+            "main",
+            "mintPalette",
+            "quickCapture",
+            "fileShelf",
+            "calendar",
+        ],
     )?;
 
     let trimmed = path.trim();
@@ -285,9 +291,7 @@ pub fn open_v2t_with_audio_file(
 /// Consumes a pending Voice to Text audio file path requested by another
 /// window (e.g. the file shelf). Only the main window may call this.
 #[tauri::command]
-pub fn take_pending_v2t_audio_file(
-    window: WebviewWindow,
-) -> Result<Option<String>, String> {
+pub fn take_pending_v2t_audio_file(window: WebviewWindow) -> Result<Option<String>, String> {
     crate::core::window::ensure_window_allowed(&window, &["main"])?;
     Ok(PENDING_V2T_AUDIO_FILE
         .get_or_init(|| Mutex::new(None))
