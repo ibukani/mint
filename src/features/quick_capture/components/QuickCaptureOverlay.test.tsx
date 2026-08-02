@@ -36,7 +36,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 vi.mock("../../../core/context/AppSettings", () => ({
-  useAppSettings: () => ({ settings: undefined }),
+  useSettings: () => undefined,
 }));
 
 describe("QuickCaptureOverlay", () => {

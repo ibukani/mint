@@ -10,7 +10,15 @@ import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockSettings } from "../mocks/mockSettings";
 import type { AppSettings } from "../settingsModel";
-import { AppSettingsProvider, useAppSettings } from "./AppSettings";
+import {
+  AppSettingsProvider,
+  useRetrySaveSettings,
+  useSettings,
+  useSettingsError,
+  useSettingsSaveStatus,
+  useShortcutError,
+  useUpdateSettings,
+} from "./AppSettings";
 
 // Mock invoke
 vi.mock("@tauri-apps/api/core", () => ({
@@ -40,14 +48,12 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 const TestComponent: React.FC = () => {
-  const {
-    settings,
-    updateSettings,
-    error,
-    saveStatus,
-    shortcutErrors,
-    retrySaveSettings,
-  } = useAppSettings();
+  const settings = useSettings();
+  const updateSettings = useUpdateSettings();
+  const error = useSettingsError();
+  const saveStatus = useSettingsSaveStatus();
+  const clockShortcutError = useShortcutError("clock");
+  const retrySaveSettings = useRetrySaveSettings();
   if (!settings) return <div>Loading...</div>;
   return (
     <div>
@@ -57,7 +63,7 @@ const TestComponent: React.FC = () => {
       <div data-testid="error">{error || "no-error"}</div>
       <div data-testid="save-status">{saveStatus}</div>
       <div data-testid="shortcut-error-clock">
-        {shortcutErrors.clock || "no-clock-error"}
+        {clockShortcutError || "no-clock-error"}
       </div>
       <button
         type="button"

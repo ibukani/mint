@@ -26,10 +26,19 @@ Mint は、機能追加の安全性・拡張性・保守性を高めるため、
 
 ### 機能管理ダッシュボードと共通設定 (`AppSettings`)
 - `src/core/settingsModel.ts` (TypeScript): 設定スキーマの単一ソース
-- `src/core/context/AppSettings.tsx` (TypeScript): Provider と購読 API
+- `src/core/store/settingsStore.ts` (TypeScript): 外部設定ストア（`useSyncExternalStore` 対応、保存キュー・debounce・即時保存・retry・sequence・`settings-changed` 同期を所有）
+- `src/core/context/AppSettings.tsx` (TypeScript): Provider（store instance配布）と選択購読 hook API
+- `src/core/hooks/useFeatureSettings.ts` (TypeScript): feature固有設定の selector 購読 + 更新 API
 - `src-tauri/src/core/settings.rs` (Rust facade) / `settings_model.rs` (Rust model)
 - すべての機能の設定や有効状態はここで一元管理され、ローカルファイルにシリアライズされて保存されます。
 - `theme` などの共通設定と、機能ごとの個別設定 (`clock`, `voiceToText` 等) が混在します。
+
+### 設定ストアの購読モデル
+- 設定状態は単一の Context value として配布せず、store instance を Provider が配布し、各コンポーネントは `useSettingsSelector` / `useSettings` / `useFeatureSettings` / `useSettingsSaveStatus` / `useShortcutError` などの selector hook で必要な slice だけを購読します。
+- selector 結果は `Object.is`（または指定した equalityFn）で比較され、等しい場合は再レンダリングしません。更新対象でない top-level slice は同一参照を維持します。
+- 保存状態（`saveStatus`）は `SidebarSaveStatus` / `SettingsSaveStatusBar` のような自己購読 leaf コンポーネントだけへ通知されます。
+- 保存フロー（debounce・即時保存・queue 直列化・sequence による古い結果の無視・retry・外部 `settings-changed` との競合防止）は `settingsStore.ts` が所有し、`settingsChangePolicy` / `shortcutErrors` を再利用します。
+- legacy の全体 Context 購読 API（`useAppSettings` 相当）は移行後に残しません。
 
 ## 3. モック層の責務
 - `src/core/mocks/tauriMock.ts` と `vitestSetup.ts` は、Tauriのバックエンド環境がないブラウザ単体起動時・テスト時でも動作するように、`*IpcMock.ts` の静的な feature 別 handler を共有します。環境固有の保存・遅延・表示差分だけを各入口で注入します。

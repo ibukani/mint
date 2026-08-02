@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAppSettings } from "../context/AppSettings";
+import {
+  useSettings,
+  useSettingsSaveStatus,
+  useUpdateSettings,
+} from "../context/AppSettings";
 import { settingsAreEqual } from "../persistence/settingsChangePolicy";
 import {
   applyDraftToSettings,
@@ -32,7 +36,9 @@ export interface OnboardingController {
 export const useOnboardingController = (
   onComplete: () => void,
 ): OnboardingController => {
-  const { settings, updateSettings, saveStatus } = useAppSettings();
+  const settings = useSettings();
+  const updateSettings = useUpdateSettings();
+  const saveStatus = useSettingsSaveStatus();
   const [draft, setDraft] = useState<OnboardingDraft | null>(null);
   const [step, setStep] = useState(0);
   const [isCommitting, setIsCommitting] = useState(false);

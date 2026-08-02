@@ -1,7 +1,10 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAppSettings } from "../../../core/context/AppSettings";
+import {
+  useSettings,
+  useUpdateSettings,
+} from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
@@ -11,7 +14,8 @@ import { type GameScanResult, gameKey, type InstalledGame } from "../types";
 const HIDE_ANIMATION_MS = 180;
 
 export const useGameLauncher = () => {
-  const { settings, updateSettings } = useAppSettings();
+  const settings = useSettings();
+  const updateSettings = useUpdateSettings();
   const [result, setResult] = useState<GameScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

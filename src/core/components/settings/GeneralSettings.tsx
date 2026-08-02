@@ -25,7 +25,11 @@ import {
   StatusBadge,
   Switch,
 } from "../../../design/components";
-import { useAppSettings } from "../../context/AppSettings";
+import {
+  useSettings,
+  useShortcutError,
+  useUpdateSettings,
+} from "../../context/AppSettings";
 import { useSettingsNavigation } from "../../context/SettingsNavigation";
 import type { FeatureSettingsKey } from "../../settingsModel";
 import { UpdaterSettings } from "./UpdaterSettings";
@@ -104,7 +108,9 @@ const featureOverview = [
 }>;
 
 export const GeneralSettings: React.FC = () => {
-  const { settings, updateSettings, shortcutErrors } = useAppSettings();
+  const settings = useSettings();
+  const updateSettings = useUpdateSettings();
+  const settingsShortcutError = useShortcutError("settings");
   const { setActiveTab, requestOnboarding } = useSettingsNavigation();
 
   if (!settings) return null;
@@ -273,12 +279,12 @@ export const GeneralSettings: React.FC = () => {
             id="settings-shortcut-input"
             label="設定画面表示ショートカット"
             helpText="入力欄を選択して、使いたいキーの組み合わせを押します。"
-            error={shortcutErrors.settings}
+            error={settingsShortcutError}
           >
             <ShortcutInput
               id="settings-shortcut-input"
               value={settings.settingsShortcut}
-              invalid={!!shortcutErrors.settings}
+              invalid={!!settingsShortcutError}
               onChange={(val) => updateSettings({ settingsShortcut: val })}
             />
           </Field>

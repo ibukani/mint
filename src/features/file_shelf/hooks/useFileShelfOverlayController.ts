@@ -1,4 +1,4 @@
-import { useAppSettings } from "../../../core/context/AppSettings";
+import { useSettings } from "../../../core/context/AppSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import {
@@ -13,7 +13,7 @@ import { useFileShelfOverlayState } from "./useFileShelfOverlayState";
 import { useFileShelfPreview } from "./useFileShelfPreview";
 
 export const useFileShelfOverlayController = () => {
-  const { settings } = useAppSettings();
+  const settings = useSettings();
   const shelf = useFileShelf();
   useOverlayWindowEviction(shelf.expanded, {
     enabled: settings?.fileShelf.edgeHandleEnabled === false,

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useAppSettings } from "../context/AppSettings";
+import { useSettings } from "../context/AppSettings";
 import { executeCrossFeatureAction } from "./execution";
 import type { ActionPorts } from "./ports";
 import type { ActionExecutionResult, SettingsTabId } from "./types";
@@ -46,7 +46,7 @@ const mapResultToFeedback = (
  * an action is in flight.
  */
 export const useCrossFeatureActions = (ports: ActionPorts) => {
-  const { settings } = useAppSettings();
+  const settings = useSettings();
   const [runningActionId, setRunningActionId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<CrossFeatureFeedback | null>(null);
   const inFlightRef = useRef(false);

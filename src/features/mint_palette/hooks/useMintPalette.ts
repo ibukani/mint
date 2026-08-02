@@ -7,7 +7,10 @@ import {
   type MintActionContext,
   searchMintActions,
 } from "../../../core/actions/mintActions";
-import { useAppSettings } from "../../../core/context/AppSettings";
+import {
+  useSettings,
+  useUpdateSettings,
+} from "../../../core/context/AppSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import {
@@ -27,7 +30,8 @@ interface DisabledSettingsTarget {
 }
 
 export const useMintPalette = () => {
-  const { settings, updateSettings } = useAppSettings();
+  const settings = useSettings();
+  const updateSettings = useUpdateSettings();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);

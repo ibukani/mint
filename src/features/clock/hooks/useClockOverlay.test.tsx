@@ -34,7 +34,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 vi.mock("../../../core/context/AppSettings", () => ({
-  useAppSettings: () => ({ settings: createMockSettings() }),
+  useSettings: () => createMockSettings(),
 }));
 
 describe("useClockOverlay", () => {
