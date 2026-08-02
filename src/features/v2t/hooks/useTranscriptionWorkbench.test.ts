@@ -13,6 +13,8 @@ vi.mock("../api", () => ({
   isSupportedAudioFilePath: vi.fn(() => true),
   transcribeAudio: vi.fn(),
   transcribeAudioRecording: apiMocks.transcribeRecording,
+  openV2tWithAudioFile: vi.fn(async () => undefined),
+  takePendingV2tAudioFile: vi.fn(async () => null),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({

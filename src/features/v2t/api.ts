@@ -57,3 +57,9 @@ export const chooseAudioFile = () =>
     directory: false,
     filters: [AUDIO_FILE_FILTER],
   });
+
+export const openV2tWithAudioFile = (path: string) =>
+  invoke<void>("open_v2t_with_audio_file", { path });
+
+export const takePendingV2tAudioFile = () =>
+  invoke<string | null>("take_pending_v2t_audio_file");

@@ -1,7 +1,12 @@
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { chooseAudioFile, isSupportedAudioFilePath } from "../api";
+import {
+  chooseAudioFile,
+  isSupportedAudioFilePath,
+  takePendingV2tAudioFile,
+} from "../api";
 import { focusAndSelect } from "../focus";
 import type { VoiceToTextSettings } from "../types";
 import { useTranscriptionActions } from "./useTranscriptionActions";
@@ -114,6 +119,64 @@ export const useTranscriptionWorkbench = ({
     },
     [clearTranscriptionOutput, setAudioFilePasteStatus],
   );
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    const applyRequestedAudioFile = (path: unknown) => {
+      if (disposed) return;
+      // IPC/event payloads cross trust boundaries, so guard the runtime type
+      // before touching string methods (see cross-feature runtime validation).
+      if (typeof path !== "string") return;
+      const trimmed = path.trim();
+      if (!trimmed) return;
+      updateAudioFilePath(trimmed);
+      setAudioFilePasteStatus("ファイルシェルから音声ファイルを設定しました");
+      focusAndSelect("v2t-audio-file-input");
+    };
+
+    // 1. Take a path requested by another window (e.g. file shelf) before this
+    //    window finished loading.
+    void takePendingV2tAudioFile()
+      .then((pending) => {
+        if (pending) applyRequestedAudioFile(pending);
+      })
+      .catch((error) => {
+        console.warn("Failed to take pending audio file path:", error);
+      });
+
+    // 2. Listen for live requests while this workbench is already mounted.
+    const registerListener = async () => {
+      try {
+        const cleanup = await listen<string>(
+          "voice-to-text-audio-file-requested",
+          (event) => {
+            // Drain the pending store: the live event payload is authoritative
+            // and a leftover pending path would otherwise be re-applied on a
+            // later remount (e.g. after switching tabs or window recreation).
+            void takePendingV2tAudioFile().catch((error) => {
+              console.warn("Failed to drain pending audio file path:", error);
+            });
+            applyRequestedAudioFile(event.payload);
+          },
+        );
+        if (disposed) cleanup();
+        else unlisten = cleanup;
+      } catch (error) {
+        console.warn(
+          "Failed to register voice-to-text audio file listener:",
+          error,
+        );
+      }
+    };
+    void registerListener();
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [setAudioFilePasteStatus, updateAudioFilePath]);
 
   const clearAudioFilePath = useCallback(() => {
     updateAudioFilePath("");
