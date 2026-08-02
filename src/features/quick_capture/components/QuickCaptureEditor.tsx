@@ -2,6 +2,7 @@ import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import {
   Archive,
   Bold,
+  CalendarPlus,
   Check,
   ClipboardPaste,
   ClipboardPlus,
@@ -32,13 +33,19 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { ActionPorts } from "../../../core/actions/ports";
+import { useCrossFeatureActions } from "../../../core/actions/useCrossFeatureActions";
+import { calendarPort } from "../../calendar/ports";
+import { fileShelfPort } from "../../file_shelf/ports";
+import { voiceToTextPort } from "../../v2t/ports";
 import type { useQuickCapture } from "../hooks/useQuickCapture";
+import { quickCapturePort } from "../ports";
 import {
   QUICK_CAPTURE_TEMPLATES,
   type QuickCaptureTemplate,
 } from "../templates";
 import type { QuickCaptureNote } from "../types";
-import { countLinesAndChars, parseTags } from "../utils";
+import { countLinesAndChars, noteTitle, parseTags } from "../utils";
 
 type QuickCaptureController = ReturnType<typeof useQuickCapture>;
 
@@ -200,6 +207,16 @@ export const QuickCaptureEditor = ({
   onExportMarkdown,
   onRequestDelete,
 }: QuickCaptureEditorProps) => {
+  const {
+    runAction,
+    runningActionId,
+    feedback: crossFeatureFeedback,
+  } = useCrossFeatureActions({
+    quickCapture: quickCapturePort,
+    voiceToText: voiceToTextPort,
+    calendar: calendarPort,
+    fileShelf: fileShelfPort,
+  } satisfies ActionPorts);
   const { lines, chars } = countLinesAndChars(capture.content);
   const content = capture.content;
   const contentLines = content ? content.split("\n") : [""];
@@ -572,6 +589,7 @@ export const QuickCaptureEditor = ({
             aria-live="polite"
           >
             {capture.error ||
+              crossFeatureFeedback?.message ||
               actionStatus ||
               (capture.status === "saving"
                 ? "保存中…"
@@ -624,6 +642,23 @@ export const QuickCaptureEditor = ({
                   title="Markdownとして書き出し"
                 >
                   <Download size={14} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="quick-capture__editor-action"
+                  aria-label="予定を作成"
+                  disabled={
+                    isSaving || runningActionId === "quick-capture:create-event"
+                  }
+                  onClick={() =>
+                    void runAction("quick-capture:create-event", {
+                      title: noteTitle({ content: capture.content }),
+                      notes: capture.content,
+                    })
+                  }
+                  title="メモの内容から予定入力画面を開く"
+                >
+                  <CalendarPlus size={14} aria-hidden="true" />
                 </button>
               </>
             )}
