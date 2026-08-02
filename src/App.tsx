@@ -4,11 +4,16 @@ import { AppErrorState } from "./core/components/AppErrorState";
 import { AppLoading } from "./core/components/AppLoading";
 import { AutoFocusTrigger } from "./core/components/AutoFocusTrigger";
 import { ErrorToast } from "./core/components/ErrorToast";
-import { SettingsSaveStatus } from "./core/components/SettingsSaveStatus";
+import { SettingsSaveStatusBar } from "./core/components/SettingsSaveStatusBar";
+import { SidebarSaveStatus } from "./core/components/SidebarSaveStatus";
 import {
   AppSettingsProvider,
-  type SaveStatus,
-  useAppSettings,
+  useClearError,
+  useReloadSettings,
+  useSettings,
+  useSettingsError,
+  useSettingsLoading,
+  useUpdateSettings,
 } from "./core/context/AppSettings";
 import { SettingsNavigationProvider } from "./core/context/SettingsNavigation";
 import { useMainWindowEviction } from "./core/hooks/useMainWindowEviction";
@@ -35,36 +40,13 @@ import {
   syncGoogleCalendars,
 } from "./features/calendar/googleCalendar";
 
-const saveSidebarLabels: Record<SaveStatus, string> = {
-  idle: "変更時に自動保存",
-  pending: "変更を保存待ち",
-  saving: "保存中",
-  saved: "最新の状態です",
-  error: "再試行が必要です",
-};
-
-const saveSidebarTones: Record<
-  SaveStatus,
-  "neutral" | "pending" | "success" | "error"
-> = {
-  idle: "neutral",
-  pending: "pending",
-  saving: "pending",
-  saved: "success",
-  error: "error",
-};
-
 const AppContent: React.FC = () => {
-  const {
-    settings,
-    loading,
-    error,
-    saveStatus,
-    clearError,
-    reloadSettings,
-    retrySaveSettings,
-    updateSettings,
-  } = useAppSettings();
+  const settings = useSettings();
+  const loading = useSettingsLoading();
+  const error = useSettingsError();
+  const clearError = useClearError();
+  const reloadSettings = useReloadSettings();
+  const updateSettings = useUpdateSettings();
   const { label, activeTab, setActiveTab, focusRequest } = useSettingsWindow(
     settings?.theme,
   );
@@ -174,10 +156,9 @@ const AppContent: React.FC = () => {
             }
             return openOverlay(targetId);
           }}
-          statusLabel={saveSidebarLabels[saveStatus]}
-          statusTone={saveSidebarTones[saveStatus]}
+          statusSlot={<SidebarSaveStatus />}
         >
-          <SettingsSaveStatus status={saveStatus} onRetry={retrySaveSettings} />
+          <SettingsSaveStatusBar />
           {settingsLoadError ? (
             <AppErrorState
               message={settingsLoadError}

@@ -1,7 +1,7 @@
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow, Window } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAppSettings } from "../../../core/context/AppSettings";
+import { useSettings } from "../../../core/context/AppSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
 import type { CalendarOpenMode } from "../types";
@@ -15,7 +15,7 @@ interface CalendarShownPayload {
 }
 
 export const useCalendarOverlay = (canClose: () => boolean) => {
-  const { settings } = useAppSettings();
+  const settings = useSettings();
   const calendarEnabled = settings?.calendar.enabled;
   const clockEnabled = settings?.clock.enabled;
   const clockSizePercent = settings?.clock.sizePercent;

@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAppSettings } from "../../../core/context/AppSettings";
+import { useSettings } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useOverlayWindowEviction } from "../../../core/hooks/useOverlayWindowEviction";
 import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady";
@@ -9,7 +9,7 @@ import { useOverlayWindowReady } from "../../../core/hooks/useOverlayWindowReady
 const HIDE_ANIMATION_MS = 280;
 
 export const useClockOverlay = () => {
-  const { settings } = useAppSettings();
+  const settings = useSettings();
   const clockEnabled = settings?.clock.enabled;
   const autoHideSeconds = settings?.clock.autoHideSeconds;
   const [isAnimateVisible, setIsAnimateVisible] = useState(false);

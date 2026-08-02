@@ -17,7 +17,7 @@ const previewApi = vi.hoisted(() => ({
 vi.mock("../hooks/useFileShelf", () => ({ useFileShelf: vi.fn() }));
 vi.mock("../api", () => previewApi);
 vi.mock("../../../core/context/AppSettings", () => ({
-  useAppSettings: () => ({ settings: undefined }),
+  useSettings: () => undefined,
 }));
 
 const first: FileShelfItem = {

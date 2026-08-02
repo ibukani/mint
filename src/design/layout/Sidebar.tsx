@@ -35,7 +35,7 @@ export interface SidebarQuickAction<TTabId extends string = string> {
   };
 }
 
-type SidebarStatusTone = "neutral" | "pending" | "success" | "error";
+export type SidebarStatusTone = "neutral" | "pending" | "success" | "error";
 
 interface SidebarProps<TTabId extends string> {
   title: string;
@@ -44,16 +44,43 @@ interface SidebarProps<TTabId extends string> {
   onTabChange: (tabId: TTabId) => void;
   statusLabel?: string;
   statusTone?: SidebarStatusTone;
+  /** Optional self-subscribing save-status footer (replaces the default). */
+  statusSlot?: React.ReactNode;
 }
 
 const NAVIGATION_SCROLL_PADDING = 12;
 
-const statusTitles: Record<SidebarStatusTone, string> = {
+export const sidebarStatusTitles: Record<SidebarStatusTone, string> = {
   neutral: "自動保存",
   pending: "保存待ち",
   success: "保存済み",
   error: "保存エラー",
 };
+
+interface SidebarStatusFooterProps {
+  label: string;
+  tone: SidebarStatusTone;
+}
+
+/** Presentational sidebar save-status footer (dot + title + label). */
+export const SidebarStatusFooter: React.FC<SidebarStatusFooterProps> = ({
+  label,
+  tone,
+}) => (
+  <div
+    className="app-sidebar__footer"
+    aria-live={tone === "neutral" ? undefined : "polite"}
+  >
+    <span
+      className={`app-sidebar__status-dot app-sidebar__status-dot--${tone}`}
+      aria-hidden="true"
+    />
+    <span className="app-sidebar__footer-copy">
+      <strong>{sidebarStatusTitles[tone]}</strong>
+      <span>{label}</span>
+    </span>
+  </div>
+);
 
 const revealActiveTab = (activeTabButton: HTMLButtonElement) => {
   const navigation = activeTabButton.parentElement;
@@ -129,6 +156,7 @@ export const Sidebar = <TTabId extends string>({
   onTabChange,
   statusLabel = "設定は自動保存されます",
   statusTone = "neutral",
+  statusSlot,
 }: SidebarProps<TTabId>) => {
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
   const shortcutModifier = getPlatformShortcutModifier();
@@ -190,19 +218,9 @@ export const Sidebar = <TTabId extends string>({
           </button>
         ))}
       </div>
-      <div
-        className="app-sidebar__footer"
-        aria-live={statusTone === "neutral" ? undefined : "polite"}
-      >
-        <span
-          className={`app-sidebar__status-dot app-sidebar__status-dot--${statusTone}`}
-          aria-hidden="true"
-        />
-        <span className="app-sidebar__footer-copy">
-          <strong>{statusTitles[statusTone]}</strong>
-          <span>{statusLabel}</span>
-        </span>
-      </div>
+      {statusSlot ?? (
+        <SidebarStatusFooter label={statusLabel} tone={statusTone} />
+      )}
     </nav>
   );
 };

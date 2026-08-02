@@ -16,7 +16,7 @@ import { useEffect, useRef } from "react";
 import { Button, Field, ShortcutInput, Switch } from "../../design/components";
 import { TitleBar } from "../../design/layout";
 import { useWindowDrag } from "../../design/layout/useWindowDrag";
-import { useAppSettings } from "../context/AppSettings";
+import { useSettings } from "../context/AppSettings";
 import { openOverlay } from "../windowCommands";
 import { getRecommendedAction, ONBOARDING_FEATURES } from "./onboardingModel";
 import {
@@ -86,7 +86,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 }) => {
   const controller = useOnboardingController(onComplete);
   const windowDragHandlers = useWindowDrag();
-  const { settings } = useAppSettings();
+  const settings = useSettings();
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const committedThemeRef = useRef<string>("dark");
   const { draft, step } = controller;

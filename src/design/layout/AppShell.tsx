@@ -4,7 +4,12 @@ import { Panel } from "../components/Panel";
 import { ContentArea } from "./ContentArea";
 import { getPlatformShortcutModifier, isApplePlatform } from "./keyboard";
 import { SettingsQuickSwitcher } from "./SettingsQuickSwitcher";
-import { Sidebar, type SidebarQuickAction, type SidebarTab } from "./Sidebar";
+import {
+  Sidebar,
+  type SidebarQuickAction,
+  type SidebarStatusTone,
+  type SidebarTab,
+} from "./Sidebar";
 import { TitleBar } from "./TitleBar";
 import { useWindowDrag } from "./useWindowDrag";
 
@@ -23,7 +28,9 @@ interface AppShellProps<TTabId extends string> {
   onQuickAction?: (targetId: string) => Promise<void> | void;
   contextLabel?: string;
   statusLabel?: string;
-  statusTone?: "neutral" | "pending" | "success" | "error";
+  statusTone?: SidebarStatusTone;
+  /** Optional self-subscribing save-status footer (replaces the default). */
+  statusSlot?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -37,6 +44,7 @@ export const AppShell = <TTabId extends string>({
   contextLabel,
   statusLabel,
   statusTone,
+  statusSlot,
   children,
 }: AppShellProps<TTabId>) => {
   const windowDragHandlers = useWindowDrag();
@@ -87,6 +95,7 @@ export const AppShell = <TTabId extends string>({
           onTabChange={onTabChange}
           statusLabel={statusLabel}
           statusTone={statusTone}
+          statusSlot={statusSlot}
         />
         <ContentArea>{children}</ContentArea>
       </div>

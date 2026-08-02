@@ -26,7 +26,7 @@ const windowMocks = vi.hoisted(() => ({
 
 const settingsMocks = vi.hoisted(() => ({
   updateSettings: vi.fn(),
-  useAppSettings: vi.fn(),
+  useSettings: vi.fn(),
 }));
 
 const coreMocks = vi.hoisted(() => ({
@@ -42,7 +42,8 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 
 vi.mock("../../../core/context/AppSettings", () => ({
-  useAppSettings: settingsMocks.useAppSettings,
+  useSettings: settingsMocks.useSettings,
+  useUpdateSettings: () => settingsMocks.updateSettings,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -50,17 +51,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const renderOverlay = (settings: AppSettings | null = createMockSettings()) => {
-  settingsMocks.useAppSettings.mockReturnValue({
-    settings,
-    updateSettings: settingsMocks.updateSettings,
-    loading: false,
-    error: null,
-    saveStatus: "idle",
-    shortcutErrors: {},
-    clearError: vi.fn(),
-    reloadSettings: vi.fn(),
-    retrySaveSettings: vi.fn(),
-  });
+  settingsMocks.useSettings.mockReturnValue(settings);
   windowMocks.getCurrentWindow.mockReturnValue({
     isVisible: windowMocks.isVisible,
     hide: windowMocks.hide,

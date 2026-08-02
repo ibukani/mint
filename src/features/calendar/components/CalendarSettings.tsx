@@ -6,7 +6,7 @@ import {
   Palette,
 } from "lucide-react";
 import type React from "react";
-import { useAppSettings } from "../../../core/context/AppSettings";
+import { useShortcutError } from "../../../core/context/AppSettings";
 import { defaultAppSettings } from "../../../core/defaultSettings";
 import { useFeatureSettings } from "../../../core/hooks/useFeatureSettings";
 import {
@@ -20,7 +20,7 @@ import "./CalendarSettings.css";
 import { GoogleCalendarSettings } from "./GoogleCalendarSettings";
 
 export const CalendarSettings: React.FC = () => {
-  const { shortcutErrors } = useAppSettings();
+  const calendarCreateEventError = useShortcutError("calendarCreateEvent");
   const {
     featureSettings: calendar,
     handleChange,
@@ -78,12 +78,12 @@ export const CalendarSettings: React.FC = () => {
             <Field
               id="calendar-create-event-shortcut-input"
               label="予定登録ショートカットキー"
-              error={shortcutErrors.calendarCreateEvent}
+              error={calendarCreateEventError}
               helpText="カレンダーを開かず、予定入力画面へ直接移動します。"
             >
               <ShortcutInput
                 id="calendar-create-event-shortcut-input"
-                invalid={Boolean(shortcutErrors.calendarCreateEvent)}
+                invalid={Boolean(calendarCreateEventError)}
                 value={calendar.createEventShortcut}
                 onChange={(value) => handleChange("createEventShortcut", value)}
                 placeholderText="例: Alt+Up"
