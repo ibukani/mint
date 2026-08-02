@@ -1081,6 +1081,92 @@ if (
   );
 }
 
+// 14. Check cross-feature import boundaries (Issue #33)
+// Feature A must not import feature B's internals (components, hooks, api,
+// events, implementation modules). Only <feature>/ports and <feature>/types
+// may cross the feature boundary as the public contract between features.
+const CROSS_FEATURE_ALLOWED_MODULES = new Set(["ports", "types"]);
+
+const importSpecifierRegex = /(?:from|import)\s+["']([^"']+)["']/g;
+
+for (const sourceFile of listFilesRecursive(FEATURES_DIR, {
+  extensions: [".ts", ".tsx"],
+  ignoredDirs: new Set(["node_modules", "dist", "test"]),
+})) {
+  if (sourceFile.endsWith(".test.ts") || sourceFile.endsWith(".test.tsx")) {
+    continue;
+  }
+  const relativeFile = toPosixRelative(sourceFile);
+  const featureRel = path.relative(FEATURES_DIR, sourceFile);
+  const [sourceFeature] = featureRel.split(path.sep);
+  if (!sourceFeature) continue;
+
+  const content = fs.readFileSync(sourceFile, "utf-8");
+  importSpecifierRegex.lastIndex = 0;
+  let importMatch = importSpecifierRegex.exec(content);
+  while (importMatch !== null) {
+    const specifier = importMatch[1];
+    importMatch = importSpecifierRegex.exec(content);
+    if (!specifier?.startsWith(".")) continue;
+    const resolved = resolveCssImport(sourceFile, specifier);
+    if (!resolved || !isPathInside(FEATURES_DIR, resolved)) continue;
+
+    const targetRel = path.relative(FEATURES_DIR, resolved);
+    const [targetFeature, ...rest] = targetRel.split(path.sep);
+    if (!targetFeature || targetFeature === sourceFeature) continue;
+
+    const targetModule = rest.join("/").replace(/\.(ts|tsx)$/, "");
+    const isAllowed = [...CROSS_FEATURE_ALLOWED_MODULES].some(
+      (name) => targetModule === name || targetModule.startsWith(`${name}/`),
+    );
+    if (!isAllowed) {
+      reportError(
+        `Cross-feature boundary: "${relativeFile}" imports "${specifier}" (feature "${targetFeature}"). Only <feature>/ports and <feature>/types may be imported across features.`,
+      );
+    } else {
+      reportSuccess(
+        `Cross-feature boundary: "${relativeFile}" uses the public contract of feature "${targetFeature}".`,
+      );
+    }
+  }
+}
+
+// 15. Check core/actions dependency direction (Issue #33)
+// The orchestrator may depend on feature types and ports only, never on
+// feature components, hooks, api wrappers, or implementation modules.
+const CORE_ACTIONS_DIR = path.join(CORE_DIR, "actions");
+for (const sourceFile of listFilesRecursive(CORE_ACTIONS_DIR, {
+  extensions: [".ts"],
+  ignoredDirs: new Set(["node_modules", "dist"]),
+})) {
+  if (sourceFile.endsWith(".test.ts")) continue;
+  const relativeFile = toPosixRelative(sourceFile);
+  const content = fs.readFileSync(sourceFile, "utf-8");
+  importSpecifierRegex.lastIndex = 0;
+  let importMatch = importSpecifierRegex.exec(content);
+  while (importMatch !== null) {
+    const specifier = importMatch[1];
+    importMatch = importSpecifierRegex.exec(content);
+    if (!specifier?.startsWith(".")) continue;
+    const resolved = resolveCssImport(sourceFile, specifier);
+    if (!resolved || !isPathInside(FEATURES_DIR, resolved)) continue;
+
+    const targetRel = path.relative(FEATURES_DIR, resolved);
+    const [targetFeature, ...rest] = targetRel.split(path.sep);
+    if (!targetFeature) continue;
+
+    const targetModule = rest.join("/").replace(/\.(ts|tsx)$/, "");
+    const isAllowed = [...CROSS_FEATURE_ALLOWED_MODULES].some(
+      (name) => targetModule === name || targetModule.startsWith(`${name}/`),
+    );
+    if (!isAllowed) {
+      reportError(
+        `Cross-feature boundary: "${relativeFile}" imports feature internals "${specifier}". core/actions may depend on <feature>/ports and <feature>/types only.`,
+      );
+    }
+  }
+}
+
 if (errorsCount > 0) {
   console.log("\n----------------------------------------");
   console.log(
