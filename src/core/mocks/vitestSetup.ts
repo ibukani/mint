@@ -155,6 +155,10 @@ mockIPCWithEvents(async (cmd, args) => {
       return null;
     case "take_pending_settings_tab":
       return null;
+    case "open_v2t_with_audio_file":
+      return null;
+    case "take_pending_v2t_audio_file":
+      return null;
     default:
       return null;
   }
