@@ -1,4 +1,5 @@
 import {
+  AudioLines,
   Copy,
   ExternalLink,
   Eye,
@@ -6,10 +7,17 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Save,
   Trash2,
 } from "lucide-react";
 import type React from "react";
+import type { ActionPorts } from "../../../core/actions/ports";
+import { useCrossFeatureActions } from "../../../core/actions/useCrossFeatureActions";
+import { calendarPort } from "../../calendar/ports";
+import { quickCapturePort } from "../../quick_capture/ports";
+import { voiceToTextPort } from "../../v2t/ports";
 import type { FileShelfController } from "../hooks/useFileShelf";
+import { fileShelfPort } from "../ports";
 import type { FileShelfItem } from "../types";
 
 interface FileShelfSelectionActionsProps {
@@ -20,6 +28,13 @@ interface FileShelfSelectionActionsProps {
   onTogglePreview: (item: FileShelfItem) => void;
 }
 
+const composePorts = (): ActionPorts => ({
+  quickCapture: quickCapturePort,
+  voiceToText: voiceToTextPort,
+  calendar: calendarPort,
+  fileShelf: fileShelfPort,
+});
+
 export const FileShelfSelectionActions: React.FC<
   FileShelfSelectionActionsProps
 > = ({
@@ -29,9 +44,18 @@ export const FileShelfSelectionActions: React.FC<
   onStartRenaming,
   onTogglePreview,
 }) => {
+  const { runAction, runningActionId, feedback } = useCrossFeatureActions(
+    composePorts(),
+  );
   if (selectedItems.length === 0) return null;
   const allPinned = selectedItems.every((item) => item.pinned);
   const singleItem = selectedItems.length === 1 ? selectedItems[0] : null;
+  const canSaveAsNote = singleItem
+    ? singleItem.kind === "text" || singleItem.kind === "url"
+    : false;
+  const canTranscribe = singleItem
+    ? singleItem.kind === "file" && Boolean(singleItem.sourcePath)
+    : false;
   return (
     <div className="file-shelf__selection-actions">
       <span>{selectedItems.length}件を選択</span>
@@ -78,6 +102,36 @@ export const FileShelfSelectionActions: React.FC<
               <FolderSearch size={15} aria-hidden="true" />
             </button>
           )}
+          {canSaveAsNote && (
+            <button
+              type="button"
+              disabled={runningActionId === "file-shelf:save-as-note"}
+              onClick={() =>
+                void runAction("file-shelf:save-as-note", {
+                  itemId: singleItem.id,
+                })
+              }
+              aria-label="選択項目をメモとして保存"
+              title="テキストまたはURLを新しいメモとして保存"
+            >
+              <Save size={15} aria-hidden="true" />
+            </button>
+          )}
+          {canTranscribe && (
+            <button
+              type="button"
+              disabled={runningActionId === "file-shelf:transcribe-audio"}
+              onClick={() =>
+                void runAction("file-shelf:transcribe-audio", {
+                  itemId: singleItem.id,
+                })
+              }
+              aria-label="選択した音声を文字起こし"
+              title="音声ファイルを音声入力へセットして文字起こし"
+            >
+              <AudioLines size={15} aria-hidden="true" />
+            </button>
+          )}
         </>
       )}
       <button
@@ -118,6 +172,15 @@ export const FileShelfSelectionActions: React.FC<
         >
           <Trash2 size={15} aria-hidden="true" />
         </button>
+      )}
+      {feedback && (
+        <span
+          className={`file-shelf__action-feedback is-${feedback.tone}`}
+          role="status"
+          aria-live="polite"
+        >
+          {feedback.message}
+        </span>
       )}
     </div>
   );

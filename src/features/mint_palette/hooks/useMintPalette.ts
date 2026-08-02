@@ -17,8 +17,7 @@ import {
 } from "../../../core/navigation/quickActions";
 import type { SettingsTabId } from "../../../core/navigation/settingsTabs";
 import { openOverlay, openSettingsTab } from "../../../core/windowCommands";
-import { toMachineDate } from "../../calendar/calendar";
-import { openCalendarEditor } from "../../calendar/events";
+import { calendarPort } from "../../calendar/ports";
 
 const HIDE_ANIMATION_MS = 220;
 
@@ -149,8 +148,7 @@ export const useMintPalette = () => {
     updateSettings,
     openOverlay: (target) => openOverlay(target),
     openSettingsTab: (tab, targetId) => openSettingsTab(tab, targetId),
-    openCalendarEditor: () =>
-      openCalendarEditor({ mode: "create", date: toMachineDate(new Date()) }),
+    openCalendarEditor: () => calendarPort.openCreateEvent({ mode: "create" }),
   };
 
   const selectAction = async (action: MintAction) => {

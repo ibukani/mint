@@ -710,6 +710,23 @@
   font-size: var(--font-size-xs);
 }
 
+.file-shelf__selection-actions .file-shelf__action-feedback {
+  margin-right: auto;
+  font-size: var(--font-size-xs);
+}
+
+.file-shelf__selection-actions .file-shelf__action-feedback.is-success {
+  color: var(--color-success);
+}
+
+.file-shelf__selection-actions .file-shelf__action-feedback.is-error {
+  color: var(--color-error);
+}
+
+.file-shelf__selection-actions .file-shelf__action-feedback.is-warning {
+  color: var(--color-warning);
+}
+
 .file-shelf__selection-actions .is-danger {
   color: var(--color-error);
 }

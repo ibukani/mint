@@ -581,7 +581,8 @@ describe("VoiceToTextSettings", () => {
       await screen.findByText("クイックキャプチャーに保存しました"),
     ).toBeVisible();
     expect(saveButton).toBeDisabled();
-    expect(invoke).toHaveBeenCalledTimes(4);
+    // load_settings + load_api_key + take_pending_v2t_audio_file + transcribe + note
+    expect(invoke).toHaveBeenCalledTimes(5);
     expect(eventMocks.emit).toHaveBeenCalledWith(
       QUICK_CAPTURE_NOTE_CREATED_EVENT,
       {
