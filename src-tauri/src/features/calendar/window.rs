@@ -125,6 +125,12 @@ pub struct CalendarEditorPayload {
     pub date: Option<String>,
     pub event: Option<CalendarEvent>,
     pub template: Option<CalendarEvent>,
+    /// Optional pre-filled draft fields used by cross-feature actions such as
+    /// "create event from note". Ignored for edit/duplicate modes.
+    #[serde(default)]
+    pub draft_title: Option<String>,
+    #[serde(default)]
+    pub draft_notes: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -176,7 +182,7 @@ pub async fn open_calendar_editor_window(
     state: tauri::State<'_, CalendarEditorState>,
     payload: Option<CalendarEditorPayload>,
 ) -> Result<(), String> {
-    crate::core::window::ensure_window_allowed(&window, &["calendar", "main", "mintPalette"])?;
+    crate::core::window::ensure_window_allowed(&window, &["calendar", "main", "mintPalette", "quickCapture"])?;
     open_calendar_editor_window_inner(&app, &state, payload)
 }
 
@@ -190,6 +196,8 @@ fn open_calendar_editor_window_inner(
         date: None,
         event: None,
         template: None,
+        draft_title: None,
+        draft_notes: None,
     });
 
     let payload_is_valid = match &payload.mode {

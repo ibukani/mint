@@ -251,6 +251,8 @@ pub fn run() {
             features::google_calendar::auth::disconnect_google_calendar,
             features::v2t::transcribe_audio_file,
             features::v2t::transcribe_audio_recording,
+            features::v2t::open_v2t_with_audio_file,
+            features::v2t::take_pending_v2t_audio_file,
             features::game_launcher::scan::list_installed_games,
             features::game_launcher::launch::launch_game,
             features::quick_capture::load_quick_capture_state,

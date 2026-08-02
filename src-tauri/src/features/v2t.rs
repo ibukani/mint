@@ -2,8 +2,9 @@ use crate::core::settings::{load_api_key, VoiceToTextSettings};
 use reqwest::{multipart, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
 const API_SERVICE: &str = "voice_to_text";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -247,6 +248,52 @@ pub fn handle_voice_to_text_shortcut(app: &AppHandle) {
     if let Err(e) = app.emit_to("main", "voice-to-text-shortcut", ()) {
         eprintln!("Failed to emit voice-to-text shortcut event: {}", e);
     }
+}
+
+static PENDING_V2T_AUDIO_FILE: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+/// Opens the Voice to Text tab in the main window with an audio file already
+/// set as the transcription source. Available from the main window, the
+/// MintPalette overlay, quick capture and the file shelf (cross-feature
+/// "transcribe shelf audio" action).
+#[tauri::command]
+pub fn open_v2t_with_audio_file(
+    app: AppHandle,
+    window: WebviewWindow,
+    path: String,
+) -> Result<(), String> {
+    crate::core::window::ensure_window_allowed(
+        &window,
+        &["main", "mintPalette", "quickCapture", "fileShelf", "calendar"],
+    )?;
+
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("音声ファイルのパスを指定してください。".to_string());
+    }
+
+    *PENDING_V2T_AUDIO_FILE
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .unwrap_or_else(|error| error.into_inner()) = Some(trimmed.to_string());
+
+    handle_voice_to_text_shortcut(&app);
+    app.emit_to("main", "voice-to-text-audio-file-requested", trimmed)
+        .map_err(|error| format!("音声ファイルの設定に失敗しました: {error}"))
+}
+
+/// Consumes a pending Voice to Text audio file path requested by another
+/// window (e.g. the file shelf). Only the main window may call this.
+#[tauri::command]
+pub fn take_pending_v2t_audio_file(
+    window: WebviewWindow,
+) -> Result<Option<String>, String> {
+    crate::core::window::ensure_window_allowed(&window, &["main"])?;
+    Ok(PENDING_V2T_AUDIO_FILE
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .take())
 }
 
 #[cfg(test)]
