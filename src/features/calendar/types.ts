@@ -76,6 +76,10 @@ export interface CalendarEditorPayload {
   date?: string;
   event?: CalendarEvent;
   template?: CalendarEvent;
+  /** Optional pre-filled draft fields used by cross-feature actions such as
+   *  "create event from note". Ignored for edit/duplicate modes. */
+  draftTitle?: string;
+  draftNotes?: string;
 }
 
 export interface CalendarEventRange {

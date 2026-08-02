@@ -16,7 +16,12 @@ import { CalendarEventEditor } from "./CalendarEventEditor";
 import "./CalendarOverlay.css";
 
 type EditorState =
-  | { kind: "create"; date: string }
+  | {
+      kind: "create";
+      date: string;
+      draftTitle?: string;
+      draftNotes?: string;
+    }
   | { kind: "edit"; event: CalendarEvent }
   | { kind: "duplicate"; event: CalendarEvent };
 
@@ -92,6 +97,8 @@ export const CalendarEditorOverlay: React.FC = () => {
           setEditorState({
             kind: "create",
             date: payload.date || getTodayMachineDate(),
+            draftTitle: payload.draftTitle,
+            draftNotes: payload.draftNotes,
           });
         } else if (payload.mode === "edit" && payload.event) {
           setEditorState({ kind: "edit", event: payload.event });
@@ -117,6 +124,8 @@ export const CalendarEditorOverlay: React.FC = () => {
           setEditorState({
             kind: "create",
             date: payload.date || getTodayMachineDate(),
+            draftTitle: payload.draftTitle,
+            draftNotes: payload.draftNotes,
           });
         } else if (payload.mode === "edit" && payload.event) {
           setEditorState({ kind: "edit", event: payload.event });
@@ -201,6 +210,12 @@ export const CalendarEditorOverlay: React.FC = () => {
           }
           initialDate={
             editorState.kind === "create" ? editorState.date : undefined
+          }
+          initialTitle={
+            editorState.kind === "create" ? editorState.draftTitle : undefined
+          }
+          initialNotes={
+            editorState.kind === "create" ? editorState.draftNotes : undefined
           }
           onCancel={() => void requestClose()}
           onDirtyChange={handleDirtyChange}

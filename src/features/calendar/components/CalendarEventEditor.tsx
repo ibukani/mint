@@ -23,6 +23,10 @@ interface CalendarEventEditorProps {
   event?: CalendarEvent;
   template?: CalendarEvent;
   initialDate?: string;
+  /** Optional pre-filled fields applied when creating a new event
+   *  (e.g. the "create event from note" cross-feature action). */
+  initialTitle?: string;
+  initialNotes?: string;
   showBackButton?: boolean;
   onCancel: () => void;
   onDirtyChange: (dirty: boolean) => void;
@@ -50,6 +54,8 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
   event,
   template,
   initialDate,
+  initialTitle,
+  initialNotes,
   showBackButton = false,
   onCancel,
   onDirtyChange,
@@ -58,10 +64,12 @@ export const CalendarEventEditor: React.FC<CalendarEventEditorProps> = ({
 }) => {
   const initialDraft = useMemo(() => {
     const sourceEvent = event ?? template;
-    return sourceEvent
-      ? eventToDraft(sourceEvent)
-      : createDefaultEventDraft(initialDate);
-  }, [event, initialDate, template]);
+    if (sourceEvent) return eventToDraft(sourceEvent);
+    const draft = createDefaultEventDraft(initialDate);
+    if (initialTitle !== undefined) draft.title = initialTitle;
+    if (initialNotes !== undefined) draft.notes = initialNotes;
+    return draft;
+  }, [event, initialDate, template, initialTitle, initialNotes]);
   const [draft, setDraft] = useState<CalendarEventDraft>(initialDraft);
   const [validationError, setValidationError] =
     useState<CalendarEventValidationError | null>(null);
