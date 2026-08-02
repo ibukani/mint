@@ -1,13 +1,19 @@
 import { useCallback } from "react";
-import { useAppSettings } from "../context/AppSettings";
+import {
+  useSettingsSelector,
+  useShortcutError,
+  useUpdateSettings,
+} from "../context/AppSettings";
 import type { AppSettings, FeatureSettingsKey } from "../settingsModel";
 
 export function useFeatureSettings<K extends FeatureSettingsKey>(
   featureKey: K,
 ) {
-  const { settings, updateSettings, shortcutErrors } = useAppSettings();
-  const featureSettings = settings ? settings[featureKey] : null;
-  const shortcutError = shortcutErrors[featureKey] || "";
+  const featureSettings = useSettingsSelector(
+    useCallback((state) => state.settings?.[featureKey] ?? null, [featureKey]),
+  );
+  const shortcutError = useShortcutError(featureKey);
+  const updateSettings = useUpdateSettings();
 
   const updateFeatureSettings = useCallback(
     (patch: Partial<AppSettings[K]>) => {
