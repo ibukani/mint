@@ -43,6 +43,7 @@ pub(super) fn open_store(path: &Path) -> Result<Connection, String> {
              );
              CREATE TABLE IF NOT EXISTS quick_capture_notes (
                id TEXT PRIMARY KEY NOT NULL,
+               title TEXT,
                content TEXT NOT NULL,
                pinned INTEGER NOT NULL DEFAULT 0,
                archived INTEGER NOT NULL DEFAULT 0,
@@ -89,6 +90,22 @@ pub(super) fn open_store(path: &Path) -> Result<Connection, String> {
                 "ALTER TABLE quick_capture_notes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
                 [],
             )
+            .map_err(|error| error.to_string())?;
+    }
+    let has_title_column = {
+        let mut statement = connection
+            .prepare("PRAGMA table_info(quick_capture_notes)")
+            .map_err(|error| error.to_string())?;
+        let columns = statement
+            .query_map([], |row| row.get::<_, String>(1))
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        columns.iter().any(|column| column == "title")
+    };
+    if !has_title_column {
+        connection
+            .execute("ALTER TABLE quick_capture_notes ADD COLUMN title TEXT", [])
             .map_err(|error| error.to_string())?;
     }
     connection
@@ -184,17 +201,18 @@ fn read_tags_for_note(connection: &Connection, note_id: &str) -> Result<Vec<Stri
 fn read_note_by_id(connection: &Connection, note_id: &str) -> Result<QuickCaptureNote, String> {
     let row = connection
         .query_row(
-            "SELECT id, content, pinned, archived, created_at, updated_at
+            "SELECT id, title, content, pinned, archived, created_at, updated_at
              FROM quick_capture_notes WHERE id = ?1",
             [note_id],
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, bool>(2)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, String>(2)?,
                     row.get::<_, bool>(3)?,
-                    row.get::<_, String>(4)?,
+                    row.get::<_, bool>(4)?,
                     row.get::<_, String>(5)?,
+                    row.get::<_, String>(6)?,
                 ))
             },
         )
@@ -203,11 +221,12 @@ fn read_note_by_id(connection: &Connection, note_id: &str) -> Result<QuickCaptur
         .ok_or_else(|| "メモが見つかりません。".to_string())?;
     Ok(QuickCaptureNote {
         id: row.0,
-        content: row.1,
-        pinned: row.2,
-        archived: row.3,
-        created_at: row.4,
-        updated_at: row.5,
+        title: row.1,
+        content: row.2,
+        pinned: row.3,
+        archived: row.4,
+        created_at: row.5,
+        updated_at: row.6,
         tags: read_tags_for_note(connection, note_id)?,
         attachments: read_attachments(connection, note_id)?,
     })
@@ -249,8 +268,46 @@ fn read_attachments_by_note(
     Ok(attachments_by_note)
 }
 
+fn migrate_legacy_draft(
+    connection: &mut Connection,
+    draft: &QuickCaptureDraft,
+) -> Result<(), String> {
+    let transaction = connection
+        .transaction()
+        .map_err(|error| error.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    let created_at = if draft.updated_at.trim().is_empty() {
+        timestamp()
+    } else {
+        draft.updated_at.clone()
+    };
+    transaction
+        .execute(
+            "INSERT INTO quick_capture_notes(
+               id, content, pinned, archived, created_at, updated_at
+             ) VALUES(?1, ?2, 0, 0, ?3, ?3)",
+            params![id, draft.content, created_at],
+        )
+        .map_err(|error| error.to_string())?;
+    for tag in normalize_tags(draft.tags.clone()) {
+        transaction
+            .execute(
+                "INSERT INTO quick_capture_note_tags(note_id, tag) VALUES(?1, ?2)",
+                params![id, tag],
+            )
+            .map_err(|error| error.to_string())?;
+    }
+    transaction
+        .execute("DELETE FROM quick_capture_draft_tags", [])
+        .map_err(|error| error.to_string())?;
+    transaction
+        .execute("DELETE FROM quick_capture_draft", [])
+        .map_err(|error| error.to_string())?;
+    transaction.commit().map_err(|error| error.to_string())
+}
+
 pub(super) fn load_state_from_store(path: &Path) -> Result<QuickCaptureState, String> {
-    let connection = open_store(path)?;
+    let mut connection = open_store(path)?;
     let draft_row = connection
         .query_row(
             "SELECT content, updated_at FROM quick_capture_draft WHERE singleton = 1",
@@ -270,7 +327,7 @@ pub(super) fn load_state_from_store(path: &Path) -> Result<QuickCaptureState, St
             .map_err(|error| error.to_string())?;
         tags
     };
-    let draft = draft_row
+    let legacy_draft = draft_row
         .map(|(content, updated_at)| QuickCaptureDraft {
             content,
             tags: draft_tags,
@@ -282,18 +339,35 @@ pub(super) fn load_state_from_store(path: &Path) -> Result<QuickCaptureState, St
             updated_at: timestamp(),
         });
 
+    if legacy_draft.content.trim().is_empty() {
+        connection
+            .execute("DELETE FROM quick_capture_draft_tags", [])
+            .map_err(|error| error.to_string())?;
+        connection
+            .execute("DELETE FROM quick_capture_draft", [])
+            .map_err(|error| error.to_string())?;
+    } else {
+        migrate_legacy_draft(&mut connection, &legacy_draft)?;
+    }
+    let draft = QuickCaptureDraft {
+        content: String::new(),
+        tags: Vec::new(),
+        updated_at: timestamp(),
+    };
+
     let mut statement = connection
-        .prepare("SELECT id, content, pinned, archived, created_at, updated_at FROM quick_capture_notes ORDER BY pinned DESC, updated_at DESC")
+        .prepare("SELECT id, title, content, pinned, archived, created_at, updated_at FROM quick_capture_notes ORDER BY pinned DESC, updated_at DESC")
         .map_err(|error| error.to_string())?;
     let rows = statement
         .query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, bool>(2)?,
+                row.get::<_, Option<String>>(1)?,
+                row.get::<_, String>(2)?,
                 row.get::<_, bool>(3)?,
-                row.get::<_, String>(4)?,
+                row.get::<_, bool>(4)?,
                 row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
             ))
         })
         .map_err(|error| error.to_string())?
@@ -303,18 +377,21 @@ pub(super) fn load_state_from_store(path: &Path) -> Result<QuickCaptureState, St
     let mut attachments_by_note = read_attachments_by_note(&connection)?;
     let notes = rows
         .into_iter()
-        .map(|(id, content, pinned, archived, created_at, updated_at)| {
-            Ok(QuickCaptureNote {
-                tags: tags_by_note.remove(&id).unwrap_or_default(),
-                attachments: attachments_by_note.remove(&id).unwrap_or_default(),
-                id,
-                content,
-                pinned,
-                archived,
-                created_at,
-                updated_at,
-            })
-        })
+        .map(
+            |(id, title, content, pinned, archived, created_at, updated_at)| {
+                Ok(QuickCaptureNote {
+                    tags: tags_by_note.remove(&id).unwrap_or_default(),
+                    attachments: attachments_by_note.remove(&id).unwrap_or_default(),
+                    id,
+                    title,
+                    content,
+                    pinned,
+                    archived,
+                    created_at,
+                    updated_at,
+                })
+            },
+        )
         .collect::<Result<Vec<_>, String>>()?;
     Ok(QuickCaptureState { draft, notes })
 }
@@ -414,9 +491,10 @@ fn promote_note_in_store(
     let note_timestamp = timestamp();
     transaction
         .execute(
-            "INSERT INTO quick_capture_notes(id, content, pinned, archived, created_at, updated_at) VALUES(?1, ?2, ?3, 0, ?4, ?5)",
+            "INSERT INTO quick_capture_notes(id, title, content, pinned, archived, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, 0, ?5, ?6)",
             params![
                 id,
+                input.title.as_deref().map(str::trim),
                 input.content,
                 input.pinned,
                 note_timestamp,
@@ -442,6 +520,7 @@ fn promote_note_in_store(
     Ok(QuickCapturePromotion {
         note: QuickCaptureNote {
             id,
+            title: input.title.map(|title| title.trim().to_string()),
             content: input.content,
             tags,
             pinned: input.pinned,
@@ -480,14 +559,22 @@ fn create_note_in_store(
     let now = timestamp();
     transaction
         .execute(
-            "INSERT INTO quick_capture_notes(id, content, pinned, archived, created_at, updated_at) VALUES(?1, ?2, ?3, 0, ?4, ?5)",
-            params![id, input.content, input.pinned, now, now],
+            "INSERT INTO quick_capture_notes(id, title, content, pinned, archived, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, 0, ?5, ?6)",
+            params![
+                id,
+                input.title.as_deref().map(str::trim),
+                input.content,
+                input.pinned,
+                now,
+                now
+            ],
         )
         .map_err(|error| error.to_string())?;
     let tags = replace_tags(&transaction, &id, input.tags)?;
     transaction.commit().map_err(|error| error.to_string())?;
     Ok(QuickCaptureNote {
         id,
+        title: input.title.map(|title| title.trim().to_string()),
         content: input.content,
         tags,
         pinned: input.pinned,
@@ -529,13 +616,25 @@ fn update_note_in_store(
         .ok_or_else(|| "メモが見つかりません。".to_string())?;
     let updated_at = timestamp();
     transaction
-        .execute("UPDATE quick_capture_notes SET content = ?2, pinned = ?3, updated_at = ?4 WHERE id = ?1", params![id, input.content, input.pinned, updated_at])
+        .execute(
+            "UPDATE quick_capture_notes
+             SET title = ?2, content = ?3, pinned = ?4, updated_at = ?5
+             WHERE id = ?1",
+            params![
+                id,
+                input.title.as_deref().map(str::trim),
+                input.content,
+                input.pinned,
+                updated_at
+            ],
+        )
         .map_err(|error| error.to_string())?;
     let tags = replace_tags(&transaction, &id, input.tags)?;
     let attachments = read_attachments(&transaction, &id)?;
     transaction.commit().map_err(|error| error.to_string())?;
     Ok(QuickCaptureNote {
         id,
+        title: input.title.map(|title| title.trim().to_string()),
         content: input.content,
         tags,
         pinned: input.pinned,

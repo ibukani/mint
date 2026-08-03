@@ -2,6 +2,15 @@ export interface QuickCaptureSettings {
   enabled: boolean;
   shortcut: string;
   themeColor: string;
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+  showLineNumbers: boolean;
+  wordWrap: boolean;
+  tabWidth: number;
+  spellCheck: boolean;
+  highlightCurrentLine: boolean;
+  alwaysOnTop: boolean;
 }
 
 export interface QuickCaptureDraft {
@@ -12,6 +21,7 @@ export interface QuickCaptureDraft {
 
 export interface QuickCaptureNote {
   id: string;
+  title?: string;
   content: string;
   tags: string[];
   pinned: boolean;
@@ -48,6 +58,7 @@ export interface QuickCaptureDraftInput {
 }
 
 export interface QuickCaptureNoteInput extends QuickCaptureDraftInput {
+  title?: string;
   pinned: boolean;
 }
 

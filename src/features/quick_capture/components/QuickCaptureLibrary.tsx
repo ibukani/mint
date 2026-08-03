@@ -1,14 +1,12 @@
 import {
   Archive,
   Copy,
-  Download,
   Paperclip,
   Pin,
   Plus,
   Search,
   SlidersHorizontal,
   Trash2,
-  Upload,
 } from "lucide-react";
 import type React from "react";
 import type { RefObject } from "react";
@@ -101,8 +99,6 @@ interface QuickCaptureLibraryProps {
   usesMetaShortcut: boolean;
   isSaving: boolean;
   onCreateNewNote: () => void;
-  onExportBackup: () => void;
-  onImportBackup: () => void;
   onSearchFocus: () => void;
   onSearchBlur: () => void;
   onQueryChange: (query: string) => void;
@@ -144,8 +140,6 @@ export const QuickCaptureLibrary = ({
   usesMetaShortcut,
   isSaving,
   onCreateNewNote,
-  onExportBackup,
-  onImportBackup,
   onSearchFocus,
   onSearchBlur,
   onQueryChange,
@@ -211,22 +205,6 @@ export const QuickCaptureLibrary = ({
               <option value="created">作成順</option>
               <option value="title">タイトル順</option>
             </select>
-            <button
-              type="button"
-              aria-label="バックアップを書き出す"
-              title="バックアップを書き出す"
-              onClick={onExportBackup}
-            >
-              <Download size={13} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label="バックアップから復元する"
-              title="バックアップから復元する"
-              onClick={onImportBackup}
-            >
-              <Upload size={13} aria-hidden="true" />
-            </button>
           </div>
         </details>
       </div>

@@ -8,10 +8,9 @@ import { QUICK_CAPTURE_NOTE_CREATED_EVENT } from "../events";
 import type { CaptureSaveStatus } from "./useQuickCapture";
 
 interface QuickCaptureWindowLifecycleOptions {
-  persist: () => Promise<boolean>;
+  prepareClose: () => Promise<boolean>;
   reload: () => Promise<string | null>;
   reloadNotes: () => Promise<void>;
-  showDraft: () => void;
   releaseNotes: () => void;
   addNote: (note: QuickCaptureNoteCreatedPayload["note"]) => void;
   setError: (error: string | null) => void;
@@ -20,10 +19,9 @@ interface QuickCaptureWindowLifecycleOptions {
 }
 
 export const useQuickCaptureWindowLifecycle = ({
-  persist,
+  prepareClose,
   reload,
   reloadNotes,
-  showDraft,
   releaseNotes,
   addNote,
   setError,
@@ -71,7 +69,7 @@ export const useQuickCaptureWindowLifecycle = ({
     if (closingRef.current) return;
     closingRef.current = true;
     try {
-      const saved = await persist();
+      const saved = await prepareClose();
       if (!saved) return;
       visibleRef.current = false;
       setWindowVisible(false);
@@ -89,7 +87,7 @@ export const useQuickCaptureWindowLifecycle = ({
     } finally {
       closingRef.current = false;
     }
-  }, [persist, releaseNotes, setCanRetrySave, setError, setStatus]);
+  }, [prepareClose, releaseNotes, setCanRetrySave, setError, setStatus]);
 
   closeRef.current = close;
 
@@ -126,7 +124,6 @@ export const useQuickCaptureWindowLifecycle = ({
       if (autoHideSuppressionDepthRef.current === 0) {
         autoHideSuppressedRef.current = false;
       }
-      showDraft();
       if (!firstShown || notesReleasedRef.current) {
         notesReleasedRef.current = false;
         void reloadNotes();
@@ -163,14 +160,9 @@ export const useQuickCaptureWindowLifecycle = ({
       if (autoHideSuppressionDepthRef.current > 0) {
         autoHideSuppressedRef.current = true;
       }
-      if (
-        visibleRef.current &&
-        !windowPinnedRef.current &&
-        !closingRef.current &&
-        !autoHideSuppressedRef.current
-      ) {
-        void closeRef.current();
-      }
+      // Quick Capture is an editor, not a transient launcher. Moving to
+      // another app must not discard the editing surface while the user is
+      // referring to another window.
     });
     const closeRequested =
       typeof currentWindow.onCloseRequested === "function"
@@ -188,7 +180,7 @@ export const useQuickCaptureWindowLifecycle = ({
         void closeRequested.then((unlisten) => unlisten());
       }
     };
-  }, [addNote, reload, reloadNotes, showDraft]);
+  }, [addNote, reload, reloadNotes]);
 
   useOverlayWindowEviction(windowVisible);
   useOverlayWindowReady();

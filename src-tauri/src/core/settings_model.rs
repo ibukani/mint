@@ -172,6 +172,15 @@ pub struct QuickCaptureSettings {
     pub shortcut: String,
     #[serde(default = "default_quick_capture_color")]
     pub theme_color: String,
+    pub font_family: String,
+    pub font_size: u32,
+    pub line_height: f32,
+    pub show_line_numbers: bool,
+    pub word_wrap: bool,
+    pub tab_width: u32,
+    pub spell_check: bool,
+    pub highlight_current_line: bool,
+    pub always_on_top: bool,
 }
 
 impl Default for QuickCaptureSettings {
@@ -180,6 +189,15 @@ impl Default for QuickCaptureSettings {
             enabled: true,
             shortcut: "Alt+2".to_string(),
             theme_color: default_quick_capture_color(),
+            font_family: "ui-monospace".to_string(),
+            font_size: 16,
+            line_height: 1.75,
+            show_line_numbers: true,
+            word_wrap: true,
+            tab_width: 2,
+            spell_check: true,
+            highlight_current_line: false,
+            always_on_top: false,
         }
     }
 }

@@ -1,5 +1,6 @@
-import { Command, Pin, X } from "lucide-react";
+import { Command, PanelRightOpen, X } from "lucide-react";
 import type React from "react";
+import { useSettings } from "../../../core/context/AppSettings";
 import { ConfirmDialog } from "../../../design/components";
 import { OverlayCard, OverlayFrame } from "../../../design/layout";
 import { useQuickCaptureOverlayController } from "../hooks/useQuickCaptureOverlayController";
@@ -13,6 +14,7 @@ import "./QuickCaptureOverlay.css";
 export { noteTitle };
 
 export const QuickCaptureOverlay: React.FC = () => {
+  const settings = useSettings();
   const {
     capture,
     continueList,
@@ -38,6 +40,19 @@ export const QuickCaptureOverlay: React.FC = () => {
     shortcutModifier,
     usesMetaShortcut,
     isSaving,
+    libraryOpen,
+    setLibraryOpen,
+    editorSearchOpen,
+    editorSearchQuery,
+    editorSearchRef,
+    replaceMode,
+    replaceQuery,
+    setEditorSearchQuery,
+    setReplaceQuery,
+    focusEditorMatch,
+    closeEditorSearch,
+    replaceEditorMatch,
+    replaceAllEditorMatches,
     activeNote,
     filteredNotes,
     activeNotesCount,
@@ -57,9 +72,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     copySavedNote,
     exportMarkdown,
     formatBlock,
-    exportBackup,
     formatSelection,
-    requestImportBackup,
     requestDeleteNote,
     confirmDestructiveAction,
     cancelConfirmation,
@@ -67,7 +80,7 @@ export const QuickCaptureOverlay: React.FC = () => {
     commandPaletteOpen,
     handleLibrarySearchFocus,
     handleLibrarySearchBlur,
-    focusSearch,
+    focusLibrarySearch,
     handleQueryChange,
     handleClearFilters,
     handleTogglePinnedOnly,
@@ -101,14 +114,51 @@ export const QuickCaptureOverlay: React.FC = () => {
         <header className="quick-capture__header">
           <div className="quick-capture__heading">
             <div className="quick-capture__heading-copy">
-              <h1>
-                {capture.activeId
-                  ? noteTitle({ content: capture.content })
-                  : "クイックキャプチャー"}
+              <h1
+                aria-label={
+                  capture.activeId
+                    ? noteTitle({
+                        title: capture.title,
+                        content: capture.content,
+                      })
+                    : "クイックキャプチャー"
+                }
+              >
+                {capture.activeId ? (
+                  <input
+                    aria-label="メモのタイトル"
+                    className="quick-capture__title-input"
+                    value={capture.title ?? ""}
+                    placeholder={noteTitle({ content: capture.content })}
+                    onChange={(event) => capture.setTitle(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") event.currentTarget.blur();
+                    }}
+                  />
+                ) : (
+                  "クイックキャプチャー"
+                )}
               </h1>
             </div>
           </div>
           <div className="quick-capture__header-actions">
+            <button
+              type="button"
+              className={`quick-capture__library-trigger${libraryOpen ? " is-active" : ""}`}
+              aria-label={libraryOpen ? "メモ一覧を閉じる" : "メモ一覧を開く"}
+              aria-pressed={libraryOpen}
+              aria-keyshortcuts="Control+Shift+F Meta+Shift+F"
+              title={`メモ一覧（${shortcutModifier}+Shift+F）`}
+              onClick={() => {
+                setLibraryOpen((open) => !open);
+                requestAnimationFrame(() => {
+                  if (!libraryOpen) focusLibrarySearch();
+                });
+              }}
+            >
+              <PanelRightOpen size={14} aria-hidden="true" />
+              <span>メモ一覧</span>
+            </button>
             <button
               type="button"
               className="quick-capture__command-trigger"
@@ -121,29 +171,40 @@ export const QuickCaptureOverlay: React.FC = () => {
               <span>コマンド</span>
               <kbd>{shortcutModifier} K</kbd>
             </button>
-            <button
-              type="button"
-              className={`quick-capture__window-pin${capture.windowPinned ? " is-active" : ""}`}
-              aria-label={
-                capture.windowPinned
-                  ? "ウィンドウの固定を解除"
-                  : "ウィンドウを固定"
-              }
-              aria-pressed={capture.windowPinned}
-              title={
-                capture.windowPinned
-                  ? "固定を解除して、フォーカスを外したときに閉じる"
-                  : "別のウィンドウを操作しても閉じない"
-              }
-              onClick={() => capture.setWindowPinned(!capture.windowPinned)}
-            >
-              <Pin size={14} aria-hidden="true" />
-              <span>{capture.windowPinned ? "固定中" : "ウィンドウ固定"}</span>
-            </button>
           </div>
         </header>
 
-        <main className="quick-capture__body">
+        <main
+          className={`quick-capture__body${libraryOpen ? " has-library" : ""}${capture.openNotes.length > 1 ? " has-tabs" : ""}`}
+        >
+          {capture.openNotes.length > 1 && (
+            <nav className="quick-capture__tabs" aria-label="開いているメモ">
+              {capture.openNotes.map((note) => (
+                <div
+                  className={`quick-capture__tab${capture.activeId === note.id ? " is-active" : ""}`}
+                  key={note.id}
+                >
+                  <button
+                    type="button"
+                    aria-label={`${noteTitle(note)}を選択`}
+                    aria-current={capture.activeId === note.id}
+                    onClick={() => void capture.selectNote(note)}
+                  >
+                    {noteTitle(note)}
+                  </button>
+                  {capture.activeId === note.id && (
+                    <button
+                      type="button"
+                      aria-label={`${noteTitle(note)}をタブから閉じる`}
+                      onClick={() => void capture.closeActiveTab()}
+                    >
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </nav>
+          )}
           <QuickCaptureEditor
             capture={capture}
             preview={preview}
@@ -153,7 +214,19 @@ export const QuickCaptureOverlay: React.FC = () => {
             actionStatus={actionStatus}
             isSaving={isSaving}
             activeNote={activeNote}
-            onSetPreview={setPreview}
+            editorSettings={settings?.quickCapture}
+            searchOpen={editorSearchOpen}
+            searchQuery={editorSearchQuery}
+            replaceMode={replaceMode}
+            replaceQuery={replaceQuery}
+            searchRef={editorSearchRef}
+            onSearchQueryChange={setEditorSearchQuery}
+            onReplaceQueryChange={setReplaceQuery}
+            onSearchNext={() => focusEditorMatch(1)}
+            onSearchPrevious={() => focusEditorMatch(-1)}
+            onCloseSearch={closeEditorSearch}
+            onReplace={replaceEditorMatch}
+            onReplaceAll={replaceAllEditorMatches}
             onPasteClipboard={() => void pasteClipboard()}
             onCaptureClipboard={() => void captureClipboard()}
             onCopyClipboard={() => void copyClipboard()}
@@ -169,48 +242,48 @@ export const QuickCaptureOverlay: React.FC = () => {
               if (activeNote) requestDeleteNote(activeNote);
             }}
           />
-          <QuickCaptureLibrary
-            notes={capture.notes}
-            filteredNotes={filteredNotes}
-            activeNotesCount={activeNotesCount}
-            activeId={capture.activeId}
-            allTags={libraryTags}
-            searchText={searchText}
-            sortMode={sortMode}
-            onSortChange={setSortMode}
-            pinnedCount={pinnedCount}
-            attachmentCount={attachmentCount}
-            archivedCount={archivedCount}
-            query={query}
-            tagFilter={tagFilter}
-            pinnedOnly={pinnedOnly}
-            attachmentsOnly={attachmentsOnly}
-            archivedOnly={archivedOnly}
-            cursorNote={libraryCursorNote}
-            searchFocused={librarySearchFocused}
-            searchRef={librarySearchRef}
-            noteListRef={noteListRef}
-            noteListId={noteListId}
-            shortcutModifier={shortcutModifier}
-            usesMetaShortcut={usesMetaShortcut}
-            isSaving={isSaving}
-            onCreateNewNote={() => void createNewNote()}
-            onExportBackup={() => void exportBackup()}
-            onImportBackup={() => void requestImportBackup()}
-            onSearchFocus={handleLibrarySearchFocus}
-            onSearchBlur={handleLibrarySearchBlur}
-            onQueryChange={handleQueryChange}
-            onSearchKeyDown={handleLibrarySearchKeyDown}
-            onClearFilters={handleClearFilters}
-            onTogglePinnedOnly={handleTogglePinnedOnly}
-            onToggleAttachmentsOnly={handleToggleAttachmentsOnly}
-            onToggleArchivedOnly={handleToggleArchivedOnly}
-            onToggleTag={handleToggleTag}
-            onCursorChange={setLibraryCursorId}
-            onSelectNote={selectLibraryNote}
-            onCopyNote={(note) => void copySavedNote(note)}
-            onRequestDelete={requestDeleteNote}
-          />
+          {libraryOpen && (
+            <QuickCaptureLibrary
+              notes={capture.notes}
+              filteredNotes={filteredNotes}
+              activeNotesCount={activeNotesCount}
+              activeId={capture.activeId}
+              allTags={libraryTags}
+              searchText={searchText}
+              sortMode={sortMode}
+              onSortChange={setSortMode}
+              pinnedCount={pinnedCount}
+              attachmentCount={attachmentCount}
+              archivedCount={archivedCount}
+              query={query}
+              tagFilter={tagFilter}
+              pinnedOnly={pinnedOnly}
+              attachmentsOnly={attachmentsOnly}
+              archivedOnly={archivedOnly}
+              cursorNote={libraryCursorNote}
+              searchFocused={librarySearchFocused}
+              searchRef={librarySearchRef}
+              noteListRef={noteListRef}
+              noteListId={noteListId}
+              shortcutModifier={shortcutModifier}
+              usesMetaShortcut={usesMetaShortcut}
+              isSaving={isSaving}
+              onCreateNewNote={() => void createNewNote()}
+              onSearchFocus={handleLibrarySearchFocus}
+              onSearchBlur={handleLibrarySearchBlur}
+              onQueryChange={handleQueryChange}
+              onSearchKeyDown={handleLibrarySearchKeyDown}
+              onClearFilters={handleClearFilters}
+              onTogglePinnedOnly={handleTogglePinnedOnly}
+              onToggleAttachmentsOnly={handleToggleAttachmentsOnly}
+              onToggleArchivedOnly={handleToggleArchivedOnly}
+              onToggleTag={handleToggleTag}
+              onCursorChange={setLibraryCursorId}
+              onSelectNote={selectLibraryNote}
+              onCopyNote={(note) => void copySavedNote(note)}
+              onRequestDelete={requestDeleteNote}
+            />
+          )}
         </main>
       </OverlayCard>
       <QuickCaptureCommandPalette
@@ -221,14 +294,12 @@ export const QuickCaptureOverlay: React.FC = () => {
         shortcutModifier={shortcutModifier}
         onClose={closeCommandPalette}
         onCreateNewNote={() => void createNewNote()}
-        onFocusSearch={focusSearch}
+        onFocusSearch={focusLibrarySearch}
         onSetPreview={setPreview}
         onPasteClipboard={() => void pasteClipboard()}
         onCaptureClipboard={() => void captureClipboard()}
         onCopyClipboard={() => void copyClipboard()}
         onExportMarkdown={() => void exportMarkdown()}
-        onExportBackup={() => void exportBackup()}
-        onImportBackup={() => void requestImportBackup()}
         onInsertTemplate={insertTemplate}
         onRequestDelete={() => {
           if (activeNote) requestDeleteNote(activeNote);
@@ -236,25 +307,11 @@ export const QuickCaptureOverlay: React.FC = () => {
       />
       <ConfirmDialog
         open={confirmation !== null}
-        title={
-          confirmation?.kind === "import"
-            ? "バックアップから復元しますか？"
-            : "このメモを削除しますか？"
-        }
-        description={
-          confirmation?.kind === "import"
-            ? `現在の下書きと保存済みメモ${capture.notes.length}件を、選択したバックアップの内容で置き換えます。`
-            : `「${confirmation?.kind === "delete" ? noteTitle(confirmation.note) : "このメモ"}」を削除します。添付ファイルも保持され、直後なら「削除を取り消す」で復元できます。`
-        }
-        confirmLabel={
-          confirmation?.kind === "import" ? "置き換えて復元" : "削除する"
-        }
+        title="このメモを削除しますか？"
+        description={`「${confirmation ? noteTitle(confirmation.note) : "このメモ"}」を削除します。添付ファイルも保持され、直後なら「削除を取り消す」で復元できます。`}
+        confirmLabel="削除する"
         busy={confirmationBusy}
-        busyLabel={
-          confirmation?.kind === "import"
-            ? "復元しています…"
-            : "削除しています…"
-        }
+        busyLabel="削除しています…"
         error={confirmationError}
         onCancel={cancelConfirmation}
         onConfirm={() => void confirmDestructiveAction()}

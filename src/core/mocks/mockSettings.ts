@@ -24,6 +24,15 @@ const defaultMockSettings: AppSettings = {
     enabled: defaultAppSettings.quickCapture.enabled,
     shortcut: defaultAppSettings.quickCapture.shortcut,
     themeColor: defaultAppSettings.quickCapture.themeColor,
+    fontFamily: defaultAppSettings.quickCapture.fontFamily,
+    fontSize: defaultAppSettings.quickCapture.fontSize,
+    lineHeight: defaultAppSettings.quickCapture.lineHeight,
+    showLineNumbers: defaultAppSettings.quickCapture.showLineNumbers,
+    wordWrap: defaultAppSettings.quickCapture.wordWrap,
+    tabWidth: defaultAppSettings.quickCapture.tabWidth,
+    spellCheck: defaultAppSettings.quickCapture.spellCheck,
+    highlightCurrentLine: defaultAppSettings.quickCapture.highlightCurrentLine,
+    alwaysOnTop: defaultAppSettings.quickCapture.alwaysOnTop,
   },
 
   gameLauncher: {

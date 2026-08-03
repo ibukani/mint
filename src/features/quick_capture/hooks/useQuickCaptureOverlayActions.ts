@@ -1,10 +1,6 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { type RefObject, useCallback, useState } from "react";
-import {
-  chooseQuickCaptureBackupForOpen,
-  chooseQuickCaptureBackupForSave,
-  exportQuickCaptureMarkdown,
-} from "../api";
+import { exportQuickCaptureMarkdown } from "../api";
 import type { QuickCaptureTemplate } from "../templates";
 import type { QuickCaptureNote } from "../types";
 import {
@@ -19,17 +15,16 @@ import {
   safeFileName,
 } from "../utils";
 
-export type QuickCaptureConfirmation =
-  | { kind: "delete"; note: QuickCaptureNote }
-  | { kind: "import"; path: string };
+export type QuickCaptureConfirmation = {
+  kind: "delete";
+  note: QuickCaptureNote;
+};
 
 interface CaptureActionSource {
   content: string;
   tags: string;
   captureText: (text: string) => Promise<boolean>;
   setTags: (value: string) => void;
-  exportBackup: (path: string) => Promise<void>;
-  importBackup: (path: string) => Promise<string | null>;
   removeNote: (noteId: string) => Promise<string | null>;
   withAutoHideSuspended: <T>(operation: () => Promise<T>) => Promise<T>;
 }
@@ -214,35 +209,6 @@ export const useQuickCaptureOverlayActions = ({
     }
   };
 
-  const exportBackup = async () => {
-    try {
-      const path = await capture.withAutoHideSuspended(() =>
-        chooseQuickCaptureBackupForSave(),
-      );
-      if (path) await capture.exportBackup(path);
-    } catch (reason) {
-      setActionStatus(
-        reason instanceof Error ? reason.message : "バックアップに失敗しました",
-      );
-    }
-  };
-
-  const requestImportBackup = async () => {
-    try {
-      const path = await capture.withAutoHideSuspended(() =>
-        chooseQuickCaptureBackupForOpen(),
-      );
-      if (path && !Array.isArray(path)) {
-        setConfirmationError("");
-        setConfirmation({ kind: "import", path });
-      }
-    } catch (reason) {
-      setActionStatus(
-        reason instanceof Error ? reason.message : "復元に失敗しました",
-      );
-    }
-  };
-
   const requestDeleteNote = (note: QuickCaptureNote) => {
     setConfirmationError("");
     setConfirmation({ kind: "delete", note });
@@ -252,10 +218,7 @@ export const useQuickCaptureOverlayActions = ({
     if (!confirmation) return;
     setConfirmationBusy(true);
     setConfirmationError("");
-    const operationError =
-      confirmation.kind === "delete"
-        ? await capture.removeNote(confirmation.note.id)
-        : await capture.importBackup(confirmation.path);
+    const operationError = await capture.removeNote(confirmation.note.id);
     if (operationError) setConfirmationError(operationError);
     else setConfirmation(null);
     setConfirmationBusy(false);
@@ -276,7 +239,6 @@ export const useQuickCaptureOverlayActions = ({
     copyClipboard,
     copySavedNote,
     continueList,
-    exportBackup,
     exportMarkdown,
     formatBlock,
     formatSelection,
@@ -284,6 +246,5 @@ export const useQuickCaptureOverlayActions = ({
     insertTemplate,
     pasteClipboard,
     requestDeleteNote,
-    requestImportBackup,
   };
 };

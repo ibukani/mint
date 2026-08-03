@@ -378,9 +378,10 @@ fn import_backup_from_path(
             for note in &backup.state.notes {
                 transaction
                     .execute(
-                        "INSERT INTO quick_capture_notes(id, content, pinned, archived, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+                        "INSERT INTO quick_capture_notes(id, title, content, pinned, archived, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                         params![
                             note.id,
+                            note.title,
                             note.content,
                             note.pinned,
                             note.archived,
@@ -486,6 +487,7 @@ mod tests {
                 },
                 notes: vec![QuickCaptureNote {
                     id: note_id,
+                    title: None,
                     content: "復元後のメモ".into(),
                     tags: vec![],
                     pinned: false,

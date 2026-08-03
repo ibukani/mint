@@ -56,19 +56,10 @@ fn migrates_legacy_note_tables_with_archived_defaulting_to_false() {
 #[test]
 fn draft_and_note_crud_round_trip() {
     let path = test_path();
-    let draft = save_draft_in_store(
-        &path,
-        QuickCaptureDraftInput {
-            content: "途中".into(),
-            tags: vec![" #Work ".into(), "work".into()],
-        },
-    )
-    .unwrap();
-    assert_eq!(draft.tags, vec!["Work"]);
-
     let note = create_note_in_store(
         &path,
         QuickCaptureNoteInput {
+            title: None,
             content: "残すメモ".into(),
             tags: vec!["idea".into()],
             pinned: false,
@@ -79,6 +70,7 @@ fn draft_and_note_crud_round_trip() {
         &path,
         note.id.clone(),
         QuickCaptureNoteInput {
+            title: None,
             content: "更新済み".into(),
             tags: vec!["done".into()],
             pinned: true,
@@ -88,12 +80,42 @@ fn draft_and_note_crud_round_trip() {
     assert!(updated.pinned);
 
     let state = load_state_from_store(&path).unwrap();
-    assert_eq!(state.draft.content, "途中");
-    assert_eq!(state.notes[0].content, "更新済み");
-    assert_eq!(state.notes[0].tags, vec!["done"]);
+    assert!(state.draft.content.is_empty());
+    let updated_note = state.notes.iter().find(|item| item.id == note.id).unwrap();
+    assert_eq!(updated_note.content, "更新済み");
+    assert_eq!(updated_note.tags, vec!["done"]);
 
     delete_note_in_store(&path, note.id).unwrap();
     assert!(load_state_from_store(&path).unwrap().notes.is_empty());
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn migrates_legacy_draft_to_an_ordinary_note_on_load() {
+    let path = test_path();
+    let draft = save_draft_in_store(
+        &path,
+        QuickCaptureDraftInput {
+            content: "途中の文章".into(),
+            tags: vec![" #Work ".into(), "work".into()],
+        },
+    )
+    .unwrap();
+    assert_eq!(draft.tags, vec!["Work"]);
+
+    let state = load_state_from_store(&path).unwrap();
+    assert!(state.draft.content.is_empty());
+    assert_eq!(state.notes.len(), 1);
+    assert_eq!(state.notes[0].content, "途中の文章");
+    assert_eq!(state.notes[0].tags, vec!["Work"]);
+
+    let connection = open_store(&path).unwrap();
+    let draft_count: i64 = connection
+        .query_row("SELECT COUNT(*) FROM quick_capture_draft", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert_eq!(draft_count, 0);
     let _ = fs::remove_file(path);
 }
 
@@ -103,6 +125,7 @@ fn archive_toggle_preserves_note_content_timestamp() {
     let note = create_note_in_store(
         &path,
         QuickCaptureNoteInput {
+            title: None,
             content: "整理するメモ".into(),
             tags: vec!["inbox".into()],
             pinned: false,
@@ -130,6 +153,7 @@ fn deleted_notes_can_be_restored_with_their_attachments() {
     let note = create_note_in_store(
         &path,
         QuickCaptureNoteInput {
+            title: None,
             content: "復元するメモ".into(),
             tags: vec!["undo".into()],
             pinned: true,
@@ -165,18 +189,10 @@ fn deleted_notes_can_be_restored_with_their_attachments() {
 #[test]
 fn promoting_a_note_clears_the_draft_in_the_same_store_operation() {
     let path = test_path();
-    save_draft_in_store(
-        &path,
-        QuickCaptureDraftInput {
-            content: "変換前の下書き".into(),
-            tags: vec!["inbox".into()],
-        },
-    )
-    .unwrap();
-
     let promotion = promote_note_in_store(
         &path,
         QuickCaptureNoteInput {
+            title: None,
             content: "保存するメモ".into(),
             tags: vec!["work".into()],
             pinned: false,
@@ -200,6 +216,7 @@ fn empty_notes_and_missing_ids_are_rejected() {
     let error = create_note_in_store(
         &path,
         QuickCaptureNoteInput {
+            title: None,
             content: "  ".into(),
             tags: vec![],
             pinned: false,
@@ -220,6 +237,7 @@ fn attachments_are_copied_and_deleted() {
     let note = create_note_in_store(
         &path,
         QuickCaptureNoteInput {
+            title: None,
             content: "添付メモ".into(),
             tags: vec![],
             pinned: false,

@@ -308,6 +308,9 @@ pub fn save_settings(
     let clipboard_monitor_changed =
         clipboard_monitor_settings_changed(old_settings.as_ref(), &settings);
     let clock_layout_changed = clock_layout_settings_changed(old_settings.as_ref(), &settings);
+    let quick_capture_always_on_top_changed = old_settings
+        .as_ref()
+        .is_some_and(|old| old.quick_capture.always_on_top != settings.quick_capture.always_on_top);
     let path = get_config_path(&app)?;
     let envelope = crate::core::migrations::settings::wrap_settings(
         &serde_json::to_value(&settings).map_err(|error| {
@@ -414,6 +417,12 @@ pub fn save_settings(
                 let docked = settings.clock.enabled && clock_was_visible;
                 crate::features::calendar::position_calendar(&app, docked, &settings);
             }
+        }
+    }
+
+    if quick_capture_always_on_top_changed {
+        if let Some(window) = app.get_webview_window("quickCapture") {
+            let _ = window.set_always_on_top(settings.quick_capture.always_on_top);
         }
     }
 
