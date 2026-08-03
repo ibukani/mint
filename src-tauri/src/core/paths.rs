@@ -37,15 +37,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn e2e_base_dir_ignores_missing_variable() {
+    fn e2e_base_dir_follows_the_configured_variable() {
         std::env::remove_var("MINT_E2E_DATA_DIR");
         assert_eq!(e2e_base_dir(), None);
-    }
 
-    #[test]
-    fn e2e_base_dir_reads_configured_variable() {
         std::env::set_var("MINT_E2E_DATA_DIR", "C:\\e2e\\mint-test");
-        let base = e2e_base_dir().expect("base dir must be set");
-        assert_eq!(base, PathBuf::from("C:\\e2e\\mint-test"));
+        assert_eq!(e2e_base_dir(), Some(PathBuf::from("C:\\e2e\\mint-test")));
     }
 }
