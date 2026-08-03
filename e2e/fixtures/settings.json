@@ -1,0 +1,76 @@
+{
+  "data": {
+    "mintPalette": {
+      "enabled": false,
+      "shortcut": "Ctrl+Alt+M"
+    },
+    "fileShelf": {
+      "enabled": false,
+      "shortcut": "Alt+3",
+      "edge": "right",
+      "verticalPosition": "center",
+      "edgeHandleEnabled": false,
+      "clipboardHistoryEnabled": false,
+      "clipboardHistoryLimit": 25,
+      "ignoredApplications": [
+        "1Password.exe",
+        "Bitwarden.exe",
+        "Dashlane.exe",
+        "Enpass.exe",
+        "KeePass.exe",
+        "KeePassXC.exe",
+        "LastPass.exe"
+      ],
+      "themeColor": "#818cf8"
+    },
+    "quickCapture": {
+      "enabled": true,
+      "shortcut": "Alt+2",
+      "themeColor": "#818cf8"
+    },
+    "gameLauncher": {
+      "enabled": false,
+      "shortcut": "Alt+1",
+      "themeColor": "#818cf8",
+      "favoriteGameKeys": [],
+      "lastPlayedAtByGame": {}
+    },
+    "calendar": {
+      "enabled": false,
+      "shortcut": "Alt+Down",
+      "createEventShortcut": "Alt+Up",
+      "selectedGoogleCalendarIds": [],
+      "defaultGoogleCalendarId": "",
+      "themeColor": "#818cf8"
+    },
+    "autostart": false,
+    "theme": "dark",
+    "settingsShortcut": "",
+    "clock": {
+      "enabled": true,
+      "shortcut": "Alt+Left",
+      "autoHideSeconds": 3,
+      "showDate": true,
+      "showSeconds": true,
+      "themeColor": "#818cf8",
+      "blinkColon": true,
+      "sizePercent": 100,
+      "displayMode": "digital",
+      "hourFormat": "24h",
+      "glowEffect": true
+    },
+    "voiceToText": {
+      "enabled": false,
+      "shortcut": "Alt+End",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "whisper-1",
+      "language": "ja",
+      "status": "available"
+    },
+    "onboarding": {
+      "completedVersion": 1,
+      "completedAt": null
+    }
+  },
+  "schemaVersion": 2
+}

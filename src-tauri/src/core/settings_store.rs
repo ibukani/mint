@@ -8,7 +8,7 @@ use uuid::Uuid;
 use super::settings_model::{AppSettings, AppSettingsState, SettingsError};
 
 fn get_config_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let path = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let path = super::paths::app_config_dir(app)?;
     if !path.exists() {
         fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     }

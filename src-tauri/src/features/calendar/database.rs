@@ -1,15 +1,12 @@
 use super::CalendarStoreState;
 use rusqlite::Connection;
 use std::{fs, path::Path, time::Duration};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 pub(super) const CALENDAR_DB_VERSION: i64 = 3;
 
 pub fn initialize_store(app: &AppHandle) -> Result<CalendarStoreState, String> {
-    let directory = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
+    let directory = crate::core::paths::app_data_dir(app)?;
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     let state = CalendarStoreState {
         path: directory.join("calendar.sqlite3"),
