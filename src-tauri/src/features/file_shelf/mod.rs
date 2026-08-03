@@ -32,6 +32,13 @@ pub fn load_file_shelf_state(
     implementation::load_file_shelf_state(state)
 }
 
+/// Counts persisted file shelf items for diagnostics. Fails when the store
+/// cannot be opened, in which case the caller omits the count.
+pub fn count_file_shelf_items(state: &FileShelfStoreState) -> Result<u64, String> {
+    repository::load_state_from_store(&state.path)
+        .map(|state| state.groups.iter().flat_map(|group| &group.items).count() as u64)
+}
+
 #[tauri::command]
 pub fn load_file_shelf_preview(
     item_id: String,

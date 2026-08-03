@@ -35,6 +35,12 @@ impl CalendarStoreState {
     }
 }
 
+/// Counts persisted calendar events for diagnostics. Fails when the store
+/// cannot be opened, in which case the caller omits the count.
+pub fn count_calendar_events(state: &CalendarStoreState) -> Result<u64, String> {
+    repository::count_calendar_events_from_store(state.path())
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum CalendarEventSource {

@@ -83,7 +83,22 @@ pub fn run() {
                 .build(),
         )
         .manage(AppSettingsState(Mutex::new(None)))
+        .manage(crate::core::performance::PerformanceRegistry::default())
         .setup(move |app| {
+            crate::core::performance::record_event(
+                app.handle(),
+                "app:startup",
+                None,
+                None,
+                std::collections::HashMap::new(),
+            );
+            if let Ok(monitors) = app.available_monitors() {
+                crate::core::performance::set_counter(
+                    app.handle(),
+                    "monitorsDetected",
+                    monitors.len() as u64,
+                );
+            }
             let calendar_store = features::calendar::initialize_store(app.handle())?;
             app.manage(calendar_store);
             let quick_capture_store = features::quick_capture::initialize_store(app.handle())?;
@@ -138,6 +153,10 @@ pub fn run() {
                             core::settings::sync_autostart(&handle, settings.autostart)
                         {
                             eprintln!("Failed to synchronize autostart setting: {}", error);
+                            crate::core::performance::record_error(
+                                &handle,
+                                &format!("Failed to synchronize autostart setting: {error}"),
+                            );
                         }
 
                         // Pre-populate the in-memory cache
@@ -172,11 +191,24 @@ pub fn run() {
                             eprintln!(
                                 "Warning: Global shortcuts are duplicated in settings. Not registering to prevent conflict."
                             );
+                            crate::core::performance::record_error(
+                                &handle,
+                                "Global shortcuts are duplicated in settings.",
+                            );
                         } else {
                             for (feature, key) in shortcuts {
                                 if !key.is_empty() {
                                     if let Err(e) = handle.global_shortcut().register(key) {
-                                        eprintln!("Failed to register {} shortcut: {}", feature, e);
+                                        eprintln!(
+                                            "Failed to register {} shortcut: {}",
+                                            feature, e
+                                        );
+                                        crate::core::performance::record_error(
+                                            &handle,
+                                            &format!(
+                                                "Failed to register {feature} shortcut: {e}"
+                                            ),
+                                        );
                                     }
                                 }
                             }
@@ -184,6 +216,10 @@ pub fn run() {
                     }
                     Err(e) => {
                         eprintln!("Failed to load settings for shortcuts: {}", e);
+                        crate::core::performance::record_error(
+                            &handle,
+                            &format!("Failed to load settings for shortcuts: {e}"),
+                        );
                     }
                 }
             });
@@ -218,7 +254,30 @@ pub fn run() {
                             *state.0.lock().unwrap_or_else(|value| value.into_inner()) = false;
                         }
                     }
+                    crate::core::performance::record_event(
+                        window.app_handle(),
+                        "window:hidden",
+                        Some(label),
+                        None,
+                        std::collections::HashMap::new(),
+                    );
+                    crate::core::performance::increment_counter(
+                        window.app_handle(),
+                        "windowsHidden",
+                    );
                 }
+            } else if let WindowEvent::Destroyed = event {
+                crate::core::performance::record_event(
+                    window.app_handle(),
+                    "window:destroyed",
+                    Some(window.label()),
+                    None,
+                    std::collections::HashMap::new(),
+                );
+                crate::core::performance::increment_counter(
+                    window.app_handle(),
+                    "windowsDestroyed",
+                );
             } else if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_)) {
                 core::window_state::maybe_persist(window.app_handle(), window.label());
             }
@@ -232,6 +291,7 @@ pub fn run() {
             core::settings::save_settings,
             core::settings::load_api_key,
             core::settings::save_api_key,
+            core::performance::collect_diagnostics,
             core::window::open_overlay,
             core::window::overlay_ready,
             core::window::open_settings_tab,
