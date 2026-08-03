@@ -29,3 +29,7 @@ tmp/
 
 # Performance measurement reports
 performance/reports/
+
+# E2E run artifacts and isolated data directories
+e2e/reports/
+e2e/tmp/
