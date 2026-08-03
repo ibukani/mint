@@ -1,0 +1,15 @@
+{
+  "maxEventDurationMs": {
+    "app:startup": 3000,
+    "window:created": 1500,
+    "window:shown": 1000,
+    "window:hidden": 500,
+    "window:destroyed": 500,
+    "overlay:opened": 1500,
+    "data:loaded": 1000,
+    "worker:started": 500,
+    "worker:stopped": 500
+  },
+  "maxTotalDurationMs": 15000,
+  "minEventsPerName": 1
+}

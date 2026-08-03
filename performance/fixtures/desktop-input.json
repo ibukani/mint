@@ -1,0 +1,110 @@
+{
+  "capturedAt": "2026-08-04T01:00:00.000Z",
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "appVersion": "0.3.1",
+    "commitSha": "0123456789abcdef0123456789abcdef01234567",
+    "isRelease": false
+  },
+  "events": [
+    {
+      "name": "app:startup",
+      "startedAt": "2026-08-04T01:00:00.000Z",
+      "durationMs": 612,
+      "windowLabel": null
+    },
+    {
+      "name": "window:created",
+      "startedAt": "2026-08-04T01:00:00.100Z",
+      "durationMs": 95,
+      "windowLabel": "main"
+    },
+    {
+      "name": "window:shown",
+      "startedAt": "2026-08-04T01:00:00.220Z",
+      "durationMs": 41,
+      "windowLabel": "main"
+    },
+    {
+      "name": "data:loaded",
+      "startedAt": "2026-08-04T01:00:00.180Z",
+      "durationMs": 33,
+      "windowLabel": null
+    },
+    {
+      "name": "worker:started",
+      "startedAt": "2026-08-04T01:00:00.300Z",
+      "durationMs": 5,
+      "windowLabel": null
+    },
+    {
+      "name": "overlay:opened",
+      "startedAt": "2026-08-04T01:00:10.000Z",
+      "durationMs": 105,
+      "windowLabel": "clock"
+    },
+    {
+      "name": "overlay:opened",
+      "startedAt": "2026-08-04T01:00:20.000Z",
+      "durationMs": 98,
+      "windowLabel": "calendar"
+    },
+    {
+      "name": "overlay:opened",
+      "startedAt": "2026-08-04T01:00:30.000Z",
+      "durationMs": 121,
+      "windowLabel": "quickCapture"
+    },
+    {
+      "name": "window:hidden",
+      "startedAt": "2026-08-04T01:00:35.000Z",
+      "durationMs": 8,
+      "windowLabel": "clock"
+    },
+    {
+      "name": "window:hidden",
+      "startedAt": "2026-08-04T01:00:36.000Z",
+      "durationMs": 9,
+      "windowLabel": "calendar"
+    },
+    {
+      "name": "window:hidden",
+      "startedAt": "2026-08-04T01:00:37.000Z",
+      "durationMs": 8,
+      "windowLabel": "quickCapture"
+    },
+    {
+      "name": "worker:stopped",
+      "startedAt": "2026-08-04T01:10:00.000Z",
+      "durationMs": 6,
+      "windowLabel": null
+    },
+    {
+      "name": "window:destroyed",
+      "startedAt": "2026-08-04T01:10:10.000Z",
+      "durationMs": 12,
+      "windowLabel": "clock"
+    },
+    {
+      "name": "window:destroyed",
+      "startedAt": "2026-08-04T01:10:11.000Z",
+      "durationMs": 10,
+      "windowLabel": "calendar"
+    },
+    {
+      "name": "window:destroyed",
+      "startedAt": "2026-08-04T01:10:12.000Z",
+      "durationMs": 13,
+      "windowLabel": "quickCapture"
+    }
+  ],
+  "counters": {
+    "windowsCreated": 4,
+    "windowsHidden": 3,
+    "windowsDestroyed": 3,
+    "monitorsDetected": 2,
+    "workersStarted": 1,
+    "workersStopped": 1
+  }
+}

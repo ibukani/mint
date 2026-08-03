@@ -1,0 +1,68 @@
+{
+  "capturedAt": "2026-08-04T00:00:00.000Z",
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "appVersion": "0.3.1",
+    "commitSha": "0123456789abcdef0123456789abcdef01234567",
+    "isRelease": false
+  },
+  "events": [
+    {
+      "name": "app:startup",
+      "startedAt": "2026-08-04T00:00:00.000Z",
+      "durationMs": 412,
+      "windowLabel": null
+    },
+    {
+      "name": "window:created",
+      "startedAt": "2026-08-04T00:00:00.120Z",
+      "durationMs": 85,
+      "windowLabel": "main"
+    },
+    {
+      "name": "window:shown",
+      "startedAt": "2026-08-04T00:00:00.240Z",
+      "durationMs": 38,
+      "windowLabel": "main"
+    },
+    {
+      "name": "data:loaded",
+      "startedAt": "2026-08-04T00:00:00.180Z",
+      "durationMs": 21,
+      "windowLabel": null
+    },
+    {
+      "name": "worker:started",
+      "startedAt": "2026-08-04T00:00:00.300Z",
+      "durationMs": 4,
+      "windowLabel": null
+    },
+    {
+      "name": "overlay:opened",
+      "startedAt": "2026-08-04T00:00:05.000Z",
+      "durationMs": 92,
+      "windowLabel": "quickCapture"
+    },
+    {
+      "name": "window:hidden",
+      "startedAt": "2026-08-04T00:00:06.000Z",
+      "durationMs": 7,
+      "windowLabel": "quickCapture"
+    },
+    {
+      "name": "window:destroyed",
+      "startedAt": "2026-08-04T00:00:07.000Z",
+      "durationMs": 11,
+      "windowLabel": "quickCapture"
+    }
+  ],
+  "counters": {
+    "windowsCreated": 2,
+    "windowsHidden": 1,
+    "windowsDestroyed": 1,
+    "monitorsDetected": 2,
+    "workersStarted": 1,
+    "workersStopped": 0
+  }
+}
