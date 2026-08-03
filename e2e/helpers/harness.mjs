@@ -1,6 +1,12 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebDriverClient, waitFor } from "./webdriver.mjs";
@@ -123,9 +129,7 @@ async function startTauriDriver({
 }) {
   mkdirSync(reportDir, { recursive: true });
   const logPath = path.join(reportDir, "tauri-driver.log");
-  const logStream = (await import("node:fs")).createWriteStream(logPath, {
-    flags: "a",
-  });
+  const logStream = createWriteStream(logPath, { flags: "a" });
 
   const args = ["--port", String(port)];
   if (nativeDriver) {
