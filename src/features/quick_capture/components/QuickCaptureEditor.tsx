@@ -1,24 +1,26 @@
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import {
   Archive,
+  ArrowDown,
+  ArrowUp,
   Bold,
   CalendarPlus,
-  Check,
   ClipboardPaste,
   ClipboardPlus,
   Code2,
   Copy,
   CopyPlus,
   Download,
-  Edit3,
-  Eye,
   FilePlus2,
   Italic,
   Link2,
   MoreHorizontal,
   Paperclip,
   Pin,
+  Plus,
   RefreshCw,
+  Replace,
+  Search,
   Tag,
   Trash2,
   Undo2,
@@ -44,7 +46,7 @@ import {
   QUICK_CAPTURE_TEMPLATES,
   type QuickCaptureTemplate,
 } from "../templates";
-import type { QuickCaptureNote } from "../types";
+import type { QuickCaptureNote, QuickCaptureSettings } from "../types";
 import { countLinesAndChars, noteTitle, parseTags } from "../utils";
 
 type QuickCaptureController = ReturnType<typeof useQuickCapture>;
@@ -173,7 +175,19 @@ interface QuickCaptureEditorProps {
   actionStatus: string;
   isSaving: boolean;
   activeNote: QuickCaptureNote | null;
-  onSetPreview: (preview: boolean) => void;
+  editorSettings?: QuickCaptureSettings;
+  searchOpen: boolean;
+  searchQuery: string;
+  replaceMode: boolean;
+  replaceQuery: string;
+  searchRef: RefObject<HTMLInputElement | null>;
+  onSearchQueryChange: (query: string) => void;
+  onReplaceQueryChange: (query: string) => void;
+  onSearchNext: () => void;
+  onSearchPrevious: () => void;
+  onCloseSearch: () => void;
+  onReplace: () => void;
+  onReplaceAll: () => void;
   onPasteClipboard: () => void;
   onCaptureClipboard: () => void;
   onCopyClipboard: () => void;
@@ -195,7 +209,19 @@ export const QuickCaptureEditor = ({
   actionStatus,
   isSaving,
   activeNote,
-  onSetPreview,
+  editorSettings,
+  searchOpen,
+  searchQuery,
+  replaceMode,
+  replaceQuery,
+  searchRef,
+  onSearchQueryChange,
+  onReplaceQueryChange,
+  onSearchNext,
+  onSearchPrevious,
+  onCloseSearch,
+  onReplace,
+  onReplaceAll,
   onPasteClipboard,
   onCaptureClipboard,
   onCopyClipboard,
@@ -220,9 +246,48 @@ export const QuickCaptureEditor = ({
   const { lines, chars } = countLinesAndChars(capture.content);
   const content = capture.content;
   const contentLines = content ? content.split("\n") : [""];
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const noteTags = parseTags(capture.tags);
+  const hasTags = noteTags.length > 0;
+  const selectionStart = Math.min(selection.start, content.length);
+  const selectionEnd = Math.min(selection.end, content.length);
+  const lineBeforeSelection = content.slice(0, selectionStart).split("\n");
+  const currentLine = lineBeforeSelection.length;
+  const currentColumn =
+    (lineBeforeSelection[lineBeforeSelection.length - 1]?.length ?? 0) + 1;
+  const selectedChars = Math.max(0, selectionEnd - selectionStart);
+  const searchMatchCount = searchQuery
+    ? content.toLocaleLowerCase().split(searchQuery.toLocaleLowerCase())
+        .length - 1
+    : 0;
+  const editorStyle = {
+    fontFamily: editorSettings?.fontFamily ?? "ui-monospace",
+    fontSize: `${editorSettings?.fontSize ?? 16}px`,
+    lineHeight: editorSettings?.lineHeight ?? 1.75,
+    tabSize: editorSettings?.tabWidth ?? 2,
+    whiteSpace: editorSettings?.wordWrap === false ? "pre" : "pre-wrap",
+    overflowWrap: editorSettings?.wordWrap === false ? "normal" : "anywhere",
+  } as const;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const [lineHeights, setLineHeights] = useState<number[]>([]);
+  const [editorScrollTop, setEditorScrollTop] = useState(0);
+  const currentLineIndex = Math.max(0, currentLine - 1);
+  const defaultLineHeight =
+    (editorSettings?.fontSize ?? 16) * (editorSettings?.lineHeight ?? 1.75);
+  const currentLineTop =
+    12 +
+    lineHeights
+      .slice(0, currentLineIndex)
+      .reduce((total, height) => total + height, 0) -
+    editorScrollTop;
+  const currentLineHeight = lineHeights[currentLineIndex] ?? defaultLineHeight;
+
+  useEffect(() => {
+    void capture.activeId;
+    setTagEditorOpen(false);
+  }, [capture.activeId]);
 
   useLayoutEffect(() => {
     if (preview) return;
@@ -271,33 +336,6 @@ export const QuickCaptureEditor = ({
       aria-label="メモ編集"
     >
       <div className="quick-capture__toolbar">
-        <fieldset
-          className="quick-capture__mode-switch"
-          aria-label="メモの表示モード"
-        >
-          <button
-            type="button"
-            className={!preview ? "is-active" : ""}
-            aria-label="編集"
-            aria-pressed={!preview}
-            aria-controls="quick-capture-content"
-            onClick={() => onSetPreview(false)}
-            title="編集"
-          >
-            <Edit3 size={14} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className={preview ? "is-active" : ""}
-            aria-label="プレビュー"
-            aria-pressed={preview}
-            aria-controls="quick-capture-content"
-            onClick={() => onSetPreview(true)}
-            title="プレビュー"
-          >
-            <Eye size={14} aria-hidden="true" />
-          </button>
-        </fieldset>
         <details className="quick-capture__editor-tools">
           <summary aria-label="編集ツールを表示" title="書式とテンプレート">
             <MoreHorizontal size={15} aria-hidden="true" />
@@ -403,6 +441,76 @@ export const QuickCaptureEditor = ({
         </details>
       </div>
 
+      {searchOpen && (
+        // biome-ignore lint/a11y/useSemanticElements: form keeps browser and jsdom support while exposing the search landmark.
+        <form
+          className="quick-capture__editor-search"
+          role="search"
+          onSubmit={(event) => event.preventDefault()}
+        >
+          <Search size={14} aria-hidden="true" />
+          <input
+            ref={searchRef}
+            aria-label="メモ内を検索"
+            value={searchQuery}
+            onChange={(event) => onSearchQueryChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.shiftKey ? onSearchPrevious() : onSearchNext();
+              } else if (event.key === "Escape") {
+                event.preventDefault();
+                onCloseSearch();
+              }
+            }}
+            placeholder="このメモを検索"
+          />
+          <span
+            className="quick-capture__editor-search-count"
+            aria-live="polite"
+          >
+            {searchMatchCount}件
+          </span>
+          <button
+            type="button"
+            aria-label="前の一致"
+            onClick={onSearchPrevious}
+          >
+            <ArrowUp size={14} aria-hidden="true" />
+          </button>
+          <button type="button" aria-label="次の一致" onClick={onSearchNext}>
+            <ArrowDown size={14} aria-hidden="true" />
+          </button>
+          {replaceMode && (
+            <>
+              <input
+                aria-label="置換後の文字列"
+                value={replaceQuery}
+                onChange={(event) => onReplaceQueryChange(event.target.value)}
+                placeholder="置換後"
+              />
+              <button type="button" aria-label="置換" onClick={onReplace}>
+                <Replace size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                aria-label="すべて置換"
+                onClick={onReplaceAll}
+              >
+                <span>全置換</span>
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            aria-label="検索を閉じる"
+            onClick={onCloseSearch}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        </form>
+      )}
+
       {capture.isDropTarget && (
         <div className="quick-capture__drop-overlay" role="status">
           <Paperclip size={24} aria-hidden="true" />
@@ -419,6 +527,7 @@ export const QuickCaptureEditor = ({
             className="quick-capture__preview"
             tabIndex={-1}
             aria-label="メモのプレビュー"
+            style={editorStyle}
           >
             {capture.content.trim() ? (
               <ReactMarkdown
@@ -447,39 +556,66 @@ export const QuickCaptureEditor = ({
           </article>
         ) : (
           <div className="quick-capture__editor-container">
-            <div
-              ref={lineNumbersRef}
-              className="quick-capture__line-numbers"
-              aria-hidden="true"
-            >
-              {contentLines.map((_, i) => (
-                <div
-                  // biome-ignore lint/suspicious/noArrayIndexKey: line numbers are indexed by line position
-                  key={`line-${i + 1}`}
-                  className="quick-capture__line-number"
-                  style={
-                    lineHeights[i] !== undefined
-                      ? { height: `${lineHeights[i]}px` }
-                      : undefined
-                  }
-                >
-                  {i + 1}
-                </div>
-              ))}
-            </div>
+            {editorSettings?.highlightCurrentLine && (
+              <div
+                className="quick-capture__current-line"
+                aria-hidden="true"
+                style={{
+                  top: `${currentLineTop}px`,
+                  height: `${currentLineHeight}px`,
+                }}
+              />
+            )}
+            {editorSettings?.showLineNumbers !== false && (
+              <div
+                ref={lineNumbersRef}
+                className="quick-capture__line-numbers"
+                aria-hidden="true"
+                style={editorStyle}
+              >
+                {contentLines.map((_, i) => (
+                  <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: line numbers are indexed by line position
+                    key={`line-${i + 1}`}
+                    className="quick-capture__line-number"
+                    style={
+                      lineHeights[i] !== undefined
+                        ? { height: `${lineHeights[i]}px` }
+                        : undefined
+                    }
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            )}
             <textarea
               ref={editorRef}
               id="quick-capture-content"
               aria-label="メモ本文"
               aria-keyshortcuts="Control+S Meta+S Control+B Meta+B Control+I Meta+I"
               value={capture.content}
+              style={editorStyle}
               onScroll={(event) => {
+                setEditorScrollTop(event.currentTarget.scrollTop);
                 if (lineNumbersRef.current) {
                   lineNumbersRef.current.scrollTop =
                     event.currentTarget.scrollTop;
                 }
               }}
               onChange={(event) => capture.setContent(event.target.value)}
+              onSelect={(event) =>
+                setSelection({
+                  start: event.currentTarget.selectionStart,
+                  end: event.currentTarget.selectionEnd,
+                })
+              }
+              onKeyUp={(event) =>
+                setSelection({
+                  start: event.currentTarget.selectionStart,
+                  end: event.currentTarget.selectionEnd,
+                })
+              }
               onKeyDown={(event) => {
                 if (preview || event.altKey) return;
                 if (event.key === "Tab" && !event.ctrlKey && !event.metaKey) {
@@ -499,7 +635,13 @@ export const QuickCaptureEditor = ({
                 }
                 if (!(event.ctrlKey || event.metaKey)) return;
                 const key = event.key.toLocaleLowerCase();
-                if (key === "b") {
+                if (key === "z" && !event.shiftKey) {
+                  event.preventDefault();
+                  capture.undoContent();
+                } else if (key === "y" || (key === "z" && event.shiftKey)) {
+                  event.preventDefault();
+                  capture.redoContent();
+                } else if (key === "b") {
                   event.preventDefault();
                   onFormat("**", "**", "太字");
                 } else if (key === "i") {
@@ -508,12 +650,13 @@ export const QuickCaptureEditor = ({
                 }
               }}
               placeholder="何を残しておきますか？"
-              spellCheck="true"
+              spellCheck={editorSettings?.spellCheck ?? true}
             />
             <div
               ref={mirrorRef}
               className="quick-capture__mirror"
               aria-hidden="true"
+              style={editorStyle}
             >
               {contentLines.map((line, idx) => (
                 <div
@@ -527,16 +670,66 @@ export const QuickCaptureEditor = ({
           </div>
         )}
 
-        <label className="quick-capture__tags-input">
-          <Tag size={14} aria-hidden="true" />
-          <input
-            aria-label="タグ"
-            value={capture.tags}
-            onChange={(event) => capture.setTags(event.target.value)}
-            placeholder="タグを追加（カンマ区切り）"
-          />
-        </label>
-        <QuickCaptureTagSuggestions capture={capture} />
+        <div className="quick-capture__tags-area">
+          {hasTags && (
+            <section
+              className="quick-capture__tag-chips"
+              aria-label="付与されたタグ"
+            >
+              {noteTags.map((tag) => (
+                <span className="quick-capture__tag-chip" key={tag}>
+                  #{tag}
+                </span>
+              ))}
+            </section>
+          )}
+          {!tagEditorOpen && (
+            <button
+              type="button"
+              className="quick-capture__tag-trigger"
+              aria-label={hasTags ? "タグを編集" : "タグを追加"}
+              onClick={() => setTagEditorOpen(true)}
+            >
+              {hasTags ? (
+                <Tag size={13} aria-hidden="true" />
+              ) : (
+                <Plus size={13} aria-hidden="true" />
+              )}
+              <span>{hasTags ? "タグを編集" : "タグを追加"}</span>
+            </button>
+          )}
+          {tagEditorOpen && (
+            <>
+              <label className="quick-capture__tags-input">
+                <Tag size={14} aria-hidden="true" />
+                <input
+                  aria-label="タグ"
+                  value={capture.tags}
+                  onChange={(event) => capture.setTags(event.target.value)}
+                  placeholder="タグを追加（カンマ区切り）"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setTagEditorOpen(false);
+                      editorRef.current?.focus();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  aria-label="タグ編集を閉じる"
+                  onClick={() => {
+                    setTagEditorOpen(false);
+                    editorRef.current?.focus();
+                  }}
+                >
+                  <X size={13} aria-hidden="true" />
+                </button>
+              </label>
+              <QuickCaptureTagSuggestions capture={capture} />
+            </>
+          )}
+        </div>
       </div>
 
       {activeNote && activeNote.attachments.length > 0 && (
@@ -598,7 +791,8 @@ export const QuickCaptureEditor = ({
                   : "")}
           </span>
           <span className="quick-capture__stats" title="文字数と行数">
-            {lines} 行 ({chars} 文字)
+            Ln {currentLine}, Col {currentColumn} · {selectedChars} / {chars}
+            文字 · {lines}行
           </span>
         </div>
         <div className="quick-capture__editor-actions">
@@ -754,21 +948,6 @@ export const QuickCaptureEditor = ({
               >
                 <Trash2 size={13} aria-hidden="true" />
                 <span>削除</span>
-              </button>
-            )}
-            {!capture.activeId && (
-              <button
-                type="button"
-                className="quick-capture__save"
-                disabled={!capture.content.trim() || isSaving}
-                aria-keyshortcuts="Control+Enter Meta+Enter"
-                onClick={() => void capture.promote()}
-              >
-                <Check size={14} aria-hidden="true" />
-                <span>メモに保存</span>{" "}
-                <kbd>
-                  {shortcutModifier} ↵ / {shortcutModifier} S
-                </kbd>
               </button>
             )}
           </div>

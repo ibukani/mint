@@ -81,10 +81,10 @@
         "decorations": false,
         "transparent": true,
         "shadow": false,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "visible": false,
         "skipTaskbar": true,
-        "resizable": false,
+        "resizable": true,
         "focusable": true
       },
       {

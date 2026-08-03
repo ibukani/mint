@@ -31,13 +31,37 @@ const read = (): QuickCaptureState => {
   if (!value) return emptyState();
   try {
     const state = JSON.parse(value) as QuickCaptureState;
-    return {
+    const normalized = {
       ...state,
+      draft: state.draft ?? emptyState().draft,
       notes: state.notes.map((note) => ({
         ...note,
         archived: note.archived ?? false,
         attachments: note.attachments ?? [],
       })),
+    };
+    if (normalized.draft.content.trim()) {
+      const now = normalized.draft.updatedAt || new Date().toISOString();
+      const migrated: QuickCaptureNote = {
+        id: crypto.randomUUID(),
+        content: normalized.draft.content,
+        tags: normalizeTags(normalized.draft.tags),
+        pinned: false,
+        archived: false,
+        createdAt: now,
+        updatedAt: now,
+        attachments: [],
+      };
+      const migratedState = {
+        draft: { content: "", tags: [], updatedAt: now },
+        notes: sortNotes([migrated, ...normalized.notes]),
+      };
+      write(migratedState);
+      return migratedState;
+    }
+    return {
+      draft: { content: "", tags: [], updatedAt: new Date().toISOString() },
+      notes: normalized.notes,
     };
   } catch {
     return emptyState();
@@ -92,6 +116,7 @@ export const mockPromoteQuickCaptureNote = (input: QuickCaptureNoteInput) => {
   const now = new Date().toISOString();
   const note: QuickCaptureNote = {
     id: crypto.randomUUID(),
+    title: input.title?.trim(),
     content: input.content,
     tags: normalizeTags(input.tags),
     pinned: input.pinned,
@@ -115,6 +140,7 @@ export const mockCreateQuickCaptureNote = (input: QuickCaptureNoteInput) => {
   const now = new Date().toISOString();
   const note: QuickCaptureNote = {
     id: crypto.randomUUID(),
+    title: input.title?.trim(),
     content: input.content,
     tags: normalizeTags(input.tags),
     pinned: input.pinned,
@@ -138,6 +164,7 @@ export const mockUpdateQuickCaptureNote = (
   const note: QuickCaptureNote = {
     ...existing,
     ...input,
+    title: input.title === undefined ? existing.title : input.title.trim(),
     tags: normalizeTags(input.tags),
     updatedAt: new Date().toISOString(),
   };

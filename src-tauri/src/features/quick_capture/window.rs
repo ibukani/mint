@@ -30,6 +30,9 @@ pub fn show_quick_capture_overlay(app: &AppHandle) {
     let Ok(window) = ensure_overlay_window(app, OverlayTarget::QuickCapture) else {
         return;
     };
+    if let Ok(settings) = crate::core::settings::load_settings_cached(app) {
+        let _ = window.set_always_on_top(settings.quick_capture.always_on_top);
+    }
     if window.is_visible().unwrap_or(false) {
         return;
     }

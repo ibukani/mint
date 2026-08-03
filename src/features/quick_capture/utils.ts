@@ -7,11 +7,15 @@ export interface MarkdownTextEdit {
   selectionEnd: number;
 }
 
-export const noteTitle = (note: Pick<QuickCaptureNote, "content">) =>
-  note.content
-    .split("\n")
-    .find((line) => line.trim())
-    ?.trim() || "無題のメモ";
+export const noteTitle = (
+  note: Pick<QuickCaptureNote, "content"> & { title?: string },
+) =>
+  note.title !== undefined
+    ? note.title.trim() || "無題"
+    : note.content
+        .split("\n")
+        .find((line) => line.trim())
+        ?.trim() || "無題";
 
 export const countLinesAndChars = (content: string) => {
   if (!content) return { lines: 0, chars: 0 };

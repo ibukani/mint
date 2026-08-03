@@ -2,12 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createQuickCaptureNote,
   deleteQuickCaptureNote,
-  exportQuickCaptureBackup,
-  importQuickCaptureBackup,
   loadQuickCaptureState,
-  promoteQuickCaptureNote,
   restoreQuickCaptureNote,
-  saveQuickCaptureDraft,
   setQuickCaptureNoteArchived,
   updateQuickCaptureNote,
 } from "../api";
@@ -19,15 +15,39 @@ import { useQuickCaptureWindowLifecycle } from "./useQuickCaptureWindowLifecycle
 export type CaptureSaveStatus = "idle" | "saving" | "saved" | "error";
 
 const tagsToText = (tags: string[]) => tags.join(", ");
+const OPEN_TABS_STORAGE_KEY = "mint.quickCapture.openTabs";
+type EditorHistory = { past: string[]; future: string[] };
+
+const readOpenTabs = (): { ids: string[]; activeId: string | null } => {
+  if (typeof localStorage === "undefined") return { ids: [], activeId: null };
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(OPEN_TABS_STORAGE_KEY) ?? "null",
+    ) as { ids?: unknown; activeId?: unknown } | null;
+    return {
+      ids: Array.isArray(parsed?.ids)
+        ? parsed.ids.filter((id): id is string => typeof id === "string")
+        : [],
+      activeId: typeof parsed?.activeId === "string" ? parsed.activeId : null,
+    };
+  } catch {
+    return { ids: [], activeId: null };
+  }
+};
 
 export const useQuickCapture = () => {
   const [notes, setNotes] = useState<QuickCaptureNote[]>([]);
   const [draft, setDraft] = useState({ content: "", tags: "" });
+  const [title, setTitle] = useState("");
+  const [titleEdited, setTitleEdited] = useState(false);
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [pinned, setPinned] = useState(false);
   const [archived, setArchived] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [openNoteIds, setOpenNoteIds] = useState<string[]>(
+    () => readOpenTabs().ids,
+  );
   const [status, setStatus] = useState<CaptureSaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [canRetrySave, setCanRetrySave] = useState(false);
@@ -41,11 +61,26 @@ export const useQuickCapture = () => {
   const draftRef = useRef({ content: "", tags: "" });
   const persistQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const persistInFlightRef = useRef(false);
-  const promotionInFlightRef = useRef(false);
   const duplicateInFlightRef = useRef(false);
   const archiveInFlightRef = useRef(false);
   const clipboardCaptureInFlightRef = useRef(false);
+  const contentRef = useRef(content);
+  const activeIdRef = useRef(activeId);
+  const editorHistoryRef = useRef(new Map<string, EditorHistory>());
+  contentRef.current = content;
+  activeIdRef.current = activeId;
   const updateContent = useCallback((value: string) => {
+    const key = activeIdRef.current ?? "draft";
+    const current = contentRef.current;
+    if (value === current) return;
+    const history = editorHistoryRef.current.get(key) ?? {
+      past: [],
+      future: [],
+    };
+    history.past = [...history.past.slice(-99), current];
+    history.future = [];
+    editorHistoryRef.current.set(key, history);
+    contentRef.current = value;
     revision.current += 1;
     setContent(value);
   }, []);
@@ -53,10 +88,49 @@ export const useQuickCapture = () => {
     revision.current += 1;
     setTags(value);
   }, []);
+  const updateTitle = useCallback((value: string) => {
+    revision.current += 1;
+    setTitle(value);
+    setTitleEdited(true);
+  }, []);
   const updatePinned = useCallback((value: boolean) => {
     revision.current += 1;
     setPinned(value);
   }, []);
+
+  const undoContent = useCallback(() => {
+    const key = activeIdRef.current ?? "draft";
+    const history = editorHistoryRef.current.get(key);
+    if (!history) return false;
+    const previous = history.past.pop();
+    if (previous === undefined) return false;
+    history.future.unshift(contentRef.current);
+    contentRef.current = previous;
+    revision.current += 1;
+    setContent(previous);
+    return true;
+  }, []);
+
+  const redoContent = useCallback(() => {
+    const key = activeIdRef.current ?? "draft";
+    const history = editorHistoryRef.current.get(key);
+    if (!history) return false;
+    const next = history.future.shift();
+    if (next === undefined) return false;
+    history.past.push(contentRef.current);
+    contentRef.current = next;
+    revision.current += 1;
+    setContent(next);
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(
+      OPEN_TABS_STORAGE_KEY,
+      JSON.stringify({ ids: openNoteIds, activeId }),
+    );
+  }, [activeId, openNoteIds]);
   const clearPendingPersist = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -77,6 +151,8 @@ export const useQuickCapture = () => {
   const showDraft = useCallback((nextDraft = draftRef.current) => {
     revision.current += 1;
     setActiveId(null);
+    setTitle("");
+    setTitleEdited(false);
     setContent(nextDraft.content);
     setTags(nextDraft.tags);
     setPinned(false);
@@ -98,9 +174,32 @@ export const useQuickCapture = () => {
       loaded.current = true;
       setUndoDeleteId(null);
       setNotes(sortNotes(state.notes));
+      const savedTabs = readOpenTabs();
+      const restoredIds = savedTabs.ids.filter((id) =>
+        state.notes.some((note) => note.id === id),
+      );
       setDraft(nextDraft);
       draftRef.current = nextDraft;
-      showDraft(nextDraft);
+      const restoredNote =
+        state.notes.find((note) => note.id === savedTabs.activeId) ??
+        state.notes.find((note) => restoredIds.includes(note.id));
+      const nextOpenIds =
+        restoredNote && !restoredIds.includes(restoredNote.id)
+          ? [...restoredIds, restoredNote.id]
+          : restoredIds;
+      setOpenNoteIds(nextOpenIds);
+      if (restoredNote) {
+        setActiveId(restoredNote.id);
+        setTitle(restoredNote.title ?? "");
+        setTitleEdited(restoredNote.title !== undefined);
+        setContent(restoredNote.content);
+        setTags(tagsToText(restoredNote.tags));
+        setPinned(restoredNote.pinned);
+        setArchived(restoredNote.archived);
+        setFocusSequence((value) => value + 1);
+      } else {
+        showDraft(nextDraft);
+      }
       setStatus("saved");
       setCanRetrySave(false);
       return null;
@@ -129,6 +228,12 @@ export const useQuickCapture = () => {
 
   const persist = useCallback((): Promise<boolean> => {
     if (!loaded.current) return Promise.resolve(false);
+    if (!activeId && !content.trim()) {
+      setStatus("saved");
+      setError(null);
+      setCanRetrySave(false);
+      return Promise.resolve(true);
+    }
     clearPendingPersist();
     const sequence = ++revision.current;
     setStatus("saving");
@@ -138,7 +243,15 @@ export const useQuickCapture = () => {
     const operation = persistQueueRef.current.then(async () => {
       try {
         if (activeId) {
+          // Empty notes are intentionally kept in the editor until the user
+          // closes them. The close path removes them atomically so deleting
+          // text never loses the user's work mid-edit.
+          if (!content.trim()) {
+            if (sequence === revision.current) setStatus("saved");
+            return true;
+          }
           const saved = await updateQuickCaptureNote(activeId, {
+            title: titleEdited ? title.trim() : undefined,
             content,
             tags: parseTags(tags),
             pinned,
@@ -151,11 +264,22 @@ export const useQuickCapture = () => {
             );
           }
         } else {
-          const saved = await saveQuickCaptureDraft({
+          const saved = await createQuickCaptureNote({
+            title: titleEdited ? title.trim() : undefined,
             content,
             tags: parseTags(tags),
+            pinned: false,
           });
           if (sequence === revision.current) {
+            setActiveId(saved.id);
+            setOpenNoteIds((current) =>
+              current.includes(saved.id) ? current : [...current, saved.id],
+            );
+            setPinned(saved.pinned);
+            setArchived(saved.archived);
+            setTitle(saved.title ?? "");
+            setTitleEdited(saved.title !== undefined);
+            setNotes((current) => sortNotes([saved, ...current]));
             setDraft({ content: saved.content, tags: tagsToText(saved.tags) });
             draftRef.current = {
               content: saved.content,
@@ -193,7 +317,36 @@ export const useQuickCapture = () => {
       },
     );
     return operation;
-  }, [activeId, clearPendingPersist, content, pinned, sortNotes, tags]);
+  }, [
+    activeId,
+    clearPendingPersist,
+    content,
+    pinned,
+    sortNotes,
+    tags,
+    title,
+    titleEdited,
+  ]);
+
+  const prepareClose = useCallback(async () => {
+    const saved = await persist();
+    if (!saved) return false;
+    if (activeId && !content.trim()) {
+      try {
+        if (persistInFlightRef.current) await persistQueueRef.current;
+        await deleteQuickCaptureNote(activeId);
+        setNotes((current) => current.filter((note) => note.id !== activeId));
+        setOpenNoteIds((current) => current.filter((id) => id !== activeId));
+        showDraft({ content: "", tags: "" });
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
+        setStatus("error");
+        setCanRetrySave(false);
+        return false;
+      }
+    }
+    return true;
+  }, [activeId, content, persist, showDraft]);
 
   useEffect(() => {
     if (!loaded.current) return;
@@ -215,6 +368,11 @@ export const useQuickCapture = () => {
       if (!saved) return;
       revision.current += 1;
       setActiveId(note.id);
+      setOpenNoteIds((current) =>
+        current.includes(note.id) ? current : [...current, note.id],
+      );
+      setTitle(note.title ?? "");
+      setTitleEdited(note.title !== undefined);
       setContent(note.content);
       setTags(tagsToText(note.tags));
       setPinned(note.pinned);
@@ -228,45 +386,8 @@ export const useQuickCapture = () => {
   const openDraft = useCallback(async () => {
     const saved = await persist();
     if (!saved) return;
-    showDraft();
+    showDraft({ content: "", tags: "" });
   }, [persist, showDraft]);
-
-  const promote = useCallback(async () => {
-    if (activeId || !content.trim() || promotionInFlightRef.current) return;
-    promotionInFlightRef.current = true;
-    clearPendingPersist();
-    const promotionRevision = ++revision.current;
-    setStatus("saving");
-    setError(null);
-    setCanRetrySave(false);
-    try {
-      // Finish an already running autosave before the atomic promotion. This
-      // prevents an older draft write from landing after the promotion.
-      if (persistInFlightRef.current) await persistQueueRef.current;
-      const promotion = await promoteQuickCaptureNote({
-        content,
-        tags: parseTags(tags),
-        pinned: false,
-      });
-      setNotes((current) => sortNotes([promotion.note, ...current]));
-      if (promotionRevision !== revision.current) return;
-      const nextDraft = {
-        content: promotion.draft.content,
-        tags: tagsToText(promotion.draft.tags),
-      };
-      setDraft(nextDraft);
-      draftRef.current = nextDraft;
-      showDraft(nextDraft);
-      setStatus("saved");
-      setCanRetrySave(false);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
-      setStatus("error");
-      setCanRetrySave(false);
-    } finally {
-      promotionInFlightRef.current = false;
-    }
-  }, [activeId, clearPendingPersist, content, showDraft, sortNotes, tags]);
 
   const duplicateActive = useCallback(async () => {
     if (!activeId || duplicateInFlightRef.current) return false;
@@ -281,6 +402,7 @@ export const useQuickCapture = () => {
       setCanRetrySave(false);
       setCanRetryDuplicate(false);
       const duplicated = await createQuickCaptureNote({
+        title: titleEdited ? title.trim() : undefined,
         content,
         tags: parseTags(tags),
         pinned,
@@ -289,6 +411,11 @@ export const useQuickCapture = () => {
       if (duplicateRevision !== revision.current) return true;
 
       setActiveId(duplicated.id);
+      setOpenNoteIds((current) =>
+        current.includes(duplicated.id) ? current : [...current, duplicated.id],
+      );
+      setTitle(duplicated.title ?? "");
+      setTitleEdited(duplicated.title !== undefined);
       setContent(duplicated.content);
       setTags(tagsToText(duplicated.tags));
       setPinned(duplicated.pinned);
@@ -305,7 +432,7 @@ export const useQuickCapture = () => {
     } finally {
       duplicateInFlightRef.current = false;
     }
-  }, [activeId, content, persist, pinned, sortNotes, tags]);
+  }, [activeId, content, persist, pinned, sortNotes, tags, title, titleEdited]);
 
   const toggleArchived = useCallback(async () => {
     if (!activeId || archiveInFlightRef.current) return false;
@@ -389,6 +516,8 @@ export const useQuickCapture = () => {
         if (persistInFlightRef.current) await persistQueueRef.current;
         await deleteQuickCaptureNote(noteId);
         setNotes((current) => current.filter((note) => note.id !== noteId));
+        setOpenNoteIds((current) => current.filter((id) => id !== noteId));
+        editorHistoryRef.current.delete(noteId);
         setUndoDeleteId(noteId);
         if (activeId === noteId) showDraft();
         setStatus("saved");
@@ -411,6 +540,51 @@ export const useQuickCapture = () => {
     [activeId, removeNote],
   );
 
+  const closeActiveTab = useCallback(async () => {
+    if (!activeId) {
+      showDraft({ content: "", tags: "" });
+      return;
+    }
+    const saved = content.trim()
+      ? await persist()
+      : (await removeNote(activeId)) === null;
+    if (!saved) return;
+    const currentIndex = openNoteIds.indexOf(activeId);
+    const remaining = openNoteIds.filter((id) => id !== activeId);
+    setOpenNoteIds(remaining);
+    const nextId =
+      remaining[currentIndex] ?? remaining[currentIndex - 1] ?? null;
+    const nextNote = nextId
+      ? notes.find((note) => note.id === nextId)
+      : undefined;
+    if (nextNote) {
+      await selectNote(nextNote);
+    } else {
+      showDraft({ content: "", tags: "" });
+    }
+  }, [
+    activeId,
+    content,
+    notes,
+    openNoteIds,
+    persist,
+    removeNote,
+    selectNote,
+    showDraft,
+  ]);
+
+  const cycleTab = useCallback(
+    async (direction: 1 | -1 = 1) => {
+      if (openNoteIds.length < 2 || !activeId) return;
+      const currentIndex = openNoteIds.indexOf(activeId);
+      const nextIndex =
+        (currentIndex + direction + openNoteIds.length) % openNoteIds.length;
+      const nextNote = notes.find((note) => note.id === openNoteIds[nextIndex]);
+      if (nextNote) await selectNote(nextNote);
+    },
+    [activeId, notes, openNoteIds, selectNote],
+  );
+
   const undoDelete = useCallback(async () => {
     const noteId = undoDeleteId;
     if (!noteId) return false;
@@ -429,49 +603,6 @@ export const useQuickCapture = () => {
     }
   }, [sortNotes, undoDeleteId]);
 
-  const exportBackup = useCallback(
-    async (path: string) => {
-      try {
-        const saved = await persist();
-        if (!saved) {
-          setError(
-            "最新の変更を保存できなかったため、バックアップを作成できませんでした。",
-          );
-          setStatus("error");
-          return;
-        }
-        await exportQuickCaptureBackup(path);
-        setStatus("saved");
-        setError(null);
-        setCanRetrySave(false);
-      } catch (reason) {
-        setError(reason instanceof Error ? reason.message : String(reason));
-        setStatus("error");
-        setCanRetrySave(false);
-      }
-    },
-    [persist],
-  );
-
-  const importBackup = useCallback(
-    async (path: string) => {
-      try {
-        clearPendingPersist();
-        await persistQueueRef.current;
-        await importQuickCaptureBackup(path);
-        return await reload();
-      } catch (reason) {
-        const message =
-          reason instanceof Error ? reason.message : String(reason);
-        setError(message);
-        setStatus("error");
-        setCanRetrySave(false);
-        return message;
-      }
-    },
-    [clearPendingPersist, reload],
-  );
-
   const releaseNotes = useCallback(() => {
     notesReloadSequenceRef.current += 1;
     setNotes([]);
@@ -485,10 +616,9 @@ export const useQuickCapture = () => {
     [sortNotes],
   );
   const lifecycle = useQuickCaptureWindowLifecycle({
-    persist,
+    prepareClose,
     reload,
     reloadNotes,
-    showDraft,
     releaseNotes,
     addNote,
     setError,
@@ -513,6 +643,13 @@ export const useQuickCapture = () => {
       ),
     [notes],
   );
+  const openNotes = useMemo(
+    () =>
+      openNoteIds
+        .map((id) => notes.find((note) => note.id === id))
+        .filter((note): note is QuickCaptureNote => Boolean(note)),
+    [notes, openNoteIds],
+  );
 
   return {
     activeId,
@@ -525,29 +662,33 @@ export const useQuickCapture = () => {
     draft,
     duplicateActive,
     error,
-    exportBackup,
     focusSequence,
     notes,
+    openNotes,
     openDraft,
     pinned,
-    promote,
     removeActive,
+    closeActiveTab,
+    cycleTab,
     removeNote,
     canUndoDelete: undoDeleteId !== null,
     undoDelete,
     retrySave,
     selectNote,
     setContent: updateContent,
+    redoContent,
+    setTitle: updateTitle,
     setPinned: updatePinned,
     setWindowPinned: lifecycle.setWindowPinned,
     setTags: updateTags,
     showDraft,
     status,
+    title,
     tags,
+    undoContent,
     canRetrySave,
     canRetryDuplicate,
     toggleArchived,
-    importBackup,
     retryDuplicate: duplicateActive,
     reload,
     withAutoHideSuspended: lifecycle.withAutoHideSuspended,

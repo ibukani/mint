@@ -16,7 +16,6 @@ import {
   RotateCcw,
   Search,
   Trash2,
-  Upload,
   X,
 } from "lucide-react";
 import type React from "react";
@@ -52,8 +51,6 @@ interface QuickCaptureCommandPaletteProps {
   onCaptureClipboard: () => void;
   onCopyClipboard: () => void;
   onExportMarkdown: () => void;
-  onExportBackup: () => void;
-  onImportBackup: () => void;
   onInsertTemplate: (
     template: (typeof QUICK_CAPTURE_TEMPLATES)[number],
   ) => void;
@@ -74,8 +71,6 @@ export const QuickCaptureCommandPalette = ({
   onCaptureClipboard,
   onCopyClipboard,
   onExportMarkdown,
-  onExportBackup,
-  onImportBackup,
   onInsertTemplate,
   onRequestDelete,
 }: QuickCaptureCommandPaletteProps) => {
@@ -103,7 +98,7 @@ export const QuickCaptureCommandPalette = ({
         group: "移動",
         label: "新しいメモを作成",
         description: "現在の内容を保存して、新しいメモを開きます",
-        keywords: "下書き new draft",
+        keywords: "新規 new note",
         shortcut: `${shortcutModifier}+N`,
         Icon: Plus,
         run: onCreateNewNote,
@@ -118,18 +113,6 @@ export const QuickCaptureCommandPalette = ({
         Icon: Eye,
         run: () => onSetPreview(!preview),
         available: !isSaving,
-      },
-      {
-        id: "save-note",
-        group: "編集",
-        label: "メモに保存",
-        description: "下書きを保存済みメモへ変換します",
-        keywords: "保存 save promote",
-        shortcut: `${shortcutModifier}+Enter`,
-        Icon: FilePlus2,
-        run: () => void capture.promote(),
-        available:
-          !capture.activeId && Boolean(capture.content.trim()) && !isSaving,
       },
       {
         id: "paste",
@@ -155,7 +138,7 @@ export const QuickCaptureCommandPalette = ({
         id: "duplicate",
         group: "整理",
         label: "メモを複製",
-        description: "本文とタグを新しい下書きとして複製します",
+        description: "本文とタグを新しいメモとして複製します",
         keywords: "複製 duplicate copy clone",
         shortcut: `${shortcutModifier}+Shift+D`,
         Icon: CopyPlus,
@@ -191,26 +174,6 @@ export const QuickCaptureCommandPalette = ({
         Icon: Download,
         run: () => void onExportMarkdown(),
         available: Boolean(capture.content.trim()),
-      },
-      {
-        id: "export-backup",
-        group: "入出力",
-        label: "バックアップを書き出す",
-        description: "下書き、メモ、添付ファイルをまとめて保存します",
-        keywords: "バックアップ backup export",
-        Icon: Download,
-        run: () => void onExportBackup(),
-        available: !isSaving,
-      },
-      {
-        id: "import-backup",
-        group: "入出力",
-        label: "バックアップから復元する",
-        description: "現在のデータを選択したバックアップへ置き換えます",
-        keywords: "復元 restore import backup",
-        Icon: Upload,
-        run: () => void onImportBackup(),
-        available: !isSaving,
       },
       {
         id: "attach",
@@ -277,10 +240,8 @@ export const QuickCaptureCommandPalette = ({
       onCreateNewNote,
       onCaptureClipboard,
       onCopyClipboard,
-      onExportBackup,
       onExportMarkdown,
       onFocusSearch,
-      onImportBackup,
       onInsertTemplate,
       onPasteClipboard,
       onRequestDelete,

@@ -18,6 +18,8 @@ pub struct QuickCaptureDraft {
 #[serde(rename_all = "camelCase")]
 pub struct QuickCaptureNote {
     pub id: String,
+    #[serde(default)]
+    pub title: Option<String>,
     pub content: String,
     pub tags: Vec<String>,
     pub pinned: bool,
@@ -63,6 +65,8 @@ pub struct QuickCaptureDraftInput {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuickCaptureNoteInput {
+    #[serde(default)]
+    pub title: Option<String>,
     pub content: String,
     pub tags: Vec<String>,
     pub pinned: bool,

@@ -13,13 +13,15 @@ import {
 describe("quickCaptureMock", () => {
   beforeEach(() => localStorage.clear());
 
-  it("persists a draft and normalizes tags", () => {
+  it("migrates a legacy draft into an ordinary note", () => {
     mockSaveQuickCaptureDraft({
       content: "途中の文章",
       tags: [" #Work ", "work", ""],
     });
 
-    expect(mockLoadQuickCaptureState().draft).toMatchObject({
+    const state = mockLoadQuickCaptureState();
+    expect(state.draft).toMatchObject({ content: "", tags: [] });
+    expect(state.notes[0]).toMatchObject({
       content: "途中の文章",
       tags: ["Work"],
     });
@@ -52,8 +54,6 @@ describe("quickCaptureMock", () => {
   });
 
   it("promotes a note and clears the draft as one mock operation", () => {
-    mockSaveQuickCaptureDraft({ content: "下書き", tags: ["inbox"] });
-
     const promotion = mockPromoteQuickCaptureNote({
       content: "保存するメモ",
       tags: ["work"],

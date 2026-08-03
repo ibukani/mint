@@ -16,7 +16,7 @@ import {
 describe("quick capture utilities", () => {
   it("extracts a useful note title", () => {
     expect(noteTitle({ content: "\n  見出し  \n本文" })).toBe("見出し");
-    expect(noteTitle({ content: "\n  " })).toBe("無題のメモ");
+    expect(noteTitle({ content: "\n  " })).toBe("無題");
   });
 
   it("counts lines and characters accurately", () => {
