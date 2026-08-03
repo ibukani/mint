@@ -1,17 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 use super::model::PersistedWindowState;
 use super::WINDOW_STATE_VERSION;
 use crate::core::settings_store::write_settings_atomically;
 
 pub(crate) fn window_state_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_config_dir()
-        .map_err(|error| error.to_string())?
-        .join("window_state");
+    let dir = crate::core::paths::app_config_dir(app)?.join("window_state");
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
     }

@@ -7,7 +7,7 @@ use std::{
     path::Path,
     time::Duration as StdDuration,
 };
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use url::Url;
 use uuid::Uuid;
 
@@ -34,10 +34,7 @@ pub(super) struct NewItem {
 }
 
 pub fn initialize_store(app: &AppHandle) -> Result<FileShelfStoreState, String> {
-    let directory = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
+    let directory = crate::core::paths::app_data_dir(app)?;
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     let assets_dir = directory.join("file_shelf_assets");
     fs::create_dir_all(&assets_dir).map_err(|error| error.to_string())?;
