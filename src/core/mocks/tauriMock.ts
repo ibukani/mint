@@ -12,6 +12,7 @@ import { mockCaptureFileShelfClipboardText } from "./fileShelfMock";
 import { handleGameLauncherIpcCommand } from "./gameLauncherIpcMock";
 import { handleGoogleCalendarIpcCommand } from "./googleCalendarIpcMock";
 import { createMockSettings } from "./mockSettings";
+import { handlePerformanceIpcCommand } from "./performanceIpcMock";
 import { handlePluginIpcCommand } from "./pluginIpcMock";
 import { handleQuickCaptureIpcCommand } from "./quickCaptureIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
@@ -399,6 +400,13 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       },
     });
     if (apiKeyResult.handled) return apiKeyResult.value;
+
+    const performanceResult = await handlePerformanceIpcCommand(
+      cmd,
+      typedArgs,
+      {},
+    );
+    if (performanceResult.handled) return performanceResult.value;
 
     const pluginResult = await handlePluginIpcCommand(cmd, typedArgs, {
       update: mockUpdateAvailable

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { handleGameLauncherIpcCommand } from "./gameLauncherIpcMock";
+import {
+  createMockDiagnosticsReport,
+  handlePerformanceIpcCommand,
+} from "./performanceIpcMock";
 import { handlePluginIpcCommand } from "./pluginIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
 import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
@@ -131,5 +135,32 @@ describe("shared IPC mock handlers", () => {
       value: { tab: "clock", targetId: null },
     });
     expect(onTakePendingSettingsTab).toHaveBeenCalledOnce();
+  });
+
+  it("serves the diagnostics report from the shared performance handler", async () => {
+    const result = await handlePerformanceIpcCommand(
+      "collect_diagnostics",
+      undefined,
+      {},
+    );
+
+    expect(result).toEqual({
+      handled: true,
+      value: createMockDiagnosticsReport(),
+    });
+    expect(
+      (result as { value: { environment: { os: string } } }).value.environment
+        .os,
+    ).toBe("win32");
+  });
+
+  it("returns an unhandled result for unknown performance commands", async () => {
+    const result = await handlePerformanceIpcCommand(
+      "unknown_performance_command",
+      undefined,
+      {},
+    );
+
+    expect(result).toEqual({ handled: false });
   });
 });
