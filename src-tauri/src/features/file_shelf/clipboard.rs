@@ -78,7 +78,9 @@ impl ClipboardHistoryMonitor {
         self.enabled.store(enabled, Ordering::Release);
         if !enabled {
             self.notify();
-            self.join_worker();
+            if self.join_worker() {
+                crate::core::performance::increment_counter(&app, "workersStopped");
+            }
             return;
         }
         if !self.is_running() {
@@ -101,6 +103,7 @@ impl ClipboardHistoryMonitor {
                 drop(worker);
                 if let Some(handle) = stale_worker {
                     let _ = handle.join();
+                    crate::core::performance::increment_counter(&app, "workersStopped");
                 }
                 true
             }
@@ -112,9 +115,10 @@ impl ClipboardHistoryMonitor {
         }
 
         let monitor = Arc::clone(self);
+        let app_for_worker = app.clone();
         let worker = std::thread::Builder::new()
             .name("mint-clipboard-history".to_string())
-            .spawn(move || run_clipboard_history_monitor(app, monitor));
+            .spawn(move || run_clipboard_history_monitor(app_for_worker, monitor));
         let Ok(worker) = worker else {
             self.starting.store(false, Ordering::Release);
             return;
@@ -125,6 +129,7 @@ impl ClipboardHistoryMonitor {
                 .worker
                 .lock()
                 .unwrap_or_else(|error| error.into_inner()) = Some(worker);
+            crate::core::performance::increment_counter(&app, "workersStarted");
         } else {
             let _ = worker.join();
         }
@@ -155,7 +160,7 @@ impl ClipboardHistoryMonitor {
         self.enabled.load(Ordering::Acquire)
     }
 
-    fn join_worker(&self) {
+    fn join_worker(&self) -> bool {
         let worker = self
             .worker
             .lock()
@@ -163,6 +168,9 @@ impl ClipboardHistoryMonitor {
             .take();
         if let Some(worker) = worker {
             let _ = worker.join();
+            true
+        } else {
+            false
         }
     }
 

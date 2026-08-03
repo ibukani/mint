@@ -26,6 +26,9 @@
     "check:release-version": "node scripts/check-release-version.js",
     "version:bump": "node scripts/bump-version.js",
     "test:scaffold": "node scripts/test-scaffold.js",
+    "perf:smoke": "node performance/scenarios/smoke.mjs",
+    "perf:desktop": "node performance/scenarios/desktop.mjs",
+    "perf:report": "npm run perf:smoke && npm run perf:desktop",
     "check:tauri": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml && cargo check --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {

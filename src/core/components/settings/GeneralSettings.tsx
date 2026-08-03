@@ -32,6 +32,7 @@ import {
 } from "../../context/AppSettings";
 import { useSettingsNavigation } from "../../context/SettingsNavigation";
 import type { FeatureSettingsKey } from "../../settingsModel";
+import { DiagnosticsSettings } from "./DiagnosticsSettings";
 import { UpdaterSettings } from "./UpdaterSettings";
 import { WindowStateResetSettings } from "./WindowStateResetSettings";
 
@@ -330,6 +331,7 @@ export const GeneralSettings: React.FC = () => {
 
         <UpdaterSettings />
         <WindowStateResetSettings />
+        <DiagnosticsSettings />
       </div>
     </SettingsSection>
   );

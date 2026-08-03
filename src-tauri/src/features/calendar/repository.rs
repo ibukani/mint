@@ -156,6 +156,15 @@ pub(super) fn get_next_calendar_event_from_store(
         .map_err(|error| error.to_string())
 }
 
+/// Counts all persisted calendar events for diagnostics.
+pub(super) fn count_calendar_events_from_store(path: &Path) -> Result<u64, String> {
+    let connection = open_store(path)?;
+    let count: i64 = connection
+        .query_row("SELECT COUNT(*) FROM calendar_events", [], |row| row.get(0))
+        .map_err(|error| error.to_string())?;
+    Ok(count.max(0) as u64)
+}
+
 #[cfg(test)]
 pub(super) fn create_calendar_event_in_store(
     path: &Path,

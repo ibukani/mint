@@ -14,6 +14,12 @@ pub use models::{
     QuickCaptureState, QuickCaptureStoreState,
 };
 
+/// Counts persisted quick capture notes for diagnostics. Fails when the
+/// store cannot be opened, in which case the caller omits the count.
+pub fn count_quick_capture_notes(state: &QuickCaptureStoreState) -> Result<u64, String> {
+    repository::load_state_from_store(&state.path).map(|state| state.notes.len() as u64)
+}
+
 #[tauri::command]
 pub fn load_quick_capture_state(
     state: tauri::State<'_, QuickCaptureStoreState>,

@@ -160,6 +160,15 @@ pub fn ensure_window(
         mark_initial_show_pending(label);
     }
 
+    crate::core::performance::record_event(
+        app,
+        "window:created",
+        Some(label),
+        None,
+        std::collections::HashMap::new(),
+    );
+    crate::core::performance::increment_counter(app, "windowsCreated");
+
     Ok(window)
 }
 
