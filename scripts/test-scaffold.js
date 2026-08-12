@@ -93,6 +93,21 @@ try {
   if (!fs.existsSync(featureRs)) {
     throw new Error("Rust feature module was not generated.");
   }
+  const settingsTabsContent = fs.readFileSync(
+    path.join(ROOT_DIR, "src/core/navigation/settingsTabs.ts"),
+    "utf-8",
+  );
+  const generatedTabIndex = settingsTabsContent.indexOf('id: "testFeature"');
+  const lastBuiltInTabIndex = settingsTabsContent.indexOf('id: "voiceToText"');
+  if (
+    generatedTabIndex === -1 ||
+    lastBuiltInTabIndex === -1 ||
+    generatedTabIndex < lastBuiltInTabIndex
+  ) {
+    throw new Error(
+      "Generated settings tabs must be appended after the built-in tab order.",
+    );
+  }
 
   // 5. Run verify:architecture
   console.log("Running verify:architecture...");

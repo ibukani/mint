@@ -53,12 +53,17 @@ const REQUIRED_PR_TEMPLATE_CHECKS = [
   "npm run check:all",
   "npm run test:scaffold",
   "npm run check:tauri",
+  "Tauri実機",
+  "実機スクリーンショットを取得し、欠け・横溢れ",
 ];
 
 const REQUIRED_AI_DEVELOPMENT_CONTENT = [
   "npm run scaffold:feature new_tool NewTool",
   "Do not manually create the initial feature wiring.",
   "npm run check:all",
+  "### 9. UI変更時の実機・スクリーンショット確認（必須）",
+  "npm run tauri -- dev",
+  "実際のTauriデスクトップウィンドウ",
 ];
 
 const FORBIDDEN_AI_DEVELOPMENT_CONTENT = [
@@ -78,6 +83,15 @@ const REQUIRED_AI_RUBRIC_CONTENT = [
   "npm run check:quick",
   "npm run check:all",
   "Residual Risk Policy",
+  "actual Tauri desktop shell",
+  "Screenshots from the actual app",
+];
+
+const REQUIRED_MANUAL_VERIFICATION_CONTENT = [
+  "## UI変更時の必須確認",
+  "実際のTauriデスクトップアプリ",
+  "ブラウザ画面やモック画面だけのスクリーンショットは証跡として扱わない",
+  "不自然な点があれば修正し",
 ];
 
 let hasError = false;
@@ -244,6 +258,13 @@ if (expectFile("docs/ai-quality-rubric.md")) {
   const rubric = readText("docs/ai-quality-rubric.md");
   for (const item of REQUIRED_AI_RUBRIC_CONTENT) {
     expectContains("docs/ai-quality-rubric.md", rubric, item);
+  }
+}
+
+if (expectFile("docs/manual-verification.md")) {
+  const manualVerification = readText("docs/manual-verification.md");
+  for (const item of REQUIRED_MANUAL_VERIFICATION_CONTENT) {
+    expectContains("docs/manual-verification.md", manualVerification, item);
   }
 }
 

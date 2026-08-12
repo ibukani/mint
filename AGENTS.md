@@ -3,6 +3,7 @@
 - Mint は Tauri で提供するデスクトップ専用アプリです。スマートフォン展開やモバイル専用UIは要件に含めず、標準デスクトップウィンドウ（900×650）、最小サイズ（680×520）、ライト/ダークテーマ、オーバーレイ実寸を主な品質基準とする。既存の狭幅ルールはデスクトップウィンドウのリサイズ時に破綻させないための保険として維持する。
 - 人間向けの応答は、明示的に別言語を指定されない限り日本語で書く。
 - 変更前に `docs/ai-development.md` を読み、広い調査の前に `npm run ai:context` を実行する。UI変更では `docs/design-architecture.md` も読む。
+- UI変更では、ブラウザのモック確認だけで完了にせず、`npm run tauri -- dev` で実際のデスクトップアプリを起動して確認する。対象画面のスクリーンショットを取得し、レイアウト崩れ・欠け・余白・テーマ・フォーカスなどに不自然な点がないか目視確認し、問題があれば修正して再撮影する。完了報告には実機確認のサイズ・テーマ・スクリーンショット・残存リスクを記載する。
 - 新規 feature の初期配線は手作業せず、`npm run scaffold:feature <feature_name> [PascalComponentName]` を使う。
 - 静的 feature-module 境界、TypeScript/Rust/mock の型同期、実用的なブラウザ mock、placeholder の OS 副作用禁止を守る。
 - 作業に合う `.agents/skills/*/SKILL.md` があれば先に読む。スキル一覧は `npm run ai:context` に表示される。

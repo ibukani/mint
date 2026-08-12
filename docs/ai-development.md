@@ -159,6 +159,13 @@ To manually verify the backend, `cd src-tauri` and run:
 - バックエンド（Rust側）の設定構造体に `status` や `enabled` フィールドを設け、それがアクティブでない場合は副作用をスキップするガードを必ず実装してください。
 - `lib.rs` などでショートカットを登録・処理する際は、個別のフィーチャーのショートカット（例: `settings.voice_to_text.shortcut`）に直接アクセスするのではなく、必ず `settings.active_shortcuts()` メソッドを使用して有効なものだけを一括取得・処理してください。
 
+### 9. UI変更時の実機・スクリーンショット確認（必須）
+- UIまたはデスクトップ挙動を変更した場合は、ブラウザのTauriモック確認だけで完了にせず、`npm run tauri -- dev` で実際のTauriデスクトップウィンドウを起動して確認してください。
+- 影響する画面を、標準サイズ（900×650）、最小サイズ（680×520）、該当するオーバーレイの実寸、およびライト/ダークテーマで確認してください。変更内容に関係するサイズ・テーマだけでなく、リサイズで崩れないことも確認します。
+- 実際のアプリ画面のスクリーンショットを取得し、画面の欠け、横溢れ、位置・余白・整列、文字の折り返し、フォーカス、コントラスト、テーマ、スクロール、オーバーレイの重なりに不自然な点がないか目視確認してください。
+- 不自然な点が見つかった場合は修正して、実機で再確認し、スクリーンショットを再取得してください。UI変更を完了とするのは、確認結果に問題がないことを判断できた後です。
+- 完了報告やPRには、実行した実機確認、画面サイズ、テーマ、スクリーンショット、および未確認項目・残存リスクを記載してください。実機確認を実行できない場合は、理由を明記して未確認のまま完了扱いにしないでください。
+
 ## 6. Coding Style & Naming Conventions
 - Frontend code uses TypeScript modules, React function components, 2-space indentation, double quotes, and semicolons. Name React components in `PascalCase` and hooks/state variables in `camelCase`.
 - Rust code follows standard `rustfmt` formatting with 4-space indentation. Use `snake_case` for functions, variables, and Tauri command names. Keep Tauri commands small and register them in `tauri::generate_handler!`.

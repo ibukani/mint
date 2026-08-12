@@ -10,7 +10,7 @@ This rubric defines the target bar for AI-led development in Mint. A change is r
 - **Mock and browser workflow (10 pts)**: Browser-only mocks and Vitest setup stay synchronized with frontend invokes and default settings.
 - **Verification evidence (20 pts)**: `npm run check:quick` passes during iteration, and `npm run check:all` passes before handoff when the Rust/Tauri environment is available. If a gate cannot run, the blocker is explicit and concrete.
 - **Documentation and review readiness (10 pts)**: README, AI development docs, architecture docs, audit notes, and PR checklist remain aligned with the actual workflow.
-- **User-facing quality (10 pts)**: UI changes are visually coherent, accessible enough for the current app standard, and verified in the browser or desktop shell when behavior is visible.
+- **User-facing quality (10 pts)**: UI changes are visually coherent, accessible enough for the current app standard, and verified in the actual Tauri desktop shell. Screenshots from the actual app must be reviewed for visual anomalies; browser-only mock verification is supplemental and is not sufficient.
 
 ## Required Evidence
 
@@ -22,7 +22,7 @@ npm run check:quick
 npm run check:all
 ```
 
-For UI or desktop behavior, add manual evidence from `docs/manual-verification.md` for the affected workflow. For scaffolder changes, `npm run test:scaffold` must pass, either directly or as part of `npm run check:all`.
+For UI or desktop behavior, add manual evidence from `docs/manual-verification.md` for the affected workflow. This evidence must include actual Tauri desktop verification, the checked sizes and themes, screenshots from the actual app, and a visual review result. For scaffolder changes, `npm run test:scaffold` must pass, either directly or as part of `npm run check:all`.
 
 ## Residual Risk Policy
 

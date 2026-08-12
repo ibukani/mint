@@ -300,10 +300,20 @@ if (fs.existsSync(settingsTabsPath)) {
     // 9.1 Add lazy import
     const componentDef = `const ${pascalName}Settings = lazy(() =>\n  import("../../features/${featureName}/components/${pascalName}Settings").then((m) => ({ default: m.${pascalName}Settings }))\n);\n\n`;
 
-    // 9.2 Add tab to SETTINGS_TABS
+    // 9.2 Add tab to SETTINGS_TABS without changing the existing tab order.
     content = content.replace(
       /(export\s+const\s+SETTINGS_TABS\s*=\s*\[)/,
-      `${componentDef}$1\n  { id: "${camelName}", label: "${pascalName} 設定" },`,
+      `${componentDef}$1`,
+    );
+    const settingsTabsMarker = "  // scaffold:settings-tabs";
+    if (!content.includes(settingsTabsMarker)) {
+      throw new Error(
+        "settingsTabs.ts に scaffold:settings-tabs 挿入位置がありません。",
+      );
+    }
+    content = content.replace(
+      settingsTabsMarker,
+      `  { id: "${camelName}", label: "${pascalName} 設定" },\n${settingsTabsMarker}`,
     );
 
     // 9.3 Add component to SETTINGS_TAB_COMPONENTS

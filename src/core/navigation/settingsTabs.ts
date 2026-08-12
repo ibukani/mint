@@ -60,22 +60,6 @@ const MintPaletteSettings = lazy(() =>
 
 export const SETTINGS_TABS = [
   {
-    id: "mintPalette",
-    label: "MintPalette 設定",
-    description: "グローバルコマンドパレット",
-    keywords: ["コマンドパレット", "検索", "Ctrl+K", "ランチャー", "起動"],
-    searchItems: [
-      {
-        id: "mint-palette-shortcut",
-        label: "起動ショートカットキー",
-        description: "MintPaletteの呼び出し",
-        keywords: ["Ctrl+Alt+M", "キー", "コマンドパレット"],
-        targetId: "mint-palette-shortcut-input",
-      },
-    ],
-    icon: React.createElement(Command, { size: 18, "aria-hidden": true }),
-  },
-  {
     id: "general",
     label: "一般設定",
     description: "テーマと起動操作",
@@ -114,6 +98,22 @@ export const SETTINGS_TABS = [
       size: 18,
       "aria-hidden": true,
     }),
+  },
+  {
+    id: "mintPalette",
+    label: "MintPalette 設定",
+    description: "グローバルコマンドパレット",
+    keywords: ["コマンドパレット", "検索", "Ctrl+K", "ランチャー", "起動"],
+    searchItems: [
+      {
+        id: "mint-palette-shortcut",
+        label: "起動ショートカットキー",
+        description: "MintPaletteの呼び出し",
+        keywords: ["Ctrl+Alt+M", "キー", "コマンドパレット"],
+        targetId: "mint-palette-shortcut-input",
+      },
+    ],
+    icon: React.createElement(Command, { size: 18, "aria-hidden": true }),
   },
   {
     id: "fileShelf",
@@ -341,6 +341,7 @@ export const SETTINGS_TABS = [
     ],
     icon: React.createElement(Mic2, { size: 18, "aria-hidden": true }),
   },
+  // scaffold:settings-tabs
 ] as const;
 
 export type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
