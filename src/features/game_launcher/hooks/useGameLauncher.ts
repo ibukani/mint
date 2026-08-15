@@ -29,6 +29,7 @@ export const useGameLauncher = () => {
   const closingRef = useRef(false);
   const visibleRef = useRef(false);
   const launchingRef = useRef(false);
+  const openingStoreRef = useRef(false);
   const initialScanStartedRef = useRef(false);
   const initialShownRef = useRef(false);
 
@@ -80,7 +81,8 @@ export const useGameLauncher = () => {
 
   const startGame = useCallback(
     async (game: InstalledGame) => {
-      if (launchingRef.current || closingRef.current) return;
+      if (launchingRef.current || openingStoreRef.current || closingRef.current)
+        return;
       launchingRef.current = true;
       setLaunchingGameKey(gameKey(game));
       setError(null);
@@ -110,6 +112,9 @@ export const useGameLauncher = () => {
   );
 
   const openStorePage = useCallback(async (game: InstalledGame) => {
+    if (openingStoreRef.current || launchingRef.current || closingRef.current)
+      return;
+    openingStoreRef.current = true;
     setOpeningStoreId(gameKey(game));
     setError(null);
     try {
@@ -117,6 +122,7 @@ export const useGameLauncher = () => {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
+      openingStoreRef.current = false;
       setOpeningStoreId(null);
     }
   }, []);

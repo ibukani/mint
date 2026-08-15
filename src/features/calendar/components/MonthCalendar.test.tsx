@@ -152,7 +152,7 @@ describe("MonthCalendar", () => {
     expect(screen.getByRole("button", { name: "2月28日" })).toHaveFocus();
   });
 
-  it("shows a subtle event marker and opens event entry points", () => {
+  it("shows a prominent event count and opens event entry points", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 6, 10, 9, 0, 0));
     const onCreate = vi.fn();
@@ -171,9 +171,12 @@ describe("MonthCalendar", () => {
     const eventDay = screen.getByRole("button", {
       name: "7月11日、予定1件",
     });
-    expect(eventDay.querySelector(".month-calendar__event-dot")).not.toBeNull();
+    expect(eventDay).toHaveClass("has-events");
     expect(
-      container.querySelectorAll(".month-calendar__event-dot"),
+      eventDay.querySelector(".month-calendar__event-count"),
+    ).toHaveTextContent("1件");
+    expect(
+      container.querySelectorAll(".month-calendar__event-count"),
     ).toHaveLength(1);
 
     fireEvent.click(eventDay);
@@ -184,6 +187,25 @@ describe("MonthCalendar", () => {
       screen.getByRole("button", { name: "次の予定、設計レビュー" }),
     );
     expect(onOpenEvent).toHaveBeenCalledWith(calendarEvent);
+  });
+
+  it("shows the number of events scheduled for the same date", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 6, 10, 9, 0, 0));
+    const events = Array.from({ length: 3 }, (_, index) => ({
+      ...calendarEvent,
+      id: `event-${index + 1}`,
+    }));
+
+    render(<MonthCalendarHarness events={events} />);
+
+    const eventDay = screen.getByRole("button", {
+      name: "7月11日、予定3件",
+    });
+    expect(eventDay).toHaveClass("has-events");
+    expect(
+      eventDay.querySelector(".month-calendar__event-count"),
+    ).toHaveTextContent("3件");
   });
 
   it("offers a retry action when events cannot be loaded", () => {

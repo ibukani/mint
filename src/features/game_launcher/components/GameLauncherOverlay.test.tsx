@@ -85,6 +85,84 @@ describe("GameLauncherOverlay", () => {
     );
   });
 
+  it("表記ゆれと複数語を正規化し、一致度の高いゲームを検索できる", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
+
+    fireEvent.change(search, { target: { value: "counter strike" } });
+    expect(screen.getAllByText("Counter-Strike 2").length).toBeGreaterThan(0);
+    expect(screen.queryByText("VALORANT")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "ライオット val" } });
+    expect(screen.getAllByText("VALORANT").length).toBeGreaterThan(0);
+
+    fireEvent.change(search, { target: { value: "ＶＡＬＯＲＡＮＴ" } });
+    expect(screen.getAllByText("VALORANT").length).toBeGreaterThan(0);
+  });
+
+  it("IME変換中のEnterではゲームを起動しない", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const search = await screen.findByRole("searchbox", {
+      name: "ゲームを検索",
+    });
+    fireEvent.keyDown(search, { key: "Enter", isComposing: true });
+    expect(apiMocks.launch).not.toHaveBeenCalled();
+  });
+
+  it("一覧の単クリックは選択だけを行い、明示的な起動ボタンで開始する", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    const selection = await screen.findByRole("button", {
+      name: "VALORANTを選択",
+    });
+    fireEvent.click(selection);
+    expect(apiMocks.launch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "起動" }));
+    await waitFor(() =>
+      expect(apiMocks.launch).toHaveBeenCalledWith({
+        id: "valorant",
+        store: "riot",
+      }),
+    );
+  });
+
+  it("起動と管理画面の失敗理由を画面内に表示する", async () => {
+    apiMocks.launch.mockRejectedValueOnce(new Error("Steamを起動できません"));
+    apiMocks.openStore.mockRejectedValueOnce(
+      new Error("Steamの管理画面を開けません"),
+    );
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+    await screen.findByRole("button", { name: "Counter-Strike 2を選択" });
+
+    fireEvent.click(screen.getByRole("button", { name: "起動" }));
+    expect(await screen.findByText("Steamを起動できません")).toHaveAttribute(
+      "role",
+      "alert",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "管理画面" }));
+    expect(
+      await screen.findByText("Steamの管理画面を開けません"),
+    ).toHaveAttribute("role", "alert");
+  });
+
   it("一致しない検索には空状態を表示する", async () => {
     render(
       <AppSettingsProvider>
@@ -291,9 +369,7 @@ describe("GameLauncherOverlay", () => {
     const search = await screen.findByRole("searchbox", {
       name: "ゲームを検索",
     });
-    await screen.findByRole("button", {
-      name: /VALORANTRiot Games/,
-    });
+    await screen.findByRole("button", { name: "VALORANTを選択" });
 
     fireEvent.keyDown(search, { key: "End" });
     await waitFor(() =>
@@ -344,7 +420,7 @@ describe("GameLauncherOverlay", () => {
     const search = await screen.findByRole("searchbox", {
       name: "ゲームを検索",
     });
-    await screen.findByRole("button", { name: /Game 01Steam/ });
+    await screen.findByRole("button", { name: "Game 01を選択" });
     expect(search).toHaveAttribute(
       "aria-keyshortcuts",
       "ArrowDown ArrowUp Home End PageUp PageDown Enter Escape Control+F",
@@ -383,5 +459,29 @@ describe("GameLauncherOverlay", () => {
     expect(
       screen.getByRole("searchbox", { name: "ゲームを検索" }),
     ).toHaveFocus();
+  });
+
+  it("ストアの読み取り警告を省略せず表示する", async () => {
+    apiMocks.list.mockResolvedValueOnce({
+      games: [],
+      sources: [
+        {
+          store: "steam",
+          detected: true,
+          warning: "libraryfolders.vdfを読み取れませんでした",
+        },
+      ],
+    });
+    render(
+      <AppSettingsProvider>
+        <GameLauncherOverlay />
+      </AppSettingsProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        "Steam: libraryfolders.vdfを読み取れませんでした",
+      ),
+    ).toHaveAttribute("role", "alert");
   });
 });

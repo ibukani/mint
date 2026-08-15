@@ -208,4 +208,32 @@ describe("useGameLauncher lifecycle", () => {
     expect(mocks.openStore).toHaveBeenCalledWith({ id: "730", store: "steam" });
     expect(mocks.launch).not.toHaveBeenCalled();
   });
+
+  it("管理画面の重複要求と起動要求の競合を拒否する", async () => {
+    let finishOpening: (() => void) | undefined;
+    mocks.openStore.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishOpening = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useGameLauncher(), {
+      wrapper: AppSettingsProvider,
+    });
+
+    let firstOpen: Promise<void> | undefined;
+    act(() => {
+      firstOpen = result.current.openStorePage(game);
+      void result.current.openStorePage(game);
+      void result.current.startGame(game);
+    });
+
+    expect(mocks.openStore).toHaveBeenCalledOnce();
+    expect(mocks.launch).not.toHaveBeenCalled();
+    await act(async () => {
+      finishOpening?.();
+      await firstOpen;
+    });
+    expect(result.current.openingStoreId).toBeNull();
+  });
 });

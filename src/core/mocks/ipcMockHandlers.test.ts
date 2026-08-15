@@ -38,12 +38,20 @@ describe("shared IPC mock handlers", () => {
     const onLaunch = vi.fn();
     const result = await handleGameLauncherIpcCommand(
       "launch_game",
-      { request: { id: "demo" } },
+      { request: { id: "demo", store: "steam" } },
       { scanResult, onLaunch },
     );
 
     expect(result).toEqual({ handled: true, value: undefined });
-    expect(onLaunch).toHaveBeenCalledWith("demo");
+    expect(onLaunch).toHaveBeenCalledWith({ id: "demo", store: "steam" });
+
+    await expect(
+      handleGameLauncherIpcCommand(
+        "launch_game",
+        { request: { id: "demo" } },
+        { scanResult },
+      ),
+    ).rejects.toThrow("Game store is required.");
   });
 
   it("passes the game scan refresh flag through the browser mock", async () => {
@@ -57,6 +65,35 @@ describe("shared IPC mock handlers", () => {
     );
 
     expect(onScan).toHaveBeenCalledWith(true);
+  });
+
+  it("returns lightweight game source counts through the browser mock", async () => {
+    const scanResult = {
+      games: [
+        {
+          id: "demo",
+          title: "Demo",
+          store: "steam" as const,
+          imagePath: null,
+          fallbackImagePath: null,
+        },
+      ],
+      sources: [{ store: "steam" as const, detected: true, warning: null }],
+    };
+
+    const result = await handleGameLauncherIpcCommand(
+      "get_game_source_status",
+      { force: false },
+      { scanResult },
+    );
+
+    expect(result).toEqual({
+      handled: true,
+      value: {
+        sources: scanResult.sources,
+        gameCounts: { steam: 1, epic: 0, riot: 0 },
+      },
+    });
   });
 
   it("shares transcription validation between browser and Vitest mocks", async () => {

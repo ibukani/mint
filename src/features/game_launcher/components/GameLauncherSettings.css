@@ -81,6 +81,12 @@
   margin: 0;
 }
 
+.game-launcher-source__copy .game-launcher-source__warning {
+  margin-top: var(--space-1);
+  color: var(--color-error);
+  overflow-wrap: anywhere;
+}
+
 .game-launcher-source__copy h4 {
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);

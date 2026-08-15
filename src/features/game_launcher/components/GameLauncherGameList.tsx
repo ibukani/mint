@@ -10,12 +10,10 @@ interface GameLauncherGameListProps {
   activeIndex: number;
   favoriteGameKeySet: Set<string>;
   lastPlayedAtByGame: Record<string, string>;
-  launchingGameKey: string | null;
-  openingStoreId: string | null;
+  operationInProgress: boolean;
   listRef: React.RefObject<HTMLElement | null>;
   itemRefs: MutableRefObject<Array<HTMLButtonElement | null>>;
   onSelect: (game: InstalledGame) => void;
-  onLaunch: (game: InstalledGame) => void;
   onToggleFavorite: (game: InstalledGame) => void;
   onOpenStore: (game: InstalledGame) => void;
   loading: boolean;
@@ -27,12 +25,10 @@ export const GameLauncherGameList: React.FC<GameLauncherGameListProps> = ({
   activeIndex,
   favoriteGameKeySet,
   lastPlayedAtByGame,
-  launchingGameKey,
-  openingStoreId,
+  operationInProgress,
   listRef,
   itemRefs,
   onSelect,
-  onLaunch,
   onToggleFavorite,
   onOpenStore,
   loading,
@@ -65,10 +61,10 @@ export const GameLauncherGameList: React.FC<GameLauncherGameListProps> = ({
               id={gameDomId(game)}
               className="game-launcher__launch"
               aria-current={index === activeIndex ? "true" : undefined}
+              aria-label={`${game.title}を選択`}
               onMouseEnter={() => onSelect(game)}
               onFocus={() => onSelect(game)}
-              onClick={() => onLaunch(game)}
-              disabled={launchingGameKey !== null}
+              onClick={() => onSelect(game)}
             >
               <GameArtwork game={game} />
               <span className="game-launcher__item-copy">
@@ -88,6 +84,8 @@ export const GameLauncherGameList: React.FC<GameLauncherGameListProps> = ({
               onClick={() => onToggleFavorite(game)}
               aria-label={`${game.title}を${favorite ? "お気に入りから削除" : "お気に入りに追加"}`}
               aria-pressed={favorite}
+              title={favorite ? "お気に入りから削除" : "お気に入りに追加"}
+              disabled={operationInProgress}
             >
               <Star
                 size={16}
@@ -101,7 +99,8 @@ export const GameLauncherGameList: React.FC<GameLauncherGameListProps> = ({
               onFocus={() => onSelect(game)}
               onClick={() => onOpenStore(game)}
               aria-label={`${game.title}のストア管理画面を開く`}
-              disabled={openingStoreId === key}
+              title="ストア管理画面を開く"
+              disabled={operationInProgress}
             >
               <ExternalLink size={16} aria-hidden="true" />
             </button>
@@ -115,6 +114,9 @@ export const GameLauncherGameList: React.FC<GameLauncherGameListProps> = ({
         </strong>
         {!query && (
           <span>Steam、Epic Games、Riot Gamesを確認してください。</span>
+        )}
+        {query && (
+          <span>単語を減らすか、ストア名や略称で検索してください。</span>
         )}
       </div>
     )}

@@ -314,6 +314,7 @@ pub fn run() {
             features::v2t::open_v2t_with_audio_file,
             features::v2t::take_pending_v2t_audio_file,
             features::game_launcher::scan::list_installed_games,
+            features::game_launcher::scan::get_game_source_status,
             features::game_launcher::launch::launch_game,
             features::quick_capture::load_quick_capture_state,
             features::quick_capture::save_quick_capture_draft,

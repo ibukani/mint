@@ -41,8 +41,7 @@ const testGameScanResult: GameScanResult = {
       id: "730",
       title: "Counter-Strike 2",
       store: "steam",
-      imagePath:
-        "https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg",
+      imagePath: null,
       fallbackImagePath: null,
     },
     {

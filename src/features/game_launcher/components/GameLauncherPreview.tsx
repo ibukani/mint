@@ -25,19 +25,21 @@ export const GameLauncherPreview: React.FC<GameLauncherPreviewProps> = ({
     {game ? (
       <>
         <GameArtwork game={game} />
-        <span className={`game-launcher__store is-${game.store}`}>
-          {storeLabel[game.store]}
-        </span>
-        <h2>{game.title}</h2>
-        <p>
-          {lastPlayedAt
-            ? `最終プレイ ${new Date(lastPlayedAt).toLocaleString("ja-JP")}`
-            : "まだプレイしていません"}
-        </p>
+        <div className="game-launcher__preview-copy">
+          <span className={`game-launcher__store is-${game.store}`}>
+            {storeLabel[game.store]}
+          </span>
+          <h2>{game.title}</h2>
+          <p>
+            {lastPlayedAt
+              ? `最終プレイ ${new Date(lastPlayedAt).toLocaleString("ja-JP")}`
+              : "まだプレイしていません"}
+          </p>
+        </div>
         <div className="game-launcher__preview-actions">
           <button
             type="button"
-            disabled={launching}
+            disabled={launching || storeOpening}
             onClick={() => onLaunch(game)}
           >
             <Play size={15} aria-hidden="true" />

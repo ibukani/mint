@@ -1,12 +1,12 @@
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   isApplePlatform,
   revealElementVertically,
 } from "../../../design/layout";
-import { getAcronym, storeLabel } from "../components/gameLauncherPresentation";
 import type { GameScanResult, InstalledGame } from "../types";
 import { gameKey } from "../types";
+import { createSearchableGame, getGameSearchScore } from "./gameLauncherSearch";
 
 const GAME_PAGE_STEP = 5;
 
@@ -37,14 +37,11 @@ export const useGameLauncherList = ({
     () =>
       (result?.games ?? []).map((game) => {
         const key = gameKey(game);
-        return {
+        return createSearchableGame(
           game,
           key,
-          title: game.title.toLocaleLowerCase("ja"),
-          store: storeLabel[game.store].toLocaleLowerCase("ja"),
-          acronym: getAcronym(game.title).toLocaleLowerCase("ja"),
-          lastPlayedAt: Date.parse(lastPlayedAtByGame[key] ?? "") || 0,
-        };
+          Date.parse(lastPlayedAtByGame[key] ?? "") || 0,
+        );
       }),
     [lastPlayedAtByGame, result],
   );
@@ -52,33 +49,48 @@ export const useGameLauncherList = ({
     () => new Set(favoriteGameKeys),
     [favoriteGameKeys],
   );
+  const compareGames = useCallback(
+    (
+      left: (typeof searchableGames)[number],
+      right: (typeof searchableGames)[number],
+    ) => {
+      const favoriteDifference =
+        Number(favoriteGameKeySet.has(right.key)) -
+        Number(favoriteGameKeySet.has(left.key));
+      return (
+        favoriteDifference ||
+        right.lastPlayedAt - left.lastPlayedAt ||
+        left.game.title.localeCompare(right.game.title, "ja")
+      );
+    },
+    [favoriteGameKeySet],
+  );
   const orderedGames = useMemo(
-    () =>
-      [...searchableGames].sort((left, right) => {
-        const favoriteDifference =
-          Number(favoriteGameKeySet.has(right.key)) -
-          Number(favoriteGameKeySet.has(left.key));
-        return (
-          favoriteDifference ||
-          right.lastPlayedAt - left.lastPlayedAt ||
-          left.game.title.localeCompare(right.game.title, "ja")
-        );
-      }),
-    [favoriteGameKeySet, searchableGames],
+    () => [...searchableGames].sort(compareGames),
+    [compareGames, searchableGames],
   );
   const games = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase("ja");
-    return (
-      term
-        ? orderedGames.filter(
-            ({ title, store, acronym }) =>
-              title.includes(term) ||
-              store.includes(term) ||
-              acronym.includes(term),
-          )
-        : orderedGames
-    ).map(({ game }) => game);
-  }, [orderedGames, query]);
+    if (!query.trim()) return orderedGames.map(({ game }) => game);
+    return orderedGames
+      .map((searchable) => ({
+        searchable,
+        score: getGameSearchScore(searchable, query),
+      }))
+      .filter(
+        (
+          match,
+        ): match is {
+          searchable: (typeof orderedGames)[number];
+          score: number;
+        } => match.score !== null,
+      )
+      .sort(
+        (left, right) =>
+          left.score - right.score ||
+          compareGames(left.searchable, right.searchable),
+      )
+      .map(({ searchable }) => searchable.game);
+  }, [compareGames, orderedGames, query]);
   const activeIndex = games.length
     ? Math.max(
         0,
@@ -154,6 +166,7 @@ export const useGameLauncherList = ({
   const handleSearchKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>,
   ) => {
+    if (event.nativeEvent.isComposing) return;
     const move = (index: number) => {
       event.preventDefault();
       event.stopPropagation();

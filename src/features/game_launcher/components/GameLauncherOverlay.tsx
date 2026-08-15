@@ -25,8 +25,13 @@ export const GameLauncherOverlay: React.FC = () => {
   const selectedKey = list.selected ? gameKey(list.selected) : null;
   const warning = launcher.result?.sources
     .filter((source) => source.warning)
-    .map((source) => `${storeLabel[source.store]}を確認できません`)
+    .map(
+      (source) =>
+        `${storeLabel[source.store]}: ${source.warning ?? "読み取りエラー"}`,
+    )
     .join(" · ");
+  const operationInProgress =
+    launcher.launchingGameKey !== null || launcher.openingStoreId !== null;
 
   return (
     <OverlayFrame>
@@ -76,7 +81,7 @@ export const GameLauncherOverlay: React.FC = () => {
             value={list.query}
             onKeyDown={list.handleSearchKeyDown}
             onChange={(event) => list.onQueryChange(event.target.value)}
-            placeholder="ゲームまたはストアを検索"
+            placeholder="タイトル・略称・ストアを検索（複数語可）"
             autoComplete="off"
           />
           {list.query ? (
@@ -105,12 +110,10 @@ export const GameLauncherOverlay: React.FC = () => {
             activeIndex={list.activeIndex}
             favoriteGameKeySet={list.favoriteGameKeySet}
             lastPlayedAtByGame={launcher.lastPlayedAtByGame}
-            launchingGameKey={launcher.launchingGameKey}
-            openingStoreId={launcher.openingStoreId}
+            operationInProgress={operationInProgress}
             listRef={list.listRef}
             itemRefs={list.itemRefs}
             onSelect={(game) => list.setSelectedGameKey(gameKey(game))}
-            onLaunch={(game) => void launcher.startGame(game)}
             onToggleFavorite={launcher.toggleFavorite}
             onOpenStore={(game) => void launcher.openStorePage(game)}
             loading={launcher.loading}
@@ -123,14 +126,8 @@ export const GameLauncherOverlay: React.FC = () => {
                 ? launcher.lastPlayedAtByGame[gameKey(list.selected)]
                 : undefined
             }
-            launching={Boolean(
-              list.selected &&
-                launcher.launchingGameKey === gameKey(list.selected),
-            )}
-            storeOpening={Boolean(
-              list.selected &&
-                launcher.openingStoreId === gameKey(list.selected),
-            )}
+            launching={launcher.launchingGameKey !== null}
+            storeOpening={launcher.openingStoreId !== null}
             onLaunch={(game) => void launcher.startGame(game)}
             onOpenStore={(game) => void launcher.openStorePage(game)}
           />
@@ -138,8 +135,8 @@ export const GameLauncherOverlay: React.FC = () => {
 
         <footer className="game-launcher__footer">
           <span
-            className={launcher.error ? "is-error" : ""}
-            role={launcher.error ? "alert" : "status"}
+            className={launcher.error || warning ? "is-error" : ""}
+            role={launcher.error || warning ? "alert" : "status"}
             aria-live="polite"
           >
             {launcher.error ?? warning}
@@ -147,7 +144,7 @@ export const GameLauncherOverlay: React.FC = () => {
           <button
             type="button"
             onClick={() => void launcher.scan(true)}
-            disabled={launcher.loading}
+            disabled={launcher.loading || operationInProgress}
           >
             <RefreshCw size={14} aria-hidden="true" /> 再スキャン
           </button>

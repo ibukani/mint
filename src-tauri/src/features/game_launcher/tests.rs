@@ -25,6 +25,28 @@ fn riot_products_are_unique() {
 }
 
 #[test]
+fn source_summary_serializes_lightweight_counts_with_camel_case_names() {
+    let summary = GameSourceSummary {
+        sources: vec![GameSourceStatus {
+            store: GameStore::Steam,
+            detected: true,
+            warning: None,
+        }],
+        game_counts: GameSourceCounts {
+            steam: 2,
+            epic: 1,
+            riot: 0,
+        },
+    };
+
+    let serialized = serde_json::to_value(summary).unwrap();
+    assert_eq!(serialized["gameCounts"]["steam"], 2);
+    assert_eq!(serialized["gameCounts"]["epic"], 1);
+    assert_eq!(serialized["sources"][0]["store"], "steam");
+    assert!(serialized.get("games").is_none());
+}
+
+#[test]
 fn riot_patchline_folder_resolves_to_supported_product() {
     assert_eq!(riot_product_id("valorant.live"), "valorant");
     assert_eq!(

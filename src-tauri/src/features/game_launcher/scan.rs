@@ -1,5 +1,6 @@
 use super::{
-    EpicManifest, GameScanResult, GameSourceStatus, GameStore, InstalledGame, RiotProductSettings,
+    EpicManifest, GameScanResult, GameSourceCounts, GameSourceStatus, GameSourceSummary, GameStore,
+    InstalledGame, RiotProductSettings,
 };
 use base64::Engine;
 use std::{
@@ -23,6 +24,35 @@ struct CachedGameScan {
 #[derive(Default)]
 pub struct GameScanCache(Mutex<Option<CachedGameScan>>);
 
+impl GameScanCache {
+    fn fresh_result(&self) -> Option<GameScanResult> {
+        let cache = self.0.lock().unwrap_or_else(|error| error.into_inner());
+        cache
+            .as_ref()
+            .filter(|cached| cached.scanned_at.elapsed() < SCAN_CACHE_TTL)
+            .map(|cached| cached.result.clone())
+    }
+
+    fn store(&self, result: GameScanResult) {
+        let mut cache = self.0.lock().unwrap_or_else(|error| error.into_inner());
+        *cache = Some(CachedGameScan {
+            scanned_at: Instant::now(),
+            result,
+        });
+    }
+
+    pub(super) fn contains_game(&self, id: &str, store: GameStore) -> Option<bool> {
+        let cache = self.0.lock().unwrap_or_else(|error| error.into_inner());
+        cache.as_ref().map(|cached| {
+            cached
+                .result
+                .games
+                .iter()
+                .any(|game| game.id == id && game.store == store)
+        })
+    }
+}
+
 pub(super) fn program_data() -> PathBuf {
     std::env::var_os("PROGRAMDATA")
         .map(PathBuf::from)
@@ -41,7 +71,7 @@ fn scan_steam(include_artwork: bool) -> (Vec<InstalledGame>, GameSourceStatus) {
                 let Some(title) = app.name.filter(|name| !name.trim().is_empty()) else {
                     continue;
                 };
-                let fallback_image_path = if include_artwork {
+                let image_path = if include_artwork {
                     find_steam_artwork(steam.path(), app.app_id).and_then(|path| {
                         let data_url = image_file_data_url(&path)?;
                         if fallback_artwork_bytes.saturating_add(data_url.len())
@@ -59,11 +89,8 @@ fn scan_steam(include_artwork: bool) -> (Vec<InstalledGame>, GameSourceStatus) {
                     id: app.app_id.to_string(),
                     title,
                     store: GameStore::Steam,
-                    image_path: Some(format!(
-                        "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/header.jpg",
-                        app.app_id
-                    )),
-                    fallback_image_path,
+                    image_path,
+                    fallback_image_path: None,
                 });
             }
         }
@@ -308,7 +335,10 @@ pub(super) fn riot_product_id(metadata_folder: &str) -> &str {
     metadata_folder.split('.').next().unwrap_or(metadata_folder)
 }
 
-pub(super) fn is_detected_game(id: &str, store: GameStore) -> bool {
+pub(super) fn is_detected_game(id: &str, store: GameStore, cache: &GameScanCache) -> bool {
+    if let Some(detected) = cache.contains_game(id, store) {
+        return detected;
+    }
     let games = match store {
         GameStore::Steam => scan_steam(false).0,
         GameStore::Epic => scan_epic(false).0,
@@ -317,6 +347,36 @@ pub(super) fn is_detected_game(id: &str, store: GameStore) -> bool {
     games
         .iter()
         .any(|game| game.id == id && game.store == store)
+}
+
+fn scan_installed_games(include_artwork: bool) -> GameScanResult {
+    let (mut games, steam) = scan_steam(include_artwork);
+    let (epic_games, epic) = scan_epic(include_artwork);
+    let (riot_games, riot) = scan_riot(include_artwork);
+    games.extend(epic_games);
+    games.extend(riot_games);
+    let mut seen = HashSet::new();
+    games.retain(|game| seen.insert(format!("{:?}:{}", game.store, game.id)));
+    games.sort_by_cached_key(|game| (game.title.to_lowercase(), format!("{:?}", game.store)));
+    GameScanResult {
+        games,
+        sources: vec![steam, epic, riot],
+    }
+}
+
+fn summarize_sources(result: &GameScanResult) -> GameSourceSummary {
+    let mut game_counts = GameSourceCounts::default();
+    for game in &result.games {
+        match game.store {
+            GameStore::Steam => game_counts.steam += 1,
+            GameStore::Epic => game_counts.epic += 1,
+            GameStore::Riot => game_counts.riot += 1,
+        }
+    }
+    GameSourceSummary {
+        sources: result.sources.clone(),
+        game_counts,
+    }
 }
 
 fn find_riot_settings_file(directory: &Path, product: &str) -> Option<PathBuf> {
@@ -368,31 +428,34 @@ fn icon_data_url(_executable: &Path) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn list_installed_games(force: bool, state: State<'_, GameScanCache>) -> GameScanResult {
-    let mut cache = state.0.lock().unwrap_or_else(|error| error.into_inner());
+pub async fn list_installed_games(
+    force: bool,
+    state: State<'_, GameScanCache>,
+) -> Result<GameScanResult, String> {
     if !force {
-        if let Some(cached) = cache.as_ref() {
-            if cached.scanned_at.elapsed() < SCAN_CACHE_TTL {
-                return cached.result.clone();
-            }
+        if let Some(cached) = state.fresh_result() {
+            return Ok(cached);
         }
     }
+    let result = tauri::async_runtime::spawn_blocking(|| scan_installed_games(true))
+        .await
+        .map_err(|error| format!("ゲーム一覧の確認処理に失敗しました: {error}"))?;
+    state.store(result.clone());
+    Ok(result)
+}
 
-    let (mut games, steam) = scan_steam(true);
-    let (epic_games, epic) = scan_epic(true);
-    let (riot_games, riot) = scan_riot(true);
-    games.extend(epic_games);
-    games.extend(riot_games);
-    let mut seen = HashSet::new();
-    games.retain(|game| seen.insert(format!("{:?}:{}", game.store, game.id)));
-    games.sort_by_cached_key(|game| (game.title.to_lowercase(), format!("{:?}", game.store)));
-    let result = GameScanResult {
-        games,
-        sources: vec![steam, epic, riot],
-    };
-    *cache = Some(CachedGameScan {
-        scanned_at: Instant::now(),
-        result: result.clone(),
-    });
-    result
+#[tauri::command]
+pub async fn get_game_source_status(
+    force: bool,
+    state: State<'_, GameScanCache>,
+) -> Result<GameSourceSummary, String> {
+    if !force {
+        if let Some(cached) = state.fresh_result() {
+            return Ok(summarize_sources(&cached));
+        }
+    }
+    let result = tauri::async_runtime::spawn_blocking(|| scan_installed_games(false))
+        .await
+        .map_err(|error| format!("ランチャーの確認処理に失敗しました: {error}"))?;
+    Ok(summarize_sources(&result))
 }

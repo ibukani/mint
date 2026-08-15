@@ -160,8 +160,7 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
         id: "730",
         title: "Counter-Strike 2",
         store: "steam",
-        imagePath:
-          "https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg",
+        imagePath: null,
         fallbackImagePath: null,
       },
       {
@@ -335,17 +334,21 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
 
     const gameResult = await handleGameLauncherIpcCommand(cmd, typedArgs, {
       scanResult: browserGameScanResult,
-      onLaunch: (id) => {
-        if (id === "launch-error") {
+      onLaunch: (request) => {
+        if (request.id === "launch-error") {
           throw new Error("ゲームクライアントを起動できませんでした。");
         }
-        console.log(`[Tauri Mock] ゲーム ${id} の起動をシミュレートしました。`);
+        console.log(
+          `[Tauri Mock] ${request.store}ゲーム ${request.id} の起動をシミュレートしました。`,
+        );
       },
-      onOpenStorePage: (id) => {
-        if (id === "store-error") {
+      onOpenStorePage: (request) => {
+        if (request.id === "store-error") {
           throw new Error("ゲームクライアントを起動できませんでした。");
         }
-        console.log(`[Tauri Mock] ゲーム ${id} の管理画面を開きました。`);
+        console.log(
+          `[Tauri Mock] ${request.store}ゲーム ${request.id} の管理画面を開きました。`,
+        );
       },
     });
     if (gameResult.handled) return gameResult.value;

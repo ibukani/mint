@@ -4,44 +4,29 @@ import { AppSettingsProvider } from "../../../core/context/AppSettings";
 import { GameLauncherSettings } from "./GameLauncherSettings";
 
 const apiMocks = vi.hoisted(() => ({
-  list: vi.fn(),
+  sourceStatus: vi.fn(),
 }));
 
 vi.mock("../api", () => ({
-  listInstalledGames: apiMocks.list,
+  getGameSourceStatus: apiMocks.sourceStatus,
 }));
 
 const detectedSources = {
-  games: [
-    {
-      id: "730",
-      title: "Counter-Strike 2",
-      store: "steam",
-      imagePath: null,
-      fallbackImagePath: null,
-    },
-    {
-      id: "valorant",
-      title: "VALORANT",
-      store: "riot",
-      imagePath: null,
-      fallbackImagePath: null,
-    },
-  ],
   sources: [
     { store: "steam", detected: true, warning: null },
     { store: "epic", detected: false, warning: null },
     { store: "riot", detected: true, warning: null },
   ],
+  gameCounts: { steam: 1, epic: 0, riot: 1 },
 };
 
 afterEach(() => {
-  apiMocks.list.mockReset();
+  apiMocks.sourceStatus.mockReset();
 });
 
 describe("GameLauncherSettings", () => {
   it("shows live launcher detection state and game counts", async () => {
-    apiMocks.list.mockResolvedValue(detectedSources);
+    apiMocks.sourceStatus.mockResolvedValue(detectedSources);
     render(
       <AppSettingsProvider>
         <GameLauncherSettings />
@@ -66,12 +51,12 @@ describe("GameLauncherSettings", () => {
     expect(screen.getAllByText("1本")).toHaveLength(2);
     expect(screen.getByText("再確認")).toBeInTheDocument();
     expect(
-      screen.getByText(/ライブラリ情報はこのPC上でのみ確認/),
+      screen.getByText(/このPC内のランチャーデータだけから取得/),
     ).toBeInTheDocument();
   });
 
   it("shows a recoverable error when launcher detection fails", async () => {
-    apiMocks.list
+    apiMocks.sourceStatus
       .mockRejectedValueOnce(new Error("permission denied"))
       .mockResolvedValueOnce(detectedSources);
     render(
@@ -82,7 +67,7 @@ describe("GameLauncherSettings", () => {
 
     expect(
       await screen.findByText(
-        "ランチャーを確認できませんでした。再確認してください。",
+        "ランチャーを確認できませんでした: permission denied",
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("確認できません")).toHaveLength(3);
@@ -94,5 +79,30 @@ describe("GameLauncherSettings", () => {
       screen.getByRole("button", { name: "対応ランチャーを再確認" }),
     );
     expect((await screen.findAllByText("検出済み")).length).toBe(2);
+  });
+
+  it("shows the concrete launcher warning next to its source", async () => {
+    apiMocks.sourceStatus.mockResolvedValue({
+      ...detectedSources,
+      sources: [
+        {
+          store: "steam",
+          detected: true,
+          warning: "libraryfolders.vdfを読み取れませんでした",
+        },
+        ...detectedSources.sources.slice(1),
+      ],
+    });
+
+    render(
+      <AppSettingsProvider>
+        <GameLauncherSettings />
+      </AppSettingsProvider>,
+    );
+
+    expect(
+      await screen.findByText("libraryfolders.vdfを読み取れませんでした"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("一部読み取りエラー")).toBeInTheDocument();
   });
 });

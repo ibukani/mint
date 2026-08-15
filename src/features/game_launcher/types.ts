@@ -27,6 +27,11 @@ export interface GameScanResult {
   sources: GameSourceStatus[];
 }
 
+export interface GameSourceSummary {
+  sources: GameSourceStatus[];
+  gameCounts: Record<GameStore, number>;
+}
+
 export interface LaunchGameRequest {
   id: string;
   store: GameStore;

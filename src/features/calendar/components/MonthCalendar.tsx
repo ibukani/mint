@@ -279,11 +279,13 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
         {days.map((day) => {
           const eventCount = eventCountsByDate.get(day.machineDate) ?? 0;
           const eventLabel = eventCount > 0 ? `、予定${eventCount}件` : "";
+          const visibleEventCount =
+            eventCount > 99 ? "99+件" : `${eventCount}件`;
           return (
             <button
               type="button"
               key={day.machineDate}
-              className={`month-calendar__day${day.inCurrentMonth ? "" : " is-outside"}${day.isToday ? " is-today" : ""}${day.machineDate === selectedDate ? " is-selected" : ""}`}
+              className={`month-calendar__day${day.inCurrentMonth ? "" : " is-outside"}${eventCount > 0 ? " has-events" : ""}${day.isToday ? " is-today" : ""}${day.machineDate === selectedDate ? " is-selected" : ""}`}
               aria-label={`${day.date.getMonth() + 1}月${day.date.getDate()}日${eventLabel}`}
               aria-current={day.isToday ? "date" : undefined}
               tabIndex={day.machineDate === activeFocusDate ? 0 : -1}
@@ -303,9 +305,11 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
               </time>
               {eventCount > 0 && (
                 <span
-                  className="month-calendar__event-dot"
+                  className="month-calendar__event-count"
                   aria-hidden="true"
-                />
+                >
+                  {visibleEventCount}
+                </span>
               )}
             </button>
           );

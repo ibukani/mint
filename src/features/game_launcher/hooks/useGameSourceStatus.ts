@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listInstalledGames } from "../api";
-import type { GameScanResult, GameSourceStatus, GameStore } from "../types";
+import { getGameSourceStatus } from "../api";
+import type { GameSourceStatus, GameStore } from "../types";
 
 export type GameSourceScanPhase = "loading" | "ready" | "error";
 
@@ -16,16 +16,6 @@ const createEmptyGameCounts = (): Record<GameStore, number> => ({
   epic: 0,
   riot: 0,
 });
-
-const countGamesByStore = (
-  result: GameScanResult,
-): Record<GameStore, number> => {
-  const counts = createEmptyGameCounts();
-  for (const game of result.games) {
-    counts[game.store] += 1;
-  }
-  return counts;
-};
 
 export const useGameSourceStatus = () => {
   const [state, setState] = useState<GameSourceStatusState>({
@@ -45,12 +35,12 @@ export const useGameSourceStatus = () => {
     }));
 
     try {
-      const result = await listInstalledGames(force);
+      const result = await getGameSourceStatus(force);
       if (sequence !== sequenceRef.current) return;
       setState({
         phase: "ready",
         sources: result.sources,
-        gameCounts: countGamesByStore(result),
+        gameCounts: result.gameCounts,
         error: null,
       });
     } catch (reason) {

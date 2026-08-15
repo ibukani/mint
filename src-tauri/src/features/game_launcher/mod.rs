@@ -55,6 +55,21 @@ pub struct GameScanResult {
     pub sources: Vec<GameSourceStatus>,
 }
 
+#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GameSourceCounts {
+    pub steam: usize,
+    pub epic: usize,
+    pub riot: usize,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GameSourceSummary {
+    pub sources: Vec<GameSourceStatus>,
+    pub game_counts: GameSourceCounts,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LaunchGameRequest {

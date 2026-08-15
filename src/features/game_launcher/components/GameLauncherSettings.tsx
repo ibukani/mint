@@ -193,7 +193,7 @@ export const GameLauncherSettings: React.FC = () => {
           </div>
           {sourceScanError && (
             <p className="game-launcher-source-error" role="alert">
-              ランチャーを確認できませんでした。再確認してください。
+              ランチャーを確認できませんでした: {sourceScanError}
             </p>
           )}
           <div className="game-launcher-source-list">
@@ -217,6 +217,11 @@ export const GameLauncherSettings: React.FC = () => {
                   <div className="game-launcher-source__copy">
                     <h4>{launcher.name}</h4>
                     <p>{launcher.description}</p>
+                    {source?.warning && (
+                      <p className="game-launcher-source__warning">
+                        {source.warning}
+                      </p>
+                    )}
                   </div>
                   <div className="game-launcher-source__meta">
                     <StatusBadge tone={presentation.tone}>
@@ -231,7 +236,7 @@ export const GameLauncherSettings: React.FC = () => {
             })}
           </div>
           <p className="game-launcher-source-note">
-            ライブラリ情報はこのPC上でのみ確認され、外部へ送信されません。
+            ゲーム一覧と画像はこのPC内のランチャーデータだけから取得し、外部へ送信しません。
           </p>
         </section>
       </div>

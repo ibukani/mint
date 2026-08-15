@@ -1,6 +1,6 @@
 use super::{
     debounce::interval_elapsed,
-    scan::{is_detected_game, program_data, riot_products},
+    scan::{is_detected_game, program_data, riot_products, GameScanCache},
     GameStore, GameStoreInput, LaunchGameRequest, RiotInstalls,
 };
 use std::{
@@ -10,14 +10,18 @@ use std::{
     sync::{Mutex, OnceLock},
     time::{Duration, Instant},
 };
+use tauri::State;
 
 pub(super) const LAUNCH_DEBOUNCE: Duration = Duration::from_millis(1_500);
 static LAST_LAUNCH: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
 
 #[tauri::command]
-pub fn launch_game(request: LaunchGameRequest) -> Result<(), String> {
+pub fn launch_game(
+    request: LaunchGameRequest,
+    state: State<'_, GameScanCache>,
+) -> Result<(), String> {
     let store = input_store(request.store);
-    validate_detected_game(&request.id, store)?;
+    validate_detected_game(&request.id, store, &state)?;
     if !accept_launch(Instant::now()) {
         return Ok(());
     }
@@ -34,9 +38,12 @@ pub fn launch_game(request: LaunchGameRequest) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn open_game_store_page(request: LaunchGameRequest) -> Result<(), String> {
+pub fn open_game_store_page(
+    request: LaunchGameRequest,
+    state: State<'_, GameScanCache>,
+) -> Result<(), String> {
     let store = input_store(request.store);
-    validate_detected_game(&request.id, store)?;
+    validate_detected_game(&request.id, store, &state)?;
     match store {
         GameStore::Steam => open_uri(&format!("steam://nav/games/details/{}", request.id)),
         GameStore::Epic => open_uri("com.epicgames.launcher://library/"),
@@ -52,8 +59,8 @@ fn input_store(store: GameStoreInput) -> GameStore {
     }
 }
 
-fn validate_detected_game(id: &str, store: GameStore) -> Result<(), String> {
-    if !is_detected_game(id, store) {
+fn validate_detected_game(id: &str, store: GameStore, cache: &GameScanCache) -> Result<(), String> {
+    if !is_detected_game(id, store, cache) {
         return Err("検出済みゲームではありません。再スキャンしてください。".to_string());
     }
     Ok(())
