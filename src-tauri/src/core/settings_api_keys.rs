@@ -9,9 +9,14 @@ fn validate_service(service: &str) -> Result<(), String> {
     }
 }
 
+fn keyring_service(service: &str) -> String {
+    let base = format!("{KEYRING_SERVICE}.{service}");
+    super::environment::scoped_service_name(&base)
+}
+
 pub fn load_api_key(service: String) -> Result<String, String> {
     validate_service(&service)?;
-    let entry = keyring::Entry::new(&format!("{KEYRING_SERVICE}.{service}"), "api_key")
+    let entry = keyring::Entry::new(&keyring_service(&service), "api_key")
         .map_err(|error| error.to_string())?;
 
     match entry.get_password() {
@@ -23,7 +28,7 @@ pub fn load_api_key(service: String) -> Result<String, String> {
 
 pub fn save_api_key(service: String, key: String) -> Result<(), String> {
     validate_service(&service)?;
-    let entry = keyring::Entry::new(&format!("{KEYRING_SERVICE}.{service}"), "api_key")
+    let entry = keyring::Entry::new(&keyring_service(&service), "api_key")
         .map_err(|error| error.to_string())?;
 
     if key.is_empty() {

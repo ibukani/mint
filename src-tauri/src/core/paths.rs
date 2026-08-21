@@ -14,21 +14,29 @@ fn e2e_base_dir() -> Option<PathBuf> {
 
 /// Resolves the application data directory. Under E2E tests the location is
 /// redirected into the directory configured with `MINT_E2E_DATA_DIR`.
+/// Development builds otherwise use a child directory so they cannot modify
+/// data belonging to an installed release build.
 pub fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     if let Some(base) = e2e_base_dir() {
         return Ok(base.join("data"));
     }
-    app.path().app_data_dir().map_err(|error| error.to_string())
+    app.path()
+        .app_data_dir()
+        .map(super::environment::scoped_storage_dir)
+        .map_err(|error| error.to_string())
 }
 
 /// Resolves the application config directory. Under E2E tests the location
 /// is redirected into the directory configured with `MINT_E2E_DATA_DIR`.
+/// Development builds otherwise use a child directory so they cannot modify
+/// settings belonging to an installed release build.
 pub fn app_config_dir(app: &AppHandle) -> Result<PathBuf, String> {
     if let Some(base) = e2e_base_dir() {
         return Ok(base.join("config"));
     }
     app.path()
         .app_config_dir()
+        .map(super::environment::scoped_storage_dir)
         .map_err(|error| error.to_string())
 }
 
