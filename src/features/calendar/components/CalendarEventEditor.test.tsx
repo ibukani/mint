@@ -50,6 +50,7 @@ describe("CalendarEventEditor", () => {
     });
     fireEvent.click(screen.getByRole("switch", { name: "終日の予定" }));
     expect(screen.queryByLabelText("開始")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("終了日")).toHaveValue("2026-07-11");
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() =>
@@ -64,6 +65,39 @@ describe("CalendarEventEditor", () => {
       }),
     );
     expect(onSaved).toHaveBeenCalledWith(savedEvent);
+  });
+
+  it("creates a multi-day all-day event from an inclusive end date", async () => {
+    mocks.create.mockResolvedValue(savedEvent);
+    render(
+      <CalendarEventEditor
+        initialDate="2026-07-11"
+        onCancel={vi.fn()}
+        onDirtyChange={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("タイトル"), {
+      target: { value: "出張" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: "終日の予定" }));
+    fireEvent.change(screen.getByLabelText("終了日"), {
+      target: { value: "2026-07-13" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() =>
+      expect(mocks.create).toHaveBeenCalledWith({
+        title: "出張",
+        notes: "",
+        schedule: {
+          kind: "allDay",
+          startDate: "2026-07-11",
+          endDateExclusive: "2026-07-14",
+        },
+      }),
+    );
   });
 
   it("keeps input visible when validation fails", async () => {

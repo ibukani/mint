@@ -10,11 +10,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildCalendarDays, startOfMonth, toMachineDate } from "../calendar";
-import {
-  countEventsForDate,
-  formatEventDate,
-  formatEventTime,
-} from "../events";
+import { eventsForDate, formatEventDate, formatEventTime } from "../events";
 import type { CalendarEvent } from "../types";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
@@ -68,12 +64,12 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     () => buildCalendarDays(viewMonth, today),
     [viewMonth, today],
   );
-  const eventCountsByDate = useMemo(
+  const eventsByDate = useMemo(
     () =>
       new Map(
         days.map((day) => [
           day.machineDate,
-          countEventsForDate(events, day.machineDate),
+          eventsForDate(events, day.machineDate),
         ]),
       ),
     [days, events],
@@ -277,16 +273,20 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
 
       <div className="month-calendar__grid">
         {days.map((day) => {
-          const eventCount = eventCountsByDate.get(day.machineDate) ?? 0;
+          const dayEvents = eventsByDate.get(day.machineDate) ?? [];
+          const eventCount = dayEvents.length;
           const eventLabel = eventCount > 0 ? `、予定${eventCount}件` : "";
-          const visibleEventCount =
-            eventCount > 99 ? "99+件" : `${eventCount}件`;
+          const eventSummary = dayEvents
+            .slice(0, 3)
+            .map((event) => event.title)
+            .join("、");
           return (
             <button
               type="button"
               key={day.machineDate}
               className={`month-calendar__day${day.inCurrentMonth ? "" : " is-outside"}${eventCount > 0 ? " has-events" : ""}${day.isToday ? " is-today" : ""}${day.machineDate === selectedDate ? " is-selected" : ""}`}
               aria-label={`${day.date.getMonth() + 1}月${day.date.getDate()}日${eventLabel}`}
+              title={eventSummary || undefined}
               aria-current={day.isToday ? "date" : undefined}
               tabIndex={day.machineDate === activeFocusDate ? 0 : -1}
               ref={(element) => {
@@ -305,10 +305,20 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
               </time>
               {eventCount > 0 && (
                 <span
-                  className="month-calendar__event-count"
+                  className="month-calendar__event-markers"
                   aria-hidden="true"
                 >
-                  {visibleEventCount}
+                  {dayEvents.slice(0, 3).map((event) => (
+                    <span
+                      key={event.id}
+                      className={`month-calendar__event-marker is-${event.schedule.kind}`}
+                    />
+                  ))}
+                  {eventCount > 3 && (
+                    <span className="month-calendar__event-overflow">
+                      +{eventCount - 3}
+                    </span>
+                  )}
                 </span>
               )}
             </button>

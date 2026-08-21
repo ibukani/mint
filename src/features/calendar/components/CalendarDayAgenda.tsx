@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  CalendarPlus,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -127,7 +128,14 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
         >
           <ArrowLeft size={18} aria-hidden="true" />
         </button>
-        <h2>{formatDateHeading(date)}</h2>
+        <h2 className="calendar-day-agenda__heading">
+          <span>{formatDateHeading(date)}</span>
+          {!loading && !error && (
+            <span className="calendar-day-agenda__count">
+              {events.length}件
+            </span>
+          )}
+        </h2>
         <div className="calendar-screen__header-actions">
           <button
             type="button"
@@ -184,7 +192,13 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
         )}
         {!loading && !error && events.length === 0 && (
           <div className="calendar-screen__empty">
-            <p>この日の予定はありません</p>
+            <CalendarPlus
+              className="calendar-screen__empty-icon"
+              size={28}
+              aria-hidden="true"
+            />
+            <strong>予定のない日です</strong>
+            <p>新しい予定を追加して、この日を組み立てましょう。</p>
             <button type="button" onClick={onAdd}>
               <Plus size={16} aria-hidden="true" />
               予定を追加
@@ -212,7 +226,26 @@ export const CalendarDayAgenda: React.FC<CalendarDayAgendaProps> = ({
               <span className="calendar-agenda-item__time">
                 {formatEventTime(event)}
               </span>
-              <span className="calendar-agenda-item__title">{event.title}</span>
+              <span className="calendar-agenda-item__content">
+                <strong className="calendar-agenda-item__title">
+                  {event.title}
+                </strong>
+                <span className="calendar-agenda-item__meta">
+                  <span className="calendar-agenda-item__source">
+                    {event.source.kind === "google" ? "Google" : "Mint"}
+                  </span>
+                  {event.notes && (
+                    <span className="calendar-agenda-item__notes">
+                      {event.notes}
+                    </span>
+                  )}
+                </span>
+              </span>
+              <ChevronRight
+                className="calendar-agenda-item__chevron"
+                size={16}
+                aria-hidden="true"
+              />
             </button>
           ))}
       </div>

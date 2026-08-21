@@ -23,7 +23,7 @@ export const parseMachineDate = (value: string) => {
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
 };
 
-const machineDateDistance = (start: string, endExclusive: string) => {
+export const machineDateDistance = (start: string, endExclusive: string) => {
   const [startYear, startMonth, startDay] = start.split("-").map(Number);
   const [endYear, endMonth, endDay] = endExclusive.split("-").map(Number);
   const startUtc = Date.UTC(startYear, startMonth - 1, startDay);
@@ -116,6 +116,7 @@ export const adjustEndTimeForStartChange = (
 export type CalendarEventValidationField =
   | "title"
   | "date"
+  | "endDate"
   | "startTime"
   | "endTime";
 
@@ -313,6 +314,21 @@ export const formatEventDate = (event: CalendarEvent) => {
     day: "numeric",
     weekday: "short",
   }).format(value);
+};
+
+export const formatEventDateRange = (event: CalendarEvent) => {
+  if (event.schedule.kind !== "allDay") return formatEventDate(event);
+
+  const startLabel = formatEventDate(event);
+  const endDate = addDays(event.schedule.endDateExclusive, -1);
+  if (endDate === event.schedule.startDate) return startLabel;
+
+  const endLabel = new Intl.DateTimeFormat("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(parseMachineDate(endDate));
+  return `${startLabel}〜${endLabel}`;
 };
 
 const formatClipboardDate = (value: Date) =>
