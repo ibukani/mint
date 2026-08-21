@@ -21,10 +21,18 @@ const laterEvent: CalendarEvent = {
   ...event,
   id: "event-2",
   title: "振り返り",
+  notes: "次のスプリントを確認",
   schedule: {
     kind: "allDay",
     startDate: "2026-07-11",
     endDateExclusive: "2026-07-12",
+  },
+  source: {
+    kind: "google",
+    calendarId: "primary",
+    eventId: "google-event-2",
+    etag: "etag-2",
+    accessRole: "writer",
   },
 };
 
@@ -48,6 +56,10 @@ describe("CalendarDayAgenda", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /設計レビュー/ }));
     expect(onSelect).toHaveBeenCalledWith(event);
+    expect(
+      screen.getByRole("button", { name: /設計レビュー/ }),
+    ).toHaveTextContent("Mint");
+    expect(screen.getByText("1件")).toBeVisible();
   });
 
   it("moves focus through events with list navigation keys", () => {
@@ -68,6 +80,8 @@ describe("CalendarDayAgenda", () => {
 
     const firstEvent = screen.getByRole("button", { name: /設計レビュー/ });
     const secondEvent = screen.getByRole("button", { name: /振り返り/ });
+    expect(secondEvent).toHaveTextContent("Google");
+    expect(secondEvent).toHaveTextContent("次のスプリントを確認");
     expect(firstEvent).toHaveFocus();
     expect(secondEvent).toHaveAttribute("tabindex", "-1");
 
@@ -128,7 +142,7 @@ describe("CalendarDayAgenda", () => {
       />,
     );
 
-    expect(screen.getByText("この日の予定はありません")).toBeInTheDocument();
+    expect(screen.getByText("予定のない日です")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "予定を追加" }));
     expect(onAdd).toHaveBeenCalledOnce();
   });

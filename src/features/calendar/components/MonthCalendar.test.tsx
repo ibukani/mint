@@ -152,7 +152,7 @@ describe("MonthCalendar", () => {
     expect(screen.getByRole("button", { name: "2月28日" })).toHaveFocus();
   });
 
-  it("shows a prominent event count and opens event entry points", () => {
+  it("shows an event marker and opens event entry points", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 6, 10, 9, 0, 0));
     const onCreate = vi.fn();
@@ -173,10 +173,10 @@ describe("MonthCalendar", () => {
     });
     expect(eventDay).toHaveClass("has-events");
     expect(
-      eventDay.querySelector(".month-calendar__event-count"),
-    ).toHaveTextContent("1件");
+      eventDay.querySelector(".month-calendar__event-marker"),
+    ).toBeInTheDocument();
     expect(
-      container.querySelectorAll(".month-calendar__event-count"),
+      container.querySelectorAll(".month-calendar__event-marker"),
     ).toHaveLength(1);
 
     fireEvent.click(eventDay);
@@ -189,10 +189,10 @@ describe("MonthCalendar", () => {
     expect(onOpenEvent).toHaveBeenCalledWith(calendarEvent);
   });
 
-  it("shows the number of events scheduled for the same date", () => {
+  it("shows fixed-size markers for events scheduled on the same date", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 6, 10, 9, 0, 0));
-    const events = Array.from({ length: 3 }, (_, index) => ({
+    const events = Array.from({ length: 5 }, (_, index) => ({
       ...calendarEvent,
       id: `event-${index + 1}`,
     }));
@@ -200,12 +200,18 @@ describe("MonthCalendar", () => {
     render(<MonthCalendarHarness events={events} />);
 
     const eventDay = screen.getByRole("button", {
-      name: "7月11日、予定3件",
+      name: "7月11日、予定5件",
     });
     expect(eventDay).toHaveClass("has-events");
     expect(
+      eventDay.querySelectorAll(".month-calendar__event-marker"),
+    ).toHaveLength(3);
+    expect(
+      eventDay.querySelector(".month-calendar__event-overflow"),
+    ).toHaveTextContent("+2");
+    expect(
       eventDay.querySelector(".month-calendar__event-count"),
-    ).toHaveTextContent("3件");
+    ).not.toBeInTheDocument();
   });
 
   it("offers a retry action when events cannot be loaded", () => {

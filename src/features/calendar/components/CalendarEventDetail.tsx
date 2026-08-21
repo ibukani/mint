@@ -1,8 +1,14 @@
 import {
   ArrowLeft,
+  CalendarDays,
   Check,
   ClipboardCopy,
+  Clock3,
+  Cloud,
   CopyPlus,
+  HardDrive,
+  LockKeyhole,
+  NotebookText,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -11,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, ConfirmDialog } from "../../../design/components";
 import {
   deleteCalendarEvent,
-  formatEventDate,
+  formatEventDateRange,
   formatEventForClipboard,
   formatEventTime,
 } from "../events";
@@ -134,13 +140,60 @@ export const CalendarEventDetail: React.FC<CalendarEventDetailProps> = ({
       </header>
 
       <div className="calendar-event-detail__body" data-window-drag-block>
-        <p className="calendar-event-detail__date">{formatEventDate(event)}</p>
-        <h3>{event.title}</h3>
-        <p className="calendar-event-detail__time">{formatEventTime(event)}</p>
+        <div className="calendar-event-detail__hero">
+          <div className="calendar-event-detail__badges">
+            <span className="calendar-event-detail__source-badge">
+              {event.source.kind === "google" ? "Google Calendar" : "Mint"}
+            </span>
+            {readOnly && (
+              <span className="calendar-event-detail__readonly-badge">
+                <LockKeyhole size={11} aria-hidden="true" />
+                読み取り専用
+              </span>
+            )}
+          </div>
+          <h3>{event.title}</h3>
+        </div>
+
+        <dl className="calendar-event-detail__facts">
+          <div>
+            <dt>
+              <CalendarDays size={17} aria-hidden="true" />
+              日付
+            </dt>
+            <dd>{formatEventDateRange(event)}</dd>
+          </div>
+          <div>
+            <dt>
+              <Clock3 size={17} aria-hidden="true" />
+              時間
+            </dt>
+            <dd>{formatEventTime(event)}</dd>
+          </div>
+          <div>
+            <dt>
+              {event.source.kind === "google" ? (
+                <Cloud size={17} aria-hidden="true" />
+              ) : (
+                <HardDrive size={17} aria-hidden="true" />
+              )}
+              保存先
+            </dt>
+            <dd>
+              {event.source.kind === "google" ? "Google Calendar" : "このPC"}
+            </dd>
+          </div>
+        </dl>
+
         {event.notes && (
-          <p className="calendar-event-detail__notes">{event.notes}</p>
+          <section className="calendar-event-detail__notes">
+            <h4>
+              <NotebookText size={16} aria-hidden="true" />
+              メモ
+            </h4>
+            <p>{event.notes}</p>
+          </section>
         )}
-        {readOnly && <p>この予定表は読み取り専用です。</p>}
       </div>
 
       <footer className="calendar-screen__actions">

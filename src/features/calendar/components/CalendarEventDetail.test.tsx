@@ -106,6 +106,35 @@ describe("CalendarEventDetail", () => {
     ).toHaveAttribute("aria-keyshortcuts", "C");
   });
 
+  it("shows a multi-day range and the event source", () => {
+    render(
+      <CalendarEventDetail
+        event={{
+          ...event,
+          schedule: {
+            kind: "allDay",
+            startDate: "2026-07-11",
+            endDateExclusive: "2026-07-14",
+          },
+          source: {
+            kind: "google",
+            calendarId: "primary",
+            eventId: "google-event-1",
+            etag: "etag-1",
+            accessRole: "writer",
+          },
+        }}
+        onBack={vi.fn()}
+        onDeleted={vi.fn()}
+        onDuplicate={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("7月11日(土)〜7月13日(月)")).toBeVisible();
+    expect(screen.getAllByText("Google Calendar")).toHaveLength(2);
+  });
+
   it("keeps the event visible when copying fails", async () => {
     const consoleError = vi
       .spyOn(console, "error")
