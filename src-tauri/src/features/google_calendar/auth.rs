@@ -43,7 +43,8 @@ fn client_id() -> Result<&'static str, String> {
 }
 
 fn credential_entry(user: &str) -> Result<keyring::Entry, String> {
-    keyring::Entry::new(TOKEN_SERVICE, user).map_err(|error| error.to_string())
+    let service = crate::core::environment::scoped_service_name(TOKEN_SERVICE);
+    keyring::Entry::new(&service, user).map_err(|error| error.to_string())
 }
 
 fn token_entry() -> Result<keyring::Entry, String> {

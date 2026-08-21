@@ -15,8 +15,8 @@ fn get_config_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(path.join("settings.json"))
 }
 
-fn should_enable_autostart(requested: bool, debug_build: bool) -> bool {
-    requested && !debug_build
+fn desired_autostart_state(requested: bool, development: bool) -> Option<bool> {
+    (!development).then_some(requested)
 }
 
 pub(crate) fn temporary_path(destination: &Path) -> Result<PathBuf, String> {
@@ -159,15 +159,17 @@ fn clock_layout_settings_changed(
 
 /// Synchronize the OS auto-start entry with the saved preference.
 ///
-/// A development Tauri binary loads its UI from `devUrl` (`localhost:1420`).
-/// Registering that binary in Windows startup would launch it after reboot
-/// without the Vite server and display a connection-refused page. Development
-/// builds therefore always remove the entry, which also cleans up entries
-/// created by older development sessions.
+/// A development Tauri binary loads its UI from `devUrl` (`localhost:1420`),
+/// so it must neither register itself nor modify the installed release build's
+/// startup entry.
 pub fn sync_autostart(app: &AppHandle, requested: bool) -> Result<(), String> {
     use tauri_plugin_autostart::ManagerExt;
 
-    let desired_state = should_enable_autostart(requested, cfg!(debug_assertions));
+    let Some(desired_state) =
+        desired_autostart_state(requested, super::environment::is_development())
+    else {
+        return Ok(());
+    };
     if desired_state {
         // Always write the current executable path. This replaces a stale
         // development executable when the user first launches a release build.
@@ -515,11 +517,11 @@ mod tests {
     }
 
     #[test]
-    fn development_builds_never_enable_autostart() {
-        assert!(!should_enable_autostart(true, true));
-        assert!(!should_enable_autostart(false, true));
-        assert!(should_enable_autostart(true, false));
-        assert!(!should_enable_autostart(false, false));
+    fn development_builds_never_modify_autostart() {
+        assert_eq!(desired_autostart_state(true, true), None);
+        assert_eq!(desired_autostart_state(false, true), None);
+        assert_eq!(desired_autostart_state(true, false), Some(true));
+        assert_eq!(desired_autostart_state(false, false), Some(false));
     }
 
     #[test]

@@ -1,3 +1,4 @@
+pub mod environment;
 pub mod migrations;
 pub mod paths;
 pub mod performance;

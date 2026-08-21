@@ -31,6 +31,10 @@ Mint は永続データ（設定・メモ・ファイルシェル項目など）
 
 API キー・OAuth token は OS キーリングで管理し、マイグレーション対象外。
 
+`tauri dev` のデバッグビルドは、インストール済みリリース版を保護するため、
+`app_config_dir/development`、`app_data_dir/development` と専用のキーリングサービス名を使う。
+リリースビルドの既存保存先は変更しない。
+
 ## 新規マイグレーションの追加手順
 
 1. `src-tauri/src/core/migrations/<data>/mod.rs`（なければ作成）のマイグレーション一覧に追加する:
