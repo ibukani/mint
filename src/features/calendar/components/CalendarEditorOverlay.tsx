@@ -38,6 +38,7 @@ export const CalendarEditorOverlay: React.FC = () => {
     kind: "create",
     date: getTodayMachineDate(),
   }));
+  const [editorSession, setEditorSession] = useState(0);
   const dirtyRef = useRef(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const [discarding, setDiscarding] = useState(false);
@@ -113,6 +114,8 @@ export const CalendarEditorOverlay: React.FC = () => {
     const unlisten = listen<CalendarEditorPayload>(
       "calendar-editor-shown",
       (event) => {
+        // A reused window must reset its draft even when the payload is identical.
+        setEditorSession((session) => session + 1);
         setWindowVisible(true);
         dirtyRef.current = false;
         setDiscardDialogOpen(false);
@@ -204,6 +207,7 @@ export const CalendarEditorOverlay: React.FC = () => {
         </button>
 
         <CalendarEventEditor
+          key={editorSession}
           event={editorState.kind === "edit" ? editorState.event : undefined}
           template={
             editorState.kind === "duplicate" ? editorState.event : undefined

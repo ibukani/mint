@@ -134,6 +134,39 @@ describe("CalendarEditorOverlay", () => {
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
+  it("starts a fresh draft and protects unsaved changes when reopening the same payload", async () => {
+    render(<CalendarEditorOverlay />);
+    await waitFor(() =>
+      expect(mocks.listeners.has("calendar-editor-shown")).toBe(true),
+    );
+    const payload = {
+      mode: "create",
+      date: "2026-10-09",
+      draftTitle: "初期タイトル",
+    };
+    const showEditor = () =>
+      mocks.listeners.get("calendar-editor-shown")?.({ payload });
+
+    act(showEditor);
+    fireEvent.change(screen.getByLabelText("タイトル"), {
+      target: { value: "破棄する入力" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "エディタを閉じる" }));
+    fireEvent.click(screen.getByRole("button", { name: "破棄して閉じる" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+    );
+
+    act(showEditor);
+    expect(screen.getByLabelText("タイトル")).toHaveValue("初期タイトル");
+    fireEvent.change(screen.getByLabelText("タイトル"), {
+      target: { value: "再表示後の未保存入力" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "エディタを閉じる" }));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(mocks.hide).toHaveBeenCalledOnce();
+  });
+
   it("notifies the calendar overlay after saving an event", async () => {
     mocks.invoke.mockImplementation(async (command: string) => {
       if (command === "create_calendar_event") {

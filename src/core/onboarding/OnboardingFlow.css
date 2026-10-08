@@ -11,24 +11,13 @@
   background: var(--surface-root);
 }
 
-.onboarding-flow::before {
-  position: absolute;
-  z-index: -1;
-  top: -18rem;
-  right: -14rem;
-  width: 38rem;
-  height: 38rem;
-  border-radius: 50%;
-  background: var(--page-accent-top);
-  filter: blur(90px);
-  content: "";
-  pointer-events: none;
-}
-
 .onboarding-flow__body {
   display: flex;
   min-height: 0;
   flex: 1;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
   flex-direction: column;
   padding: var(--space-5) var(--space-6) var(--space-4);
   gap: var(--space-4);
@@ -117,11 +106,10 @@
 .onboarding-feature-card:hover {
   border-color: var(--border-control-focus);
   background: var(--surface-control-hover);
-  transform: translateY(-1px);
 }
 
 .onboarding-feature-card:active {
-  transform: scale(0.985);
+  background: var(--surface-control-hover);
 }
 
 .onboarding-feature-card:has(.onboarding-feature-card__input:focus-visible) {
@@ -131,7 +119,7 @@
 
 .onboarding-feature-card.is-enabled {
   border-color: var(--border-accent);
-  background: linear-gradient(120deg, var(--surface-accent), transparent 130%);
+  background: var(--surface-accent);
   color: var(--color-text-primary);
 }
 
@@ -190,7 +178,7 @@
   height: 20px;
   place-items: center;
   border: 1px solid var(--border-subtle);
-  border-radius: 50%;
+  border-radius: var(--radius-xs);
   background: var(--surface-control);
   color: var(--color-accent);
   font-size: var(--font-size-2xs);
@@ -245,7 +233,6 @@
 .onboarding-theme-card:hover {
   border-color: var(--border-control-focus);
   background: var(--surface-control-hover);
-  transform: translateY(-1px);
 }
 
 .onboarding-theme-card:has(.onboarding-theme-card__input:focus-visible) {
@@ -275,7 +262,7 @@
   align-items: flex-end;
   padding: 5px;
   border: 1px solid var(--theme-preview-dark-frame);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: var(--theme-preview-dark-surface);
   box-shadow: var(--shadow-theme-preview);
   overflow: hidden;
@@ -388,7 +375,7 @@
   padding: var(--space-4);
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-md);
-  background: linear-gradient(120deg, var(--surface-accent), transparent 140%);
+  background: var(--surface-accent);
   color: var(--color-accent);
 }
 

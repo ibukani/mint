@@ -404,6 +404,7 @@ mod tests {
     #[test]
     fn fresh_defaults_keep_onboarding_incomplete() {
         let settings = AppSettings::default();
+        assert_eq!(settings.theme, "system");
         assert_eq!(settings.onboarding.completed_version, 0);
         assert!(settings.onboarding.completed_at.is_none());
     }
@@ -415,6 +416,16 @@ mod tests {
 
         assert_eq!(settings.theme, "light");
         assert!(settings.clock.enabled);
+    }
+
+    #[test]
+    fn missing_theme_in_legacy_settings_defaults_to_system() {
+        let settings = migrate_and_read("{}").unwrap();
+        assert_eq!(settings.theme, "system");
+        assert_eq!(
+            settings.onboarding.completed_version,
+            crate::core::settings_model::ONBOARDING_VERSION
+        );
     }
 
     #[test]

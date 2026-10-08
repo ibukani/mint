@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Check,
   Clock3,
+  Command,
   Gamepad2,
   Keyboard,
   Monitor,
@@ -49,7 +50,7 @@ const themeOptions = [
   {
     value: "system",
     label: "システム",
-    description: "OSの外観設定に合わせる",
+    description: "OSの外観設定に連動",
     icon: Monitor,
   },
 ] as const;
@@ -75,6 +76,13 @@ const featureOverview = [
     label: "カレンダー",
     description: "予定をオーバーレイですぐ確認",
     icon: CalendarDays,
+  },
+  {
+    id: "mintPalette",
+    settingsKey: "mintPalette",
+    label: "Mint Palette",
+    description: "設定や操作を検索して呼び出す",
+    icon: Command,
   },
 ] as const satisfies ReadonlyArray<{
   id: Exclude<FeatureSettingsKey, "general">;
@@ -144,9 +152,6 @@ export const GeneralSettings: React.FC = () => {
                       </small>
                     </span>
                     <span className="feature-overview__meta">
-                      <StatusBadge tone={isEnabled ? "enabled" : "disabled"}>
-                        {isEnabled ? "有効" : "無効"}
-                      </StatusBadge>
                       <kbd>{settings[settingsKey].shortcut || "未設定"}</kbd>
                     </span>
                     <div className="feature-overview__actions">
@@ -156,15 +161,16 @@ export const GeneralSettings: React.FC = () => {
                           checked={isEnabled}
                           aria-label={`${label}を有効にする`}
                           aria-describedby={`feature-overview-${id}-description`}
-                          onChange={(event) =>
+                          onChange={(event) => {
+                            const enabled = event.target.checked;
                             updateSettings((previous) => ({
                               ...previous,
                               [settingsKey]: {
                                 ...previous[settingsKey],
-                                enabled: event.target.checked,
+                                enabled,
                               },
-                            }))
-                          }
+                            }));
+                          }}
                         />
                         <span className="feature-overview__toggle-label">
                           {isEnabled ? "有効" : "無効"}
@@ -218,11 +224,6 @@ export const GeneralSettings: React.FC = () => {
                       aria-label={label}
                       onChange={() => updateSettings({ theme: value })}
                     />
-                    <span
-                      className={`theme-choice-card__preview theme-choice-card__preview--${value}`}
-                    >
-                      <span />
-                    </span>
                     <span className="theme-choice-card__content">
                       <span className="theme-choice-card__label">
                         <Icon size={16} aria-hidden="true" />

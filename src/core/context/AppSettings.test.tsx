@@ -130,7 +130,7 @@ describe("AppSettingsProvider", () => {
       await Promise.resolve(); // Flush microtasks
     });
 
-    expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+    expect(screen.getByTestId("theme")).toHaveTextContent("system");
     expect(screen.getByTestId("clock-showdate")).toHaveTextContent("true");
     expect(invoke).toHaveBeenCalledWith("load_settings");
   });

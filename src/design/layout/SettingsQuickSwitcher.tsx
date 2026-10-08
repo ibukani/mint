@@ -54,7 +54,6 @@ export const SettingsQuickSwitcher = <TTabId extends string>({
       >
         <div className="settings-switcher__header">
           <div>
-            <span className="settings-switcher__eyebrow">QUICK ACTIONS</span>
             <h2 id={switcher.titleId}>クイックランチャー</h2>
           </div>
           <button

@@ -61,7 +61,7 @@
     calc(7px * var(--clock-size-scale, 1));
   border: 1px solid
     color-mix(in srgb, var(--clock-render-color) 24%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--clock-render-color) 8%, transparent);
   color: var(--clock-render-color);
   font-size: 0.38em;
@@ -96,9 +96,8 @@
 }
 
 .digital-clock__time.glow-effect {
-  text-shadow:
-    0 0 12px color-mix(in srgb, var(--clock-render-color) 38%, transparent),
-    0 0 32px color-mix(in srgb, var(--clock-render-color) 16%, transparent);
+  text-shadow: 0 0 10px
+    color-mix(in srgb, var(--clock-render-color) 20%, transparent);
 }
 
 .digital-clock__time .clock-digits {
@@ -157,7 +156,7 @@
   height: 2px;
   margin: calc(12px * var(--clock-size-scale, 1)) auto 0;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
 }
 
@@ -165,14 +164,7 @@
   display: block;
   width: var(--clock-second-progress);
   height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--clock-render-color) 52%, transparent),
-    var(--clock-render-color)
-  );
-  box-shadow: 0 0 8px
-    color-mix(in srgb, var(--clock-render-color) 45%, transparent);
+  background: var(--clock-render-color);
   transition: width 180ms linear;
 }
 
@@ -279,7 +271,7 @@
   padding: 3px 7px;
   border: 1px solid
     color-mix(in srgb, var(--clock-dynamic-color) 24%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--clock-dynamic-color) 8%, transparent);
   color: var(--clock-dynamic-color);
   font-size: 0.34em;

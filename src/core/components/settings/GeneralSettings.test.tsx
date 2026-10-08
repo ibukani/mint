@@ -96,7 +96,7 @@ describe("GeneralSettings", () => {
     expect(
       screen.getByRole("heading", { name: "機能一覧" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("3 / 3 有効")).toBeInTheDocument();
+    expect(screen.getByText("3 / 4 有効")).toBeInTheDocument();
     const clockToggle = screen.getByRole("switch", {
       name: "時計オーバーレイを有効にする",
     });
@@ -108,7 +108,7 @@ describe("GeneralSettings", () => {
     });
 
     expect(clockToggle).not.toBeChecked();
-    expect(screen.getByText("2 / 3 有効")).toBeInTheDocument();
+    expect(screen.getByText("2 / 4 有効")).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -117,6 +117,24 @@ describe("GeneralSettings", () => {
     );
 
     expect(setActiveTab).toHaveBeenCalledWith("calendar");
+
+    const paletteToggle = screen.getByRole("switch", {
+      name: "Mint Paletteを有効にする",
+    });
+    expect(paletteToggle).not.toBeChecked();
+    await act(async () => {
+      fireEvent.click(paletteToggle);
+      await Promise.resolve();
+    });
+    expect(paletteToggle).toBeChecked();
+    expect(screen.getByText("3 / 4 有効")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Mint Paletteの詳細設定を開く",
+      }),
+    );
+    expect(setActiveTab).toHaveBeenCalledWith("mintPalette");
   });
 
   it("resets a window state from the general settings", async () => {

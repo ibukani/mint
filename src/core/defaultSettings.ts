@@ -2,7 +2,7 @@ import type { AppSettings } from "./settingsModel";
 
 export const defaultAppSettings: AppSettings = {
   autostart: false,
-  theme: "dark",
+  theme: "system",
   settingsShortcut: "Ctrl+Alt+S",
   clock: {
     enabled: true,

@@ -26,7 +26,6 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   return (
     <section className="design-settings-section" aria-labelledby={titleId}>
       <header className="design-settings-section__header">
-        <span className="design-settings-section__eyebrow">設定</span>
         <h2
           ref={titleRef}
           className="design-settings-section__title"

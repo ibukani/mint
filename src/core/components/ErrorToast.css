@@ -9,11 +9,7 @@
   padding: var(--space-3);
   border: 1px solid var(--border-error);
   border-radius: var(--radius-md);
-  background: color-mix(
-    in srgb,
-    var(--surface-error) 94%,
-    var(--surface-panel)
-  );
+  background: color-mix(in srgb, var(--color-error) 8%, var(--surface-panel));
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   color: var(--color-error);

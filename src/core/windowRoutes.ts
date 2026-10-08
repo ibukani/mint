@@ -5,7 +5,7 @@ import type { AppSettings } from "./settingsModel";
 
 interface WindowRouteDefinition {
   component: React.LazyExoticComponent<React.FC>;
-  getThemeColor: (settings: AppSettings) => string;
+  getThemeColor: (settings: AppSettings) => string | null;
 }
 
 const ClockOverlay = lazy(() =>
@@ -61,7 +61,7 @@ export const WINDOW_ROUTES = {
   },
   mintPalette: {
     component: MintPaletteOverlay,
-    getThemeColor: (settings) => settings.theme,
+    getThemeColor: () => null,
   },
 } satisfies Record<string, WindowRouteDefinition>;
 

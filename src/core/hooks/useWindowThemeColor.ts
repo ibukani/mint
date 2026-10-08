@@ -10,17 +10,16 @@ export const useWindowThemeColor = (
     const root = document.documentElement;
 
     if (!isWindowRouteLabel(label)) {
-      root.style.removeProperty("--color-accent");
+      root.style.removeProperty("--window-accent-color");
       return undefined;
     }
 
-    root.style.setProperty(
-      "--color-accent",
-      getWindowThemeColor(label, settings),
-    );
+    const color = getWindowThemeColor(label, settings);
+    if (color) root.style.setProperty("--window-accent-color", color);
+    else root.style.removeProperty("--window-accent-color");
 
     return () => {
-      root.style.removeProperty("--color-accent");
+      root.style.removeProperty("--window-accent-color");
     };
   }, [label, settings]);
 };

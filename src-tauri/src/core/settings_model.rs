@@ -185,7 +185,7 @@ impl Default for AppSettings {
             game_launcher: GameLauncherSettings::default(),
             calendar: CalendarSettings::default(),
             autostart: false,
-            theme: "dark".to_string(),
+            theme: "system".to_string(),
             settings_shortcut: "Ctrl+Alt+S".to_string(),
             clock: ClockSettings::default(),
             onboarding: OnboardingSettings::default(),
@@ -310,11 +310,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn theme_preferences_survive_serialized_round_trips() {
+        let defaults = serde_json::to_value(AppSettings::default()).unwrap();
+        assert_eq!(defaults["theme"], "system");
+
+        for theme in ["dark", "light", "system"] {
+            let settings: AppSettings =
+                serde_json::from_value(serde_json::json!({ "theme": theme })).unwrap();
+            let serialized = serde_json::to_string(&settings).unwrap();
+            let restored: AppSettings = serde_json::from_str(&serialized).unwrap();
+            assert_eq!(restored.theme, theme);
+        }
+    }
+
+    #[test]
     fn test_app_settings_deserialization_with_missing_fields() {
         // 全く空のJSONから復元
         let empty_json = "{}";
         let settings: AppSettings = serde_json::from_str(empty_json).unwrap();
-        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.theme, "system");
         assert_eq!(settings.clock.shortcut, "Alt+Left");
         assert_eq!(settings.clock.auto_hide_seconds, 3);
         assert!(settings.clock.show_date);

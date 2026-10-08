@@ -54,11 +54,11 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-control) 48%, transparent);
+  background: var(--surface-control);
 }
 
 .calendar-google-onboarding__visual {
@@ -72,7 +72,7 @@
   box-sizing: content-box;
   padding: 10px;
   border: 1px solid var(--border-accent);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: var(--surface-accent);
 }
 
@@ -210,11 +210,7 @@
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--surface-control) 66%, transparent),
-    color-mix(in srgb, var(--surface-control) 42%, transparent)
-  );
+  background: var(--surface-control);
   color: var(--color-text-subtle);
 }
 
@@ -235,7 +231,7 @@
   padding: 7px;
   box-sizing: content-box;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-elevated) 52%, transparent);
 }
 
@@ -271,7 +267,7 @@
   }
 
   .calendar-google-onboarding__visual {
-    justify-content: center;
+    display: none;
   }
 
   .calendar-google-onboarding .design-button {
@@ -381,7 +377,7 @@
   overflow: hidden;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-control) 38%, transparent);
+  background: var(--surface-control);
 }
 
 .calendar-google-list-state {

@@ -65,7 +65,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           data-window-drag-block
         >
           <Search size={14} aria-hidden="true" />
-          <span>クイックランチャー</span>
+          <span>設定・操作を検索</span>
           <kbd>{quickSwitcherShortcut}</kbd>
         </button>
       )}

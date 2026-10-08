@@ -11,7 +11,7 @@
   gap: var(--space-2);
   padding: 0 var(--space-3);
   border: 1px solid var(--border-panel);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--surface-panel);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
@@ -40,7 +40,7 @@
 .settings-save-status--pending,
 .settings-save-status--saving {
   border-color: var(--border-accent);
-  background: var(--surface-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--surface-panel));
   color: var(--color-accent);
   opacity: 1;
   transform: translateY(0) scale(1);
@@ -48,7 +48,11 @@
 
 .settings-save-status--saved {
   border-color: var(--border-success);
-  background: var(--surface-success);
+  background: color-mix(
+    in srgb,
+    var(--color-success) 10%,
+    var(--surface-panel)
+  );
   color: var(--color-success);
   box-shadow: var(--shadow-feedback-success);
   opacity: 1;
@@ -57,7 +61,7 @@
 
 .settings-save-status--error {
   border-color: var(--border-error);
-  background: var(--surface-error);
+  background: color-mix(in srgb, var(--color-error) 10%, var(--surface-panel));
   color: var(--color-error);
   box-shadow: var(--shadow-feedback-error);
   opacity: 1;
@@ -109,13 +113,7 @@
   gap: var(--space-4);
   min-height: 100vh;
   color: var(--color-text-secondary);
-  background:
-    radial-gradient(
-      circle at 50% 35%,
-      var(--page-accent-top),
-      transparent 24rem
-    ),
-    var(--surface-page);
+  background: var(--surface-root);
 }
 
 .app-loading__visual {
@@ -124,11 +122,10 @@
   width: 48px;
   height: 48px;
   border: 1px solid var(--border-accent);
-  border-radius: 15px;
+  border-radius: var(--radius-md);
   background: var(--surface-accent);
   color: var(--color-accent);
-  box-shadow: 0 12px 28px
-    color-mix(in srgb, var(--color-accent) 12%, transparent);
+  box-shadow: none;
 }
 
 .app-loading__visual .spinner-icon {
@@ -157,6 +154,7 @@
   min-height: 260px;
   flex: 1;
   grid-template-columns: auto auto;
+  justify-content: center;
   gap: var(--space-3);
   background: transparent;
 }
@@ -197,7 +195,7 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-error) 14%, transparent);
   color: var(--color-error);
 }

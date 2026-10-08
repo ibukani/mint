@@ -81,6 +81,7 @@ export const SETTINGS_TABS = [
   {
     id: "mintPalette",
     label: "MintPalette 設定",
+    navigationLabel: "Mint Palette",
     description: "グローバルコマンドパレット",
     keywords: ["コマンドパレット", "検索", "Ctrl+K", "ランチャー", "起動"],
     searchItems: [

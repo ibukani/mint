@@ -1,3 +1,4 @@
+import { defaultAppSettings } from "../defaultSettings";
 import type { DiagnosticsReport } from "../performance/diagnostics";
 import type { MockIPCArgs, MockIPCResult } from "./ipcMockTypes";
 import { handled, unhandled } from "./ipcMockTypes";
@@ -20,7 +21,7 @@ export const createMockDiagnosticsReport = (): DiagnosticsReport => ({
     performanceEnabled: true,
   },
   settings: {
-    theme: "dark",
+    theme: defaultAppSettings.theme,
     autostart: false,
     enabledFeatures: ["clock", "calendar", "gameLauncher"],
     shortcuts: {

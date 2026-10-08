@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultAppSettings } from "../defaultSettings";
 import { useSettingsWindow } from "./useSettingsWindow";
 
 const windowMocks = vi.hoisted(() => ({
@@ -23,7 +24,7 @@ describe("useSettingsWindow theme handling", () => {
     document.documentElement.removeAttribute("data-theme");
   });
 
-  it("follows system appearance changes while system mode is selected", () => {
+  it("follows system appearance changes with the default theme", () => {
     let changeListener: (() => void) | undefined;
     const mediaQuery = {
       matches: true,
@@ -37,7 +38,9 @@ describe("useSettingsWindow theme handling", () => {
       vi.fn(() => mediaQuery),
     );
 
-    const { unmount } = renderHook(() => useSettingsWindow("system"));
+    const { unmount } = renderHook(() =>
+      useSettingsWindow(defaultAppSettings.theme),
+    );
 
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(mediaQuery.addEventListener).toHaveBeenCalledOnce();

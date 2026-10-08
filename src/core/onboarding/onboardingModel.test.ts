@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { defaultAppSettings } from "../defaultSettings";
 import { createMockSettings } from "../mocks/mockSettings";
 import {
   applyDraftToSettings,
@@ -10,6 +11,14 @@ import {
 describe("onboardingModel", () => {
   it("exposes the current onboarding version", () => {
     expect(ONBOARDING_VERSION).toBe(1);
+  });
+
+  it("starts fresh setup and browser mocks with the system theme", () => {
+    expect(buildDraftFromSettings(defaultAppSettings).theme).toBe("system");
+    expect(defaultAppSettings.onboarding.completedVersion).toBe(0);
+    const mock = createMockSettings();
+    expect(mock.theme).toBe("system");
+    expect(mock.onboarding.completedVersion).toBe(ONBOARDING_VERSION);
   });
 
   it("builds a draft from settings with every feature and common settings", () => {

@@ -7,7 +7,7 @@ import { useWindowThemeColor } from "./useWindowThemeColor";
 
 describe("useWindowThemeColor", () => {
   beforeEach(() => {
-    document.documentElement.style.removeProperty("--color-accent");
+    document.documentElement.style.removeProperty("--window-accent-color");
   });
 
   it("applies the routed window accent to the document root", () => {
@@ -20,12 +20,12 @@ describe("useWindowThemeColor", () => {
     );
 
     expect(
-      document.documentElement.style.getPropertyValue("--color-accent"),
+      document.documentElement.style.getPropertyValue("--window-accent-color"),
     ).toBe("#123456");
 
     unmount();
     expect(
-      document.documentElement.style.getPropertyValue("--color-accent"),
+      document.documentElement.style.getPropertyValue("--window-accent-color"),
     ).toBe("");
   });
 
@@ -40,7 +40,7 @@ describe("useWindowThemeColor", () => {
     renderHook(() => useWindowThemeColor("calendarEditor", settings));
 
     expect(
-      document.documentElement.style.getPropertyValue("--color-accent"),
+      document.documentElement.style.getPropertyValue("--window-accent-color"),
     ).toBe("#abcdef");
   });
 
@@ -66,24 +66,46 @@ describe("useWindowThemeColor", () => {
     expect(getWindowThemeColor("calendar", settings)).toBe("#100002");
     expect(getWindowThemeColor("calendarEditor", settings)).toBe("#100002");
     expect(getWindowThemeColor("gameLauncher", settings)).toBe("#100003");
-    expect(getWindowThemeColor("mintPalette", settings)).toBe("dark");
+    expect(getWindowThemeColor("mintPalette", settings)).toBeNull();
   });
 
   it("falls back to defaults until settings are available", () => {
     renderHook(() => useWindowThemeColor("clock", null));
 
     expect(
-      document.documentElement.style.getPropertyValue("--color-accent"),
+      document.documentElement.style.getPropertyValue("--window-accent-color"),
     ).toBe(defaultAppSettings.clock.themeColor);
   });
 
   it("does not override the settings window accent", () => {
-    document.documentElement.style.setProperty("--color-accent", "#123456");
+    document.documentElement.style.setProperty(
+      "--window-accent-color",
+      "#123456",
+    );
 
     renderHook(() => useWindowThemeColor("main", createMockSettings()));
 
     expect(
-      document.documentElement.style.getPropertyValue("--color-accent"),
+      document.documentElement.style.getPropertyValue("--window-accent-color"),
+    ).toBe("");
+  });
+
+  it("lets Mint Palette follow the shared light and dark theme accents", () => {
+    document.documentElement.style.setProperty(
+      "--window-accent-color",
+      "#123456",
+    );
+    const { rerender } = renderHook(
+      ({ theme }: { theme: "dark" | "light" }) =>
+        useWindowThemeColor("mintPalette", createMockSettings({ theme })),
+      { initialProps: { theme: "dark" } },
+    );
+    expect(
+      document.documentElement.style.getPropertyValue("--window-accent-color"),
+    ).toBe("");
+    rerender({ theme: "light" });
+    expect(
+      document.documentElement.style.getPropertyValue("--window-accent-color"),
     ).toBe("");
   });
 });

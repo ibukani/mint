@@ -4,7 +4,7 @@
   gap: var(--space-3);
   align-items: stretch;
   justify-content: stretch;
-  padding: var(--space-5);
+  padding: var(--space-4);
   font-size: var(--font-size-base);
 }
 
@@ -42,7 +42,7 @@
 .game-launcher__title p {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-regular);
 }
 
 .game-launcher__search {
@@ -135,12 +135,10 @@
 .game-launcher__item:hover {
   border-color: var(--border-control-focus);
   background: var(--surface-accent-action);
-  transform: translateX(3px);
 }
 .game-launcher__item.is-selected {
   border-color: var(--border-control-focus);
   background: var(--surface-accent-action);
-  transform: translateX(2px);
   box-shadow: var(--shadow-card);
 }
 .game-launcher__item.is-selected::before {
@@ -199,7 +197,7 @@
 }
 .game-launcher__item-copy small {
   color: var(--color-text-muted);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-regular);
 }
 .game-launcher__enter {
   color: var(--color-text-muted);
@@ -278,13 +276,7 @@
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background:
-    radial-gradient(
-      circle at 50% 0,
-      color-mix(in srgb, var(--color-accent) 15%, transparent),
-      transparent 55%
-    ),
-    var(--surface-control);
+  background: var(--surface-control);
   overflow: hidden;
 }
 .game-launcher__preview-copy {
@@ -317,7 +309,7 @@
 .game-launcher__preview p {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-regular);
 }
 .game-launcher__preview-actions {
   width: 100%;
@@ -344,18 +336,18 @@
     opacity var(--transition-fast);
 }
 .game-launcher__preview-actions button:first-child {
-  border-color: var(--color-accent);
-  background: var(--surface-accent-action);
+  border-color: var(--surface-primary);
+  background: var(--surface-primary);
+  color: var(--color-on-accent);
 }
 .game-launcher__preview-actions button:hover:not(:disabled) {
   border-color: var(--border-control-focus);
   background: var(--surface-accent-action-hover);
   color: var(--color-accent);
-  transform: translateY(-1px);
 }
 .game-launcher__preview-actions button:first-child:hover:not(:disabled) {
-  background: var(--surface-accent-action-hover);
-  color: var(--color-accent);
+  background: var(--surface-primary-hover);
+  color: var(--color-on-accent);
 }
 .game-launcher__preview-actions button:active:not(:disabled) {
   transform: scale(0.98);
