@@ -42,7 +42,6 @@ export default defineConfig(async () => ({
           "vendor-tauri": [
             "@tauri-apps/api",
             "@tauri-apps/plugin-global-shortcut",
-            "@tauri-apps/plugin-opener",
           ],
           "vendor-icons": ["lucide-react"],
         },
