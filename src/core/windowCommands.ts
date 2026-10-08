@@ -5,16 +5,12 @@ export type OverlayTarget =
   | "clock"
   | "calendar"
   | "gameLauncher"
-  | "quickCapture"
-  | "fileShelf"
   | "mintPalette";
 
 const overlayTargets: readonly OverlayTarget[] = [
   "clock",
   "calendar",
   "gameLauncher",
-  "quickCapture",
-  "fileShelf",
   "mintPalette",
 ];
 
@@ -28,7 +24,6 @@ export const notifyOverlayReady = () => invoke<void>("overlay_ready");
 
 export type WindowStateTarget =
   | "main"
-  | "quickCapture"
   | "gameLauncher"
   | "calendar"
   | "calendarEditor";

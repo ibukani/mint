@@ -7,14 +7,8 @@ const readCss = (relativePath: string) =>
 const calendarOverlayCss = readCss(
   "../features/calendar/components/CalendarOverlay.css",
 );
-const fileShelfOverlayCss = readCss(
-  "../features/file_shelf/components/FileShelfOverlay.css",
-);
 const gameLauncherOverlayCss = readCss(
   "../features/game_launcher/components/GameLauncherOverlay.css",
-);
-const quickCaptureOverlayCss = readCss(
-  "../features/quick_capture/components/QuickCaptureOverlay.css",
 );
 
 const ruleBodiesFor = (css: string, targetSelector: string) =>
@@ -46,25 +40,6 @@ describe("overlay theme color contracts", () => {
     expectThemeColorRule(calendarOverlayCss, ".calendar-screen__empty button");
   });
 
-  it("keeps quick capture action groups on the configured accent", () => {
-    expectThemeColorRule(
-      quickCaptureOverlayCss,
-      ".quick-capture__header-actions button",
-    );
-    expectThemeColorRule(
-      quickCaptureOverlayCss,
-      ".quick-capture__command-header button",
-    );
-    expectThemeColorRule(
-      quickCaptureOverlayCss,
-      ".quick-capture__toolbar-button",
-    );
-    expectThemeColorRule(
-      quickCaptureOverlayCss,
-      ".quick-capture__note-actions button",
-    );
-  });
-
   it("keeps game launcher actions on the configured accent", () => {
     expectThemeColorRule(
       gameLauncherOverlayCss,
@@ -78,18 +53,6 @@ describe("overlay theme color contracts", () => {
     expectThemeColorRule(
       gameLauncherOverlayCss,
       ".game-launcher__footer button",
-    );
-  });
-
-  it("keeps file shelf secondary controls on the configured accent", () => {
-    expectThemeColorRule(
-      fileShelfOverlayCss,
-      ".file-shelf__preview-header button",
-    );
-    expectThemeColorRule(fileShelfOverlayCss, ".file-shelf__search button");
-    expectThemeColorRule(
-      fileShelfOverlayCss,
-      ".file-shelf__drag-confirmation-actions button",
     );
   });
 });

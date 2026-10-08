@@ -17,7 +17,7 @@ describe("onboardingValidation", () => {
 
     expect(featureIds).toContain("settings");
     expect(featureIds).toContain("clock");
-    expect(featureIds).toContain("quickCapture");
+    expect(featureIds).toContain("gameLauncher");
     expect(featureIds).toContain("calendarCreateEvent");
     expect(
       entries.find((entry) => entry.featureId === "settings")?.shortcut,
@@ -58,13 +58,13 @@ describe("onboardingValidation", () => {
       ...draft,
       shortcuts: {
         ...draft.shortcuts,
-        clock: "Alt+3",
+        clock: "Alt+1",
       },
     };
 
     const errors = findDuplicateShortcuts(conflicting, settings);
     expect(errors.clock).toBeDefined();
-    expect(errors.fileShelf).toBeDefined();
+    expect(errors.gameLauncher).toBeDefined();
     expect(hasShortcutConflicts(conflicting, settings)).toBe(true);
   });
 
@@ -86,12 +86,12 @@ describe("onboardingValidation", () => {
 
   it("ignores conflicts from disabled features", () => {
     const settings = createMockSettings({
-      fileShelf: { ...createMockSettings().fileShelf, enabled: false },
+      gameLauncher: { ...createMockSettings().gameLauncher, enabled: false },
     });
     const draft = buildDraftFromSettings(settings);
     const conflicting = {
       ...draft,
-      shortcuts: { ...draft.shortcuts, clock: "Alt+3" },
+      shortcuts: { ...draft.shortcuts, clock: "Alt+1" },
     };
 
     expect(findDuplicateShortcuts(conflicting, settings)).toEqual({});

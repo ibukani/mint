@@ -117,6 +117,6 @@ mod tests {
         let dir = temp_dir("labels");
         let state = sample_state();
         save(&dir, "main", &state).unwrap();
-        assert!(load(&dir, "quickCapture").is_none());
+        assert!(load(&dir, "gameLauncher").is_none());
     }
 }

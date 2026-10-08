@@ -84,13 +84,13 @@ describe("useSettingsWindow theme handling", () => {
     const { result } = renderHook(() => useSettingsWindow("dark"));
 
     act(() => {
-      result.current.setActiveTab("voiceToText", "v2t-api-key-input");
+      result.current.setActiveTab("clock", "clock-shortcut-input");
     });
 
-    expect(result.current.activeTab).toBe("voiceToText");
+    expect(result.current.activeTab).toBe("clock");
     expect(result.current.focusRequest).toEqual({
       id: 1,
-      targetId: "v2t-api-key-input",
+      targetId: "clock-shortcut-input",
     });
   });
 });

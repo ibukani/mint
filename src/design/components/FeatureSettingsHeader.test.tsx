@@ -8,7 +8,7 @@ describe("FeatureSettingsHeader", () => {
     const { container } = render(
       <FeatureSettingsHeader
         switchId="feature-enabled"
-        label="音声入力"
+        label="時計オーバーレイ"
         enabled={false}
         onChange={() => undefined}
         onReset={onReset}

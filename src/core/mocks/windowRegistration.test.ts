@@ -16,8 +16,6 @@ describe("getMockWindowRegistration", () => {
       "clock",
       "calendar",
       "gameLauncher",
-      "quickCapture",
-      "fileShelf",
       "mintPalette",
     ]);
     expect(new Set(labels).size).toBe(labels.length);

@@ -12,11 +12,6 @@ pub const WINDOW_POLICIES: &[WindowPolicy] = &[
         persist_size: true,
     },
     WindowPolicy {
-        label: "quickCapture",
-        persist_position: true,
-        persist_size: true,
-    },
-    WindowPolicy {
         label: "gameLauncher",
         persist_position: true,
         persist_size: true,
@@ -47,7 +42,7 @@ mod tests {
 
     #[test]
     fn policy_for_returns_matching_policy() {
-        let policy = policy_for("quickCapture").unwrap();
+        let policy = policy_for("gameLauncher").unwrap();
         assert!(policy.persist_position);
         assert!(policy.persist_size);
     }

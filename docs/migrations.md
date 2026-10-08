@@ -2,7 +2,7 @@
 
 ## 概要
 
-Mint は永続データ（設定・メモ・ファイルシェル項目など）に **スキーマバージョン** を導入し、バージョン間の変換を「隣接マイグレーション」の連結として適用する。
+設定のJSONは **スキーマバージョン** を持ち、バージョン間の変換を「隣接マイグレーション」の連結として適用する。ほかの永続データは下表の所有元・保存方式を使用し、すべてがこのJSON基盤の対象という意味ではない。
 
 - 保存形式: `{ "schemaVersion": N, "data": { ... } }` の envelope 形式
 - バージョン指定のない既存ファイルは **バージョン 0** として扱う
@@ -21,15 +21,15 @@ Mint は永続データ（設定・メモ・ファイルシェル項目など）
 
 | データ | ファイル | 状態 |
 |---|---|---|
-| settings.json | `app_config_dir/settings.json` | v1（envelope 導入済み） |
-| quick_capture メモ・下書き | `app_data_dir/quick_capture/` | 未対応（将来） |
-| file_shelf 保存項目 | `app_data_dir/file_shelf/` | 未対応（将来） |
-| calendar ローカル予定 | `app_data_dir/calendar/` | 未対応（将来） |
-| game_launcher お気に入り | 設定内 | 未対応（将来） |
-| Mint Palette 最近使用 | 未定 | 未対応（将来） |
-| Window State | 未定 | 未対応（将来） |
+| settings.json | `app_config_dir/settings.json` | v3（envelope・onboarding移行・廃止機能の設定削除） |
+| 廃止済み quick_capture メモ・下書き・添付 | `app_data_dir/quick_capture.sqlite3` と添付ファイル | 削除せず保持。アプリは読み込み・初期化しない |
+| 廃止済み file_shelf 保存項目 | `app_data_dir/file_shelf.sqlite3`・`file_shelf_assets/` | 削除せず保持。アプリは読み込み・初期化しない |
+| calendar ローカル予定 | `app_data_dir/calendar.sqlite3` | SQLite `user_version` による移行（`features/calendar/database.rs`） |
+| game_launcher お気に入り | settings.json 内 | 設定と同じ envelope・移行チェーンで管理 |
+| Mint Palette 最近使用 | WebView localStorage | `useMintPalette` と共通quick-switcher検索helperが管理 |
+| Window State | `app_config_dir/window_state/<label>.json` | 共通マイグレーション基盤の対象外（`core/window_state/` が独自versionを管理） |
 
-API キー・OAuth token は OS キーリングで管理し、マイグレーション対象外。
+OAuth token は OS キーリングで管理し、マイグレーション対象外。廃止した音声入力のAPIキーと旧window stateも自動削除しない。
 
 `tauri dev` のデバッグビルドは、インストール済みリリース版を保護するため、
 `app_config_dir/development`、`app_data_dir/development` と専用のキーリングサービス名を使う。
@@ -51,7 +51,7 @@ API キー・OAuth token は OS キーリングで管理し、マイグレーシ
    - バージョン定数（例: `SETTINGS_SCHEMA_VERSION`）を更新する
 2. fixture ファイルを追加する（`fixtures/` 配下、移行前・後の両パターン）
 3. `run_migrations` の動作を単体テストで検証する
-4. `cargo test --lib core::migrations` で確認
+4. `cargo test --manifest-path src-tauri/Cargo.toml --lib core::migrations` で確認
 
 ## 動作詳細
 
@@ -64,9 +64,13 @@ API キー・OAuth token は OS キーリングで管理し、マイグレーシ
 ## settings.json の現行仕様
 
 - v0（旧形式）: envelope なしの AppSettings 直書き
-- v1（現行）: `{ "schemaVersion": 1, "data": { ...AppSettings } }`
-- 読み込み時: v0 なら v1 へ移行（バックアップ → 書き戻し）してから読み込む
-- 保存時: 常に v1 形式で書き出す
+- v1: `{ "schemaVersion": 1, "data": { ...AppSettings } }`
+- v2: `{ "schemaVersion": 2, "data": { ...AppSettings } }`。v1→v2 で既存ユーザーの `onboarding.completedVersion` を補う
+- v3（現行）: `{ "schemaVersion": 3, "data": { ...AppSettings } }`。v2→v3 で `fileShelf`・`quickCapture`・`voiceToText` を除く。移行前の設定をバックアップし、残る設定・onboarding・独立した保存データは保持する
+- 最新バージョンとチェーンの所有元は `src-tauri/src/core/migrations/settings/mod.rs` の `SETTINGS_SCHEMA_VERSION` と `settings_migrations()`
+- 読み込み時: 旧バージョンからv3まで隣接移行を適用し、バックアップ → 書き戻しを経て読み込む。既存の onboarding 値は保持する
+- 保存時: 常に最新バージョンの envelope で書き出す
+- 新規インストールは `completedVersion: 0` で初回セットアップを表示する。既存ユーザーの移行と、既存ユーザーを模擬するブラウザ mock（`completedVersion: 1`）を新規 default に揃えない
 
 ## ログに関する制約
 

@@ -1,11 +1,8 @@
 import {
-  Archive,
   CalendarDays,
   Clock3,
   Command,
   Gamepad2,
-  Mic2,
-  NotebookPen,
   SlidersHorizontal,
 } from "lucide-react";
 import React, { lazy } from "react";
@@ -22,12 +19,6 @@ const ClockSettings = lazy(() =>
   })),
 );
 
-const VoiceToTextSettings = lazy(() =>
-  import("../../features/v2t/components/VoiceToTextSettings").then((m) => ({
-    default: m.VoiceToTextSettings,
-  })),
-);
-
 const CalendarSettings = lazy(() =>
   import("../../features/calendar/components/CalendarSettings").then((m) => ({
     default: m.CalendarSettings,
@@ -37,18 +28,6 @@ const CalendarSettings = lazy(() =>
 const GameLauncherSettings = lazy(() =>
   import("../../features/game_launcher/components/GameLauncherSettings").then(
     (m) => ({ default: m.GameLauncherSettings }),
-  ),
-);
-
-const QuickCaptureSettings = lazy(() =>
-  import("../../features/quick_capture/components/QuickCaptureSettings").then(
-    (m) => ({ default: m.QuickCaptureSettings }),
-  ),
-);
-
-const FileShelfSettings = lazy(() =>
-  import("../../features/file_shelf/components/FileShelfSettings").then(
-    (m) => ({ default: m.FileShelfSettings }),
   ),
 );
 
@@ -114,104 +93,6 @@ export const SETTINGS_TABS = [
       },
     ],
     icon: React.createElement(Command, { size: 18, "aria-hidden": true }),
-  },
-  {
-    id: "fileShelf",
-    label: "ファイルシェル",
-    navigationLabel: "シェルフ",
-    description: "ファイルの一時置き場",
-    keywords: [
-      "ファイル",
-      "フォルダ",
-      "クリップボード",
-      "履歴",
-      "除外アプリ",
-      "パスワード管理",
-      "Alt+3",
-    ],
-    searchItems: [
-      {
-        id: "file-shelf-shortcut",
-        label: "起動ショートカットキー",
-        description: "押して呼び出し、長押しで呼び戻し",
-        keywords: ["Alt+3", "キー", "長押し", "クリップボード", "保存", "復元"],
-        targetId: "file-shelf-shortcut",
-      },
-      {
-        id: "file-shelf-edge-handle",
-        label: "ハンドルを常に表示する",
-        description: "画面端のハンドル",
-        keywords: ["画面端", "展開"],
-        targetId: "file-shelf-edge-handle",
-      },
-      {
-        id: "file-shelf-clipboard-history",
-        label: "クリップボード履歴を保存する",
-        description: "履歴の自動追加",
-        keywords: ["履歴", "コピー", "保存"],
-        targetId: "file-shelf-clipboard-history",
-      },
-      {
-        id: "file-shelf-clipboard-limit",
-        label: "履歴の保存件数",
-        description: "クリップボード履歴の上限",
-        keywords: ["履歴", "件数", "上限"],
-        targetId: "file-shelf-clipboard-limit",
-      },
-      {
-        id: "file-shelf-ignored-applications",
-        label: "除外するアプリ",
-        description: "自動展開と履歴取得をアプリごとに停止",
-        keywords: ["除外", "アプリ", "自動展開", "プライバシー"],
-        targetId: "file-shelf-ignored-title",
-      },
-    ],
-    icon: React.createElement(Archive, { size: 18, "aria-hidden": true }),
-  },
-  {
-    id: "quickCapture",
-    label: "クイックキャプチャー",
-    navigationLabel: "キャプチャー",
-    description: "下書きとメモの記録",
-    keywords: ["メモ", "ノート", "下書き", "タグ", "添付"],
-    searchItems: [
-      {
-        id: "quick-capture-shortcut",
-        label: "起動ショートカットキー",
-        description: "クイックキャプチャーの呼び出し",
-        keywords: ["Alt+2", "キー"],
-        targetId: "quick_capture_shortcut-input",
-      },
-      {
-        id: "quick-capture-editor",
-        label: "エディター設定",
-        description: "フォント、行番号、折り返し、スペルチェック",
-        keywords: [
-          "フォント",
-          "文字サイズ",
-          "行間",
-          "行番号",
-          "折り返し",
-          "タブ",
-        ],
-        targetId: "quick-capture-editor-title",
-      },
-      {
-        id: "quick-capture-window",
-        label: "ウィンドウ設定",
-        description: "常に手前に表示するかどうか",
-        keywords: ["手前", "alwaysOnTop", "ウィンドウ"],
-        targetId: "quick-capture-window-title",
-      },
-      {
-        id: "quick-capture-data",
-        label: "メモのデータ管理",
-        description: "バックアップの書き出しと復元",
-        keywords: ["バックアップ", "復元", "データ"],
-        targetId: "quick-capture-data-title",
-      },
-    ],
-    icon: React.createElement(NotebookPen, { size: 18, "aria-hidden": true }),
   },
   {
     id: "gameLauncher",
@@ -297,50 +178,6 @@ export const SETTINGS_TABS = [
     ],
     icon: React.createElement(CalendarDays, { size: 18, "aria-hidden": true }),
   },
-  {
-    id: "voiceToText",
-    label: "音声入力",
-    description: "音声の文字起こし",
-    keywords: ["文字起こし", "音声ファイル", "API", "Whisper", "言語"],
-    searchItems: [
-      {
-        id: "voice-to-text-shortcut",
-        label: "文字起こしショートカットキー",
-        description: "音声入力画面の呼び出し",
-        keywords: ["Alt+End", "キー"],
-        targetId: "v2t-shortcut-input",
-      },
-      {
-        id: "voice-to-text-api-key",
-        label: "APIキー",
-        description: "音声認識APIの認証情報",
-        keywords: ["API", "認証", "キー", "OpenAI", "Groq"],
-        targetId: "v2t-api-key-input",
-      },
-      {
-        id: "voice-to-text-model",
-        label: "モデル名",
-        description: "音声認識モデル",
-        keywords: ["Whisper", "モデル"],
-        targetId: "v2t-model-input",
-      },
-      {
-        id: "voice-to-text-language",
-        label: "言語コード",
-        description: "音声認識時の入力言語",
-        keywords: ["Language", "ISO", "ja", "en"],
-        targetId: "v2t-language-input",
-      },
-      {
-        id: "voice-to-text-audio-file",
-        label: "音声ファイルパス",
-        description: "文字起こしするファイル",
-        keywords: ["WAV", "MP3", "M4A", "FLAC", "音声"],
-        targetId: "v2t-audio-file-input",
-      },
-    ],
-    icon: React.createElement(Mic2, { size: 18, "aria-hidden": true }),
-  },
   // scaffold:settings-tabs
 ] as const;
 
@@ -351,11 +188,8 @@ export const SETTINGS_TAB_COMPONENTS: Record<
   React.LazyExoticComponent<React.FC>
 > = {
   mintPalette: MintPaletteSettings,
-  fileShelf: FileShelfSettings,
-  quickCapture: QuickCaptureSettings,
   gameLauncher: GameLauncherSettings,
   calendar: CalendarSettings,
   general: GeneralSettings,
   clock: ClockSettings,
-  voiceToText: VoiceToTextSettings,
 };

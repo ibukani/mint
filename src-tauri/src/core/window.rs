@@ -15,13 +15,7 @@ struct OverlayWindowState {
 fn defers_initial_show(label: &str) -> bool {
     matches!(
         label,
-        "clock"
-            | "calendar"
-            | "gameLauncher"
-            | "quickCapture"
-            | "fileShelf"
-            | "calendarEditor"
-            | "mintPalette"
+        "clock" | "calendar" | "gameLauncher" | "calendarEditor" | "mintPalette"
     )
 }
 
@@ -70,8 +64,6 @@ pub enum OverlayTarget {
     Clock,
     Calendar,
     GameLauncher,
-    QuickCapture,
-    FileShelf,
     MintPalette,
 }
 
@@ -81,8 +73,6 @@ impl OverlayTarget {
             Self::Clock => "clock",
             Self::Calendar => "calendar",
             Self::GameLauncher => "gameLauncher",
-            Self::QuickCapture => "quickCapture",
-            Self::FileShelf => "fileShelf",
             Self::MintPalette => "mintPalette",
         }
     }
@@ -92,8 +82,6 @@ impl OverlayTarget {
             Self::Clock => "時計",
             Self::Calendar => "カレンダー",
             Self::GameLauncher => "ゲームランチャー",
-            Self::QuickCapture => "クイックキャプチャー",
-            Self::FileShelf => "ファイルシェル",
             Self::MintPalette => "MintPalette",
         }
     }
@@ -103,8 +91,6 @@ impl OverlayTarget {
             Self::Clock => settings.clock.enabled,
             Self::Calendar => settings.calendar.enabled,
             Self::GameLauncher => settings.game_launcher.enabled,
-            Self::QuickCapture => settings.quick_capture.enabled,
-            Self::FileShelf => settings.file_shelf.enabled,
             Self::MintPalette => settings.mint_palette.enabled,
         }
     }
@@ -222,17 +208,6 @@ fn show_ready_overlay_windows(app: &AppHandle) -> Result<(), String> {
 
         if take_initial_show_if_ready("gameLauncher") {
             crate::features::game_launcher::show_game_launcher_overlay(app);
-            showed_window = true;
-        }
-
-        if take_initial_show_if_ready("quickCapture") {
-            crate::features::quick_capture::show_quick_capture_overlay(app);
-            showed_window = true;
-        }
-
-        if take_initial_show_if_ready("fileShelf") {
-            let settings = crate::core::settings::load_settings_cached(app)?;
-            crate::features::file_shelf::show_file_shelf_overlay(app, &settings.file_shelf)?;
             showed_window = true;
         }
 
@@ -357,17 +332,6 @@ pub async fn open_overlay(
 
     let window = ensure_overlay_window(&app, target)?;
 
-    if matches!(target, OverlayTarget::FileShelf) {
-        crate::features::file_shelf::set_file_shelf_expanded(app.clone(), true, true).await?;
-        if !window.is_visible().map_err(|error| error.to_string())? {
-            return Err(format!(
-                "{}を開けませんでした。設定で機能が有効か確認してください。",
-                target.display_name()
-            ));
-        }
-        return Ok(());
-    }
-
     if window.is_visible().map_err(|error| error.to_string())? {
         window
             .unminimize()
@@ -384,10 +348,7 @@ pub async fn open_overlay(
         OverlayTarget::GameLauncher => {
             crate::features::game_launcher::toggle_game_launcher_overlay(&app)
         }
-        OverlayTarget::QuickCapture => {
-            crate::features::quick_capture::toggle_quick_capture_overlay(&app)
-        }
-        OverlayTarget::FileShelf => crate::features::file_shelf::toggle_file_shelf_overlay(&app),
+
         OverlayTarget::MintPalette => {
             crate::features::mint_palette::toggle_mint_palette_overlay(&app)
         }
@@ -415,8 +376,6 @@ mod tests {
         assert_eq!(OverlayTarget::Clock.label(), "clock");
         assert_eq!(OverlayTarget::Calendar.label(), "calendar");
         assert_eq!(OverlayTarget::GameLauncher.label(), "gameLauncher");
-        assert_eq!(OverlayTarget::QuickCapture.label(), "quickCapture");
-        assert_eq!(OverlayTarget::FileShelf.label(), "fileShelf");
         assert_eq!(OverlayTarget::MintPalette.label(), "mintPalette");
     }
 
@@ -426,8 +385,6 @@ mod tests {
         assert!(OverlayTarget::Clock.is_enabled(&settings));
         settings.clock.enabled = false;
         assert!(!OverlayTarget::Clock.is_enabled(&settings));
-        settings.file_shelf.enabled = false;
-        assert!(!OverlayTarget::FileShelf.is_enabled(&settings));
         assert!(!OverlayTarget::MintPalette.is_enabled(&settings));
         settings.mint_palette.enabled = true;
         assert!(OverlayTarget::MintPalette.is_enabled(&settings));

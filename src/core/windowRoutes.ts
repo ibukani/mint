@@ -28,18 +28,6 @@ const GameLauncherOverlay = lazy(() =>
   ),
 );
 
-const QuickCaptureOverlay = lazy(() =>
-  import("../features/quick_capture/components/QuickCaptureOverlay").then(
-    (m) => ({ default: m.QuickCaptureOverlay }),
-  ),
-);
-
-const FileShelfOverlay = lazy(() =>
-  import("../features/file_shelf/components/FileShelfOverlay").then((m) => ({
-    default: m.FileShelfOverlay,
-  })),
-);
-
 const CalendarEditorOverlay = lazy(() =>
   import("../features/calendar/components/CalendarEditorOverlay").then((m) => ({
     default: m.CalendarEditorOverlay,
@@ -70,14 +58,6 @@ export const WINDOW_ROUTES = {
   gameLauncher: {
     component: GameLauncherOverlay,
     getThemeColor: (settings) => settings.gameLauncher.themeColor,
-  },
-  quickCapture: {
-    component: QuickCaptureOverlay,
-    getThemeColor: (settings) => settings.quickCapture.themeColor,
-  },
-  fileShelf: {
-    component: FileShelfOverlay,
-    getThemeColor: (settings) => settings.fileShelf.themeColor,
   },
   mintPalette: {
     component: MintPaletteOverlay,

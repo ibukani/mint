@@ -83,30 +83,6 @@ impl Default for ClockSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
-pub struct VoiceToTextSettings {
-    pub enabled: bool,
-    pub shortcut: String,
-    pub base_url: String,
-    pub model: String,
-    pub language: String,
-    pub status: String,
-}
-
-impl Default for VoiceToTextSettings {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            shortcut: "Alt+End".to_string(),
-            base_url: "https://api.openai.com/v1".to_string(),
-            model: "whisper-1".to_string(),
-            language: "ja".to_string(),
-            status: "available".to_string(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(default, rename_all = "camelCase")]
 pub struct CalendarSettings {
     pub enabled: bool,
     pub shortcut: String,
@@ -161,117 +137,6 @@ impl Default for GameLauncherSettings {
     }
 }
 
-fn default_quick_capture_color() -> String {
-    "#818cf8".to_string()
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(default, rename_all = "camelCase")]
-pub struct QuickCaptureSettings {
-    pub enabled: bool,
-    pub shortcut: String,
-    #[serde(default = "default_quick_capture_color")]
-    pub theme_color: String,
-    pub font_family: String,
-    pub font_size: u32,
-    pub line_height: f32,
-    pub show_line_numbers: bool,
-    pub word_wrap: bool,
-    pub tab_width: u32,
-    pub spell_check: bool,
-    pub highlight_current_line: bool,
-    pub always_on_top: bool,
-}
-
-impl Default for QuickCaptureSettings {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            shortcut: "Alt+2".to_string(),
-            theme_color: default_quick_capture_color(),
-            font_family: "ui-monospace".to_string(),
-            font_size: 16,
-            line_height: 1.75,
-            show_line_numbers: true,
-            word_wrap: true,
-            tab_width: 2,
-            spell_check: true,
-            highlight_current_line: false,
-            always_on_top: false,
-        }
-    }
-}
-
-fn default_file_shelf_color() -> String {
-    "#818cf8".to_string()
-}
-
-fn default_file_shelf_ignored_applications() -> Vec<String> {
-    [
-        "1Password.exe",
-        "Bitwarden.exe",
-        "Dashlane.exe",
-        "Enpass.exe",
-        "KeePass.exe",
-        "KeePassXC.exe",
-        "LastPass.exe",
-    ]
-    .into_iter()
-    .map(str::to_string)
-    .collect()
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(default, rename_all = "camelCase")]
-pub struct FileShelfSettings {
-    pub enabled: bool,
-    pub shortcut: String,
-    pub edge: FileShelfEdge,
-    pub vertical_position: FileShelfVerticalPosition,
-    pub edge_handle_enabled: bool,
-    pub clipboard_history_enabled: bool,
-    pub clipboard_history_limit: u32,
-    pub ignored_applications: Vec<String>,
-    #[serde(default = "default_file_shelf_color")]
-    pub theme_color: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum FileShelfEdge {
-    Left,
-    #[default]
-    Right,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum FileShelfVerticalPosition {
-    Top,
-    #[default]
-    Center,
-    Bottom,
-    Cursor,
-}
-
-impl Default for FileShelfSettings {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            shortcut: "Alt+3".to_string(),
-            edge: FileShelfEdge::Right,
-            vertical_position: FileShelfVerticalPosition::Center,
-            // The edge handle owns a resident WebView; keep it opt-in for new
-            // installations while preserving an explicit persisted choice.
-            edge_handle_enabled: false,
-            clipboard_history_enabled: false,
-            clipboard_history_limit: 25,
-            ignored_applications: default_file_shelf_ignored_applications(),
-            theme_color: default_file_shelf_color(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default, rename_all = "camelCase")]
 pub struct MintPaletteSettings {
@@ -304,15 +169,12 @@ pub struct OnboardingSettings {
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
     pub mint_palette: MintPaletteSettings,
-    pub file_shelf: FileShelfSettings,
-    pub quick_capture: QuickCaptureSettings,
     pub game_launcher: GameLauncherSettings,
     pub calendar: CalendarSettings,
     pub autostart: bool,
     pub theme: String,
     pub settings_shortcut: String,
     pub clock: ClockSettings,
-    pub voice_to_text: VoiceToTextSettings,
     pub onboarding: OnboardingSettings,
 }
 
@@ -320,15 +182,12 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             mint_palette: MintPaletteSettings::default(),
-            file_shelf: FileShelfSettings::default(),
-            quick_capture: QuickCaptureSettings::default(),
             game_launcher: GameLauncherSettings::default(),
             calendar: CalendarSettings::default(),
             autostart: false,
             theme: "dark".to_string(),
             settings_shortcut: "Ctrl+Alt+S".to_string(),
             clock: ClockSettings::default(),
-            voice_to_text: VoiceToTextSettings::default(),
             onboarding: OnboardingSettings::default(),
         }
     }
@@ -350,20 +209,6 @@ impl ShortcutProvider for ClockSettings {
     }
     fn feature_id(&self) -> &str {
         "clock"
-    }
-}
-
-impl ShortcutProvider for VoiceToTextSettings {
-    fn shortcut(&self) -> Option<&str> {
-        let s = self.shortcut.trim();
-        if self.status != "available" || !self.enabled || s.is_empty() {
-            None
-        } else {
-            Some(s)
-        }
-    }
-    fn feature_id(&self) -> &str {
-        "voiceToText"
     }
 }
 
@@ -394,36 +239,6 @@ impl ShortcutProvider for GameLauncherSettings {
 
     fn feature_id(&self) -> &str {
         "gameLauncher"
-    }
-}
-
-impl ShortcutProvider for QuickCaptureSettings {
-    fn shortcut(&self) -> Option<&str> {
-        let shortcut = self.shortcut.trim();
-        if !self.enabled || shortcut.is_empty() {
-            None
-        } else {
-            Some(shortcut)
-        }
-    }
-
-    fn feature_id(&self) -> &str {
-        "quickCapture"
-    }
-}
-
-impl ShortcutProvider for FileShelfSettings {
-    fn shortcut(&self) -> Option<&str> {
-        let shortcut = self.shortcut.trim();
-        if !self.enabled || shortcut.is_empty() {
-            None
-        } else {
-            Some(shortcut)
-        }
-    }
-
-    fn feature_id(&self) -> &str {
-        "fileShelf"
     }
 }
 
@@ -458,19 +273,12 @@ impl AppSettings {
         if let Some(s) = self.game_launcher.shortcut() {
             list.push((self.game_launcher.feature_id(), s));
         }
-        if let Some(s) = self.quick_capture.shortcut() {
-            list.push((self.quick_capture.feature_id(), s));
-        }
-        if let Some(s) = self.file_shelf.shortcut() {
-            list.push((self.file_shelf.feature_id(), s));
-        }
+
         let create_event_shortcut = self.calendar.create_event_shortcut.trim();
         if self.calendar.enabled && !create_event_shortcut.is_empty() {
             list.push(("calendarCreateEvent", create_event_shortcut));
         }
-        if let Some(s) = self.voice_to_text.shortcut() {
-            list.push((self.voice_to_text.feature_id(), s));
-        }
+
         if let Some(s) = self.mint_palette.shortcut() {
             list.push((self.mint_palette.feature_id(), s));
         }
@@ -517,31 +325,11 @@ mod tests {
         assert_eq!(settings.clock.display_mode, "digital");
         assert_eq!(settings.clock.hour_format, "24h");
         assert!(settings.clock.glow_effect);
-        assert_eq!(settings.voice_to_text.shortcut, "Alt+End");
-        assert_eq!(settings.voice_to_text.language, "ja");
         assert!(settings.calendar.enabled);
         assert_eq!(settings.calendar.shortcut, "Alt+Down");
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up");
         assert!(settings.game_launcher.enabled);
         assert_eq!(settings.game_launcher.shortcut, "Alt+1");
-        assert!(settings.quick_capture.enabled);
-        assert_eq!(settings.quick_capture.shortcut, "Alt+2");
-        assert_eq!(settings.quick_capture.theme_color, "#818cf8");
-        assert!(settings.file_shelf.enabled);
-        assert_eq!(settings.file_shelf.shortcut, "Alt+3");
-        assert_eq!(settings.file_shelf.theme_color, "#818cf8");
-        assert_eq!(settings.file_shelf.edge, FileShelfEdge::Right);
-        assert_eq!(
-            settings.file_shelf.vertical_position,
-            FileShelfVerticalPosition::Center
-        );
-        assert!(!settings.file_shelf.edge_handle_enabled);
-        assert!(!settings.file_shelf.clipboard_history_enabled);
-        assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
-        assert!(settings
-            .file_shelf
-            .ignored_applications
-            .contains(&"Bitwarden.exe".to_string()));
         assert!(settings.game_launcher.favorite_game_keys.is_empty());
         assert!(settings.game_launcher.last_played_at_by_game.is_empty());
         assert!(settings
@@ -550,12 +338,6 @@ mod tests {
         assert!(settings
             .active_shortcuts()
             .contains(&("calendarCreateEvent", "Alt+Up")));
-        assert!(settings
-            .active_shortcuts()
-            .contains(&("quickCapture", "Alt+2")));
-        assert!(settings
-            .active_shortcuts()
-            .contains(&("fileShelf", "Alt+3")));
         assert_eq!(settings.onboarding.completed_version, 0);
         assert_eq!(settings.onboarding.completed_at, None);
         assert_eq!(crate::core::settings_model::ONBOARDING_VERSION, 1);
@@ -574,36 +356,12 @@ mod tests {
         assert_eq!(settings.clock.display_mode, "digital"); // デフォルト補完
         assert_eq!(settings.clock.hour_format, "24h"); // デフォルト補完
         assert!(settings.clock.glow_effect); // デフォルト補完
-        assert_eq!(settings.voice_to_text.shortcut, "Alt+End"); // デフォルト補完
         assert_eq!(settings.calendar.shortcut, "Alt+Down"); // デフォルト補完
         assert_eq!(settings.calendar.create_event_shortcut, "Alt+Up"); // デフォルト補完
-        assert!(!settings.file_shelf.edge_handle_enabled); // デフォルト補完
 
         let system_theme_json = r#"{"theme": "system"}"#;
         let settings: AppSettings = serde_json::from_str(system_theme_json).unwrap();
         assert_eq!(settings.theme, "system");
-
-        // クリップボード履歴追加前の fileShelf 設定を安全側の既定値で補完
-        let legacy_file_shelf_json = r#"{
-          "fileShelf": {
-            "enabled": true,
-            "shortcut": "Alt+3",
-            "edge": "right",
-            "edgeHandleEnabled": true
-          }
-        }"#;
-        let settings: AppSettings = serde_json::from_str(legacy_file_shelf_json).unwrap();
-        assert!(!settings.file_shelf.clipboard_history_enabled);
-        assert_eq!(settings.file_shelf.clipboard_history_limit, 25);
-        assert!(settings
-            .file_shelf
-            .ignored_applications
-            .contains(&"KeePassXC.exe".to_string()));
-        assert_eq!(settings.file_shelf.theme_color, "#818cf8");
-        assert_eq!(
-            settings.file_shelf.vertical_position,
-            FileShelfVerticalPosition::Center
-        );
 
         // clockColor から theme_color へのマイグレーションを検証
         let legacy_clock_json = r##"{

@@ -32,7 +32,7 @@ const getSaveCalls = () =>
       ([, args]) =>
         (args as { settings?: unknown }).settings as {
           onboarding: { completedVersion: number };
-          quickCapture?: { enabled: boolean };
+          gameLauncher: { enabled: boolean };
         } | null,
     );
 
@@ -73,7 +73,7 @@ describe("OnboardingFlow", () => {
     await screen.findByRole("heading", { name: "使う機能を選ぶ" });
     expect(screen.getByText("ステップ 1 / 4")).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: "クイックキャプチャーを使う" }),
+      screen.getByRole("checkbox", { name: "ゲームランチャーを使う" }),
     ).toBeChecked();
     expect(
       screen.getByRole("button", { name: "後で設定する" }),
@@ -87,13 +87,13 @@ describe("OnboardingFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: "次へ" }));
     await screen.findByRole("heading", { name: "呼び出し操作を確認" });
 
-    // 時計のショートカットをファイルシェル（Alt+3）と衝突させる
+    // 時計のショートカットをゲームランチャー（Alt+1）と衝突させる
     const clockInput = screen.getByLabelText("時計を開く");
     fireEvent.focus(clockInput);
-    fireEvent.keyDown(clockInput, { key: "3", altKey: true });
+    fireEvent.keyDown(clockInput, { key: "1", altKey: true });
 
     await waitFor(() => {
-      expect(clockInput).toHaveValue("Alt+3");
+      expect(clockInput).toHaveValue("Alt+1");
     });
 
     expect(screen.getByRole("button", { name: "次へ" })).toBeDisabled();
@@ -113,7 +113,7 @@ describe("OnboardingFlow", () => {
 
     await screen.findByRole("heading", { name: "使う機能を選ぶ" });
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "クイックキャプチャーを使う" }),
+      screen.getByRole("checkbox", { name: "ゲームランチャーを使う" }),
     );
     await walkToFinalStep();
 
@@ -136,7 +136,7 @@ describe("OnboardingFlow", () => {
 
     await screen.findByRole("heading", { name: "使う機能を選ぶ" });
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "クイックキャプチャーを使う" }),
+      screen.getByRole("checkbox", { name: "ゲームランチャーを使う" }),
     );
     await walkToFinalStep();
     fireEvent.click(screen.getByRole("button", { name: "完了" }));
@@ -148,7 +148,7 @@ describe("OnboardingFlow", () => {
           saves.some(
             (s) =>
               s?.onboarding.completedVersion === 1 &&
-              s?.quickCapture?.enabled === false,
+              s?.gameLauncher?.enabled === false,
           ),
         ).toBe(true);
       },
@@ -179,9 +179,7 @@ describe("OnboardingFlow", () => {
 
     await walkToFinalStep();
 
-    expect(
-      screen.getByText("ショートカットで最初のメモを書く"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("今日の予定を確認する")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "試す" })).toBeInTheDocument();
   });
 });

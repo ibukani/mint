@@ -67,16 +67,7 @@ describe("App Window Routing", () => {
       show: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof getCurrentWindow>);
 
-    const mockSettings = createMockSettings({
-      voiceToText: {
-        enabled: false,
-        shortcut: "Alt+End",
-        baseUrl: "http://api",
-        model: "w",
-        language: "ja",
-        status: "available",
-      },
-    });
+    const mockSettings = createMockSettings({});
     vi.mocked(invoke).mockResolvedValue(
       mockSettings as unknown as ReturnType<typeof invoke>,
     );
@@ -285,16 +276,7 @@ describe("App Window Routing", () => {
         show: vi.fn().mockResolvedValue(undefined),
       } as unknown as ReturnType<typeof getCurrentWindow>);
 
-      const mockSettings = createMockSettings({
-        voiceToText: {
-          enabled: false,
-          shortcut: "Alt+End",
-          baseUrl: "http://api",
-          model: "w",
-          language: "ja",
-          status: "available",
-        },
-      });
+      const mockSettings = createMockSettings({});
       vi.mocked(invoke).mockResolvedValue(
         mockSettings as unknown as ReturnType<typeof invoke>,
       );
@@ -463,33 +445,6 @@ describe("App Window Routing", () => {
     expect(shortcut).toContain(`Control+${shortcutNumber}`);
   });
 
-  it("opens the transcription workflow and focuses its file field from the global shortcut event", async () => {
-    vi.mocked(invoke).mockResolvedValue(
-      createMockSettings() as unknown as ReturnType<typeof invoke>,
-    );
-
-    render(<App />);
-    await screen.findByRole("heading", { name: "一般設定" });
-    await waitFor(() => {
-      expect(eventMocks.listeners.has("voice-to-text-shortcut")).toBe(true);
-    });
-
-    await act(async () => {
-      await eventMocks.listeners.get("voice-to-text-shortcut")?.();
-    });
-
-    expect(
-      await screen.findByRole("heading", { name: "音声入力設定" }),
-    ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByLabelText("音声ファイルパス")).toHaveFocus();
-    });
-    expect(screen.getByRole("button", { name: "音声入力" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
   it("does not steal Ctrl+number from an editable control", async () => {
     vi.mocked(invoke).mockResolvedValue(
       createMockSettings() as unknown as ReturnType<typeof invoke>,
@@ -506,6 +461,22 @@ describe("App Window Routing", () => {
       screen.queryByRole("heading", { name: "時計オーバーレイ設定" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "一般設定" })).toBeVisible();
+  });
+
+  it.each([
+    "fileShelf",
+    "quickCapture",
+    "voiceToText",
+  ])("falls back to general settings for a retired stored tab %s", async (tab) => {
+    window.localStorage.setItem("mint.active-settings-tab", tab);
+    vi.mocked(invoke).mockResolvedValue(
+      createMockSettings() as unknown as ReturnType<typeof invoke>,
+    );
+    render(<App />);
+    await screen.findByRole("heading", { name: "一般設定" });
+    expect(screen.queryByRole("button", { name: "音声入力" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "キャプチャー" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "シェルフ" })).toBeNull();
   });
 
   it("restores the last selected settings tab", async () => {
@@ -525,16 +496,16 @@ describe("App Window Routing", () => {
 
   it("prefers an explicit tab query over the restored tab", async () => {
     window.localStorage.setItem("mint.active-settings-tab", "clock");
-    window.history.pushState({}, "", "?tab=voiceToText");
+    window.history.pushState({}, "", "?tab=calendar");
     vi.mocked(invoke).mockResolvedValue(
       createMockSettings() as unknown as ReturnType<typeof invoke>,
     );
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: "音声入力設定" });
+    await screen.findByRole("heading", { name: "カレンダー設定" });
 
-    expect(screen.getByRole("button", { name: "音声入力" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "カレンダー" })).toHaveAttribute(
       "aria-current",
       "page",
     );

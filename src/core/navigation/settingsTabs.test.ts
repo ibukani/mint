@@ -4,12 +4,9 @@ import { SETTINGS_TABS } from "./settingsTabs";
 const STABLE_SETTINGS_TAB_ORDER = [
   "general",
   "mintPalette",
-  "fileShelf",
-  "quickCapture",
   "gameLauncher",
   "clock",
   "calendar",
-  "voiceToText",
 ] as const;
 
 describe("SETTINGS_TABS", () => {

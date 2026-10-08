@@ -130,22 +130,6 @@ export const useSettingsWindow = (theme: ThemeMode | undefined) => {
   useEffect(() => {
     if (label !== "main") return undefined;
 
-    const unlistenPromise = listen("voice-to-text-shortcut", () => {
-      setActiveTab("voiceToText");
-      setFocusRequest((current) => ({
-        id: current.id + 1,
-        targetId: "v2t-audio-file-input",
-      }));
-    });
-
-    return () => {
-      void unlistenPromise.then((unlisten) => unlisten());
-    };
-  }, [label]);
-
-  useEffect(() => {
-    if (label !== "main") return undefined;
-
     const unlistenPromise = listen<{ tab: string; targetId?: string | null }>(
       "settings-tab-requested",
       (event) => {

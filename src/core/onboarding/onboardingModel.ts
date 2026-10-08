@@ -35,22 +35,6 @@ export const ONBOARDING_FEATURES: readonly OnboardingFeatureMeta[] = [
     description: "インストール済みゲームをすばやく起動",
   },
   {
-    settingsKey: "quickCapture",
-    label: "クイックキャプチャー",
-    description: "思いつきをすぐにメモとして保存",
-  },
-  {
-    settingsKey: "fileShelf",
-    label: "ファイルシェル",
-    description: "ファイルやコピーした内容を一時保存",
-  },
-  {
-    settingsKey: "voiceToText",
-    label: "音声入力",
-    description: "音声ファイルをテキストに変換",
-    requiresExternalSetup: true,
-  },
-  {
     settingsKey: "mintPalette",
     label: "MintPalette",
     description: "すべての機能を検索して呼び出す",
@@ -123,13 +107,6 @@ export interface OnboardingRecommendedAction {
 export const getRecommendedAction = (
   draft: OnboardingDraft,
 ): OnboardingRecommendedAction | null => {
-  if (draft.featureEnabled.quickCapture) {
-    return {
-      target: "quickCapture",
-      title: "ショートカットで最初のメモを書く",
-      description: "クイックキャプチャーを開いて、すぐに入力を始めます。",
-    };
-  }
   if (draft.featureEnabled.mintPalette) {
     return {
       target: "mintPalette",

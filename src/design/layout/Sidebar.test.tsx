@@ -66,11 +66,11 @@ describe("Sidebar", () => {
         <Sidebar
           title="mint"
           tabs={[
+            { id: "calendar", label: "カレンダー" },
             { id: "general", label: "一般設定" },
             { id: "clock", label: "時計オーバーレイ" },
-            { id: "voiceToText", label: "音声入力" },
           ]}
-          activeTab="voiceToText"
+          activeTab="calendar"
           onTabChange={() => undefined}
         />,
       );
@@ -151,9 +151,9 @@ describe("Sidebar", () => {
           tabs={[
             { id: "general", label: "一般設定" },
             { id: "clock", label: "時計オーバーレイ" },
-            { id: "voiceToText", label: "音声入力" },
+            { id: "calendar", label: "カレンダー" },
           ]}
-          activeTab="voiceToText"
+          activeTab="calendar"
           onTabChange={() => undefined}
         />,
       );

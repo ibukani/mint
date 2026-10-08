@@ -54,7 +54,7 @@
       "name": "overlay:opened",
       "startedAt": "2026-08-04T01:00:30.000Z",
       "durationMs": 121,
-      "windowLabel": "quickCapture"
+      "windowLabel": "clock"
     },
     {
       "name": "window:hidden",
@@ -72,7 +72,7 @@
       "name": "window:hidden",
       "startedAt": "2026-08-04T01:00:37.000Z",
       "durationMs": 8,
-      "windowLabel": "quickCapture"
+      "windowLabel": "clock"
     },
     {
       "name": "worker:stopped",
@@ -96,7 +96,7 @@
       "name": "window:destroyed",
       "startedAt": "2026-08-04T01:10:12.000Z",
       "durationMs": 13,
-      "windowLabel": "quickCapture"
+      "windowLabel": "clock"
     }
   ],
   "counters": {

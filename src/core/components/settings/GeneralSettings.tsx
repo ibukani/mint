@@ -1,16 +1,13 @@
 import {
-  Archive,
   ArrowRight,
   CalendarDays,
   Check,
   Clock3,
   Gamepad2,
   Keyboard,
-  Mic2,
   Monitor,
   MonitorCog,
   Moon,
-  NotebookPen,
   Power,
   Rocket,
   Sun,
@@ -59,20 +56,6 @@ const themeOptions = [
 
 const featureOverview = [
   {
-    id: "fileShelf",
-    settingsKey: "fileShelf",
-    label: "ファイルシェル",
-    description: "ファイルやコピーした内容を一時保存",
-    icon: Archive,
-  },
-  {
-    id: "quickCapture",
-    settingsKey: "quickCapture",
-    label: "クイックキャプチャー",
-    description: "思いつきをすぐに下書き保存",
-    icon: NotebookPen,
-  },
-  {
     id: "gameLauncher",
     settingsKey: "gameLauncher",
     label: "ゲームランチャー",
@@ -93,19 +76,12 @@ const featureOverview = [
     description: "予定をオーバーレイですぐ確認",
     icon: CalendarDays,
   },
-  {
-    id: "voiceToText",
-    settingsKey: "voiceToText",
-    label: "音声入力",
-    description: "音声ファイルをテキストに変換",
-    icon: Mic2,
-  },
 ] as const satisfies ReadonlyArray<{
   id: Exclude<FeatureSettingsKey, "general">;
   settingsKey: FeatureSettingsKey;
   label: string;
   description: string;
-  icon: typeof Archive;
+  icon: typeof Clock3;
 }>;
 
 export const GeneralSettings: React.FC = () => {

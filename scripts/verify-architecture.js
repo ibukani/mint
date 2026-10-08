@@ -522,11 +522,11 @@ const FORBIDDEN_CAPABILITY_PERMISSIONS = new Set([
 const RESTRICTED_CAPABILITY_PERMISSIONS = {
   "updater:default": ["main"],
   "process:default": ["main"],
-  "dialog:allow-open": ["main", "quick-capture", "file-shelf"],
-  "dialog:allow-save": ["quick-capture"],
-  "opener:default": ["quick-capture", "file-shelf"],
-  "opener:allow-open-path": ["quick-capture", "file-shelf"],
-  "drag:default": ["file-shelf"],
+  "dialog:allow-open": [],
+  "dialog:allow-save": [],
+  "opener:default": [],
+  "opener:allow-open-path": [],
+  "drag:default": [],
   "core:window:allow-minimize": ["main"],
   "core:window:allow-close": ["main"],
   "core:window:allow-set-position": ["calendar"],
@@ -728,19 +728,12 @@ for (const sourceFile of listFilesRecursive(path.join(ROOT_DIR, "src"), {
 
 // 10. Check for placeholder / TODO leak
 const allowedTodos = [
-  "Voice to Text features triggered",
-  "Voice to text triggered via global shortcut!",
   "必要に応じてコマンドを定義し",
   "バックエンドコマンド定義プレースホルダー",
   "この機能は設定画面",
-  "文字起こし処理自体はプレースホルダーであり",
-  "実際に音声の録音・Whisper",
-  "Voice-to-Text feature commands placeholder",
   "placeholder 状態であるため",
   "未実装のお知らせ",
-  "API経由での文字起こし処理のバックエンド実装は未実装です",
   'status: "placeholder".to_string()',
-  'settings.voice_to_text.status != "placeholder"',
   "<code>placeholder</code>",
   "状態であるため、機能自体が未実装です。バックエンド機能が実装されるまでは、",
   'if self.status == "placeholder" || !self.enabled || s.is_empty() {',
@@ -787,7 +780,7 @@ if (fs.existsSync(LIB_RS_PATH)) {
   const libRsContent = fs.readFileSync(LIB_RS_PATH, "utf-8");
   if (/settings\.[a-zA-Z0-9_]+\.shortcut/.test(libRsContent)) {
     reportError(
-      `lib.rs directly accesses a feature's shortcut (e.g. settings.voice_to_text.shortcut). Use settings.active_shortcuts() instead.`,
+      `lib.rs directly accesses a feature's shortcut (e.g. settings.clock.shortcut). Use settings.active_shortcuts() instead.`,
     );
   } else {
     reportSuccess(
@@ -837,26 +830,6 @@ const designBoundaryAllowlist = new Map([
   ],
   [
     "src/features/game_launcher/components/GameLauncherSettings.tsx",
-    new Set(["inline-style", "color-literal"]),
-  ],
-  [
-    "src/features/file_shelf/components/FileShelfOverlay.tsx",
-    new Set(["inline-style"]),
-  ],
-  [
-    "src/features/file_shelf/components/FileShelfSettings.tsx",
-    new Set(["inline-style", "color-literal"]),
-  ],
-  [
-    "src/features/quick_capture/components/QuickCaptureEditor.tsx",
-    new Set(["inline-style"]),
-  ],
-  [
-    "src/features/quick_capture/components/QuickCaptureOverlay.tsx",
-    new Set(["inline-style"]),
-  ],
-  [
-    "src/features/quick_capture/components/QuickCaptureSettings.tsx",
     new Set(["inline-style", "color-literal"]),
   ],
 ]);

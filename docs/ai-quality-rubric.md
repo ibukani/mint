@@ -1,29 +1,18 @@
-# AI Development Quality Rubric
+# Mint 開発の完了条件
 
-This rubric defines the target bar for AI-led development in Mint. A change is ready for handoff only when the applicable evidence is current and directly supports the score.
+変更に適用する項目を現在の証拠で確認します。固定の採点や、実施した手順の数で完成度を判断しません。
 
-## 100-Point Standard
+| 適用条件 | 完了を裏付ける証拠 |
+|---|---|
+| すべての作業 | 依頼した範囲と結果が一致し、無関係な変更を保護している |
+| feature追加・境界変更 | scaffold初期配線、静的登録、feature/core/design所有権、ports/types境界が整合する |
+| settings / IPC変更 | TS/Rust/default/mockの契約、旧入力の互換性、重要な成功・失敗動作を検証した |
+| 非同期処理・OS連携 | updaterが純粋、古い結果の上書きを防止、無効/placeholder guardと必要なwindow権限が機能する |
+| コード・検証ツール変更 | [検証範囲](ai-development.md#検証範囲) に合う検査が通る。親コマンドの成功を子の証拠として利用できる |
+| UI / desktop挙動変更 | [手動検証](manual-verification.md#ui変更時の必須確認) に従い、Tauri実機のサイズ・テーマ・操作・スクリーンショットを確認した |
+| 文書・skill変更 | 参照先と実装が一致し、descriptionの発火条件と隣接する非対象作業を区別できる |
+| 引き渡し | 検証結果・未実行項目と理由・既存の失敗・残存リスクが明記されている |
 
-- **Orientation and scope control (15 pts)**: The agent used `npm run ai:context`, read only the relevant primary docs/code, and kept the change scoped to the requested outcome.
-- **Architecture alignment (20 pts)**: Feature work follows the static feature-module architecture, uses the scaffolder for new tools, keeps TypeScript/Rust settings in sync, and avoids dynamic plugin registries or untyped JSON dispatch.
-- **Type and side-effect safety (15 pts)**: TypeScript avoids `any` escapes, Rust commands are typed, React state updates do not hide async side effects, and placeholder features do not register OS-level side effects.
-- **Mock and browser workflow (10 pts)**: Browser-only mocks and Vitest setup stay synchronized with frontend invokes and default settings.
-- **Verification evidence (20 pts)**: `npm run check:quick` passes during iteration, and `npm run check:all` passes before handoff when the Rust/Tauri environment is available. If a gate cannot run, the blocker is explicit and concrete.
-- **Documentation and review readiness (10 pts)**: README, AI development docs, architecture docs, audit notes, and PR checklist remain aligned with the actual workflow.
-- **User-facing quality (10 pts)**: UI changes are visually coherent, accessible enough for the current app standard, and verified in the actual Tauri desktop shell. Screenshots from the actual app must be reviewed for visual anomalies; browser-only mock verification is supplemental and is not sufficient.
+生成したfeatureの殻、renderのみのテスト、always-success mock、architecture検査の成功だけで依頼した動作の完成を宣言しません。
 
-## Required Evidence
-
-Before claiming a 100-point result, collect current evidence for every applicable item:
-
-```bash
-npm run ai:context
-npm run check:quick
-npm run check:all
-```
-
-For UI or desktop behavior, add manual evidence from `docs/manual-verification.md` for the affected workflow. This evidence must include actual Tauri desktop verification, the checked sizes and themes, screenshots from the actual app, and a visual review result. For scaffolder changes, `npm run test:scaffold` must pass, either directly or as part of `npm run check:all`.
-
-## Residual Risk Policy
-
-Known residual risks are acceptable only when they are documented in `docs/ai-foundation-audit.md` or the PR's residual-risk section. A residual risk cannot contradict a required architecture rule or a failing automated gate.
+未確認の実機動作や失敗した適用ゲートは、完了証拠として扱いません。関連する失敗は修正・再確認し、環境や依頼範囲で実行できない検証は明示します。残存リスクは引き渡し報告またはPRに記録し、長期的な基盤リスクは [ai-foundation-audit.md](ai-foundation-audit.md) に記録します。

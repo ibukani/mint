@@ -22,7 +22,9 @@ describe("window commands", () => {
 
   it("recognizes only supported overlay targets", () => {
     expect(isOverlayTarget("clock")).toBe(true);
-    expect(isOverlayTarget("fileShelf")).toBe(true);
+    expect(isOverlayTarget("fileShelf")).toBe(false);
+    expect(isOverlayTarget("quickCapture")).toBe(false);
+    expect(isOverlayTarget("voiceToText")).toBe(false);
     expect(isOverlayTarget("settings")).toBe(false);
   });
 });

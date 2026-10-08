@@ -47,7 +47,7 @@ describe("DiagnosticsSettings", () => {
 
     expect(
       await screen.findByText(
-        "計測イベント 1 件、カウンター 3 件、保存データ 57 件",
+        "計測イベント 1 件、カウンター 3 件、保存データ 42 件",
       ),
     ).toBeInTheDocument();
   });

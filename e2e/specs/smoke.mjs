@@ -1,4 +1,10 @@
-import { readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -6,7 +12,7 @@ import {
   captureScreenshot,
   currentMintProcessIds,
 } from "../helpers/harness.mjs";
-import { sleepMs, waitFor } from "../helpers/webdriver.mjs";
+import { waitFor } from "../helpers/webdriver.mjs";
 
 const E2E_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -72,6 +78,18 @@ export async function runSmokeSpecs(harness) {
     }
   };
 
+  const retiredFiles = [
+    "quick_capture.sqlite3",
+    "quick_capture_attachments/sentinel-note/sentinel.txt",
+    "file_shelf.sqlite3",
+    "file_shelf_assets/sentinel.txt",
+  ];
+  for (const name of retiredFiles) {
+    const target = path.join(dataDir, "data", name);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, "retired data must remain unchanged");
+  }
+
   await spec("起動とメインウィンドウ表示", async () => {
     await webDriver.createSession(appBinary);
     await waitForMainWindow(webDriver);
@@ -96,6 +114,50 @@ export async function runSmokeSpecs(harness) {
     if (appPids.length === 0) {
       throw new Error("mint process not found after startup");
     }
+  });
+
+  await spec("廃止機能の移行と保存データ保持", async () => {
+    const saved = JSON.parse(
+      readFileSync(path.join(dataDir, "config", "settings.json"), "utf8"),
+    );
+    if (saved.schemaVersion !== 3)
+      throw new Error("settings were not migrated to v3");
+    for (const key of ["fileShelf", "quickCapture", "voiceToText"]) {
+      if (key in saved.data) throw new Error(`retired settings remain: ${key}`);
+      const error = await webDriver.executeAsync(
+        invokeScript("open_overlay", { target: key }),
+      );
+      if (!error) throw new Error(`retired target accepted: ${key}`);
+    }
+    for (const command of [
+      "load_quick_capture_state",
+      "load_file_shelf_state",
+      "transcribe_audio_file",
+      "load_api_key",
+    ]) {
+      const error = await webDriver.executeAsync(invokeScript(command, {}));
+      if (!error) throw new Error(`retired command accepted: ${command}`);
+    }
+    const backupDir = path.join(dataDir, "config", "backups");
+    const backups = existsSync(backupDir) ? readdirSync(backupDir) : [];
+    if (!backups.some((name) => name.startsWith("settings.v2.backup-")))
+      throw new Error("migration backup missing");
+    for (const name of retiredFiles) {
+      if (
+        readFileSync(path.join(dataDir, "data", name), "utf8") !==
+        "retired data must remain unchanged"
+      )
+        throw new Error(`retired saved data changed: ${name}`);
+    }
+    const labels = await webDriver.execute(
+      'return Array.from(document.querySelectorAll("nav button")).map(el => el.textContent);',
+    );
+    if (
+      labels.some((label) =>
+        /クイックキャプチャー|音声入力|シェルフ/.test(label),
+      )
+    )
+      throw new Error("retired tab remains visible");
   });
 
   await spec("設定保存と再起動後の復元", async () => {
@@ -157,53 +219,6 @@ export async function runSmokeSpecs(harness) {
 
     await webDriver.switchWindow(before.values().next().value);
     await invokeOk(webDriver, "open_overlay", { target: "clock" });
-  });
-
-  await spec("クイックキャプチャー文字入力と再表示後の残存", async () => {
-    const mainHandle = await webDriver.currentWindowHandle();
-    const before = new Set(await webDriver.windowHandles());
-    await invokeOk(webDriver, "open_overlay", { target: "quickCapture" });
-    const qcHandle = await waitForWindowHandle(
-      webDriver,
-      before,
-      "quick capture window handle",
-    );
-    await webDriver.switchWindow(qcHandle);
-    await waitFor(
-      async () =>
-        (await webDriver.execute(
-          `return !!document.getElementById("quick-capture-content");`,
-        ))
-          ? true
-          : null,
-      { description: "quick capture textarea" },
-    );
-    await webDriver.execute(`const el = document.getElementById("quick-capture-content");
-const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
-setter.call(el, "E2E draft text");
-el.dispatchEvent(new Event("input", { bubbles: true }));
-return el.value;`);
-    await sleepMs(800);
-
-    await webDriver.switchWindow(mainHandle);
-    await invokeOk(webDriver, "open_overlay", { target: "quickCapture" });
-    await sleepMs(300);
-    await invokeOk(webDriver, "open_overlay", { target: "quickCapture" });
-    await webDriver.switchWindow(qcHandle);
-
-    const value = await waitFor(
-      async () => {
-        const current = await webDriver.execute(
-          `return document.getElementById("quick-capture-content")?.value ?? "";`,
-        );
-        return current === "E2E draft text" ? current : null;
-      },
-      { description: "draft content preserved across hide/show" },
-    );
-    if (value !== "E2E draft text") {
-      throw new Error(`Unexpected draft content after reopen: ${value}`);
-    }
-    await captureScreenshot(webDriver, reportDir, "quick-capture-draft");
   });
 
   await spec("正常終了とプロセス残存なし", async () => {

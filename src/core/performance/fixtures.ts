@@ -21,33 +21,21 @@ const isoAt = (index: number): string =>
     `${String(index % 1000).padStart(3, "0")}Z`,
   );
 
-export const createQuickCaptureEvents = (count: number): PerformanceEvent[] => {
-  const events: PerformanceEvent[] = [];
-  for (let i = 0; i < count; i += 1) {
-    events.push({
-      name: "data:loaded",
-      startedAt: isoAt(i),
-      durationMs: 8 + (i % 17),
-      windowLabel: "quickCapture",
-      metadata: { noteIndex: i },
-    });
-  }
-  return events;
-};
+export const createClockEvents = (count: number): PerformanceEvent[] =>
+  Array.from({ length: count }, (_, index) => ({
+    name: "window:shown",
+    startedAt: isoAt(index),
+    durationMs: 4 + (index % 11),
+    windowLabel: "clock",
+  }));
 
-export const createFileShelfEvents = (count: number): PerformanceEvent[] => {
-  const events: PerformanceEvent[] = [];
-  for (let i = 0; i < count; i += 1) {
-    events.push({
-      name: "window:shown",
-      startedAt: isoAt(i),
-      durationMs: 4 + (i % 11),
-      windowLabel: "fileShelf",
-      metadata: { groupIndex: i },
-    });
-  }
-  return events;
-};
+export const createGameLauncherEvents = (count: number): PerformanceEvent[] =>
+  Array.from({ length: count }, (_, index) => ({
+    name: "data:loaded",
+    startedAt: isoAt(index),
+    durationMs: 8 + (index % 17),
+    windowLabel: "gameLauncher",
+  }));
 
 export const createCalendarEvents = (count: number): PerformanceEvent[] => {
   const events: PerformanceEvent[] = [];
@@ -65,15 +53,15 @@ export const createCalendarEvents = (count: number): PerformanceEvent[] => {
 
 export const createFixtureSnapshot = (
   options: {
-    quickCaptureEvents?: number;
-    fileShelfEvents?: number;
+    clockEvents?: number;
+    gameLauncherEvents?: number;
     calendarEvents?: number;
     counters?: Record<string, number>;
   } = {},
 ): PerformanceSnapshot => {
   const {
-    quickCaptureEvents = 10,
-    fileShelfEvents = 10,
+    clockEvents = 10,
+    gameLauncherEvents = 10,
     calendarEvents = 100,
     counters = {
       windowsCreated: 4,
@@ -85,8 +73,8 @@ export const createFixtureSnapshot = (
     capturedAt: "2026-08-04T00:00:00.000Z",
     environment: createFixtureEnvironment(),
     events: [
-      ...createQuickCaptureEvents(quickCaptureEvents),
-      ...createFileShelfEvents(fileShelfEvents),
+      ...createClockEvents(clockEvents),
+      ...createGameLauncherEvents(gameLauncherEvents),
       ...createCalendarEvents(calendarEvents),
     ],
     counters,

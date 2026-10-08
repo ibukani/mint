@@ -1,7 +1,6 @@
 mod core;
 mod features;
 
-use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::{Emitter, Listener, Manager, RunEvent, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
@@ -10,15 +9,9 @@ use core::settings::AppSettingsState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let clipboard_monitor = Arc::new(features::file_shelf::ClipboardHistoryMonitor::new());
-    let clipboard_monitor_for_event = clipboard_monitor.clone();
-
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_drag::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_autostart::Builder::new()
@@ -50,14 +43,7 @@ pub fn run() {
                         if !matched {
                             continue;
                         }
-                        if feature == "fileShelf" {
-                            features::file_shelf::handle_file_shelf_shortcut_event(
-                                app,
-                                &settings.file_shelf,
-                                event.state,
-                            );
-                            continue;
-                        }
+
                         if event.state != ShortcutState::Pressed {
                             continue;
                         }
@@ -70,13 +56,10 @@ pub fn run() {
                             "gameLauncher" => {
                                 features::game_launcher::toggle_game_launcher_overlay(app)
                             }
-                            "quickCapture" => {
-                                features::quick_capture::toggle_quick_capture_overlay(app)
-                            }
+
                             "calendarCreateEvent" => {
                                 features::calendar::open_calendar_event_editor(app)
                             }
-                            "voiceToText" => features::v2t::handle_voice_to_text_shortcut(app),
                             "mintPalette" => features::mint_palette::toggle_mint_palette_overlay(app),
                             _ => {}
                         }
@@ -103,23 +86,6 @@ pub fn run() {
             }
             let calendar_store = features::calendar::initialize_store(app.handle())?;
             app.manage(calendar_store);
-            let quick_capture_store = features::quick_capture::initialize_store(app.handle())?;
-            app.manage(quick_capture_store);
-            let file_shelf_store = features::file_shelf::initialize_store(app.handle())?;
-            app.manage(file_shelf_store);
-            let clipboard_monitor_for_settings = clipboard_monitor.clone();
-            let handle_for_clipboard_settings = app.handle().clone();
-            app.listen("clipboard-settings-changed", move |_| {
-                if let Ok(settings) = core::settings::load_settings_cached(
-                    &handle_for_clipboard_settings,
-                ) {
-                    features::file_shelf::configure_clipboard_history_monitor(
-                        handle_for_clipboard_settings.clone(),
-                        clipboard_monitor_for_settings.clone(),
-                        &settings.file_shelf,
-                    );
-                }
-            });
             app.manage(features::google_calendar::GoogleCalendarState::default());
 
             // Add ready event listener for calendar editor window to resolve timing issues
@@ -142,15 +108,9 @@ pub fn run() {
             // Pre-populate settings cache and register global shortcuts asynchronously
             // so that we don't block window creation.
             let handle = app.handle().clone();
-            let clipboard_monitor_for_start = clipboard_monitor.clone();
             tauri::async_runtime::spawn(async move {
                 match core::settings::load_settings_internal(&handle) {
                     Ok(settings) => {
-                        features::file_shelf::configure_clipboard_history_monitor(
-                            handle.clone(),
-                            clipboard_monitor_for_start,
-                            &settings.file_shelf,
-                        );
                         if let Err(error) =
                             core::settings::sync_autostart(&handle, settings.autostart)
                         {
@@ -166,15 +126,6 @@ pub fn run() {
                             let state = handle.state::<AppSettingsState>();
                             *state.0.lock().unwrap() = Some(settings.clone());
                         }
-
-                        features::file_shelf::apply_window_settings(
-                            &handle,
-                            &settings.file_shelf,
-                        );
-                        features::file_shelf::apply_clipboard_history_settings(
-                            &handle,
-                            &settings.file_shelf,
-                        );
 
                         use tauri_plugin_global_shortcut::GlobalShortcutExt;
                         let shortcuts = settings.active_shortcuts();
@@ -242,20 +193,11 @@ pub fn run() {
                     || label == "clock"
                     || label == "calendar"
                     || label == "gameLauncher"
-                    || label == "quickCapture"
-                    || label == "fileShelf"
                 {
                     let _ = core::window_state::persist_now(window.app_handle(), label);
                     api.prevent_close();
                     let _ = window.hide();
-                    if label == "fileShelf" {
-                        if let Some(state) = window
-                            .app_handle()
-                            .try_state::<features::file_shelf::FileShelfWindowState>()
-                        {
-                            *state.0.lock().unwrap_or_else(|value| value.into_inner()) = false;
-                        }
-                    }
+
                     crate::core::performance::record_event(
                         window.app_handle(),
                         "window:hidden",
@@ -286,13 +228,9 @@ pub fn run() {
         })
         .manage(features::calendar::window::CalendarEditorState::default())
         .manage(features::game_launcher::scan::GameScanCache::default())
-        .manage(features::file_shelf::FileShelfWindowState::default())
-        .manage(features::file_shelf::FileShelfShortcutState::default())
         .invoke_handler(tauri::generate_handler![
             core::settings::load_settings,
             core::settings::save_settings,
-            core::settings::load_api_key,
-            core::settings::save_api_key,
             core::performance::collect_diagnostics,
             core::window::open_overlay,
             core::window::overlay_ready,
@@ -311,39 +249,9 @@ pub fn run() {
             features::google_calendar::auth::list_google_calendars,
             features::google_calendar::sync::sync_google_calendars,
             features::google_calendar::auth::disconnect_google_calendar,
-            features::v2t::transcribe_audio_file,
-            features::v2t::transcribe_audio_recording,
-            features::v2t::open_v2t_with_audio_file,
-            features::v2t::take_pending_v2t_audio_file,
             features::game_launcher::scan::list_installed_games,
             features::game_launcher::scan::get_game_source_status,
             features::game_launcher::launch::launch_game,
-            features::quick_capture::load_quick_capture_state,
-            features::quick_capture::save_quick_capture_draft,
-            features::quick_capture::promote_quick_capture_note,
-            features::quick_capture::create_quick_capture_note,
-            features::quick_capture::update_quick_capture_note,
-            features::quick_capture::set_quick_capture_note_archived,
-            features::quick_capture::delete_quick_capture_note,
-            features::quick_capture::restore_quick_capture_note,
-            features::quick_capture::add_quick_capture_attachment,
-            features::quick_capture::delete_quick_capture_attachment,
-            features::quick_capture::export_quick_capture_markdown,
-            features::quick_capture::export_quick_capture_backup,
-            features::quick_capture::import_quick_capture_backup,
-            features::file_shelf::load_file_shelf_state,
-            features::file_shelf::load_file_shelf_preview,
-            features::file_shelf::rename_file_shelf_item,
-            features::file_shelf::add_file_shelf_paths,
-            features::file_shelf::add_file_shelf_content,
-            features::file_shelf::remove_file_shelf_items,
-            features::file_shelf::set_file_shelf_items_pinned,
-            features::file_shelf::restore_file_shelf_removal,
-            features::file_shelf::restore_recent_file_shelf_removal,
-            features::file_shelf::clear_file_shelf,
-            features::file_shelf::clear_file_shelf_clipboard_history,
-            features::file_shelf::should_auto_expand_file_shelf,
-            features::file_shelf::set_file_shelf_expanded,
             features::game_launcher::launch::open_game_store_page,
         ])
         .build(tauri::generate_context!())
@@ -351,7 +259,6 @@ pub fn run() {
 
     app.run(move |app, event| {
         if let RunEvent::Exit = event {
-            clipboard_monitor_for_event.stop();
             core::window_state::flush_all(app);
         }
     });

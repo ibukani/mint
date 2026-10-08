@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "data": {
+    "clock": { "shortcut": "Alt+Left", "sizePercent": 125 },
+    "calendar": { "selectedGoogleCalendarIds": ["primary"] },
+    "gameLauncher": { "favoriteGameKeys": ["appid-440"] },
+    "mintPalette": { "enabled": true },
+    "onboarding": { "completedVersion": 1 },
+    "theme": "light",
+    "futureField": { "keep": true }
+  }
+}

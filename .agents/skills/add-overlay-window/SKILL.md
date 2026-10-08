@@ -1,15 +1,14 @@
 ---
 name: add-overlay-window
-description: Add and verify a Mint Tauri overlay window with static React routing, browser label mocking, design-layer framing, and shortcut lifecycle checks. Use when creating or changing an auxiliary window or overlay.
+description: Add a Mint auxiliary window or change its routing, permissions, opening behavior, or native lifecycle.
 ---
 
-# Add an overlay window
+# Integrate an auxiliary window
 
-1. Read `docs/design-architecture.md`, then inspect the owning feature and `src/core/windowRoutes.ts`.
-2. Add the overlay component under `src/features/<feature>/components/`. Prefer `OverlayFrame` and `OverlayCard`; keep feature CSS inside the feature and use tokens.
-3. Add the non-main window to `src-tauri/tauri.conf.json` with a unique label. Choose visibility, decorations, transparency, focus, and always-on-top behavior deliberately.
-4. Register the same label statically in `WINDOW_ROUTES`. Do not add runtime discovery or dynamic registries.
-5. Verify browser rendering with `?label=<label>`. Confirm opaque CSS does not defeat transparency.
-6. If a shortcut opens the window, use `settings.active_shortcuts()` and confirm disabled/placeholder states do not register it.
-7. Add route/component tests as appropriate; run `npm run check:quick` and `npm run check:all` when available.
-8. Perform the relevant window, tray, shortcut, focus, and auto-hide checks from `docs/manual-verification.md` on the target platform.
+1. Inspect the owning feature, existing window lifecycle, and static `WINDOW_ROUTES`. Use [design ownership](../../../docs/design-architecture.md) when adding/changing UI; prefer `OverlayFrame` / `OverlayCard` where applicable.
+2. Add/update the unique label in `src-tauri/tauri.conf.json` and `src/core/windowRoutes.ts`. Choose size, focus, visibility, transparency, decorations, and always-on-top behavior for the requested workflow. Existing overlays use `create: false` for lazy creation.
+3. Configure per-window minimum permissions using [security capabilities](../../../docs/security-capabilities.md); do not copy unrelated permissions. Keep mock window registration and `?label=<label>` rendering consistent.
+4. For generic overlay opening, synchronize TypeScript `OverlayTarget` in `windowCommands.ts` with Rust `core/window.rs` and the owning show/toggle path. Specialized windows such as the calendar editor use their typed opening contract.
+5. Integrate lazy creation and first-show `overlay_ready` handling with `useOverlayWindowReady`. For evictable windows, reuse the eviction lifecycle and confirm reopening recreates the window. Inspect `core/window_state` when position/size persistence is needed; resident windows may have different policies.
+6. If shortcuts open the window, guard disabled/placeholder states through `settings.active_shortcuts()`. Verify relevant routing/lifecycle tests and [checks](../../../docs/ai-development.md#検証範囲).
+7. Perform [actual desktop and screenshot checks](../../../docs/manual-verification.md#ui変更時の必須確認) for the changed opening, closing, focus, transparency, auto-hide, tray, and recreation behavior. Browser rendering is supplemental evidence.

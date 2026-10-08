@@ -1,14 +1,14 @@
 ---
 name: update-settings-schema
-description: Safely add, rename, migrate, or remove Mint AppSettings fields across TypeScript, Rust serde/defaults, persisted data compatibility, browser mocks, and tests. Use for any settings schema change outside initial feature scaffolding.
+description: Change the serialized Mint AppSettings schema, defaults, or migrations while preserving existing data compatibility.
 ---
 
 # Update the settings schema
 
-1. Run `npm run ai:context` and locate the feature type, `settingsModel.ts`, `defaultSettings.ts`, Rust `settings.rs`, `mockSettings.ts`, and consumers.
-2. Define the desired serialized JSON shape first. Use camelCase JSON, camelCase TypeScript, and snake_case Rust with serde mapping.
-3. Update TypeScript types/defaults, Rust structs/defaults, and the shared mock factory together. Do not use `any` or casts to suppress drift.
-4. Preserve old persisted settings when renaming or changing meaning: add serde aliases/defaults or an explicit migration and test old input. A type-compatible rename alone is not a migration.
-5. Update settings UI, active-shortcut logic, and command behavior that depends on the field.
-6. Test defaults, round trips/migration, partial persisted input, and browser mock behavior.
-7. Run `npm run check:quick` and `npm run check:all` when available.
+1. Locate the feature types, `src/core/settingsModel.ts`, `defaultSettings.ts`, `mocks/mockSettings.ts`, and Rust `core/settings_model.rs`. `settings.rs` is the command facade; `settings_store.rs` owns persistence.
+2. Define the serialized JSON contract: camelCase JSON/TypeScript and snake_case Rust with serde mapping. Update types/defaults and mock factory together; do not suppress drift with unsafe casts.
+3. For persisted compatibility changes, use [migrations](../../../docs/migrations.md) and the existing `core/migrations/settings` chain. Preserve old/partial input, versioned envelopes, backup-before-write, and future-version protection. Use serde aliases/defaults when sufficient; a type rename alone does not migrate data.
+4. Preserve the onboarding distinction: fresh installs start incomplete, existing-user migration and browser mocks simulate completed setup. Update affected UI, shortcut guards, and command consumers; reuse the settings store's save/conflict control.
+5. Test the changed defaults, serialized round trip, old/partial inputs, migration, and mock workflow as applicable. Use the [verification scope](../../../docs/ai-development.md#検証範囲) and report unavailable checks.
+
+Initial feature wiring is supplied by the scaffolder; this workflow applies to schema/default/compatibility changes beyond that generated wiring.

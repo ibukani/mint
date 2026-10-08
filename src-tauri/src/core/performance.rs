@@ -6,8 +6,6 @@ use tauri::{AppHandle, Manager};
 
 use super::settings::AppSettingsState;
 use crate::features::calendar::CalendarStoreState;
-use crate::features::file_shelf::FileShelfStoreState;
-use crate::features::quick_capture::QuickCaptureStoreState;
 
 /// Maximum number of buffered performance events. Kept small so the
 /// diagnostics payload stays bounded even on long-running sessions.
@@ -206,15 +204,7 @@ fn collect_settings(settings: &super::settings::AppSettings) -> DiagnosticsSetti
     if settings.game_launcher.enabled {
         enabled_features.push("gameLauncher".to_string());
     }
-    if settings.quick_capture.enabled {
-        enabled_features.push("quickCapture".to_string());
-    }
-    if settings.file_shelf.enabled {
-        enabled_features.push("fileShelf".to_string());
-    }
-    if settings.voice_to_text.enabled {
-        enabled_features.push("voiceToText".to_string());
-    }
+
     if settings.mint_palette.enabled {
         enabled_features.push("mintPalette".to_string());
     }
@@ -231,20 +221,8 @@ fn collect_settings(settings: &super::settings::AppSettings) -> DiagnosticsSetti
     }
 }
 
-fn collect_data_counts(
-    quick_capture_state: &QuickCaptureStoreState,
-    file_shelf_state: &FileShelfStoreState,
-    calendar_state: &CalendarStoreState,
-) -> HashMap<String, u64> {
+fn collect_data_counts(calendar_state: &CalendarStoreState) -> HashMap<String, u64> {
     let mut counts = HashMap::new();
-    if let Ok(state) =
-        crate::features::quick_capture::count_quick_capture_notes(quick_capture_state)
-    {
-        counts.insert("quickCaptureNotes".to_string(), state);
-    }
-    if let Ok(state) = crate::features::file_shelf::count_file_shelf_items(file_shelf_state) {
-        counts.insert("fileShelfItems".to_string(), state);
-    }
     if let Ok(state) = crate::features::calendar::count_calendar_events(calendar_state) {
         counts.insert("calendarEvents".to_string(), state);
     }
@@ -258,8 +236,6 @@ fn collect_data_counts(
 pub fn collect_diagnostics(
     app: tauri::AppHandle,
     settings_state: tauri::State<'_, AppSettingsState>,
-    quick_capture_state: tauri::State<'_, QuickCaptureStoreState>,
-    file_shelf_state: tauri::State<'_, FileShelfStoreState>,
     calendar_state: tauri::State<'_, CalendarStoreState>,
 ) -> Result<DiagnosticsReport, String> {
     let settings = settings_state
@@ -298,7 +274,7 @@ pub fn collect_diagnostics(
         windows,
         counters,
         events,
-        data_counts: collect_data_counts(&quick_capture_state, &file_shelf_state, &calendar_state),
+        data_counts: collect_data_counts(&calendar_state),
         recent_errors,
     })
 }

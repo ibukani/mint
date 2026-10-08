@@ -5,27 +5,15 @@ import type {
   GoogleCalendarInfo,
 } from "../../features/calendar/types";
 import type { GameScanResult } from "../../features/game_launcher/types";
-import { handleApiKeyIpcCommand } from "./apiKeyIpcMock";
 import { handleCalendarIpcCommand } from "./calendarIpcMock";
-import { handleFileShelfIpcCommand } from "./fileShelfIpcMock";
 import { handleGameLauncherIpcCommand } from "./gameLauncherIpcMock";
 import { handleGoogleCalendarIpcCommand } from "./googleCalendarIpcMock";
 import { handlePluginIpcCommand } from "./pluginIpcMock";
-import { handleQuickCaptureIpcCommand } from "./quickCaptureIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
-import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
 import { handleWindowIpcCommand } from "./windowIpcMock";
 
 // テスト環境でTauriのウィンドウ管理をモック
-mockWindows(
-  "main",
-  "clock",
-  "calendar",
-  "gameLauncher",
-  "quickCapture",
-  "fileShelf",
-  "mintPalette",
-);
+mockWindows("main", "clock", "calendar", "gameLauncher", "mintPalette");
 
 import { createMockSettings } from "./mockSettings";
 
@@ -94,8 +82,6 @@ mockIPCWithEvents(async (cmd, args) => {
       clock: true,
       calendar: true,
       gameLauncher: true,
-      quickCapture: true,
-      fileShelf: true,
       mintPalette: true,
     },
   });
@@ -106,16 +92,6 @@ mockIPCWithEvents(async (cmd, args) => {
 
   const calendarResult = await handleCalendarIpcCommand(cmd, typedArgs);
   if (calendarResult.handled) return calendarResult.value;
-  const fileShelfResult = await handleFileShelfIpcCommand(cmd, typedArgs);
-  if (fileShelfResult.handled) return fileShelfResult.value;
-  const quickCaptureResult = await handleQuickCaptureIpcCommand(cmd, typedArgs);
-  if (quickCaptureResult.handled) return quickCaptureResult.value;
-  const transcriptionResult = await handleTranscriptionIpcCommand(
-    cmd,
-    typedArgs,
-  );
-  if (transcriptionResult.handled) return transcriptionResult.value;
-
   const gameResult = await handleGameLauncherIpcCommand(cmd, typedArgs, {
     scanResult: testGameScanResult,
   });
@@ -126,14 +102,8 @@ mockIPCWithEvents(async (cmd, args) => {
     defaultCalendars: testGoogleCalendars,
   });
   if (googleResult.handled) return googleResult.value;
-  const apiKeyResult = await handleApiKeyIpcCommand(cmd, typedArgs, {
-    defaultKey: "mock-api-key",
-  });
-  if (apiKeyResult.handled) return apiKeyResult.value;
-
   const pluginResult = await handlePluginIpcCommand(cmd, typedArgs, {
     update: null,
-    dialogSave: "/tmp/quick-capture.mintbackup",
     onDownloadAndInstall: (channel) => {
       channel?.onmessage?.({
         event: "Started",
@@ -153,10 +123,6 @@ mockIPCWithEvents(async (cmd, args) => {
     case "open_settings_tab":
       return null;
     case "take_pending_settings_tab":
-      return null;
-    case "open_v2t_with_audio_file":
-      return null;
-    case "take_pending_v2t_audio_file":
       return null;
     default:
       return null;

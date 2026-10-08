@@ -4,8 +4,6 @@ const MOCK_WINDOW_LABELS = [
   "calendar",
   "gameLauncher",
   "calendarEditor",
-  "quickCapture",
-  "fileShelf",
   "mintPalette",
 ] as const;
 

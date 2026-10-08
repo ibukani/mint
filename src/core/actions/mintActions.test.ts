@@ -7,6 +7,20 @@ import {
 } from "./mintActions";
 
 describe("MINT_ACTIONS registry", () => {
+  it.each([
+    "クイックキャプチャー",
+    "ファイルシェル",
+    "音声入力",
+  ])("omits retired feature %s from search and recent results", (query) => {
+    const search = searchMintActions(MINT_ACTIONS, query, [
+      "tab:voiceToText",
+      "action:open-file-shelf",
+      "action:open-quick-capture",
+    ]);
+    expect(search.results).toHaveLength(0);
+    expect(search.recentResults).toHaveLength(0);
+  });
+
   it("keeps every action key unique", () => {
     const keys = MINT_ACTIONS.map((action) => action.key);
     expect(new Set(keys).size).toBe(keys.length);

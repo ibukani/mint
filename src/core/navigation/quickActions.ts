@@ -1,5 +1,4 @@
 import {
-  Archive,
   CalendarDays,
   CalendarPlus,
   Clock3,
@@ -7,7 +6,6 @@ import {
   Gamepad2,
   Monitor,
   Moon,
-  NotebookPen,
   Sun,
 } from "lucide-react";
 import React from "react";
@@ -79,22 +77,6 @@ export const SETTINGS_QUICK_ACTIONS = [
     icon: React.createElement(Gamepad2, { size: 16, "aria-hidden": true }),
   },
   {
-    id: "open-quick-capture",
-    label: "クイックキャプチャーを開く",
-    description: "メモと下書きをすばやく記録",
-    keywords: ["メモ", "ノート", "下書き", "Alt+2"],
-    targetId: "quickCapture",
-    icon: React.createElement(NotebookPen, { size: 16, "aria-hidden": true }),
-  },
-  {
-    id: "open-file-shelf",
-    label: "ファイルシェルを開く",
-    description: "ファイルやフォルダの一時置き場",
-    keywords: ["ファイル", "フォルダ", "クリップボード", "Alt+3"],
-    targetId: "fileShelf",
-    icon: React.createElement(Archive, { size: 16, "aria-hidden": true }),
-  },
-  {
     id: "open-mint-palette",
     label: "MintPalette を開く",
     description: "コマンドパレットを表示",
@@ -111,8 +93,6 @@ type OverlayFeatureSettingsKey =
   | "clock"
   | "calendar"
   | "gameLauncher"
-  | "quickCapture"
-  | "fileShelf"
   | "mintPalette";
 
 type QuickActionAvailability = {
@@ -148,18 +128,6 @@ const quickActionAvailability: Partial<
     tabId: "gameLauncher",
     targetId: "game-launcher-enabled",
     label: "ゲームランチャー",
-  },
-  quickCapture: {
-    settingsKey: "quickCapture",
-    tabId: "quickCapture",
-    targetId: "quick-capture-enabled",
-    label: "クイックキャプチャー",
-  },
-  fileShelf: {
-    settingsKey: "fileShelf",
-    tabId: "fileShelf",
-    targetId: "file-shelf-enabled",
-    label: "ファイルシェル",
   },
   mintPalette: {
     settingsKey: "mintPalette",

@@ -99,13 +99,7 @@ mod tests {
 
     #[test]
     fn policy_for_allows_reset_targets() {
-        for label in [
-            "main",
-            "quickCapture",
-            "gameLauncher",
-            "calendar",
-            "calendarEditor",
-        ] {
+        for label in ["main", "gameLauncher", "calendar", "calendarEditor"] {
             assert!(policy_for(label).is_some(), "{label} should have a policy");
         }
     }

@@ -1,176 +1,67 @@
-# AI Development Rules & Architecture Guidelines
+# Mint 開発ガイド
 
-This document serves as the master reference for AI assistants working on the Mint repository. Always follow these guidelines to ensure the project remains maintainable, type-safe, and robust.
+全体のルールは [AGENTS.md](../AGENTS.md)。この文書はコマンドと検証範囲の入口です。必要な節・参照だけ利用してください。
 
-## 1. Project Structure & Module Organization
+## 作業別の参照
 
-This repository is a Tauri 2 desktop app with a React 19 + TypeScript frontend.
+| 作業 | 参照 |
+|---|---|
+| 広い調査 | `npm run ai:context`（現在のfeature・settings・windows・IPC・skills・scripts） |
+| feature/core境界、設定store、IPC/mock | [architecture.md](architecture.md) |
+| UI/CSS、共通部品、動的表示の例外 | [design-architecture.md](design-architecture.md) |
+| 永続設定の形式・互換性 | [migrations.md](migrations.md) |
+| window追加、権限、高影響command | [security-capabilities.md](security-capabilities.md) |
+| UI/desktop挙動の実機確認 | [manual-verification.md](manual-verification.md) |
+| 完了時の証拠 | [ai-quality-rubric.md](ai-quality-rubric.md) |
 
-- `src/` contains the React application entry points and UI code. `main.tsx` mounts the app, and `App.tsx` currently contains the main screen.
-- `src/assets/` stores frontend assets imported by React components.
-- `public/` stores static files served directly by Vite, such as logos.
-- `src-tauri/` contains the Rust/Tauri application shell. Rust commands and app setup live in `src-tauri/src/`; Tauri configuration lives in `src-tauri/tauri.conf.json`.
-- Root TypeScript and Vite config files (`tsconfig*.json`, `vite.config.ts`) control frontend builds.
+作業固有の手順は `.agents/skills/` にあります。関連するスキルだけ読み、既に読んだ共通文書・コマンドを重複して読み直したり実行したりする必要はありません。
 
-## 2. Build, Test, and Development Commands
+## 環境とコマンド
 
-Use the package scripts in `package.json`:
+Node.jsは **22.13.0以上**（[package.json](../package.json)、`.nvmrc`、CIを同期）。Rust/TauriにはRust・Cargo・rustupと対象OSのビルド依存が必要です。WindowsはMSVC Build ToolsとWebView2、LinuxはWebKitGTK等の依存を使用します。CIのインストール手順は [.github/workflows/ci.yml](../.github/workflows/ci.yml)。
 
-- `npm run ai:context` prints a compact, live summary of feature modules, settings, windows, IPC commands, and verification scripts. Run this before broad exploration to reduce token usage.
-- `npm run dev` starts the Vite frontend development server.
-- `npm run build` runs `tsc` and then builds the Vite frontend.
-- `npm run preview` serves the built frontend locally.
-- `npm run tauri -- dev` runs the full Tauri desktop app in development.
-- `npm run tauri -- build` builds the distributable desktop app.
-- `npm run test` runs the frontend Vitest suite in a deterministic single-worker thread pool.
-- `npm run check:quick` runs TypeScript, Biome, script syntax checks, and architecture validation without tests or bundling. Use it for fast feedback while iterating, then run the full checks before completion.
-- `npm run check:ai-foundation` verifies the AI development foundation itself: required scripts, Node version alignment, core AI docs, CI gates, and PR template checklists.
-- `npm run check:all` runs the full local release gate: frontend checks, scaffold smoke test, and Rust/Tauri checks.
+| コマンド | 用途 |
+|---|---|
+| `npm run dev` / `npm run preview` | ブラウザmockでの開発 / frontendビルドの表示 |
+| `npm run build` | TypeScriptとViteビルド |
+| `npm run tauri -- dev` / `npm run tauri -- build` | デスクトップ開発 / 配布ビルド |
+| `npm run test -- <対象>` | Vitestの対象テスト。実装近傍に `*.test.ts` / `*.test.tsx` を置く |
+| `npm run check:quick` | TypeScript、Biome、script構文、context/foundation/version、architecture。テスト・bundleは含まない |
+| `npm run check` | quickの検査に、foundationの回帰テスト・Vitest・Viteビルドを加える |
+| `npm run check:tauri` | Cargo format、Clippy（all-targets）、test、check |
+| `npm run test:scaffold` | 隔離コピーでscaffold入力・初期配線・型・lint・architecture・bundleを検証 |
+| `npm run check:all` | `check` → `test:scaffold` → `check:tauri` の全体ゲート |
+| `npm run check:ai-foundation` / `npm run check:ai-context` | 指示・参照・skills・CI接続 / 生成contextの構造確認 |
+| `npm run test:ai-foundation` | foundation検査の回帰テスト |
+| `npm run test:e2e` | Windows実バイナリのsmoke。[実行条件](../e2e/README.md) |
+| `npm run perf:report` | 性能の前後比較。[実行条件](../performance/README.md) |
 
-For Rust-only checks, run commands from `src-tauri/`, for example `cargo check` or `cargo test`.
+Rustの狭いテストは、例として `cargo test --manifest-path src-tauri/Cargo.toml --lib core::migrations`。Cargo等を利用できない場合は実行できなかった検証と理由を報告します。
 
-## 3. Architecture Overview
+## 検証範囲
 
-This project uses a **Static Feature-Module Architecture** to prevent codebase bloat, maintain strong compile-time type safety, and ensure high maintainability. **Do NOT use dynamic runtime plugin registries or generic JSON (e.g. `serde_json::Value`) dispatchers.** All new tools must be statically typed and modularized.
+| 変更 | 検証の選び方 |
+|---|---|
+| 読み取り専用の調査・レビュー | 対象の現在の証拠を確認。コード動作の証明が必要な場合に関連テストを実行 |
+| 指示・文書・skillのみ | 参照・metadata・関連コマンドを確認。foundation/contextを変更した場合はその検査と回帰テスト |
+| frontendコード | 反復中はquick、動作に対応するVitest、引き渡し時にcheck。UI変更は下記の実機確認も必要 |
+| Rustコード | 対象のRustテストとcheck:tauri。TS/IPC/mockに影響すればfrontend検証も追加 |
+| settings/IPC契約 | 変更した名前・型・default・互換性・失敗動作をRustとTS/mockで検証 |
+| scaffolder / scaffold検証スクリプト | test:scaffold。通常のfeature追加では生成差分とそのfeatureを検証し、scaffoldテストを別途重ねない |
+| 広範な変更・リリース準備 | 環境が許す限りcheck:all。変更したdesktop動作、E2E、性能などの該当確認を加える |
 
-UI design responsibilities are separated into `src/design/`. Feature modules decide which settings and workflows they expose, while shared colors, spacing, form controls, settings sections, app shell layout, and overlay framing live in the design layer. See [`docs/design-architecture.md`](design-architecture.md) before adding or changing user-facing UI.
+親コマンドで検証した子コマンドは再実行不要です。失敗した場合は原因に対応する狭い検証から再確認し、追加変更や未解決の懸念がある場合に範囲を広げます。CSSのみの変更に実装をなぞる新規テストを追加せず、操作・状態・意味が変わる場合に重要な成功/失敗動作をテストします。
 
-### Module Structure
-All new features (tools) must be organized as follows:
+UI/desktop挙動を変更した場合は `npm run tauri -- dev` と [実機・スクリーンショット確認](manual-verification.md#ui変更時の必須確認) を実施します。未確認の実機動作を確認済みと扱わないでください。
 
-Application settings types are defined in `src/core/settingsModel.ts`. React context only exposes the settings controller and must not own the schema itself. This keeps persistence, mocks, validators, and non-React helpers independent from the Provider implementation.
+## Scaffoldとブラウザmock
 
-1. **Frontend (`src/features/<feature_name>/`)**:
-   - `components/`: Contains settings, main widget, or overlay UI.
-   - `hooks/`: Local state management and side effects.
-   - `types.ts`: Strongly typed configurations for this feature.
-   - Feature settings UI should compose `src/design/components` such as `SettingsSection`, `Field`, `TextInput`, `Select`, and `Button` instead of defining colors, spacing, shadows, rounded corners, or low-level form classes locally.
-   - Example:
-     ```text
-     src/features/my_tool/
-     ├── components/
-     │   ├── MyToolSettings.tsx
-     │   └── MyToolOverlay.tsx
-     ├── hooks/
-     │   └── useMyTool.ts
-     └── types.ts
-     ```
+新規featureの初期配線は `npm run scaffold:feature <feature_name> [PascalComponentName]`。生成内容と追加実装の手順は [create-static-feature](../.agents/skills/create-static-feature/SKILL.md)。`--verbose` は生成ファイルの詳細が必要な場合に利用します。生成された配線はバージョン管理に含めます。
 
-2. **Backend (`src-tauri/src/features/<feature_name>.rs`)**:
-   - Write standard Tauri commands with typed arguments (e.g. `pub fn my_command(settings: MyToolSettings) -> Result<String, String>`).
-   - Register them in `src-tauri/src/lib.rs` inside `tauri::generate_handler!`.
-   - Start with a single file. When persistence, validation, or OS integration becomes substantial,
-     replace it with `<feature_name>/mod.rs` as a facade and keep implementation modules private.
-     Re-export only the typed commands and types that callers already depend on.
+ブラウザでは `src/core/mocks/tauriMock.ts` がTauri APIを自動mock化し、設定保存はlocalStorageを使用します。`?label=<label>` でoverlayを表示でき、feature別 `*IpcMock.ts` のhandlerはVitestと共有します。環境固有の保存・遅延・表示のみ入口で注入します。
 
-## 4. Extension Guidelines (How to add a new tool)
+## 書式と引き渡し
 
-To add a new tool (e.g. `new_tool`), start from the scaffolder. Do not manually create the initial feature wiring.
+既存のBiome / rustfmt設定を使用します。TypeScriptは2-space・double quotes・semicolons、React componentはPascalCase、hook/変数はcamelCase。Rustはrustfmt・snake_case。通常の変更でlint設定を再構成しません。
 
-```bash
-npm run scaffold:feature new_tool NewTool
-```
-
-The scaffolder creates the frontend feature module, Rust feature module, AppSettings wiring, mock defaults, settings tab registration, and baseline architecture-compatible files. After generation:
-
-1. Implement feature-specific UI and behavior inside `src/features/new_tool/`.
-2. Add typed Rust commands in `src-tauri/src/features/new_tool.rs` only when backend behavior is needed.
-   A mature feature may be converted to `src-tauri/src/features/new_tool/mod.rs` plus private,
-   responsibility-focused modules without changing `pub mod new_tool;` or command registration.
-3. Register any new Rust command in `src-tauri/src/lib.rs` and add the matching browser/Vitest mock case.
-4. If the tool needs an overlay window, add the window in `src-tauri/tauri.conf.json` and route the label in `src/core/windowRoutes.ts`.
-5. Run `npm run check:quick`; before PR or handoff, run `npm run check:all` when the Rust/Tauri environment is available.
-
-## 5. AI Development Harness & Testing
-
-### 0. Token-Efficient Orientation
-- 最初に `npm run ai:context` を実行して、現時点の機能一覧、設定スキーマ、Tauri ウィンドウ、IPC コマンド、主要検証コマンドを確認してください。
-- 広い調査が必要な場合でも、まず `AGENTS.md`、本ファイル、該当 Skill、`npm run ai:context` の出力に絞り、必要になったファイルだけ追加で読んでください。
-- 完了判断では `docs/ai-quality-rubric.md` の100点基準を使い、各項目に対する現在の証拠を確認してください。
-- 検証ログは通常 `rtk npm run check:quick`、`rtk npm run check:ai-context`、`rtk npm run check:ai-foundation`、`rtk npm run check` のように `rtk` 経由で取得し、失敗箇所中心の短い出力にしてください。アーキテクチャ検証の成功詳細が必要な場合だけ `npm run verify:architecture:verbose` を使ってください。
-
-### 1. Browser-Only Development & Mocking
-- 本アプリはブラウザ単体での動作確認用のTauri API自動モック環境 (`src/core/mocks/tauriMock.ts`) を備えています。feature 別の IPC mock handler は `src/core/mocks/*IpcMock.ts` に分離され、Vitest の setup と共有されます。
-- 通常のWebブラウザで動作している場合は、設定の読み込みや保存などのIPC呼び出しが自動的に `localStorage` を使うモックに切り替わります。
-- クエリパラメータ `?label=<label>` をURLに付与することで、特定のウィンドウ（例: `?label=clock`）のレンダリングや動作確認がブラウザ上で直接行えます。
-
-### 2. フィーチャーの自動生成 (Scaffolding)
-- 新しいフィーチャー（ツール）を作成する際は、必ず提供されているScaffoldingスクリプトを使用してください：
-  ```bash
-  node scripts/scaffold-feature.js <feature_name> [PascalComponentName]
-  ```
-- 生成されたファイルの詳細ログが必要な場合だけ `--verbose` を付けてください。通常は短いサマリ出力で十分です。
-- 詳しい作成手順は、カスタムSkill `.agents/skills/create-static-feature/SKILL.md` を参照してください。Scaffolder が初期登録を行うため、同じ配線を手作業で重複追加しないでください。
-
-### 3. 設計整合性の検証 (Verification)
-- コードの追加・変更を行った際は、必ず以下のコマンドを実行して設計構造に整合性エラーがないかを検証してください：
-  ```bash
-  npm run verify:architecture
-  ```
-- コミットやPR作成前、または実装完了宣言の前に、この整合性チェックがパスすることを確認してください。
-- Scaffold 機能でモジュールを追加した直後は、追加されたコードが正常にビルド・フォーマットされていることを確認するため、必ず `npm run check` （フロントエンド検証）を通すこと。
-
-### 4. フロントエンド単体テストの記述
-- フロントエンドコンポーネントのテストは、Vitest を使用します。
-- テストファイルは `src/**/*.test.tsx` または `src/**/*.test.ts` の命名規則で、実装元の近くに配置してください。
-- テストは以下のコマンドで実行できます：
-  ```bash
-  npm run test
-  ```
-
-### 5. 一括検証コマンド (Full Verification)
-- コミット前やPR作成前には、必ず以下の一括検証コマンドを実行してください：
-  - ローカル環境で Rust/Tauri 依存関係が揃っている場合の最終ゲート:
-    ```bash
-    npm run check:all
-    ```
-  - フロントエンド検証（TypeScript, Biome, Vitest, Validator, Vite Build）:
-    ```bash
-    npm run check
-    ```
-  - バックエンド検証（Cargo Format, Clippy, Cargo Test, Cargo Check）:
-    ```bash
-    npm run check:tauri
-    ```
-
-### 6. Rust/Tauri Backend Verification Manual
-
-When running `npm run check:tauri` or working on the Rust backend, developers and AI agents must ensure the following environment constraints are met:
-
-- **Prerequisites**: Node.js (v20+), Rust, Cargo, and `rustup` must be installed.
-- **Tauri Linux Dependencies**: On Linux environments, ensure you have the required WebKitGTK and build-essential packages installed. Without them, `npm run check:tauri` or `cargo check` will fail to compile Tauri.
-- **Windows Environments**: Native Windows dependencies (MSVC or MinGW) must be installed.
-- **Missing Cargo**: If `cargo` is missing in the environment, you **cannot** execute `npm run check:tauri`. The AI agent must document this limitation in its final report if encountered.
-
-**Final Verification Steps (if environment permits):**
-To manually verify the backend, `cd src-tauri` and run:
-1. `cargo fmt --check` (Ensures formatting matches standard)
-2. `cargo clippy --all-targets --all-features -- -D warnings` (Catches memory/logic issues)
-3. `cargo test` (Runs backend unit tests)
-4. `cargo check` (Final compilation check)
-
-### 7. React State Updater と非同期/副作用の分離
-- `useState` や `useReducer` の setState（関数型アップデート `prev => ...` 内）の中で、Tauri の `invoke` のような非同期処理や副作用（Side Effect）を絶対に呼ばないでください。
-- 代わりに React の `useEffect`、あるいはイベントハンドラ（例: `useCallback` でラップした関数）の中で次の状態を計算した後に副作用を実行し、同期的に state を更新する設計にしてください。
-- レースコンディション（Debounce中の遅延保存による古いStateへの巻き戻り）を防ぐため、Sequence ID / Revision 番号でのガード処理を実装してください。
-
-### 8. Placeholder 機能の OS 副作用禁止
-- `placeholder` 状態の機能に対して、OS のグローバルショートカット登録やシステム状態の変更（例: レジストリ書き換え、バックグラウンドデーモン起動）を行わないでください。
-- バックエンド（Rust側）の設定構造体に `status` や `enabled` フィールドを設け、それがアクティブでない場合は副作用をスキップするガードを必ず実装してください。
-- `lib.rs` などでショートカットを登録・処理する際は、個別のフィーチャーのショートカット（例: `settings.voice_to_text.shortcut`）に直接アクセスするのではなく、必ず `settings.active_shortcuts()` メソッドを使用して有効なものだけを一括取得・処理してください。
-
-### 9. UI変更時の実機・スクリーンショット確認（必須）
-- UIまたはデスクトップ挙動を変更した場合は、ブラウザのTauriモック確認だけで完了にせず、`npm run tauri -- dev` で実際のTauriデスクトップウィンドウを起動して確認してください。
-- 影響する画面を、標準サイズ（900×650）、最小サイズ（680×520）、該当するオーバーレイの実寸、およびライト/ダークテーマで確認してください。変更内容に関係するサイズ・テーマだけでなく、リサイズで崩れないことも確認します。
-- 実際のアプリ画面のスクリーンショットを取得し、画面の欠け、横溢れ、位置・余白・整列、文字の折り返し、フォーカス、コントラスト、テーマ、スクロール、オーバーレイの重なりに不自然な点がないか目視確認してください。
-- 不自然な点が見つかった場合は修正して、実機で再確認し、スクリーンショットを再取得してください。UI変更を完了とするのは、確認結果に問題がないことを判断できた後です。
-- 完了報告やPRには、実行した実機確認、画面サイズ、テーマ、スクリーンショット、および未確認項目・残存リスクを記載してください。実機確認を実行できない場合は、理由を明記して未確認のまま完了扱いにしないでください。
-
-## 6. Coding Style & Naming Conventions
-- Frontend code uses TypeScript modules, React function components, 2-space indentation, double quotes, and semicolons. Name React components in `PascalCase` and hooks/state variables in `camelCase`.
-- Rust code follows standard `rustfmt` formatting with 4-space indentation. Use `snake_case` for functions, variables, and Tauri command names. Keep Tauri commands small and register them in `tauri::generate_handler!`.
-- Always configure `.biomeignore` and other lint configurations to match these styling requirements.
-
-## 7. Commit & Pull Request Guidelines
-- Local Git history is not available in this workspace, so use clear, imperative commit subjects such as `Add greeting command` or `Refine Tauri window config`.
-- Pull requests should include a short description, testing notes, linked issues when applicable, and screenshots or screen recordings for visible UI changes. Keep changes scoped: separate frontend UI work, Rust command changes, and configuration updates when practical.
+PRには目的・最終的な変更・実行した検証・未確認事項を記載し、UI変更には実機画像と確認条件を添えます。履歴に沿った簡潔なcommit件名を使用し、変更は目的に沿ってまとめます。ログは失敗箇所中心に要約し、`rtk` は利用可能な場合の任意補助です。architectureの成功詳細が必要な場合は `npm run verify:architecture:verbose` を使います。

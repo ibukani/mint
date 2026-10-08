@@ -1,14 +1,13 @@
 ---
 name: change-mint-ui
-description: Implement or refactor Mint React UI and CSS within the design-layer ownership rules, shared components, accessibility patterns, responsive behavior, and visual verification workflow. Use for settings screens, overlays, layout, styling, or reusable design components.
+description: Change Mint React UI structure, styling, or interaction, following design ownership and desktop visual verification.
 ---
 
 # Change Mint UI
 
-1. Read `docs/design-architecture.md` and inspect the owning component, its CSS, and existing `src/design/components` before adding primitives.
-2. Put reusable tokens, controls, and app/overlay framing in `src/design`; keep feature-specific composition and CSS in the feature; keep core UI CSS beside its core owner.
-3. Compose `SettingsSection`, `Field`, `TextInput`, `Select`, `Button`, `OverlayFrame`, and `OverlayCard` where applicable. Do not revive legacy global classes.
-4. Use design tokens for shared colors, spacing, radii, shadows, blur, typography, and transitions. Avoid inline visual styles and hard-coded colors; allow runtime CSS variables only for genuinely dynamic user data.
-5. Preserve semantic labels, keyboard focus, error/help association, reduced-motion behavior, narrow layouts, and light/dark themes.
-6. Add component/interaction tests. Run `npm run check:quick` and the relevant Vitest tests.
-7. Verify the affected route in the browser (overlay routes use `?label=<label>`) as supplemental coverage, then run `npm run tauri -- dev` and verify the actual Tauri desktop window at the affected desktop sizes and both themes. Capture screenshots from the actual app, inspect them and the live window for clipping, overflow, spacing, alignment, focus, contrast, scrolling, and overlay stacking, then fix and repeat until no anomaly remains. Follow the mandatory evidence checklist in `docs/manual-verification.md`.
+1. Use [design architecture](../../../docs/design-architecture.md) and inspect the owning component/CSS and existing shared controls before adding primitives.
+2. Put reusable tokens, controls, and app/overlay framing in `src/design`; keep feature composition/CSS under its feature and core UI CSS beside its core owner. Compose existing settings/form/overlay components where applicable.
+3. Use tokens for shared visual values. Preserve documented runtime CSS-variable, canvas/coordinate, and migration exceptions; keep feature-specific visualization values with their owner. Do not restore legacy global classes or override-only CSS files.
+4. Preserve labels, help/error association, keyboard focus, reduced-motion behavior, desktop narrow layouts, and light/dark themes.
+5. Add interaction tests when behavior or semantics change. For visual-only changes, use visual evidence and the [applicable checks](../../../docs/ai-development.md#検証範囲).
+6. Verify the affected browser route (`?label=<label>` for overlays) as useful supplemental coverage, then complete [Tauri desktop and screenshot verification](../../../docs/manual-verification.md#ui変更時の必須確認). Fix affected visual/interaction defects and repeat the relevant check; report sizes, themes, images, and remaining risks.

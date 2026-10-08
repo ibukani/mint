@@ -1,13 +1,10 @@
 import {
-  Archive,
   CalendarDays,
   Clock3,
   Command,
   Gamepad2,
-  Mic2,
   Monitor,
   Moon,
-  NotebookPen,
   Rocket,
   Sun,
 } from "lucide-react";
@@ -29,9 +26,6 @@ const featureIcons: Record<string, typeof Clock3> = {
   clock: Clock3,
   calendar: CalendarDays,
   gameLauncher: Gamepad2,
-  quickCapture: NotebookPen,
-  fileShelf: Archive,
-  voiceToText: Mic2,
   mintPalette: Command,
 };
 

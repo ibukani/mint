@@ -12,14 +12,11 @@ describe("useWindowThemeColor", () => {
 
   it("applies the routed window accent to the document root", () => {
     const settings = createMockSettings({
-      quickCapture: {
-        ...defaultAppSettings.quickCapture,
-        themeColor: "#123456",
-      },
+      clock: { ...defaultAppSettings.clock, themeColor: "#123456" },
     });
 
     const { unmount } = renderHook(() =>
-      useWindowThemeColor("quickCapture", settings),
+      useWindowThemeColor("clock", settings),
     );
 
     expect(
@@ -55,11 +52,6 @@ describe("useWindowThemeColor", () => {
         ...defaultAppSettings.gameLauncher,
         themeColor: "#100003",
       },
-      quickCapture: {
-        ...defaultAppSettings.quickCapture,
-        themeColor: "#100004",
-      },
-      fileShelf: { ...defaultAppSettings.fileShelf, themeColor: "#100005" },
       mintPalette: { ...defaultAppSettings.mintPalette },
     });
 
@@ -68,25 +60,21 @@ describe("useWindowThemeColor", () => {
       "calendar",
       "calendarEditor",
       "gameLauncher",
-      "quickCapture",
-      "fileShelf",
       "mintPalette",
     ]);
     expect(getWindowThemeColor("clock", settings)).toBe("#100001");
     expect(getWindowThemeColor("calendar", settings)).toBe("#100002");
     expect(getWindowThemeColor("calendarEditor", settings)).toBe("#100002");
     expect(getWindowThemeColor("gameLauncher", settings)).toBe("#100003");
-    expect(getWindowThemeColor("quickCapture", settings)).toBe("#100004");
-    expect(getWindowThemeColor("fileShelf", settings)).toBe("#100005");
     expect(getWindowThemeColor("mintPalette", settings)).toBe("dark");
   });
 
   it("falls back to defaults until settings are available", () => {
-    renderHook(() => useWindowThemeColor("fileShelf", null));
+    renderHook(() => useWindowThemeColor("clock", null));
 
     expect(
       document.documentElement.style.getPropertyValue("--color-accent"),
-    ).toBe(defaultAppSettings.fileShelf.themeColor);
+    ).toBe(defaultAppSettings.clock.themeColor);
   });
 
   it("does not override the settings window accent", () => {

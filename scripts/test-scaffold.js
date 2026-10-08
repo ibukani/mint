@@ -1,12 +1,11 @@
+import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 const ROOT_DIR = process.cwd();
-const FEATURE_NAME = "test_feature";
-const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-
-const BACKUP_FILES = [
+const TEMP_ROOT = path.join(ROOT_DIR, "tmp");
+const SOURCE_PATHS = [
   "src-tauri/src/features/mod.rs",
   "src/core/settingsModel.ts",
   "src-tauri/src/core/settings_model.rs",
@@ -16,122 +15,134 @@ const BACKUP_FILES = [
   "src/core/mocks/vitestSetup.ts",
   "src/core/navigation/settingsTabs.ts",
 ];
-
-const backups = new Map();
-
-console.log("=== Scaffold Smoke Test ===");
-
-// 1. Create backups
-for (const relPath of BACKUP_FILES) {
-  const fullPath = path.join(ROOT_DIR, relPath);
-  if (fs.existsSync(fullPath)) {
-    backups.set(fullPath, fs.readFileSync(fullPath, "utf-8"));
-  }
-}
-
-// 2. Clean previous test artifacts if they exist
-const featureDir = path.join(ROOT_DIR, "src/features", FEATURE_NAME);
-const featureRs = path.join(
-  ROOT_DIR,
-  "src-tauri/src/features",
-  `${FEATURE_NAME}.rs`,
+const originals = new Map(
+  SOURCE_PATHS.map((relative) => [
+    relative,
+    fs.readFileSync(path.join(ROOT_DIR, relative)),
+  ]),
 );
 
-function cleanup() {
-  console.log("Cleaning up generated test artifacts...");
-  if (fs.existsSync(featureDir)) {
-    fs.rmSync(featureDir, { recursive: true, force: true });
-  }
-  if (fs.existsSync(featureRs)) {
-    fs.rmSync(featureRs, { force: true });
-  }
-  for (const [fullPath, content] of backups.entries()) {
-    fs.writeFileSync(fullPath, content, "utf-8");
-  }
+fs.mkdirSync(TEMP_ROOT, { recursive: true });
+const fixtureDir = fs.mkdtempSync(path.join(TEMP_ROOT, "scaffold-test-"));
+let featureName = "test_feature";
+for (
+  let index = 2;
+  fs.existsSync(path.join(ROOT_DIR, "src/features", featureName)) ||
+  fs.existsSync(
+    path.join(ROOT_DIR, "src-tauri/src/features", `${featureName}.rs`),
+  );
+  index++
+) {
+  featureName = `test_feature_${index}`;
 }
+const words = featureName.split("_");
+const componentName = words
+  .map((word) => word[0].toUpperCase() + word.slice(1))
+  .join("");
+const settingsKey = componentName[0].toLowerCase() + componentName.slice(1);
 
-// Initial cleanup just in case
-cleanup();
-
-let hasError = false;
-
-function expectScaffoldFailure(args, label) {
-  let failed = false;
-  try {
-    execFileSync("node", ["scripts/scaffold-feature.js", ...args], {
-      stdio: "pipe",
-    });
-  } catch (_err) {
-    failed = true;
-  }
-  if (!failed) {
-    throw new Error(`${label} unexpectedly succeeded.`);
-  }
-}
-
-try {
-  console.log("Verifying invalid scaffold inputs are rejected...");
-  expectScaffoldFailure(["../bad", "Bad"], "Path traversal feature name");
-  expectScaffoldFailure(["bad-name", "BadName"], "kebab-case feature name");
-  expectScaffoldFailure(["bad_name", "badName"], "non-Pascal component name");
-
-  // 3. Run scaffold
-  console.log("Running scaffold-feature.js...");
-  execFileSync(
-    "node",
-    ["scripts/scaffold-feature.js", FEATURE_NAME, "TestFeature"],
+function runScript(relativePath, args = [], stdio = "inherit") {
+  return execFileSync(
+    process.execPath,
+    [path.join(ROOT_DIR, relativePath), ...args],
     {
-      stdio: "inherit",
+      cwd: fixtureDir,
+      stdio,
     },
   );
-
-  // 4. Verify generated files
-  console.log("Verifying generated files...");
-  if (!fs.existsSync(path.join(featureDir, "types.ts"))) {
-    throw new Error("types.ts was not generated.");
-  }
-  if (!fs.existsSync(featureRs)) {
-    throw new Error("Rust feature module was not generated.");
-  }
-  const settingsTabsContent = fs.readFileSync(
-    path.join(ROOT_DIR, "src/core/navigation/settingsTabs.ts"),
-    "utf-8",
-  );
-  const generatedTabIndex = settingsTabsContent.indexOf('id: "testFeature"');
-  const lastBuiltInTabIndex = settingsTabsContent.indexOf('id: "voiceToText"');
-  if (
-    generatedTabIndex === -1 ||
-    lastBuiltInTabIndex === -1 ||
-    generatedTabIndex < lastBuiltInTabIndex
-  ) {
-    throw new Error(
-      "Generated settings tabs must be appended after the built-in tab order.",
-    );
-  }
-
-  // 5. Run verify:architecture
-  console.log("Running verify:architecture...");
-  execFileSync("node", ["scripts/verify-architecture.js"], {
-    stdio: "inherit",
-  });
-
-  console.log("Running full frontend check...");
-  execFileSync(npmCmd, ["run", "check"], {
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  });
-
-  console.log("\x1b[32m[PASS]\x1b[0m Scaffold smoke test succeeded.");
-} catch (err) {
-  console.error(
-    "\x1b[31m[ERROR]\x1b[0m Scaffold smoke test failed:",
-    err.message,
-  );
-  hasError = true;
-} finally {
-  cleanup();
 }
 
-if (hasError) {
-  process.exit(1);
+function expectScaffoldFailure(args) {
+  assert.throws(() => runScript("scripts/scaffold-feature.js", args, "pipe"));
+}
+
+console.log("=== Isolated Scaffold Smoke Test ===");
+try {
+  // Copy only inputs used by generation, architecture validation and frontend build.
+  for (const entry of [
+    "src",
+    "src-tauri/src",
+    "src-tauri/capabilities",
+    "src-tauri/tauri.conf.json",
+    "public",
+    "index.html",
+    "package.json",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "vite.config.ts",
+  ]) {
+    const destination = path.join(fixtureDir, entry);
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.cpSync(path.join(ROOT_DIR, entry), destination, { recursive: true });
+  }
+  const biomeConfig = JSON.parse(
+    fs.readFileSync(path.join(ROOT_DIR, "biome.json"), "utf8"),
+  );
+  // The ignored temporary directory is a standalone verification workspace.
+  biomeConfig.vcs = { ...biomeConfig.vcs, enabled: false };
+  fs.writeFileSync(
+    path.join(fixtureDir, "biome.json"),
+    JSON.stringify(biomeConfig, null, 2),
+  );
+
+  expectScaffoldFailure(["../bad", "Bad"]);
+  expectScaffoldFailure(["bad-name", "BadName"]);
+  expectScaffoldFailure(["bad_name", "badName"]);
+  runScript("scripts/scaffold-feature.js", [featureName, componentName]);
+  const generatedTypes = path.join(
+    fixtureDir,
+    "src/features",
+    featureName,
+    "types.ts",
+  );
+  const generatedRust = path.join(
+    fixtureDir,
+    "src-tauri/src/features",
+    `${featureName}.rs`,
+  );
+  assert(fs.existsSync(generatedTypes), "types.ts was not generated");
+  assert(fs.existsSync(generatedRust), "Rust feature module was not generated");
+  const tabs = fs.readFileSync(
+    path.join(fixtureDir, "src/core/navigation/settingsTabs.ts"),
+    "utf8",
+  );
+  const generatedTabIndex = tabs.indexOf(`id: "${settingsKey}"`);
+  assert(
+    generatedTabIndex > tabs.indexOf('id: "calendar"'),
+    "Generated settings tabs must follow the built-in order",
+  );
+  expectScaffoldFailure([featureName, componentName]);
+
+  // Dependencies resolve from the repository ancestor; no links or install needed.
+  // The generator's local Biome binary is absent in this isolated copy.
+  runScript("node_modules/@biomejs/biome/bin/biome", [
+    "check",
+    "--write",
+    "--unsafe",
+    ".",
+  ]);
+  runScript("scripts/verify-architecture.js");
+  runScript("node_modules/typescript/bin/tsc", ["--noEmit"]);
+  runScript("node_modules/@biomejs/biome/bin/biome", ["check", "."]);
+  runScript("node_modules/vite/bin/vite.js", ["build"]);
+  console.log(
+    "Scaffold inputs, wiring, types, lint, architecture and bundle passed.",
+  );
+} finally {
+  const relative = path.relative(TEMP_ROOT, fixtureDir);
+  assert(relative && !relative.startsWith("..") && !path.isAbsolute(relative));
+  fs.rmSync(fixtureDir, { recursive: true, force: true });
+  for (const [relativePath, content] of originals) {
+    assert(
+      fs.readFileSync(path.join(ROOT_DIR, relativePath)).equals(content),
+      `Scaffold verification changed the source worktree: ${relativePath}`,
+    );
+  }
+  assert(
+    !fs.existsSync(fixtureDir),
+    "Temporary scaffold workspace was not removed",
+  );
+  console.log(
+    "Source worktree preserved; temporary scaffold workspace removed.",
+  );
 }

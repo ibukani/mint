@@ -23,10 +23,14 @@ if (missing.length > 0) {
 }
 
 const requiredContent = [
-  "docs/ai-development.md - mandatory AI development rules",
-  "docs/ai-foundation-audit.md - current AI development foundation status",
-  "docs/ai-quality-rubric.md - 100-point AI development quality bar",
+  "docs/ai-development.md",
+  "docs/ai-foundation-audit.md",
+  "docs/ai-quality-rubric.md",
+  "docs/design-architecture.md",
+  "docs/migrations.md",
+  "docs/security-capabilities.md",
   "check:ai-foundation:",
+  "test:ai-foundation:",
   "verify:architecture:",
   ".agents/skills/create-static-feature/SKILL.md",
   ".agents/skills/change-mint-ui/SKILL.md",

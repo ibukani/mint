@@ -14,9 +14,7 @@
 - **時計オーバーレイ (Clock Overlay)**: **implemented**。ショートカットキーでのトレイ表示、自動非表示、フォントサイズ変更など。
 - **カレンダー (Calendar)**: **implemented**。ローカル予定の管理とGoogle Calendarの複数予定表・双方向同期に対応。
 - **ゲームランチャー (Game Launcher)**: **implemented**。インストールされているゲームの取得と起動に対応。
-- **ファイルシェル (File Shelf)**: **implemented**。ファイル・フォルダの一時保管、クリップボードからの画像・URL・文章追加、検索、コピー、Explorerへの取り出しに対応。
-- **クイックキャプチャー (Quick Capture)**: **implemented**。自動保存される下書き、タグ付きメモ、Markdown入力支援とテンプレート、コマンドパレット（`Ctrl/Cmd+K`）、関連度検索と並び替え、全文検索（`tag:` / `is:pinned` / `is:archived` / `has:attachment`）、アーカイブ整理、Markdown書き出し、添付ファイル、バックアップ、クリップボードコピーに対応。
-- **音声入力 (Voice to Text)**: **implemented**。音声ファイルの選択・貼り付け・ドラッグ＆ドロップ、マイクからの録音、APIキーの安全な保存、OpenAI互換APIでの文字起こしに対応しています。
+- **MintPalette**: **implemented**。機能・設定・操作を検索して呼び出すグローバルコマンドパレット。
 
 ## 主な機能（開発基盤）
 - **システムトレイ常駐**: アプリ起動時にタスクバーのシステムトレイに常駐。
@@ -37,11 +35,9 @@
 - `core/`: アプリケーションの基盤シェル（サイドバー、共通レイアウト、通知、ダッシュボード設定コンテキスト）。
 - `features/`: 独立した機能（ツール）モジュール。各機能ごとにディレクトリを完全に分離します。
   - `clock/`: 時計ツール
-  - `v2t/`: 音声入力ツール
+  - `mint_palette/`: グローバルコマンドパレット
   - `calendar/`: カレンダーとGoogle Calendar連携
   - `game_launcher/`: インストール済みゲームの検索・起動
-  - `quick_capture/`: 下書き・メモ・バックアップ
-  - `file_shelf/`: ファイル・クリップボードの一時保管
 
 #### バックエンド (`src-tauri/src/`)
 - `core/`: 設定の永続化処理、システムトレイの設定。
@@ -93,7 +89,7 @@ npm run build
 # アプリのリリースビルド作成
 npm run tauri -- build
 
-# AI主体開発向けの最終ローカル検証
+# 広範な変更・リリース準備の最終ローカル検証
 npm run check:all
 ```
 
@@ -108,4 +104,4 @@ npm run dev
 ---
 
 ## 開発ガイドライン (AI アシスタント向け)
-AI アシスタントがコードを追加・修正する際は、ルートディレクトリの `AGENTS.md` と `docs/ai-development.md` に記載されているルールを厳格に遵守してください。
+全体ルールは [AGENTS.md](AGENTS.md)、作業別の参照・コマンド・検証範囲は [開発ガイド](docs/ai-development.md)、適用条件付きの完了証拠は [完了条件](docs/ai-quality-rubric.md) を参照してください。関係するスキルと必要な文書だけを利用します。

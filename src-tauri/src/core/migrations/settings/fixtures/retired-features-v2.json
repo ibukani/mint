@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "data": {
+    "fileShelf": { "enabled": true, "shortcut": "Alt+Left" },
+    "quickCapture": { "enabled": true },
+    "voiceToText": { "enabled": true },
+    "clock": { "shortcut": "Alt+Left", "sizePercent": 125 },
+    "calendar": { "selectedGoogleCalendarIds": ["primary"] },
+    "gameLauncher": { "favoriteGameKeys": ["appid-440"] },
+    "mintPalette": { "enabled": true },
+    "onboarding": { "completedVersion": 1 },
+    "theme": "light",
+    "futureField": { "keep": true }
+  }
+}

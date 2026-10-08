@@ -111,7 +111,7 @@ export function buildAiContext() {
   const output = [
     "# Mint AI Context",
     `Generated from current worktree: ${new Date().toISOString()}`,
-    "Read first for broad changes: AGENTS.md, docs/ai-development.md",
+    "Start with AGENTS.md; use task-specific skills and references as needed.",
     formatSection(
       "Features",
       listDirs("src/features").map((feature) => {
@@ -140,10 +140,13 @@ export function buildAiContext() {
       ),
     ),
     formatSection("Core docs", [
-      "docs/ai-development.md - mandatory AI development rules",
-      "docs/ai-foundation-audit.md - current AI development foundation status",
-      "docs/ai-quality-rubric.md - 100-point AI development quality bar",
+      "docs/ai-development.md - commands and verification scope",
+      "docs/ai-foundation-audit.md - dated foundation evidence and risks",
+      "docs/ai-quality-rubric.md - applicable completion evidence",
       "docs/architecture.md - static feature-module overview",
+      "docs/design-architecture.md - UI and CSS ownership",
+      "docs/migrations.md - persisted settings compatibility",
+      "docs/security-capabilities.md - per-window permissions",
       "docs/manual-verification.md - manual desktop checks",
       "docs/adr/001-static-feature-module.md - architecture decision",
     ]),
@@ -156,6 +159,7 @@ export function buildAiContext() {
         "check:scripts",
         "check:ai-context",
         "check:ai-foundation",
+        "test:ai-foundation",
         "check:quick",
         "test",
         "check",

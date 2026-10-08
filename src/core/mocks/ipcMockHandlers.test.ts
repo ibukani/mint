@@ -6,7 +6,6 @@ import {
 } from "./performanceIpcMock";
 import { handlePluginIpcCommand } from "./pluginIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
-import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
 import { handleWindowIpcCommand } from "./windowIpcMock";
 
 describe("shared IPC mock handlers", () => {
@@ -96,37 +95,12 @@ describe("shared IPC mock handlers", () => {
     });
   });
 
-  it("shares transcription validation between browser and Vitest mocks", async () => {
-    const result = await handleTranscriptionIpcCommand(
-      "transcribe_audio_file",
-      {
-        audio_file_path: "C:/recording.wav",
-        settings: {
-          enabled: true,
-          baseUrl: "http://localhost:8080",
-          model: "mock",
-        },
-      },
-    );
-
-    expect(result).toMatchObject({ handled: true });
-    expect((result as { value: { text: string } }).value.text).toContain(
-      "C:/recording.wav",
-    );
-    await expect(
-      handleTranscriptionIpcCommand("transcribe_audio_file", {
-        audio_file_path: "",
-        settings: { enabled: true },
-      }),
-    ).rejects.toThrow("音声ファイルを選択してください。");
-  });
-
   it("passes updater results through the shared plugin handler", async () => {
     const update = { version: "0.2.0" };
     const result = await handlePluginIpcCommand(
       "plugin:updater|check",
       undefined,
-      { update, dialogSave: "/tmp/update.mintbackup" },
+      { update },
     );
 
     expect(result).toEqual({ handled: true, value: update });

@@ -22,19 +22,11 @@ export const createMockDiagnosticsReport = (): DiagnosticsReport => ({
   settings: {
     theme: "dark",
     autostart: false,
-    enabledFeatures: [
-      "clock",
-      "calendar",
-      "gameLauncher",
-      "quickCapture",
-      "fileShelf",
-    ],
+    enabledFeatures: ["clock", "calendar", "gameLauncher"],
     shortcuts: {
       clock: "Alt+Left",
       calendar: "Alt+Down",
       gameLauncher: "Alt+1",
-      quickCapture: "Alt+2",
-      fileShelf: "Alt+3",
     },
   },
   windows: ["main"],
@@ -51,8 +43,6 @@ export const createMockDiagnosticsReport = (): DiagnosticsReport => ({
     },
   ],
   dataCounts: {
-    quickCaptureNotes: 12,
-    fileShelfItems: 3,
     calendarEvents: 42,
   },
   recentErrors: [],

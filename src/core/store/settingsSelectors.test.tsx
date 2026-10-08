@@ -51,14 +51,14 @@ const ClockSettingsConsumer: React.FC = () => {
   );
 };
 
-const FileShelfSettingsConsumer: React.FC = () => {
+const GameLauncherSettingsConsumer: React.FC = () => {
   const renderCount = useRef(0);
   renderCount.current += 1;
-  const { featureSettings } = useFeatureSettings("fileShelf");
+  const { featureSettings } = useFeatureSettings("gameLauncher");
   return (
     <>
-      <span data-testid="file-shelf-renders">{renderCount.current}</span>
-      <span data-testid="file-shelf-enabled">
+      <span data-testid="game-launcher-renders">{renderCount.current}</span>
+      <span data-testid="game-launcher-enabled">
         {String(featureSettings?.enabled)}
       </span>
     </>
@@ -75,9 +75,9 @@ const ClockShortcutErrorConsumer: React.FC = () => {
   return <span data-testid="clock-error">{error || "no-error"}</span>;
 };
 
-const FileShelfShortcutErrorConsumer: React.FC = () => {
-  const error = useShortcutError("fileShelf");
-  return <span data-testid="file-shelf-error">{error || "no-error"}</span>;
+const GameLauncherShortcutErrorConsumer: React.FC = () => {
+  const error = useShortcutError("gameLauncher");
+  return <span data-testid="game-launcher-error">{error || "no-error"}</span>;
 };
 
 const ThemeSelectorConsumer: React.FC = () => {
@@ -125,10 +125,10 @@ const renderApp = () =>
   render(
     <AppSettingsProvider>
       <ClockSettingsConsumer />
-      <FileShelfSettingsConsumer />
+      <GameLauncherSettingsConsumer />
       <SaveStatusConsumer />
       <ClockShortcutErrorConsumer />
-      <FileShelfShortcutErrorConsumer />
+      <GameLauncherShortcutErrorConsumer />
       <ThemeSelectorConsumer />
       <UpdateTrigger />
       <NoopUpdateTrigger />
@@ -156,9 +156,9 @@ describe("settings store selective subscription", () => {
     });
 
     const clockBefore = getRenderCount("clock");
-    const fileShelfBefore = getRenderCount("file-shelf");
+    const gameLauncherBefore = getRenderCount("game-launcher");
     expect(clockBefore).toBeGreaterThan(0);
-    expect(fileShelfBefore).toBeGreaterThan(0);
+    expect(gameLauncherBefore).toBeGreaterThan(0);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId("btn-toggle-clock"));
@@ -167,9 +167,11 @@ describe("settings store selective subscription", () => {
     // Clock changed → clock subscriber re-renders.
     expect(getRenderCount("clock")).toBeGreaterThan(clockBefore);
     expect(screen.getByTestId("clock-enabled")).toHaveTextContent("false");
-    // Unrelated file shelf slice keeps the same reference → no re-render.
-    expect(getRenderCount("file-shelf")).toBe(fileShelfBefore);
-    expect(screen.getByTestId("file-shelf-enabled")).toHaveTextContent("true");
+    // Unrelated game launcher slice keeps the same reference → no re-render.
+    expect(getRenderCount("game-launcher")).toBe(gameLauncherBefore);
+    expect(screen.getByTestId("game-launcher-enabled")).toHaveTextContent(
+      "true",
+    );
   });
 
   it("does not re-render feature consumers when save status changes", async () => {
@@ -180,7 +182,7 @@ describe("settings store selective subscription", () => {
     });
 
     const clockBefore = getRenderCount("clock");
-    const fileShelfBefore = getRenderCount("file-shelf");
+    const gameLauncherBefore = getRenderCount("game-launcher");
 
     await act(async () => {
       fireEvent.click(screen.getByTestId("btn-toggle-clock"));
@@ -189,7 +191,7 @@ describe("settings store selective subscription", () => {
     expect(screen.getByTestId("save-status")).toHaveTextContent("saved");
     // Save status changed but feature slices did not change again.
     expect(getRenderCount("clock")).toBeGreaterThan(clockBefore);
-    expect(getRenderCount("file-shelf")).toBe(fileShelfBefore);
+    expect(getRenderCount("game-launcher")).toBe(gameLauncherBefore);
   });
 
   it("notifies only the feature that owns a shortcut error", async () => {
@@ -214,7 +216,7 @@ describe("settings store selective subscription", () => {
     expect(screen.getByTestId("clock-error")).toHaveTextContent(
       "時計ショートカットの登録に失敗しました",
     );
-    expect(screen.getByTestId("file-shelf-error")).toHaveTextContent(
+    expect(screen.getByTestId("game-launcher-error")).toHaveTextContent(
       "no-error",
     );
   });
@@ -245,14 +247,14 @@ describe("settings store selective subscription", () => {
     });
 
     const clockBefore = getRenderCount("clock");
-    const fileShelfBefore = getRenderCount("file-shelf");
+    const gameLauncherBefore = getRenderCount("game-launcher");
 
     await act(async () => {
       fireEvent.click(screen.getByTestId("btn-noop"));
     });
 
     expect(getRenderCount("clock")).toBe(clockBefore);
-    expect(getRenderCount("file-shelf")).toBe(fileShelfBefore);
+    expect(getRenderCount("game-launcher")).toBe(gameLauncherBefore);
     expect(screen.getByTestId("save-status")).toHaveTextContent("idle");
   });
 });

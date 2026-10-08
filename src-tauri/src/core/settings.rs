@@ -17,13 +17,3 @@ pub fn save_settings(
 ) -> Result<(), String> {
     super::settings_store::save_settings(app, settings, state)
 }
-
-#[tauri::command]
-pub fn load_api_key(service: String) -> Result<String, String> {
-    super::settings_api_keys::load_api_key(service)
-}
-
-#[tauri::command]
-pub fn save_api_key(service: String, key: String) -> Result<(), String> {
-    super::settings_api_keys::save_api_key(service, key)
-}

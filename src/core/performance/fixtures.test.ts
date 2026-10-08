@@ -1,33 +1,33 @@
 import { describe, expect, it } from "vitest";
 import {
   createCalendarEvents,
-  createFileShelfEvents,
+  createClockEvents,
   createFixtureSnapshot,
-  createQuickCaptureEvents,
+  createGameLauncherEvents,
 } from "./fixtures";
 
 describe("performance fixtures", () => {
   it("generate the requested event counts", () => {
-    expect(createQuickCaptureEvents(10)).toHaveLength(10);
-    expect(createQuickCaptureEvents(1000)).toHaveLength(1000);
-    expect(createQuickCaptureEvents(10000)).toHaveLength(10000);
-    expect(createFileShelfEvents(10)).toHaveLength(10);
-    expect(createFileShelfEvents(1000)).toHaveLength(1000);
+    expect(createClockEvents(10)).toHaveLength(10);
+    expect(createClockEvents(1000)).toHaveLength(1000);
+    expect(createClockEvents(10000)).toHaveLength(10000);
+    expect(createGameLauncherEvents(10)).toHaveLength(10);
+    expect(createGameLauncherEvents(1000)).toHaveLength(1000);
     expect(createCalendarEvents(100)).toHaveLength(100);
     expect(createCalendarEvents(1000)).toHaveLength(1000);
   });
 
   it("are deterministic", () => {
-    expect(createQuickCaptureEvents(3)).toEqual(createQuickCaptureEvents(3));
-    expect(createFileShelfEvents(5)).toEqual(createFileShelfEvents(5));
+    expect(createClockEvents(3)).toEqual(createClockEvents(3));
+    expect(createGameLauncherEvents(5)).toEqual(createGameLauncherEvents(5));
     expect(createCalendarEvents(7)).toEqual(createCalendarEvents(7));
     expect(createFixtureSnapshot()).toEqual(createFixtureSnapshot());
   });
 
   it("build a combined snapshot with stable counters", () => {
     const snapshot = createFixtureSnapshot({
-      quickCaptureEvents: 10,
-      fileShelfEvents: 10,
+      clockEvents: 10,
+      gameLauncherEvents: 10,
       calendarEvents: 100,
     });
     expect(snapshot.events).toHaveLength(120);

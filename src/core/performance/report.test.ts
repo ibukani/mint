@@ -33,18 +33,18 @@ describe("performance report", () => {
   });
 
   it("renders a markdown report with env and commit sha", () => {
-    const snapshot = createFixtureSnapshot({ quickCaptureEvents: 2 });
+    const snapshot = createFixtureSnapshot({ clockEvents: 2 });
     const markdown = renderMarkdownReport(snapshot);
     expect(markdown).toContain("# Mint Performance Report");
     expect(markdown).toContain(snapshot.environment.commitSha ?? "unknown");
     expect(markdown).toContain("data:loaded");
-    expect(markdown).toContain("quickCapture");
+    expect(markdown).toContain("clock");
     expect(markdown).toContain("| 1 |");
     expect(markdown).toContain("windowsCreated: 4");
   });
 
   it("renders a JSON report", () => {
-    const snapshot = createFixtureSnapshot({ quickCaptureEvents: 1 });
+    const snapshot = createFixtureSnapshot({ clockEvents: 1 });
     const json = renderJsonReport(snapshot);
     const parsed = JSON.parse(json) as {
       environment: { commitSha: string | null };

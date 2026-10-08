@@ -42,19 +42,19 @@
       "name": "overlay:opened",
       "startedAt": "2026-08-04T00:00:05.000Z",
       "durationMs": 92,
-      "windowLabel": "quickCapture"
+      "windowLabel": "clock"
     },
     {
       "name": "window:hidden",
       "startedAt": "2026-08-04T00:00:06.000Z",
       "durationMs": 7,
-      "windowLabel": "quickCapture"
+      "windowLabel": "clock"
     },
     {
       "name": "window:destroyed",
       "startedAt": "2026-08-04T00:00:07.000Z",
       "durationMs": 11,
-      "windowLabel": "quickCapture"
+      "windowLabel": "clock"
     }
   ],
   "counters": {

@@ -33,7 +33,7 @@ src/
 CSS の配置は「どの画面で使うか」ではなく「どのモジュールが所有するか」で決めます。
 
 - token、theme、reset、共有UI、共有layoutは `src/design/` に置く。
-- Clock、Voice-to-Textなど特定featureにしか意味を持たないCSSは、その `src/features/<feature>/` 配下に置く。
+- Clock、Calendarなど特定featureにしか意味を持たないCSSは、その `src/features/<feature>/` 配下に置く。
 - ErrorToastやGeneralSettingsなどアプリ基盤コンポーネント固有のCSSは、対応する `src/core/` のコンポーネント近傍に置く。
 - component固有CSSは、そのcomponentまたは同じfeature内のentry componentから相対importする。
 - `src/index.css` から `src/core/` や `src/features/` のCSSを読み込まない。
@@ -99,4 +99,4 @@ CSS内でも、共有可能な色・余白・影・角丸・blur・transitionは
 - 不要な inline style
 - 低レベル global class の直接利用
 
-通常の実装後は `npm run check:quick` を実行し、PR前または引き渡し前には環境が許す限り `npm run check:all` を実行してください。
+検証コマンドの選択は [開発ガイド](ai-development.md#検証範囲)、実機・画像確認は [手動検証](manual-verification.md#ui変更時の必須確認) に従います。

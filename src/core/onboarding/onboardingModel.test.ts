@@ -19,7 +19,6 @@ describe("onboardingModel", () => {
       autostart: true,
       settingsShortcut: "Ctrl+Shift+S",
       clock: { ...base.clock, enabled: false, shortcut: "Alt+Q" },
-      voiceToText: { ...base.voiceToText, enabled: false },
     });
     const draft = buildDraftFromSettings(settings);
 
@@ -27,8 +26,8 @@ describe("onboardingModel", () => {
     expect(draft.autostart).toBe(true);
     expect(draft.settingsShortcut).toBe("Ctrl+Shift+S");
     expect(draft.featureEnabled.clock).toBe(false);
-    expect(draft.featureEnabled.voiceToText).toBe(false);
-    expect(draft.featureEnabled.quickCapture).toBe(true);
+    expect(draft.featureEnabled.mintPalette).toBe(false);
+    expect(draft.featureEnabled.calendar).toBe(true);
     expect(draft.shortcuts.clock).toBe("Alt+Q");
   });
 
@@ -45,8 +44,8 @@ describe("onboardingModel", () => {
     expect(updated.gameLauncher.enabled).toBe(false);
     expect(updated.theme).toBe("light");
     expect(updated.autostart).toBe(true);
-    expect(updated.quickCapture.enabled).toBe(true);
-    expect(updated.quickCapture.shortcut).toBe(settings.quickCapture.shortcut);
+    expect(updated.clock.enabled).toBe(true);
+    expect(updated.clock.shortcut).toBe(settings.clock.shortcut);
     expect(updated.calendar.selectedGoogleCalendarIds).toEqual(
       settings.calendar.selectedGoogleCalendarIds,
     );
@@ -57,10 +56,10 @@ describe("onboardingModel", () => {
     const draft = buildDraftFromSettings(settings);
     const updated = applyDraftToSettings(settings, {
       ...draft,
-      shortcuts: { ...draft.shortcuts, fileShelf: "Alt+9" },
+      shortcuts: { ...draft.shortcuts, gameLauncher: "Alt+9" },
     });
 
-    expect(updated.fileShelf.shortcut).toBe("Alt+9");
+    expect(updated.gameLauncher.shortcut).toBe("Alt+9");
     expect(updated.clock.shortcut).toBe(settings.clock.shortcut);
   });
 
@@ -69,17 +68,16 @@ describe("onboardingModel", () => {
     const draft = buildDraftFromSettings(settings);
 
     const recommended = getRecommendedAction(draft);
-    expect(recommended?.target).toBe("quickCapture");
+    expect(recommended?.target).toBe("calendar");
   });
 
   it("falls back to the next recommended feature when higher priority is disabled", () => {
     const settings = createMockSettings({
-      quickCapture: { ...createMockSettings().quickCapture, enabled: false },
-      mintPalette: { ...createMockSettings().mintPalette, enabled: false },
+      calendar: { ...createMockSettings().calendar, enabled: false },
     });
     const draft = buildDraftFromSettings(settings);
 
-    expect(getRecommendedAction(draft)?.target).toBe("calendar");
+    expect(getRecommendedAction(draft)?.target).toBe("clock");
   });
 
   it("returns null when no feature is enabled", () => {

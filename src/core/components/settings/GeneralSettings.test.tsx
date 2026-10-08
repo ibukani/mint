@@ -96,19 +96,19 @@ describe("GeneralSettings", () => {
     expect(
       screen.getByRole("heading", { name: "機能一覧" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("5 / 6 有効")).toBeInTheDocument();
-    const voiceToTextToggle = screen.getByRole("switch", {
-      name: "音声入力を有効にする",
+    expect(screen.getByText("3 / 3 有効")).toBeInTheDocument();
+    const clockToggle = screen.getByRole("switch", {
+      name: "時計オーバーレイを有効にする",
     });
-    expect(voiceToTextToggle).not.toBeChecked();
+    expect(clockToggle).toBeChecked();
 
     await act(async () => {
-      fireEvent.click(voiceToTextToggle);
+      fireEvent.click(clockToggle);
       await Promise.resolve();
     });
 
-    expect(voiceToTextToggle).toBeChecked();
-    expect(screen.getByText("6 / 6 有効")).toBeInTheDocument();
+    expect(clockToggle).not.toBeChecked();
+    expect(screen.getByText("2 / 3 有効")).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -132,7 +132,7 @@ describe("GeneralSettings", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "クイックキャプチャーの位置・サイズをリセット",
+        name: "ゲームランチャーの位置・サイズをリセット",
       }),
     );
 
@@ -141,11 +141,11 @@ describe("GeneralSettings", () => {
     });
 
     expect(invoke).toHaveBeenCalledWith("reset_window_state", {
-      label: "quickCapture",
+      label: "gameLauncher",
     });
     expect(
       await screen.findByText(
-        "クイックキャプチャーの位置・サイズを既定値に戻しました",
+        "ゲームランチャーの位置・サイズを既定値に戻しました",
       ),
     ).toBeInTheDocument();
   });

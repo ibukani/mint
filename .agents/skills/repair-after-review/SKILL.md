@@ -1,13 +1,12 @@
 ---
 name: repair-after-review
-description: Resolve Mint review findings or failing verification by tracing root causes, implementing scoped fixes, adding regression coverage, and re-running applicable gates. Use after code review, architecture audit, lint, build, or test failures.
+description: Fix specified Mint review findings or reproducible verification failures and verify the affected behavior.
 ---
 
 # Repair after review
 
-1. Enumerate every finding and reproduce each failure when possible.
-2. Trace the root cause and affected integration points before editing. Preserve unrelated worktree changes.
-3. Fix the underlying type, lifecycle, ownership, or behavior issue. Do not hide failures with `any`, empty mocks, disabled checks, or deleted tests.
-4. Add or strengthen a regression test for behavioral defects.
-5. Re-run the narrow failing check first, then `npm run check:quick` and `npm run check:all` when available. For Rust-only changes, include `npm run check:tauri`.
-6. Re-audit every original finding and report what proves each one resolved, plus unverified manual or platform risks.
+1. Track the requested findings and reproduce failures where possible. Trace the affected integration points; preserve unrelated worktree changes.
+2. Fix the underlying type, lifecycle, ownership, or behavior issue. Do not hide failures with unsafe casts, empty mocks, disabled checks, or deleted behavioral tests.
+3. Add or strengthen regression coverage for behavioral defects; formatting-only corrections do not need new behavioral tests.
+4. Rerun the failing targeted check, then select the affected frontend/Rust/scaffold gates using the [verification scope](../../../docs/ai-development.md#検証範囲). Do not repeat child gates already covered by a successful parent.
+5. Re-audit every requested finding and report what proves it resolved. Use [desktop verification](../../../docs/manual-verification.md#ui変更時の必須確認) for UI/desktop fixes and disclose remaining manual/platform risks.

@@ -26,9 +26,12 @@ try {
 }
 
 let results = [];
+let aborted = false;
 try {
   results = await runSmokeSpecs(harness);
 } catch (error) {
+  aborted = true;
+  process.exitCode = 1;
   console.error(`\n[e2e] Spec run aborted: ${error.message}`);
 } finally {
   await harness.stop();
@@ -43,7 +46,9 @@ for (const result of results) {
 }
 const passed = results.filter((result) => result.status === "passed").length;
 console.log(
-  `\n[e2e] ${passed}/${results.length} specs passed (artifacts: ${harness.reportDir})`,
+  aborted
+    ? `\n[e2e] Run aborted (artifacts: ${harness.reportDir})`
+    : `\n[e2e] ${passed}/${results.length} specs passed (artifacts: ${harness.reportDir})`,
 );
 
 if (passed !== results.length) {

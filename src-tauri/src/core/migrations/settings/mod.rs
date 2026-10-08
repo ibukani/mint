@@ -8,11 +8,12 @@
 //!   the existing `AppSettings` object unchanged.
 //! - v2: adds `data.onboarding.completedVersion` so existing users are not
 //!   forced through the first-run setup introduced in this version.
+//! - v3: removes settings for file shelf, quick capture and voice input.
 
 use super::{run_migrations, Migration, MigrationOutcome};
 
 /// Latest schema version of `settings.json`.
-pub const SETTINGS_SCHEMA_VERSION: u32 = 2;
+pub const SETTINGS_SCHEMA_VERSION: u32 = 3;
 
 /// Build the full migration chain for settings data.
 pub fn settings_migrations() -> Vec<Migration> {
@@ -28,6 +29,12 @@ pub fn settings_migrations() -> Vec<Migration> {
             to_version: 2,
             name: "settings-v1-to-v2-onboarding",
             apply: Box::new(mark_onboarding_completed_for_existing_users),
+        },
+        Migration {
+            from_version: 2,
+            to_version: 3,
+            name: "settings-v2-to-v3-remove-retired-features",
+            apply: Box::new(remove_retired_feature_settings),
         },
     ]
 }
@@ -73,6 +80,20 @@ fn mark_onboarding_completed_for_existing_users(
     Ok(data)
 }
 
+/// Remove retired feature settings without touching their separate saved data.
+fn remove_retired_feature_settings(data: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut data = data.clone();
+    let inner = data
+        .get_mut("data")
+        .and_then(serde_json::Value::as_object_mut)
+        .ok_or_else(|| "envelope に data オブジェクトがありません。".to_string())?;
+    for key in ["fileShelf", "quickCapture", "voiceToText"] {
+        inner.remove(key);
+    }
+    data["schemaVersion"] = serde_json::json!(3);
+    Ok(data)
+}
+
 /// Create the latest envelope around serialized settings.
 pub fn wrap_settings(settings: &serde_json::Value) -> serde_json::Value {
     serde_json::json!({
@@ -113,9 +134,13 @@ mod tests {
         assert_eq!(outcome.from_version, 0);
         assert_eq!(
             outcome.applied,
-            vec!["settings-v0-to-v1-envelope", "settings-v1-to-v2-onboarding"]
+            vec![
+                "settings-v0-to-v1-envelope",
+                "settings-v1-to-v2-onboarding",
+                "settings-v2-to-v3-remove-retired-features",
+            ]
         );
-        assert_eq!(outcome.data["schemaVersion"], 2);
+        assert_eq!(outcome.data["schemaVersion"], 3);
         assert!(outcome.data["data"].is_object());
         assert_eq!(
             outcome.data["data"]["onboarding"]["completedVersion"],
@@ -129,16 +154,15 @@ mod tests {
         let outcome = migrate_settings_content(&content).unwrap();
 
         assert_eq!(outcome.from_version, 0);
-        assert_eq!(outcome.data["schemaVersion"], 2);
+        assert_eq!(outcome.data["schemaVersion"], 3);
         let data = outcome.data["data"].clone();
         assert_eq!(data["theme"], "dark");
         assert_eq!(data["autostart"], false);
-        assert_eq!(data["fileShelf"]["enabled"], true);
-        assert_eq!(data["fileShelf"]["edge"], "right");
-        assert_eq!(data["fileShelf"]["clipboardHistoryLimit"], 25);
+        assert!(data.get("fileShelf").is_none());
+        assert!(data.get("quickCapture").is_none());
+        assert!(data.get("voiceToText").is_none());
         assert_eq!(data["clock"]["themeColor"], "#5B8CFF");
         assert_eq!(data["calendar"]["createEventShortcut"], "Ctrl+Alt+E");
-        assert_eq!(data["voiceToText"]["model"], "whisper-1");
         assert_eq!(data["onboarding"]["completedVersion"], 1);
     }
 
@@ -157,23 +181,29 @@ mod tests {
 
     #[test]
     fn already_versioned_latest_content_is_not_reapplied() {
-        let content = r#"{"schemaVersion":2,"data":{"theme":"dark"}}"#;
+        let content = r#"{"schemaVersion":3,"data":{"theme":"dark"}}"#;
         let outcome = migrate_settings_content(content).unwrap();
 
-        assert_eq!(outcome.from_version, 2);
+        assert_eq!(outcome.from_version, 3);
         assert!(outcome.applied.is_empty());
-        assert_eq!(outcome.data["schemaVersion"], 2);
+        assert_eq!(outcome.data["schemaVersion"], 3);
         assert_eq!(outcome.data["data"]["theme"], "dark");
     }
 
     #[test]
-    fn v1_envelope_migrates_to_v2_without_reapplying_envelope() {
+    fn v1_envelope_migrates_to_latest_without_reapplying_envelope() {
         let content = r#"{"schemaVersion":1,"data":{"theme":"dark"}}"#;
         let outcome = migrate_settings_content(content).unwrap();
 
         assert_eq!(outcome.from_version, 1);
-        assert_eq!(outcome.applied, vec!["settings-v1-to-v2-onboarding"]);
-        assert_eq!(outcome.data["schemaVersion"], 2);
+        assert_eq!(
+            outcome.applied,
+            vec![
+                "settings-v1-to-v2-onboarding",
+                "settings-v2-to-v3-remove-retired-features"
+            ]
+        );
+        assert_eq!(outcome.data["schemaVersion"], 3);
         assert_eq!(outcome.data["data"]["theme"], "dark");
         assert_eq!(outcome.data["data"]["onboarding"]["completedVersion"], 1);
     }
@@ -185,7 +215,7 @@ mod tests {
         let outcome = migrate_settings_content(content).unwrap();
 
         assert_eq!(outcome.from_version, 1);
-        assert_eq!(outcome.data["schemaVersion"], 2);
+        assert_eq!(outcome.data["schemaVersion"], 3);
         assert_eq!(outcome.data["data"]["onboarding"]["completedVersion"], 3);
     }
 
@@ -197,7 +227,7 @@ mod tests {
             error,
             crate::core::migrations::MigrationError::FutureVersion {
                 found: 99,
-                latest: 2
+                latest: 3
             }
         ));
     }
@@ -218,7 +248,7 @@ mod tests {
         let outcome = migrate_settings_content(&content).unwrap();
 
         assert_eq!(outcome.from_version, 0);
-        assert_eq!(outcome.data["schemaVersion"], 2);
+        assert_eq!(outcome.data["schemaVersion"], 3);
         let data = outcome.data["data"].clone();
         assert_eq!(data["theme"], "dark");
         assert_eq!(data["autostart"], "not-a-boolean");
@@ -228,8 +258,47 @@ mod tests {
     fn envelope_round_trip_extracts_data() {
         let settings = serde_json::json!({ "theme": "dark" });
         let envelope = wrap_settings(&settings);
-        assert_eq!(envelope["schemaVersion"], 2);
+        assert_eq!(envelope["schemaVersion"], 3);
         let data = extract_envelope_data(&envelope).unwrap();
         assert_eq!(data["theme"], "dark");
+    }
+
+    #[test]
+    fn v2_removes_only_retired_settings_and_preserves_the_input() {
+        let before: serde_json::Value =
+            serde_json::from_str(&fixture("retired-features-v2.json")).unwrap();
+        let expected: serde_json::Value =
+            serde_json::from_str(&fixture("retired-features-v3.json")).unwrap();
+        let outcome = migrate_settings_content(&before.to_string()).unwrap();
+        assert_eq!(outcome.data, expected);
+        assert_eq!(outcome.from_version, 2);
+        assert_eq!(
+            outcome.applied,
+            vec!["settings-v2-to-v3-remove-retired-features"]
+        );
+        for key in ["fileShelf", "quickCapture", "voiceToText"] {
+            assert!(outcome.data["data"].get(key).is_none());
+            assert!(before["data"].get(key).is_some());
+        }
+        for key in [
+            "clock",
+            "calendar",
+            "gameLauncher",
+            "mintPalette",
+            "onboarding",
+            "theme",
+            "futureField",
+        ] {
+            assert_eq!(outcome.data["data"][key], before["data"][key]);
+        }
+        let settings: crate::core::settings_model::AppSettings =
+            serde_json::from_value(outcome.data["data"].clone()).unwrap();
+        assert_eq!(settings.clock.size_percent, 125);
+        assert!(!settings.active_shortcuts().iter().any(|(id, _)| [
+            "fileShelf",
+            "quickCapture",
+            "voiceToText"
+        ]
+        .contains(id)));
     }
 }

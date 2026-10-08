@@ -32,10 +32,6 @@ const valuesAreEqual = (left: unknown, right: unknown): boolean => {
   );
 };
 
-const arraysAreEqual = (left: readonly string[], right: readonly string[]) =>
-  left.length === right.length &&
-  left.every((value, index) => value === right[index]);
-
 export const settingsAreEqual = (
   left: AppSettings | null,
   right: AppSettings,
@@ -48,25 +44,10 @@ export const requiresImmediateSettingsSave = (
   previous.autostart !== next.autostart ||
   previous.theme !== next.theme ||
   previous.settingsShortcut !== next.settingsShortcut ||
-  previous.fileShelf.enabled !== next.fileShelf.enabled ||
-  previous.fileShelf.shortcut !== next.fileShelf.shortcut ||
-  previous.fileShelf.edge !== next.fileShelf.edge ||
-  previous.fileShelf.verticalPosition !== next.fileShelf.verticalPosition ||
-  previous.fileShelf.edgeHandleEnabled !== next.fileShelf.edgeHandleEnabled ||
-  previous.fileShelf.clipboardHistoryEnabled !==
-    next.fileShelf.clipboardHistoryEnabled ||
-  previous.fileShelf.clipboardHistoryLimit !==
-    next.fileShelf.clipboardHistoryLimit ||
-  !arraysAreEqual(
-    previous.fileShelf.ignoredApplications,
-    next.fileShelf.ignoredApplications,
-  ) ||
   previous.clock.enabled !== next.clock.enabled ||
   previous.clock.shortcut !== next.clock.shortcut ||
   previous.calendar.enabled !== next.calendar.enabled ||
   previous.calendar.shortcut !== next.calendar.shortcut ||
   previous.calendar.createEventShortcut !== next.calendar.createEventShortcut ||
   previous.gameLauncher.enabled !== next.gameLauncher.enabled ||
-  previous.gameLauncher.shortcut !== next.gameLauncher.shortcut ||
-  previous.voiceToText.enabled !== next.voiceToText.enabled ||
-  previous.voiceToText.shortcut !== next.voiceToText.shortcut;
+  previous.gameLauncher.shortcut !== next.gameLauncher.shortcut;

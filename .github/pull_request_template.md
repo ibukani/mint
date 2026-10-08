@@ -18,15 +18,12 @@
 - 使用した `.agents/skills` やプロンプト: 
 - `npm run check` 等でエラーが出た場合の修正内容: 
 - Feature state の変更理由 (implemented / partial / placeholder): 
-- `docs/ai-quality-rubric.md` 上の未達項目または残存リスク: 
+- `docs/ai-quality-rubric.md` の適用条件と未確認事項・残存リスク:
 
 ## 実行した検証コマンド
-<!-- 以下のコマンドを実行し、パスしたことを確認してください -->
-- [ ] `npm run check:quick` (fast TypeScript, Biome, script, AI context, Architecture Verify)
-- [ ] `npm run check` (TypeScript, Biome, Vitest, AI context, Architecture Verify, Vite build)
-- [ ] `npm run check:all` (full local release gate) ※Rust/Tauri環境がある場合
-- [ ] `npm run test:scaffold` (Feature scaffolder smoke test) ※Scaffold変更がある場合
-- [ ] `npm run check:tauri` (Rust/Cargo Verify) ※Rust環境がある場合
+<!-- docs/ai-development.md の検証範囲から選び、実行したコマンドと結果を記載してください。check:all に含まれる check / test:scaffold / check:tauri の重複実行は不要です。文書のみの変更に全アプリ検証を要求しません。 -->
+- コマンド・結果（対象テスト、check:quick、check、check:tauri、test:scaffold、check:all等）:
+- 未実行項目・理由:
 
 ## スクリーンショット / UI影響
 <!-- UIの変更がある場合は、実際のTauriデスクトップアプリで確認したスクリーンショットと目視確認結果を記載してください。ブラウザのモック画面だけでは完了扱いにしません。 -->
@@ -37,6 +34,8 @@
 - [ ] 不自然な点を修正して再確認した、または未確認項目と理由を「未確認事項・残存リスク」に記載した
 
 スクリーンショットの保存先・確認サイズ・テーマ・確認結果:
+
+詳細な確認方法は [手動検証](../docs/manual-verification.md#ui変更時の必須確認)。mainは現在リサイズ不可のため、サイズ別確認には検証用設定を使います。
 
 ## 未確認事項・残存リスク
 <!-- AIが作業した場合など、人間のレビューアに特に確認してほしい事項があれば記載してください -->

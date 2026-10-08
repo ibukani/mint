@@ -41,16 +41,15 @@ describe("AppShell", () => {
         title="mint"
         tabs={[
           {
+            id: "clock",
+            label: "時計",
+            keywords: ["analog"],
+          },
+          {
             id: "general",
             label: "一般設定",
             description: "テーマと起動操作",
             keywords: ["アップデート"],
-          },
-          {
-            id: "voiceToText",
-            label: "音声入力",
-            description: "音声の文字起こし",
-            keywords: ["Whisper"],
           },
         ]}
         activeTab="general"
@@ -75,12 +74,12 @@ describe("AppShell", () => {
     });
     expect(searchInput).toHaveFocus();
 
-    fireEvent.change(searchInput, { target: { value: "whisper" } });
+    fireEvent.change(searchInput, { target: { value: "analog" } });
     expect(screen.getAllByRole("option")).toHaveLength(1);
-    expect(screen.getByRole("option")).toHaveTextContent("音声入力");
+    expect(screen.getByRole("option")).toHaveTextContent("時計");
     fireEvent.keyDown(searchInput, { key: "Enter" });
 
-    expect(onTabChange).toHaveBeenCalledWith("voiceToText");
+    expect(onTabChange).toHaveBeenCalledWith("clock");
     expect(
       screen.queryByRole("dialog", { name: "クイックランチャー" }),
     ).toBeNull();
@@ -94,7 +93,7 @@ describe("AppShell", () => {
         title="mint"
         tabs={[
           { id: "general", label: "一般設定" },
-          { id: "voiceToText", label: "音声入力" },
+          { id: "clock", label: "時計" },
         ]}
         activeTab="general"
         onTabChange={onTabChange}
@@ -112,7 +111,7 @@ describe("AppShell", () => {
     const options = screen.getAllByRole("option");
     expect(options[1]).toHaveAttribute("aria-selected", "true");
     fireEvent.keyDown(searchInput, { key: "Enter" });
-    expect(onTabChange).toHaveBeenCalledWith("voiceToText");
+    expect(onTabChange).toHaveBeenCalledWith("clock");
   });
 
   it("jumps to result boundaries with Home, End, and page keys", () => {
@@ -121,7 +120,7 @@ describe("AppShell", () => {
         title="mint"
         tabs={[
           { id: "general", label: "一般設定" },
-          { id: "voiceToText", label: "音声入力" },
+          { id: "clock", label: "時計" },
           { id: "calendar", label: "カレンダー" },
         ]}
         activeTab="general"
@@ -155,15 +154,13 @@ describe("AppShell", () => {
         tabs={[
           { id: "general", label: "一般設定" },
           {
-            id: "voiceToText",
-            label: "音声入力",
+            id: "clock",
+            label: "時計",
             searchItems: [
               {
-                id: "api-key",
-                label: "APIキー",
-                description: "音声認識APIの認証情報",
-                keywords: ["OpenAI", "Groq"],
-                targetId: "v2t-api-key-input",
+                id: "size",
+                label: "時計のサイズ倍率",
+                targetId: "clock-size-percent-input",
               },
             ],
           },
@@ -179,14 +176,14 @@ describe("AppShell", () => {
     const searchInput = screen.getByRole("combobox", {
       name: "設定や項目、操作を検索",
     });
-    fireEvent.change(searchInput, { target: { value: "APIキー" } });
+    fireEvent.change(searchInput, { target: { value: "時計のサイズ倍率" } });
 
-    expect(screen.getByRole("option")).toHaveTextContent("APIキー");
+    expect(screen.getByRole("option")).toHaveTextContent("時計のサイズ倍率");
     fireEvent.keyDown(searchInput, { key: "Enter" });
 
     expect(onTabChange).toHaveBeenCalledWith(
-      "voiceToText",
-      "v2t-api-key-input",
+      "clock",
+      "clock-size-percent-input",
     );
   });
 

@@ -5,18 +5,13 @@ import type {
   GoogleCalendarInfo,
 } from "../../features/calendar/types";
 import type { GameScanResult } from "../../features/game_launcher/types";
-import { handleApiKeyIpcCommand } from "./apiKeyIpcMock";
 import { handleCalendarIpcCommand } from "./calendarIpcMock";
-import { handleFileShelfIpcCommand } from "./fileShelfIpcMock";
-import { mockCaptureFileShelfClipboardText } from "./fileShelfMock";
 import { handleGameLauncherIpcCommand } from "./gameLauncherIpcMock";
 import { handleGoogleCalendarIpcCommand } from "./googleCalendarIpcMock";
 import { createMockSettings } from "./mockSettings";
 import { handlePerformanceIpcCommand } from "./performanceIpcMock";
 import { handlePluginIpcCommand } from "./pluginIpcMock";
-import { handleQuickCaptureIpcCommand } from "./quickCaptureIpcMock";
 import { handleSettingsIpcCommand } from "./settingsIpcMock";
-import { handleTranscriptionIpcCommand } from "./transcriptionIpcMock";
 import { handleWindowIpcCommand } from "./windowIpcMock";
 import { getMockWindowRegistration } from "./windowRegistration";
 
@@ -46,12 +41,6 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
   const params = new URLSearchParams(window.location.search);
   const currentLabel = params.get("label") || "main";
   const mockUpdateAvailable = params.get("mockUpdate") === "available";
-  const mockAudioPath = params.get("mockAudioPath");
-  const mockClipboardHistory = params.get("mockClipboardHistory");
-  if (mockClipboardHistory) {
-    mockCaptureFileShelfClipboardText(mockClipboardHistory);
-  }
-
   // mockWindows の第1引数が現在のウィンドウになるため、URLのlabelを先頭にする。
   const [registeredCurrentLabel, ...additionalWindowLabels] =
     getMockWindowRegistration(currentLabel);
@@ -76,6 +65,10 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as Record<string, unknown>;
+        // Retired settings may remain in an older browser profile.
+        for (const key of ["fileShelf", "quickCapture", "voiceToText"]) {
+          delete parsed[key];
+        }
         console.log(
           "[Tauri Mock] load_settings: localStorageから読み込みました。",
           parsed,
@@ -90,14 +83,6 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
           gameLauncher: mergeSettingsSection(
             defaultSettings.gameLauncher,
             parsed.gameLauncher,
-          ),
-          quickCapture: mergeSettingsSection(
-            defaultSettings.quickCapture,
-            parsed.quickCapture,
-          ),
-          fileShelf: mergeSettingsSection(
-            defaultSettings.fileShelf,
-            parsed.fileShelf,
           ),
           mintPalette: mergeSettingsSection(
             defaultSettings.mintPalette,
@@ -122,8 +107,6 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
     clock: defaultSettings.clock.enabled,
     calendar: defaultSettings.calendar.enabled,
     gameLauncher: defaultSettings.gameLauncher.enabled,
-    quickCapture: defaultSettings.quickCapture.enabled,
-    fileShelf: defaultSettings.fileShelf.enabled,
     mintPalette: defaultSettings.mintPalette.enabled,
   };
 
@@ -271,67 +254,6 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
 
     const calendarResult = await handleCalendarIpcCommand(cmd, typedArgs);
     if (calendarResult.handled) return calendarResult.value;
-    const fileShelfResult = await handleFileShelfIpcCommand(cmd, typedArgs, {
-      shouldAutoExpand: () => {
-        const sourceApplication = params.get("mockShelfSourceApp");
-        if (!sourceApplication) return true;
-        let ignoredApplications = defaultSettings.fileShelf.ignoredApplications;
-        const storedSettings = localStorage.getItem(STORAGE_KEY);
-        if (storedSettings) {
-          try {
-            const parsed = JSON.parse(storedSettings) as {
-              fileShelf?: { ignoredApplications?: unknown };
-            };
-            if (Array.isArray(parsed.fileShelf?.ignoredApplications)) {
-              ignoredApplications = parsed.fileShelf.ignoredApplications.filter(
-                (value): value is string => typeof value === "string",
-              );
-            }
-          } catch {
-            // Invalid settings use the same defaults as load_settings.
-          }
-        }
-        return !ignoredApplications.some(
-          (application) =>
-            application.toLocaleLowerCase() ===
-            sourceApplication.toLocaleLowerCase(),
-        );
-      },
-    });
-    if (fileShelfResult.handled) return fileShelfResult.value;
-    const quickCaptureResult = await handleQuickCaptureIpcCommand(
-      cmd,
-      typedArgs,
-      {
-        onExportMarkdown: (exportArgs) => {
-          const input = exportArgs?.input as
-            | { path?: string; content?: string }
-            | undefined;
-          if (!input?.path || !input.content?.trim()) {
-            throw new Error("Markdown export input is invalid.");
-          }
-          localStorage.setItem(
-            "mint_mock_last_markdown_export",
-            JSON.stringify(input),
-          );
-        },
-        onExportBackup: (exportArgs) => {
-          const path = exportArgs?.path as string | undefined;
-          if (!path?.trim()) {
-            throw new Error("Quick capture backup path is required.");
-          }
-          localStorage.setItem("mint_mock_last_backup_path", path);
-        },
-      },
-    );
-    if (quickCaptureResult.handled) return quickCaptureResult.value;
-    const transcriptionResult = await handleTranscriptionIpcCommand(
-      cmd,
-      typedArgs,
-      { waitForOperation: waitForMockOperation },
-    );
-    if (transcriptionResult.handled) return transcriptionResult.value;
-
     const gameResult = await handleGameLauncherIpcCommand(cmd, typedArgs, {
       scanResult: browserGameScanResult,
       onLaunch: (request) => {
@@ -383,27 +305,6 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       },
     });
     if (googleResult.handled) return googleResult.value;
-    const apiKeyResult = await handleApiKeyIpcCommand(cmd, typedArgs, {
-      defaultKey: "",
-      load: (service) => {
-        const key =
-          (service ? localStorage.getItem(`mock_api_key_${service}`) : "") ||
-          "";
-        console.log(
-          `[Tauri Mock] load_api_key for ${service}:`,
-          key ? "***" : "(empty)",
-        );
-        return key;
-      },
-      save: (service, key) => {
-        if (service !== undefined && key !== undefined) {
-          localStorage.setItem(`mock_api_key_${service}`, key);
-          console.log(`[Tauri Mock] save_api_key for ${service} completed.`);
-        }
-      },
-    });
-    if (apiKeyResult.handled) return apiKeyResult.value;
-
     const performanceResult = await handlePerformanceIpcCommand(
       cmd,
       typedArgs,
@@ -422,8 +323,6 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
             rawJson: {},
           }
         : null,
-      dialogOpen: mockAudioPath,
-      dialogSave: "/tmp/quick-capture.md",
       onDownloadAndInstall: async (channel) => {
         channel?.onmessage?.({
           event: "Started",
@@ -452,10 +351,6 @@ if (!isTauri && typeof window !== "undefined" && !isTest) {
       case "open_settings_tab":
         return null;
       case "take_pending_settings_tab":
-        return null;
-      case "open_v2t_with_audio_file":
-        return null;
-      case "take_pending_v2t_audio_file":
         return null;
       default:
         console.warn(

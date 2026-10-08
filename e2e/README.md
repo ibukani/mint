@@ -59,9 +59,9 @@ node e2e/run.mjs --port 4445 --native-driver C:\tools\msedgedriver.exe
 ## スモークシナリオ
 
 1. 起動とメインウィンドウ表示（`document.title`、`#root`、テーマ適用）
-2. 設定保存 → 再起動で復元（`save_settings` → ディスク確認 → 新セッションでテーマ反映）
-3. clock オーバーレイの開閉（`open_overlay` で表示 → DOM 確認 → 再実行で非表示）
-4. クイックキャプチャーの文字入力 → 再表示で残存（textarea への入力 → 自動保存 → 開閉 → 値の復元）
+2. 廃止機能の設定をv2→v3へ移行し、移行前バックアップ・旧DBと添付・保存画像の保持・削除済みIPCとoverlayの呼び出し拒否を確認
+3. 設定保存 → 再起動で復元（`save_settings` → ディスク確認 → 新セッションでテーマ反映）
+4. clock オーバーレイの表示（`open_overlay` で表示 → DOM 確認）
 5. 正常終了（セッション削除 → mint プロセス残存なし）
 
 ## CI（GitHub Actions）

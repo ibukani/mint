@@ -7,34 +7,6 @@ const defaultMockSettings: AppSettings = {
     shortcut: defaultAppSettings.mintPalette.shortcut,
   },
 
-  fileShelf: {
-    enabled: defaultAppSettings.fileShelf.enabled,
-    shortcut: defaultAppSettings.fileShelf.shortcut,
-    edge: defaultAppSettings.fileShelf.edge,
-    verticalPosition: defaultAppSettings.fileShelf.verticalPosition,
-    edgeHandleEnabled: defaultAppSettings.fileShelf.edgeHandleEnabled,
-    clipboardHistoryEnabled:
-      defaultAppSettings.fileShelf.clipboardHistoryEnabled,
-    clipboardHistoryLimit: defaultAppSettings.fileShelf.clipboardHistoryLimit,
-    ignoredApplications: [...defaultAppSettings.fileShelf.ignoredApplications],
-    themeColor: defaultAppSettings.fileShelf.themeColor,
-  },
-
-  quickCapture: {
-    enabled: defaultAppSettings.quickCapture.enabled,
-    shortcut: defaultAppSettings.quickCapture.shortcut,
-    themeColor: defaultAppSettings.quickCapture.themeColor,
-    fontFamily: defaultAppSettings.quickCapture.fontFamily,
-    fontSize: defaultAppSettings.quickCapture.fontSize,
-    lineHeight: defaultAppSettings.quickCapture.lineHeight,
-    showLineNumbers: defaultAppSettings.quickCapture.showLineNumbers,
-    wordWrap: defaultAppSettings.quickCapture.wordWrap,
-    tabWidth: defaultAppSettings.quickCapture.tabWidth,
-    spellCheck: defaultAppSettings.quickCapture.spellCheck,
-    highlightCurrentLine: defaultAppSettings.quickCapture.highlightCurrentLine,
-    alwaysOnTop: defaultAppSettings.quickCapture.alwaysOnTop,
-  },
-
   gameLauncher: {
     enabled: defaultAppSettings.gameLauncher.enabled,
     shortcut: defaultAppSettings.gameLauncher.shortcut,
@@ -69,14 +41,6 @@ const defaultMockSettings: AppSettings = {
     displayMode: defaultAppSettings.clock.displayMode,
     hourFormat: defaultAppSettings.clock.hourFormat,
     glowEffect: defaultAppSettings.clock.glowEffect,
-  },
-  voiceToText: {
-    enabled: defaultAppSettings.voiceToText.enabled,
-    shortcut: defaultAppSettings.voiceToText.shortcut,
-    baseUrl: defaultAppSettings.voiceToText.baseUrl,
-    model: defaultAppSettings.voiceToText.model,
-    language: defaultAppSettings.voiceToText.language,
-    status: defaultAppSettings.voiceToText.status,
   },
 
   // ブラウザモックは既存ユーザー扱いにする。

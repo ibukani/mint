@@ -8,7 +8,6 @@ import { resetWindowState, type WindowStateTarget } from "../../windowCommands";
 const resetTargets: ReadonlyArray<{ label: WindowStateTarget; name: string }> =
   [
     { label: "main", name: "設定画面" },
-    { label: "quickCapture", name: "クイックキャプチャー" },
     { label: "gameLauncher", name: "ゲームランチャー" },
     { label: "calendar", name: "カレンダー" },
     { label: "calendarEditor", name: "カレンダーエディター" },
